@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parse, stringify } from 'yaml';
 import type { ZodType } from 'zod';
@@ -139,4 +139,38 @@ export function saveContract(root: string, milestoneId: string, contract: Contra
   }
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, text);
+}
+
+const requirementsDir = (root: string): string => pitwayPath(root, 'requirements');
+
+export function nextRequirementId(root: string): string {
+  let entries: string[];
+  try {
+    entries = readdirSync(requirementsDir(root));
+  } catch {
+    entries = [];
+  }
+  const max = entries.reduce((acc, name) => {
+    const match = /^R(\d{3})\.md$/.exec(name);
+    return match ? Math.max(acc, Number(match[1])) : acc;
+  }, 0);
+  return `R${String(max + 1).padStart(3, '0')}`;
+}
+
+export function saveRequirement(root: string, id: string, text: string): void {
+  const dir = requirementsDir(root);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, `${id}.md`), text);
+}
+
+export function readInputFile(path: string, label: string): string {
+  try {
+    return readFileSync(path, 'utf8');
+  } catch (error) {
+    throw new StateStoreError(`cannot read ${label} file ${path}: ${(error as Error).message}`);
+  }
+}
+
+export function milestoneDirExists(root: string, milestoneId: string): boolean {
+  return existsSync(pitwayPath(root, 'milestones', milestoneId));
 }

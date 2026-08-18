@@ -1,10 +1,12 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { parse } from 'yaml';
 import {
   loadContract,
   loadState,
+  milestoneDirExists,
+  nextRequirementId,
+  readInputFile,
   saveContract,
+  saveRequirement,
   saveState,
   saveTasks,
   saveUsage,
@@ -35,25 +37,11 @@ function nextMilestoneId(milestones: string[]): string {
   return formatId('M', max + 1);
 }
 
-function nextRequirementId(root: string): string {
-  let entries: string[];
-  try {
-    entries = readdirSync(join(root, '.pitway', 'requirements'));
-  } catch {
-    entries = [];
-  }
-  const max = entries.reduce((acc, name) => {
-    const match = /^R(\d{3})\.md$/.exec(name);
-    return match ? Math.max(acc, Number(match[1])) : acc;
-  }, 0);
-  return formatId('R', max + 1);
-}
-
 function readInput(path: string, label: string): string {
   try {
-    return readFileSync(path, 'utf8');
+    return readInputFile(path, label);
   } catch (error) {
-    throw new MilestoneAddError(`cannot read ${label} file ${path}: ${(error as Error).message}`);
+    throw new MilestoneAddError((error as Error).message);
   }
 }
 
@@ -108,7 +96,7 @@ export function createMilestone(root: string, inputs: MilestoneAddInputs): Miles
   assertActiveMilestoneTerminal(root, state);
 
   const id = nextMilestoneId(state.milestones);
-  if (existsSync(join(root, '.pitway', 'milestones', id))) {
+  if (milestoneDirExists(root, id)) {
     throw new MilestoneAddError(
       `.pitway/milestones/${id} already exists but is not registered in state.yaml; ` +
         `a previous milestone-add may have been interrupted — inspect and reconcile manually`,
@@ -125,9 +113,7 @@ export function createMilestone(root: string, inputs: MilestoneAddInputs): Miles
   let requirementId: string | null = null;
   if (requirementText !== null) {
     requirementId = nextRequirementId(root);
-    const requirementsDir = join(root, '.pitway', 'requirements');
-    mkdirSync(requirementsDir, { recursive: true });
-    writeFileSync(join(requirementsDir, `${requirementId}.md`), requirementText);
+    saveRequirement(root, requirementId, requirementText);
   }
 
   saveContract(root, id, {

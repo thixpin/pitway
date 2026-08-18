@@ -12,8 +12,12 @@ import {
   loadTasks,
   loadUsage,
   loadVerificationResults,
+  milestoneDirExists,
+  nextRequirementId,
+  readInputFile,
   saveConfig,
   saveContract,
+  saveRequirement,
   saveState,
   saveTasks,
   saveUsage,
@@ -108,5 +112,55 @@ describe('state store validation', () => {
   it('reports a missing .pitway directory clearly', () => {
     rmSync(join(root, '.pitway'), { recursive: true });
     expect(() => loadConfig(root)).toThrowError(/\.pitway/);
+  });
+});
+
+describe('requirement artifact I/O', () => {
+  it('computes R001 as the next requirement id when none exist', () => {
+    expect(nextRequirementId(root)).toBe('R001');
+  });
+
+  it('computes the next requirement id from existing files', () => {
+    saveRequirement(root, 'R001', '# One\n');
+    saveRequirement(root, 'R002', '# Two\n');
+    expect(nextRequirementId(root)).toBe('R003');
+  });
+
+  it('computes the next requirement id past a gap (does not fill it)', () => {
+    saveRequirement(root, 'R001', '# One\n');
+    saveRequirement(root, 'R005', '# Five\n');
+    expect(nextRequirementId(root)).toBe('R006');
+  });
+
+  it('saves a requirement artifact and reads it back byte-for-byte', () => {
+    saveRequirement(root, 'R001', '# Requirement\n\nDo the thing.\n');
+    const text = readFileSync(join(root, '.pitway', 'requirements', 'R001.md'), 'utf8');
+    expect(text).toBe('# Requirement\n\nDo the thing.\n');
+  });
+});
+
+describe('readInputFile', () => {
+  it('reads an external file by path', () => {
+    const path = join(root, 'draft.md');
+    writeFileSync(path, 'draft contents');
+    expect(readInputFile(path, 'contract')).toBe('draft contents');
+  });
+
+  it('throws StateStoreError with the label and path when the file cannot be read', () => {
+    const path = join(root, 'missing.md');
+    expect(() => readInputFile(path, 'contract')).toThrowError(StateStoreError);
+    expect(() => readInputFile(path, 'contract')).toThrowError(
+      new RegExp(`cannot read contract file ${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+    );
+  });
+});
+
+describe('milestoneDirExists', () => {
+  it('returns true when the milestone directory exists', () => {
+    expect(milestoneDirExists(root, 'M001')).toBe(true);
+  });
+
+  it('returns false when the milestone directory does not exist', () => {
+    expect(milestoneDirExists(root, 'M999')).toBe(false);
   });
 });

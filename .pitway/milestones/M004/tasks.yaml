@@ -173,7 +173,7 @@ tasks:
     objective: "Requirement store refactor: move requirement-artifact I/O (next id
       computation, read, write) into the state store; milestone creation core
       retains zero direct filesystem access; behavior unchanged (AC011)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - store.ts owns requirement I/O with unit coverage
@@ -188,8 +188,36 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/unit/state-store.test.ts
         tests/integration/milestone-add.test.ts
-    result: null
-    usage: null
+    result:
+      summary: 'Executed by a bounded sub-agent from its task-context bundle.
+        src/state/store.ts gains four new exports built on the shared pitwayPath
+        helper: nextRequirementId (readdir-derived next R### id, moved verbatim
+        from create.ts), saveRequirement (mkdir + write of the requirement
+        artifact), readInputFile (generic external-file reader raising
+        StateStoreError with the same "cannot read <label> file <path>: ..."
+        message text), and milestoneDirExists (existsSync collision check).
+        src/core/milestones/create.ts now imports only these from state/store.js
+        and carries zero node:fs / node:path imports; its local readInput
+        wrapper calls readInputFile and rethrows as MilestoneAddError with an
+        unchanged message so caller-visible behavior is identical.
+        tests/unit/state-store.test.ts gained 8 new unit tests for the four
+        moved functions; no existing test in either target file was modified.'
+      evidence: "Independently re-verified by the driver (not just the sub-agent's
+        self-report): target command `npm test -- tests/unit/state-store.test.ts
+        tests/integration/milestone-add.test.ts` 25/25 green (19 state-store
+        incl. 8 new + 6 milestone-add, both files' pre-existing tests
+        byte-unmodified per diff review); full suite `npm test` 304/305 green,
+        sole failure is the driver's own orchestration script
+        (tests/_driver.test.ts, git-ignored via .git/info/exclude, outside this
+        task's relevant_files, unrelated to store.ts/create.ts); `npm run
+        typecheck` clean; `grep -n \"node:fs\\|node:path\"
+        src/core/milestones/create.ts` empty (exit 1); git diff reviewed
+        directly and confirmed scoped to exactly src/state/store.ts,
+        src/core/milestones/create.ts, and additive-only changes to
+        tests/unit/state-store.test.ts."
+    attempts: 1
+    usage:
+      total_tokens: 61289
   - id: T006
     objective: "Slugged milestone directories: slug generated once from the title at
       milestone-add (lowercase, hyphen-collapsed, trimmed, 40-char word
@@ -198,7 +226,7 @@ tasks:
       exactly one candidate — zero, multiple slugged, or bare-and-slugged
       coexisting all refuse naming the candidates; bare directories
       grandfathered (AC012-AC013)."
-    status: waiting
+    status: ready
     depends_on:
       - T005
     acceptance_criteria:
