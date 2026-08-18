@@ -8,7 +8,7 @@ tasks:
       with an operation-specific matchesCommit(sha) predicate,
       computeExpectedBaselinePaths (including the optional requirement
       path), computeVerificationHash, and TrailerQuery.messagePrefix.
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Exact-set subset check rejects any dirty path not exactly matching an expected file
@@ -43,7 +43,7 @@ tasks:
       pitway init: git-repo requirement, exact two-file skeleton, idempotent
       no-op, partial/invalid-state refusal with precise diagnostics
       (AC001-AC004).
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Refuses outside a git work tree creating nothing
@@ -56,7 +56,14 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/init.test.ts
-    result: null
+    result:
+      summary: >-
+        src/cli/commands/init.ts: runInit probes config/state via the store
+        (ok/missing/invalid classification from StateStoreError), creates
+        both files only when both are missing, no-ops when both valid,
+        refuses partial/invalid state with a precise diagnostic naming each
+        file's condition. No direct fs in the CLI layer.
+      evidence: TDD RED confirmed, then 5 new tests green (199/199 suite); typecheck clean
     usage: null
   - id: T003
     objective: >-
