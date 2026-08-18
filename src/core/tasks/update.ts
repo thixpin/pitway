@@ -179,7 +179,11 @@ function completeTask(
   inputs: TaskUpdateInputs,
 ): TaskUpdateView {
   const tasksPath = tasksRepoPath(milestoneId);
-  const expectedPaths = [...task.relevant_files, tasksPath];
+  // relevant_files is optional as of M005/T003 (context_files/write_scope are
+  // the new style); this line predates write_scope enforcement, which is
+  // M005/T004's job. Defensive fallback only — no real task omits
+  // relevant_files yet, so behavior for every existing task is unchanged.
+  const expectedPaths = [...(task.relevant_files ?? []), tasksPath];
   const trailers = { 'PitWay-Milestone': milestoneId, 'PitWay-Task': task.id };
   const attempts = task.attempts ?? null;
 
