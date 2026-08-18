@@ -1,0 +1,148 @@
+schema_version: 1
+tasks:
+  - id: T001
+    objective: >-
+      Shared primitives: exact-set dirty-path check replacing the
+      prefix-overlap logic in baseline.ts (delete pathsOverlap; M002's
+      existing baseline tests must still pass unmodified), commitOrResume
+      with an operation-specific matchesCommit(sha) predicate,
+      computeExpectedBaselinePaths (including the optional requirement
+      path), computeVerificationHash, and TrailerQuery.messagePrefix.
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Exact-set subset check rejects any dirty path not exactly matching an expected file
+      - commitOrResume returns already-committed / committed / precise refusal deterministically
+      - computeVerificationHash matches the manual sed/shasum canonicalization used for M001/M002
+      - M002 baseline and trailer tests remain green unmodified
+    relevant_files:
+      - src/git/baseline.ts
+      - src/git/commit-or-resume.ts
+      - src/git/trailers.ts
+      - src/core/contracts/verification-hash.ts
+      - tests/unit/commit-or-resume.test.ts
+      - tests/unit/verification-hash.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/commit-or-resume.test.ts tests/unit/verification-hash.test.ts tests/unit/git-baseline.test.ts
+    result: null
+    usage: null
+  - id: T002
+    objective: >-
+      pitway init: git-repo requirement, exact two-file skeleton, idempotent
+      no-op, partial/invalid-state refusal with precise diagnostics
+      (AC001-AC004).
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Refuses outside a git work tree creating nothing
+      - Creates exactly config.yaml and state.yaml in a clean repo
+      - Safe no-op when both exist and validate
+      - Partial or invalid state refuses without overwriting
+    relevant_files:
+      - src/cli/commands/init.ts
+      - tests/integration/init.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/init.test.ts
+    result: null
+    usage: null
+  - id: T003
+    objective: >-
+      pitway milestone-add: validate-before-write, sequential id assignment
+      with optional requirement artifact, state.yaml registration last,
+      sequential-active-milestone guard, interrupted-add detection
+      (AC005-AC008).
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Full input validation before any write; failures leave .pitway/ unchanged
+      - Next id assignment, forced draft/planned, requirement file when given
+      - Refuses while the active milestone is non-terminal
+      - Refuses when the next id's directory exists unregistered
+    relevant_files:
+      - src/cli/commands/milestone-add.ts
+      - src/core/milestones/create.ts
+      - tests/integration/milestone-add.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-add.test.ts
+    result: null
+    usage: null
+  - id: T004
+    objective: >-
+      pitway milestone-confirm including --amend and resumable re-entry with
+      operation-specific identity (baseline: unique milestone baseline
+      commit; amendment: committed contract hash equals current hash)
+      (AC009-AC012).
+    status: waiting
+    depends_on:
+      - T001
+      - T003
+    acceptance_criteria:
+      - Refuses non-draft (outside resume) and unexpected dirty paths
+      - Success records hash and confirmed_at, promotes ready tasks, exact-set baseline commit
+      - Amend requires baseline + Change Log entry, commits contract.md only with amend subject
+      - Re-entry is idempotent/resumes/refuses per identity rules; hook-failure, retry, post-commit interruption, multi-amend, and ambiguity cases tested
+    relevant_files:
+      - src/cli/commands/milestone-confirm.ts
+      - src/core/milestones/confirm.ts
+      - tests/integration/milestone-confirm.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-confirm.test.ts
+    result: null
+    usage: null
+  - id: T005
+    objective: >-
+      pitway task-update with attempts counting, atomic completion commit,
+      resumable completion using task-specific identity (parsed target-task
+      record comparison ignoring siblings), and the AC019 schema split
+      (task.attempts optional independent; taskUsageSchema without
+      attempts; planning/qa usage schema unchanged) (AC013-AC019).
+    status: waiting
+    depends_on:
+      - T001
+      - T004
+    acceptance_criteria:
+      - Transitions validated by the pure state machine; illegal refusals write nothing
+      - in_progress requires clean-except-tasks.yaml and increments attempts
+      - completed requires result+message and dirty subset of relevant_files+tasks.yaml; violations refuse everything
+      - Completion commit carries both trailers with metadata-stripped message; usage accumulates honestly
+      - failed/blocked/review/cancelled never commit
+      - Re-entry idempotent/resumes/refuses per task-specific identity; sibling changes ignored
+      - Schema split lands per AC019 with schema_version unchanged
+    relevant_files:
+      - src/cli/commands/task-update.ts
+      - src/core/tasks/update.ts
+      - src/state/schemas.ts
+      - tests/integration/task-update.test.ts
+      - tests/unit/schemas.test.ts
+      - tests/fixtures/valid/tasks.yaml
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/task-update.test.ts tests/unit/schemas.test.ts
+    result: null
+    usage: null
+  - id: T006
+    objective: >-
+      Self-hosting readiness scenario (end-to-end in a real temp repo, incl.
+      --requirement variant and dirty-injection refusals at all three git
+      boundaries) and the CT020 thin-CLI layering review (AC020-AC021).
+    status: waiting
+    depends_on:
+      - T002
+      - T003
+      - T004
+      - T005
+    acceptance_criteria:
+      - Full init -> add -> confirm -> task lifecycle -> resume scenario passes
+      - Dirty injection at task-start, task-completion, and confirm boundaries refuses cleanly
+      - Layering review finds zero direct fs/child_process in the four command modules
+    relevant_files:
+      - tests/integration/self-hosting-readiness.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/self-hosting-readiness.test.ts
+    result: null
+    usage: null
