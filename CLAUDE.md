@@ -41,3 +41,16 @@ Non-goals: not a multi-agent framework, coding agent, PM SaaS, CI/CD platform, d
 ## Testing
 
 Vitest, three tiers: unit (pure Core: state machines, dependency resolution, progress calc, usage aggregation, contract parsing, git safety logic), integration (real temp git repos, CLI end-to-end), and one end-to-end simulated milestone plus failure / blocked-dependency / resume / contract-change / dirty-tree / missing-usage cases. PitWay's own tasks use task-level TDD where appropriate.
+
+## Response Style
+
+Be concise by default.
+
+- Lead with the outcome or current status.
+- Do not repeat the request or narrate routine steps.
+- Report only: changes, verification results, commit SHA, blockers, and decisions needed.
+- Use short bullets; avoid long explanations unless requested.
+- Keep progress updates to 1–3 sentences.
+- Put necessary detail in contracts/docs, not chat summaries.
+- When presenting a contract for approval, provide the complete contract.
+- Expand only when ambiguity, risk, or a design decision requires explanation.
