@@ -20,7 +20,7 @@ tasks:
       src/state/, not src/core/ — Core defines entry validation and
       pending-derivation as pure functions operating on data already loaded
       through the state layer (AC001)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Journal path is resolved via the Git module (git rev-parse --git-path
@@ -53,8 +53,62 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/unit/journal.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "Executed by a bounded sub-agent from its task-context bundle.
+        src/git/paths.ts: resolvePitwayJournalPath(cwd) resolves the journal
+        location via `git rev-parse --git-path pitway/journal.yaml`, made
+        absolute with path.resolve — correct under linked worktrees since git
+        itself resolves the gitdir: indirection. src/state/journal.ts owns
+        actual persistence:
+        readJournal/appendJournalEntry/appendCheckpointMarker (append-only,
+        read-all/push/write-all, mirroring verification-results.yaml's
+        convention) plus reconcilePending, the self-healing recovery function —
+        checks HEAD carries the right PitWay-Milestone trailer, then for each
+        pending entry compares its on-disk target file against `git show
+        HEAD:<path>`; on a byte-for-byte match it appends the missing checkpoint
+        marker (idempotent). src/core/journal/operations.ts: pure, zero fs/path
+        — derivePending (entries with no later checkpoint marker referencing
+        their operationId, computed not stored), buildJournalEntry
+        (validation-only), resolveTargetPath (maps operation type to its
+        .pitway/ target file). src/state/schemas.ts gained a kind-discriminated
+        journalRecordSchema (journalEntrySchema:
+        milestone/type/operationId/target?/payload; journalCheckpointSchema:
+        milestone/entryOperationId/commitSha) whose type enum (usage_recording |
+        contract_amendment | task_amendment) is itself the enforcement that
+        task_transition/verification_result can never be journal-written. A
+        single commit SHA may be referenced by multiple checkpoint markers
+        (multi-entry-per-commit, tested)."
+      evidence: "Sub-agent confirmed RED first (modules didn't exist, all 15
+        assertions failed for the expected reason), then 15/15 green on first
+        GREEN attempt. Independently re-verified by the driver: target command
+        `npm test -- tests/unit/journal.test.ts` 15/15 green; full suite `npm
+        test` 331/331 green; `npm run typecheck` clean; `grep -rn
+        \"node:fs\\|node:path\" src/core/journal/` empty (layering clean). Read
+        every changed file in full: confirmed the linked-worktree test creates a
+        real `git worktree add` and asserts the resolved path lands under
+        .git/worktrees/...; the invisibility test asserts empty `git status
+        --porcelain` after an append; the self-healing tests simulate a real
+        crash window (commit succeeds, marker never written) via
+        commitWithTrailers and verify idempotent, non-duplicating recovery, plus
+        a dedicated multi-marker same-SHA test (2 entries, 1 commit, 2 markers
+        verified); the .git-deletion test documents the durability limitation as
+        a natural failure mode rather than inventing new behavior.
+        Scope-conflict finding and correction: the sub-agent's first pass (per
+        the driver's own dispatch instructions, which incorrectly authorized it)
+        added the journal schemas to src/state/schemas.ts — a file outside
+        T001's declared relevant_files. The completion checkpoint's dirty-subset
+        gate correctly refused (\"unrelated dirty changes present:
+        src/state/schemas.ts\"), catching the main-driver's authorization error
+        before anything committed. Corrected by relocating the journal-specific
+        schemas from schemas.ts into src/state/journal.ts (already in T001's
+        relevant_files, self-contained, nothing outside this module depended on
+        the schemas being shared), and reverting schemas.ts to its exact
+        pre-T001 content via `git checkout --`. Re-verified target
+        test/typecheck/full-suite green after the fix; diff now scoped to
+        exactly T001's 4 authorized files."
+    attempts: 1
+    usage:
+      total_tokens: 85451
   - id: T002
     objective: "Working-tree dirty-path classification built on a verified clean
       start: a path is expected only if the current in_progress task's write
@@ -65,7 +119,7 @@ tasks:
       grants no expectation by itself. Discloses (does not hide) that a worker's
       edit and a concurrent developer edit to the same permitted file are
       indistinguishable (AC002)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
