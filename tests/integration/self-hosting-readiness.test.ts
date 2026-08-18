@@ -328,13 +328,14 @@ describe('self-hosting readiness scenario (AC021)', () => {
     expect(view.title).toBe('Self-hosting readiness');
     expect(view.tasks).toEqual([
       { id: 'T001', status: 'completed' },
-      // Completion does not auto-promote dependents; T002 stays waiting
-      // until an explicit task-update promotes it, and resume reports that.
-      { id: 'T002', status: 'waiting' },
+      // AC010: completion auto-promotes dependents whose dependencies are
+      // now all completed, within the same completion commit; resume then
+      // reports T002 ready with no task in_progress.
+      { id: 'T002', status: 'ready' },
     ]);
-    expect(view.ready).toEqual([]);
-    expect(view.waiting).toEqual(['T002']);
-    expect(view.nextTask).toBeNull();
+    expect(view.ready).toEqual(['T002']);
+    expect(view.waiting).toEqual([]);
+    expect(view.nextTask).toBe('T002');
   });
 });
 

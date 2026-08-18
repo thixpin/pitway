@@ -2,6 +2,7 @@ import { appendFileSync, chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
+import { parse } from 'yaml';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
@@ -342,6 +343,22 @@ describe('pitway task-update to completed (AC015, AC016)', () => {
     expect(error).toBeUndefined();
     expect(task('T001').usage).toBeNull();
   });
+
+  it('promotes a waiting dependent to ready within the same completion commit (AC010)', async () => {
+    expect(task('T002').status).toBe('waiting');
+    const before = commitCount(root);
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(task('T001').status).toBe('completed');
+    expect(task('T002').status).toBe('ready');
+    expect(commitCount(root)).toBe(before + 1);
+    // The promotion landed in the exact same commit as the completion, not a
+    // separate one: the committed tasks.yaml at HEAD already shows T002 ready.
+    const committed = parse(
+      git(['show', `HEAD:${TASKS_PATH}`], root),
+    ) as { tasks: Array<{ id: string; status: string }> };
+    expect(committed.tasks.find((t) => t.id === 'T002')?.status).toBe('ready');
+  });
 });
 
 describe('pitway task-update completion re-entry (AC018)', () => {
@@ -364,13 +381,16 @@ describe('pitway task-update completion re-entry (AC018)', () => {
     const first = await completeT001();
     expect(first.error).toBeUndefined();
     const sha = (JSON.parse(first.lines[0]!) as { commit: string }).commit;
+    // AC010: completing T001 already auto-promoted T002 to ready in that
+    // same commit.
+    expect(task('T002').status).toBe('ready');
 
     // A sibling transition dirties tasks.yaml after the completion commit.
-    expect((await update(['T002', 'ready'])).error).toBeUndefined();
+    expect((await update(['T002', 'in_progress'])).error).toBeUndefined();
     const again = await update(['T001', 'completed', '--json']);
     expect(again.error).toBeUndefined();
     expect(JSON.parse(again.lines[0]!)).toMatchObject({ outcome: 'already-committed', commit: sha });
-    expect(task('T002').status).toBe('ready');
+    expect(task('T002').status).toBe('in_progress');
     expect(commitCount(root)).toBe(3);
   });
 

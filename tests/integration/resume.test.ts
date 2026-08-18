@@ -104,4 +104,28 @@ describe('pitway resume', () => {
 
     expect(JSON.parse(lines.join('\n')).nextTask).toBeNull();
   });
+
+  it('reports an in_progress task as the continuation target and suppresses the ready recommendation (AC010)', async () => {
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    saveContract(root, 'M001', { frontmatter: frontmatter('in_progress'), body: '\n' });
+    // T003 (ready, lower id) is declared before T002 (in_progress) to prove
+    // the in_progress task wins regardless of declared order or id ordering.
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [
+        task({ id: 'T003', status: 'ready' }),
+        task({ id: 'T002', status: 'in_progress' }),
+        task({ id: 'T001', status: 'completed' }),
+      ],
+    });
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+
+    const view = JSON.parse(lines.join('\n'));
+    expect(view.ready).toEqual(['T003']);
+    expect(view.nextTask).toBe('T002');
+  });
 });

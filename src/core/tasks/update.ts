@@ -15,6 +15,7 @@ import {
   type TasksFile,
 } from '../../state/schemas.js';
 import { loadState, loadTasks, saveTasks } from '../../state/store.js';
+import { resolveReadyTasks } from './dependencies.js';
 import { transitionTask } from './state-machine.js';
 
 export class TaskUpdateError extends Error {}
@@ -227,12 +228,19 @@ function completeTask(
   // AC015: any violation refuses the entire operation before tasks.yaml is written.
   assertDirtySubset(root, expectedPaths);
 
-  persistTask(root, milestoneId, tasksFile, {
+  const completed: Task = {
     ...task,
     status: 'completed',
     result,
     usage: accumulateUsage(task.usage, usageDelta),
-  });
+  };
+  // AC010: promote any waiting dependent whose dependencies are now all
+  // completed within this same persisted write, so the completion commit
+  // and the promotion land together.
+  const resolvedTasks = resolveReadyTasks(
+    tasksFile.tasks.map((t) => (t.id === completed.id ? completed : t)),
+  );
+  saveTasks(root, milestoneId, { schema_version: tasksFile.schema_version, tasks: resolvedTasks });
   const committed = commitOrResume(root, {
     expectedPaths,
     findExistingCommit: () => findCompletionCommit(root, milestoneId, task.id, result),

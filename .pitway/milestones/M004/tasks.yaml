@@ -123,13 +123,13 @@ tasks:
       total_tokens: 95892
   - id: T004
     objective: "Dependent auto-promotion and resume continuation: task completion
-      promotes waiting dependents whose dependencies are all completed within the
-      same persisted write and commit; resume reports them ready, reports any
-      in_progress task as the continuation target with no ready-task
+      promotes waiting dependents whose dependencies are all completed within
+      the same persisted write and commit; resume reports them ready, reports
+      any in_progress task as the continuation target with no ready-task
       recommendation, and recommends the lowest ready id only when no task is
       in_progress; readiness scenario assertion updated to the new guarantees
       (AC010)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Promotion happens in the completion write/commit, not as a separate step
@@ -149,8 +149,26 @@ tasks:
       detail: npm test -- tests/integration/task-update.test.ts
         tests/integration/resume.test.ts
         tests/integration/self-hosting-readiness.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "Executed by a bounded sub-agent from its task-context bundle.
+        src/core/tasks/update.ts: completeTask's persisted-write path now
+        resolves the full task array through resolveReadyTasks (reused, not
+        duplicated) before saving, so a completed task's waiting dependents
+        promote to ready in the same write/commit as completion.
+        src/cli/commands/resume.ts: ResumeView gains inProgress (sorted ids);
+        nextTask is the in_progress task when one exists (continuation target,
+        ready-recommendation suppressed), else the lowest ready id as before;
+        ready/waiting/blocked keep reflecting actual status membership only.
+        Human output adds an 'In progress:' line and a distinct 'Continue: T00X'
+        label vs 'Next: T00X'."
+      evidence: Sub-agent confirmed RED (readiness scenario, task-update, and resume
+        assertions all failed for the new AC010 behavior, not typos), then 31/31
+        green across task-update.test.ts + resume.test.ts +
+        self-hosting-readiness.test.ts; driver re-verified 296/296 full suite
+        and clean typecheck, and reviewed the update.ts/resume.ts diff directly.
+    attempts: 1
+    usage:
+      total_tokens: 81608
   - id: T005
     objective: "Requirement store refactor: move requirement-artifact I/O (next id
       computation, read, write) into the state store; milestone creation core
@@ -205,7 +223,7 @@ tasks:
     objective: "CLI reachability: register every existing and new command in the
       program built by buildCli's main entry path so each is reachable through
       the single pitway entry point; packaging remains deferred (AC015)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002
