@@ -1,28 +1,77 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { buildCli, registerAllCommands } from '../../src/cli/index.js';
 import { renderOutput } from '../../src/cli/output.js';
+import type { Command } from 'commander';
 
-const cliPath = fileURLToPath(new URL('../../src/cli/index.ts', import.meta.url));
 const pkg = JSON.parse(
   readFileSync(fileURLToPath(new URL('../../package.json', import.meta.url)), 'utf8'),
 ) as { version: string };
 
-function runCli(args: string[]): string {
-  return execFileSync('node', [cliPath, ...args], { stdio: 'pipe' }).toString();
+const ALL_COMMAND_NAMES = [
+  'init',
+  'milestone-add',
+  'milestone-complete',
+  'milestone-confirm',
+  'milestone-list',
+  'milestone-status',
+  'resume',
+  'task-status',
+  'task-update',
+  'usage-add',
+  'verify',
+].sort();
+
+// Node's native TS loader resolves relative import specifiers literally — it
+// never remaps this repo's `.js` specifiers to their sibling `.ts` files — so
+// running `pitway` as a real `node` subprocess only works once a build step
+// (npm packaging and distribution, explicitly deferred) emits real .js. These
+// tests instead exercise the exact buildCli()/registerAllCommands
+// construction the real bin entry point uses, in-process via vitest's own
+// resolver, with commander's exit-on-help/version overridden locally so a
+// caught CommanderError proves reachability instead of killing the worker.
+function captureProgram(): { program: Command; lines: string[] } {
+  const lines: string[] = [];
+  const program = buildCli();
+  program.exitOverride();
+  program.configureOutput({
+    writeOut: (s) => lines.push(s),
+    writeErr: (s) => lines.push(s),
+  });
+  return { program, lines };
 }
 
 describe('pitway bin entry point', () => {
-  it('resolves and runs, reporting the package version', () => {
-    const output = runCli(['--version']);
-    expect(output.trim()).toBe(pkg.version);
+  it('reports the package version', async () => {
+    const { program, lines } = captureProgram();
+    await expect(program.parseAsync(['node', 'pitway', '--version'])).rejects.toThrow();
+    expect(lines.join('').trim()).toBe(pkg.version);
   });
 
-  it('shows help naming the pitway program', () => {
-    const output = runCli(['--help']);
-    expect(output).toContain('pitway');
+  it('shows help naming the pitway program', async () => {
+    const { program, lines } = captureProgram();
+    await expect(program.parseAsync(['node', 'pitway', '--help'])).rejects.toThrow();
+    expect(lines.join('')).toContain('pitway');
   });
+});
+
+describe('registerAllCommands', () => {
+  it('registers all 11 commands on a fresh buildCli() program', () => {
+    const program = buildCli();
+    registerAllCommands(program, {});
+    expect(program.commands.map((c) => c.name()).sort()).toEqual(ALL_COMMAND_NAMES);
+  });
+
+  it.each(ALL_COMMAND_NAMES)(
+    'the real entry-point construction registers "%s" and it responds to --help',
+    async (name) => {
+      const { program, lines } = captureProgram();
+      registerAllCommands(program, {});
+      await expect(program.parseAsync(['node', 'pitway', name, '--help'])).rejects.toThrow();
+      expect(lines.join('')).toContain(name);
+    },
+  );
 });
 
 describe('renderOutput', () => {
