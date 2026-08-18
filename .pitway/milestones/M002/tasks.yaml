@@ -5,7 +5,7 @@ tasks:
       Implement the git module foundation: a shared git-command runner and
       the safety check (clean/dirty detection with dirty-path listing,
       non-git-repo detection with a clear distinguishable error).
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Clean tree reports clean; dirty tree lists the dirty paths
@@ -18,7 +18,12 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/unit/git-safety.test.ts
-    result: null
+    result:
+      summary: >-
+        src/git/exec.ts: git command runner (GitError wraps stderr) +
+        assertGitWorkTree. src/git/safety.ts: checkWorkingTreeClean parses
+        `git status --porcelain` into {clean, dirtyPaths}, read-only.
+      evidence: TDD RED confirmed, then 4/4 green (156/156 suite); typecheck clean
     usage: null
   - id: T002
     objective: >-
