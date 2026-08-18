@@ -108,7 +108,7 @@ tasks:
       operation-specific identity (baseline: unique milestone baseline
       commit; amendment: committed contract hash equals current hash)
       (AC009-AC012).
-    status: waiting
+    status: completed
     depends_on:
       - T001
       - T003
@@ -124,8 +124,26 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-confirm.test.ts
-    result: null
-    usage: null
+    result:
+      summary: >-
+        Executed by a bounded sub-agent from its task-context bundle.
+        src/core/milestones/confirm.ts: confirmMilestone — draft happy path
+        (pre-write dirty check, single persisted write with hash +
+        confirmed_at, planned->waiting->ready promotion, baseline via
+        createBaselineCommit), AC012 resume path (baseline identity ->
+        idempotent; missing baseline -> revalidate + resume; found-while-
+        draft -> ambiguity refusal), and --amend (baseline + Change Log
+        required, hash-equality identity via git show, contract.md-only
+        commit with amend subject and milestone trailer).
+        src/cli/commands/milestone-confirm.ts orchestration-only (zero fs).
+      evidence: >-
+        Sub-agent confirmed RED, then 18/18 task tests green incl.
+        hook-failure/retry, post-commit interruption, multi-amend identity,
+        and ambiguity refusals; driver re-verified 223/223 suite, clean
+        typecheck, and zero fs/exec in the CLI module
+    usage:
+      attempts: 1
+      total_tokens: 83749
   - id: T005
     objective: >-
       pitway task-update with attempts counting, atomic completion commit,
