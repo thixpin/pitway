@@ -5,7 +5,7 @@ tasks:
       contract order with trimmed-output evidence, developer recording for
       manual/review checks (--check --pass|--fail --evidence), append-only
       timestamped results with latest-per-check authoritative (AC001-AC004)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Hash mismatch refuses before executing or recording anything
@@ -20,8 +20,22 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/verify.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "Executed by a bounded sub-agent from its task-context bundle.
+        src/core/verification/run.ts: hash-gated verify — refuses on recomputed
+        hash mismatch before executing or recording anything; runs only approved
+        command checks in contract order with trimmed-tail evidence (200 chars);
+        failures recorded, never hidden; developer recording for manual/review
+        checks with refusals for command-type/unknown ids; append-only
+        timestamped results. src/cli/commands/verify.ts orchestration-only (zero
+        fs/child_process)."
+      evidence: Sub-agent confirmed RED, then 14/14 task tests green incl. tamper test
+        (unapproved edited command never executes) and append-only growth with
+        byte-identical prior entries; driver re-verified 268/268 full suite,
+        clean typecheck, and clean CLI-module grep
+    attempts: 1
+    usage:
+      total_tokens: 76772
   - id: T002
     objective: "pitway milestone-complete: refuse unless in_progress with all
       non-cancelled tasks completed and latest result for every check pass;
