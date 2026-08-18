@@ -1,0 +1,140 @@
+schema_version: 1
+tasks:
+  - id: T001
+    objective: >-
+      Implement the git module foundation: a shared git-command runner and
+      the safety check (clean/dirty detection with dirty-path listing,
+      non-git-repo detection with a clear distinguishable error).
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Clean tree reports clean; dirty tree lists the dirty paths
+      - Nothing is modified, stashed, or reset by the check itself
+      - Running outside a git work tree produces a clear, distinct error
+    relevant_files:
+      - src/git/exec.ts
+      - src/git/safety.ts
+      - tests/unit/git-safety.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/git-safety.test.ts
+    result: null
+    usage: null
+  - id: T002
+    objective: >-
+      Implement trailer-based commits: a message composer that appends only
+      PitWay trailers and strips an explicit closed set of provider/session
+      metadata (never touching legitimate human trailers), a generic commit
+      helper that commits staged changes and returns the SHA (refusing empty
+      commits), a dedicated baseline-commit helper built on it, and SHA
+      resolution by searching commit trailers in history.
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - Composer strips only exact-key Claude-Session/Codex-Session/Gemini-Session lines
+      - Composer strips Co-Authored-By lines only by exact known AI email match (e.g. noreply@anthropic.com)
+      - Composer preserves a human Co-Authored-By trailer, including one named "Claude", verbatim
+      - Composer appends only the given PitWay-Milestone/PitWay-Task trailers
+      - Generic commit helper returns the SHA and refuses an empty commit
+      - Baseline helper runs the safety check first, uses the baseline message format with only PitWay-Milestone, and never creates an empty commit
+      - SHA resolution reads git history only; nothing persisted to state
+    relevant_files:
+      - src/git/commit.ts
+      - src/git/trailers.ts
+      - src/git/baseline.ts
+      - tests/unit/git-commit.test.ts
+      - tests/unit/git-baseline.test.ts
+      - tests/integration/git-trailers.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/git-commit.test.ts tests/unit/git-baseline.test.ts tests/integration/git-trailers.test.ts
+    result: null
+    usage: null
+  - id: T003
+    objective: >-
+      Scaffold the pitway CLI: commander-based bin entry point and shared
+      --json / human-readable output plumbing, with no commands registered
+      yet beyond a smoke-testable structure.
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - bin/pitway resolves and runs via the package bin field
+      - Shared output helper renders --json and human modes from the same data
+    relevant_files:
+      - package.json
+      - src/cli/index.ts
+      - src/cli/output.ts
+      - tests/integration/cli.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/cli.test.ts
+    result: null
+    usage: null
+  - id: T004
+    objective: >-
+      Implement pitway milestone-status and pitway milestone-list, reading
+      state and resolving the baseline commit SHA via the git module,
+      with deterministic progress and no per-task percentages.
+    status: waiting
+    depends_on:
+      - T002
+      - T003
+    acceptance_criteria:
+      - milestone-status shows deterministic progress and per-task status labels
+      - milestone-status resolves and displays the baseline SHA via trailer search
+      - milestone-list reads state.yaml only as an id index
+      - milestone-list reads only contract frontmatter (title, status) per milestone — never tasks.yaml/verification-results.yaml/usage.yaml
+      - Neither command performs direct fs/git I/O outside store.ts/git module
+    relevant_files:
+      - src/cli/commands/milestone-status.ts
+      - src/cli/commands/milestone-list.ts
+      - tests/integration/milestone-status.test.ts
+      - tests/integration/milestone-list.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-status.test.ts tests/integration/milestone-list.test.ts
+    result: null
+    usage: null
+  - id: T005
+    objective: >-
+      Implement pitway task-status, including the --context flag that emits
+      exactly the minimal task-context bundle and nothing else.
+    status: waiting
+    depends_on:
+      - T003
+    acceptance_criteria:
+      - Default output shows task status, dependencies, result summary
+      - --context bundle contains only the approved minimal fields
+      - --context bundle excludes milestone history and unrelated tasks
+    relevant_files:
+      - src/cli/commands/task-status.ts
+      - src/core/tasks/context-bundle.ts
+      - tests/integration/task-status.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/task-status.test.ts
+    result: null
+    usage: null
+  - id: T006
+    objective: >-
+      Implement pitway resume: reconstruct the full workflow picture from
+      .pitway/ alone (active milestone, contract status, task states,
+      ready/waiting/blocked tasks, recommended next task).
+    status: waiting
+    depends_on:
+      - T003
+      - T004
+    acceptance_criteria:
+      - Reads only .pitway/ (no conversation/session input required)
+      - Reports active milestone, contract status, and per-task states
+      - Reports ready/waiting/blocked tasks and a recommended next task
+      - When multiple tasks are ready, recommends the lowest task ID deterministically
+    relevant_files:
+      - src/cli/commands/resume.ts
+      - tests/integration/resume.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/resume.test.ts
+    result: null
+    usage: null
