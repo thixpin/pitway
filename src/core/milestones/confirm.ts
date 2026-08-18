@@ -1,12 +1,14 @@
+import { randomUUID } from 'node:crypto';
 import { computeExpectedBaselinePaths, createBaselineCommit } from '../../git/baseline.js';
 import { commitOrResume } from '../../git/commit-or-resume.js';
-import { git } from '../../git/exec.js';
 import { checkWorkingTreeClean } from '../../git/safety.js';
 import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
 import { parseContractFile, serializeContractFile } from '../../state/contract-file.js';
-import { loadContract, loadTasks, saveContract, saveTasks } from '../../state/store.js';
+import { appendJournalEntry, readJournal } from '../../state/journal.js';
+import { loadContract, loadTasks, readInputFile, saveContract, saveTasks } from '../../state/store.js';
 import type { ContractFile } from '../../state/contract-file.js';
 import type { Task } from '../../state/schemas.js';
+import { derivePending } from '../journal/operations.js';
 import { computeVerificationHash } from '../contracts/verification-hash.js';
 import { resolveReadyTasks } from '../tasks/dependencies.js';
 import { transitionMilestone } from './state-machine.js';
@@ -15,7 +17,7 @@ export class MilestoneConfirmError extends Error {}
 
 export interface MilestoneConfirmView {
   id: string;
-  operation: 'confirm' | 'amend';
+  operation: 'confirm';
   outcome: 'committed' | 'already-committed';
   hash: string;
   confirmedAt: string | null;
@@ -23,8 +25,17 @@ export interface MilestoneConfirmView {
   readyTasks: string[];
 }
 
-const contractRepoPath = (milestoneId: string): string =>
-  `.pitway/milestones/${milestoneId}/contract.md`;
+export interface MilestoneAmendView {
+  id: string;
+  operation: 'amend';
+  // Materialized immediately to contract.md — no commit of its own; the
+  // amendment is folded into whichever checkpoint commit lands next (see
+  // task-update's completion path and milestone-complete).
+  hash: string;
+  confirmedAt: string | null;
+}
+
+export type ConfirmMilestoneView = MilestoneConfirmView | MilestoneAmendView;
 
 const nowSeconds = (): string => new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 
@@ -35,18 +46,6 @@ const findBaselineCommit = (root: string, milestoneId: string): string | undefin
     milestone: milestoneId,
     messagePrefix: `workflow: add milestone ${milestoneId}`,
   });
-
-// AC012 amendment identity: an amend-subject candidate whose committed
-// contract.md records exactly the currently recomputed hash.
-function findAmendCommit(root: string, milestoneId: string, hash: string): string | undefined {
-  const sha = resolveCommitSha(root, {
-    milestone: milestoneId,
-    messagePrefix: `workflow: amend milestone ${milestoneId}`,
-  });
-  if (sha === undefined) return undefined;
-  const committed = parseContractFile(git(['show', `${sha}:${contractRepoPath(milestoneId)}`], root));
-  return committed.frontmatter.verification_approved_hash === hash ? sha : undefined;
-}
 
 // AC009: refuses before anything is written or staged.
 function assertNoUnexpectedDirtyPaths(root: string, expectedPaths: string[]): void {
@@ -172,8 +171,33 @@ function assertChangeLogEntry(milestoneId: string, body: string): void {
   );
 }
 
-function runAmend(root: string, milestoneId: string, contract: ContractFile): MilestoneConfirmView {
-  const { status } = contract.frontmatter;
+function parseAmendmentInput(path: string): ContractFile {
+  let text: string;
+  try {
+    text = readInputFile(path, 'amendment');
+  } catch (error) {
+    throw new MilestoneConfirmError((error as Error).message);
+  }
+  try {
+    return parseContractFile(text);
+  } catch (error) {
+    throw new MilestoneConfirmError(`invalid amendment ${path}: ${(error as Error).message}`);
+  }
+}
+
+// Runs against a validated draft contract file (the desired FULL amended
+// contract) rather than a hand-edit of the persisted contract.md — mirrors
+// milestone-add's draft-input pattern. No commit of its own: the amendment
+// is journaled and materialized immediately; a later checkpoint commit
+// (task-update's completion path or milestone-complete) folds it in and
+// then reconciles the journal marker.
+function runAmend(root: string, milestoneId: string, draft: ContractFile): MilestoneAmendView {
+  const { status } = draft.frontmatter;
+  if (draft.frontmatter.id !== milestoneId) {
+    throw new MilestoneConfirmError(
+      `amendment draft id "${draft.frontmatter.id}" does not match target milestone ${milestoneId}`,
+    );
+  }
   if (status === 'draft') {
     throw new MilestoneConfirmError(
       `cannot amend ${milestoneId} while it is draft; confirm the milestone first`,
@@ -185,68 +209,82 @@ function runAmend(root: string, milestoneId: string, contract: ContractFile): Mi
         `complete the pending baseline first`,
     );
   }
-  assertChangeLogEntry(milestoneId, contract.body);
+  assertChangeLogEntry(milestoneId, draft.body);
 
-  const hash = computeVerificationHash(serializeContractFile(contract));
-  const localAdvanced = contract.frontmatter.verification_approved_hash === hash;
-  const confirmedAt = contract.frontmatter.confirmed_at;
+  const hash = computeVerificationHash(serializeContractFile(draft));
+  const confirmedAt = draft.frontmatter.confirmed_at;
 
-  const existing = findAmendCommit(root, milestoneId, hash);
-  if (existing !== undefined) {
-    if (!localAdvanced) {
+  // Pre-commit idempotency: at most one pending contract_amendment entry for
+  // this milestone should ever exist at a time (a genuinely new amendment
+  // is only appended once no earlier one is still pending). If more than
+  // one is somehow found, that is the ambiguous case this task's contract
+  // calls out — stop with a diagnostic rather than guessing which applies.
+  const pending = derivePending(readJournal(root)).filter(
+    (entry) => entry.milestone === milestoneId && entry.type === 'contract_amendment',
+  );
+  if (pending.length > 1) {
+    throw new MilestoneConfirmError(
+      `ambiguous state: multiple pending contract amendment journal entries exist for ${milestoneId}; inspect manually`,
+    );
+  }
+  const pendingEntry = pending[0];
+  if (pendingEntry !== undefined) {
+    if (pendingEntry.payload.hash !== hash) {
       throw new MilestoneConfirmError(
-        `ambiguous state: amend commit ${existing} already records hash ${hash} but the local ` +
-          `contract does not; inspect manually`,
+        `ambiguous state: a different contract amendment (hash ${String(pendingEntry.payload.hash)}) ` +
+          `is already pending for ${milestoneId}; checkpoint or resolve it before amending again`,
       );
     }
-    return {
-      id: milestoneId,
-      operation: 'amend',
-      outcome: 'already-committed',
-      hash,
-      confirmedAt,
-      commit: existing,
-      readyTasks: [],
-    };
-  }
-
-  const contractPath = contractRepoPath(milestoneId);
-  assertNoUnexpectedDirtyPaths(root, [contractPath]);
-  if (!localAdvanced) {
+    // Duplicate re-invocation of the same amendment: harmless to re-write
+    // the same content again, no new journal entry needed.
     saveContract(root, milestoneId, {
-      frontmatter: { ...contract.frontmatter, verification_approved_hash: hash },
-      body: contract.body,
+      frontmatter: { ...draft.frontmatter, verification_approved_hash: hash },
+      body: draft.body,
     });
+    return { id: milestoneId, operation: 'amend', hash, confirmedAt };
   }
 
-  const result = commitOrResume(root, {
-    expectedPaths: [contractPath],
-    findExistingCommit: () => findAmendCommit(root, milestoneId, hash),
-    localStateAdvanced: true,
-    message: composeMessage(`workflow: amend milestone ${milestoneId}`, {
-      'PitWay-Milestone': milestoneId,
-    }),
+  // Already fully materialized (and possibly already checkpointed) by a
+  // prior invocation of this exact amendment.
+  const persisted = loadContract(root, milestoneId);
+  if (persisted.frontmatter.verification_approved_hash === hash) {
+    return { id: milestoneId, operation: 'amend', hash, confirmedAt };
+  }
+
+  appendJournalEntry(root, {
+    milestone: milestoneId,
+    type: 'contract_amendment',
+    operationId: randomUUID(),
+    payload: { hash },
   });
-  return {
-    id: milestoneId,
-    operation: 'amend',
-    outcome: result.outcome,
-    hash,
-    confirmedAt,
-    commit: result.sha,
-    readyTasks: [],
-  };
+  saveContract(root, milestoneId, {
+    frontmatter: { ...draft.frontmatter, verification_approved_hash: hash },
+    body: draft.body,
+  });
+  return { id: milestoneId, operation: 'amend', hash, confirmedAt };
 }
 
 export interface MilestoneConfirmOptions {
   amend?: boolean;
+  // Required alongside amend: path to the validated draft contract file
+  // holding the desired full amended contract.
+  file?: string;
 }
 
 export function confirmMilestone(
   root: string,
   milestoneId: string,
   options: MilestoneConfirmOptions = {},
-): MilestoneConfirmView {
+): ConfirmMilestoneView {
+  if (options.amend) {
+    if (options.file === undefined) {
+      throw new MilestoneConfirmError(
+        '--amend requires --file <path> pointing at the validated draft amended contract',
+      );
+    }
+    const draft = parseAmendmentInput(options.file);
+    return runAmend(root, milestoneId, draft);
+  }
   const contract = loadContract(root, milestoneId);
-  return options.amend ? runAmend(root, milestoneId, contract) : runConfirm(root, milestoneId, contract);
+  return runConfirm(root, milestoneId, contract);
 }

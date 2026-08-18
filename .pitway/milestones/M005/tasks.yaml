@@ -253,7 +253,7 @@ tasks:
       diagnostic. M004's historical AC008 commits and behavior are unchanged;
       this criterion only becomes usable once this task lands, and is not
       retroactively true of M005's own earlier task-completion commits (AC004)."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -299,8 +299,49 @@ tasks:
         tests/integration/milestone-confirm.test.ts
         tests/integration/task-update.test.ts
         tests/integration/milestone-complete.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "Executed by a bounded sub-agent from its task-context bundle,
+        independently reviewed and corrected by the driver. usage-add
+        (src/core/metrics/aggregate.ts) no longer touches git: it validates,
+        accumulates, journal-records (type usage_recording, randomUUID
+        operationId), then immediately writes usage.yaml. UsageAddView dropped
+        its commit/outcome fields. milestone-confirm --amend
+        (src/core/milestones/confirm.ts) gains a required --file <path> option
+        (parsed via the same parseContractFile milestone-add uses) replacing the
+        hand-edited-contract.md dependency; validates the draft's id matches the
+        target milestone (driver-added guard + regression test — nothing
+        originally checked this, a mismatched draft would have silently
+        corrupted the wrong milestone's id field); pre-commit idempotency via
+        derivePending filtered to pending contract_amendment entries (zero
+        pending + hash already persisted -> no-op; one pending matching hash ->
+        harmless re-materialize; one pending different hash, or >1 pending ->
+        MilestoneConfirmError naming the ambiguity); journal-records then
+        immediately writes contract.md, no commit. task-update's completeTask
+        and milestone-complete's completeMilestone both: union
+        classifyDirtyPaths(root, {journalMilestone}).expected into their
+        existing expectedPaths (so an already-materialized
+        usage.yaml/contract.md rides along in the next real checkpoint commit
+        instead of being refused as unrelated dirt), and call
+        reconcilePending(root, milestoneId) after every code path that results
+        in a commit existing (fresh commit or already-committed resume),
+        appending checkpoint markers for whatever the commit actually captured."
+      evidence: "Sub-agent confirmed RED (14 failures against old standalone-commit
+        behavior) then GREEN, 67/67 on first pass. Independently re-verified by
+        the driver: target command 68/68 (67 + 1 new regression test); full
+        suite 361/361 green; typecheck clean; read every changed core file in
+        full. Found and fixed one real gap during review (draft-id mismatch
+        validation, with a dedicated regression test proving the refusal and
+        that nothing gets written/journaled). Found a genuine, disclosed,
+        out-of-scope ripple: verify.test.ts's amend-reapproval scenario used the
+        old hand-edit flow verify --amend now correctly rejects; committed that
+        one-line test adaptation standalone (90bd7ca, no trailers) per developer
+        direction before completing this task, same pattern as T003's update.ts
+        fix. Sub-agent explicitly stopped rather than editing verify.test.ts
+        itself — third occurrence of this scope class in M005, correctly caught
+        each time before anything unsafe committed."
+    attempts: 1
+    usage:
+      total_tokens: 217487
   - id: T005
     objective: "Validated, developer-approved task-amend CLI command (new top-level
       command, registered on the single entry point): validates the proposed
@@ -314,7 +355,7 @@ tasks:
       next checkpoint and blocks on ambiguous recovery via T004's mechanics,
       including its three-window interruption recovery. Durable fix for the
       M004/T006 and M004/179491c gaps (AC005)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002

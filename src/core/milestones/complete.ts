@@ -1,8 +1,9 @@
 import { commitOrResume } from '../../git/commit-or-resume.js';
 import { git } from '../../git/exec.js';
-import { checkWorkingTreeClean } from '../../git/safety.js';
+import { checkWorkingTreeClean, classifyDirtyPaths } from '../../git/safety.js';
 import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
 import { parseContractFile } from '../../state/contract-file.js';
+import { reconcilePending } from '../../state/journal.js';
 import {
   loadContract,
   loadState,
@@ -99,9 +100,13 @@ function clearActiveMilestone(root: string, milestoneId: string): void {
   }
 }
 
-function createCompletionCommit(root: string, milestoneId: string): MilestoneCompleteView {
+function createCompletionCommit(
+  root: string,
+  milestoneId: string,
+  expectedPaths: string[],
+): MilestoneCompleteView {
   const result = commitOrResume(root, {
-    expectedPaths: completionPaths(milestoneId),
+    expectedPaths,
     findExistingCommit: () => findCompletionCommit(root, milestoneId),
     localStateAdvanced: true,
     message: composeMessage(`workflow: complete milestone ${milestoneId}`, {
@@ -115,6 +120,13 @@ export function completeMilestone(root: string, milestoneId: string): MilestoneC
   const contract = loadContract(root, milestoneId);
   const { status } = contract.frontmatter;
 
+  // Any usage.yaml/contract.md already materialized by a pending journal
+  // entry (usage-add / milestone-confirm --amend, both immediate-write, no
+  // commit of their own) is expected to ride along in this completion
+  // commit rather than being refused as unrelated dirt.
+  const journalExpected = classifyDirtyPaths(root, { journalMilestone: milestoneId }).expected;
+  const expectedPaths = [...new Set([...completionPaths(milestoneId), ...journalExpected])];
+
   if (status === 'in_progress') {
     const existing = findCompletionCommit(root, milestoneId);
     if (existing !== undefined) {
@@ -124,7 +136,7 @@ export function completeMilestone(root: string, milestoneId: string): MilestoneC
       );
     }
     assertGatesSatisfied(root, milestoneId, contract);
-    assertNoUnexpectedDirtyPaths(root, completionPaths(milestoneId));
+    assertNoUnexpectedDirtyPaths(root, expectedPaths);
 
     // One persisted status write: in_progress -> review -> completed collapsed.
     const finalStatus = transitionMilestone(transitionMilestone(status, 'review'), 'completed');
@@ -133,19 +145,27 @@ export function completeMilestone(root: string, milestoneId: string): MilestoneC
       body: contract.body,
     });
     clearActiveMilestone(root, milestoneId);
-    return createCompletionCommit(root, milestoneId);
+    const result = createCompletionCommit(root, milestoneId, expectedPaths);
+    // Safe/idempotent regardless of whether this commit was the one that
+    // actually captured a pending journal entry — reconcilePending derives
+    // that from HEAD's content itself.
+    reconcilePending(root, milestoneId);
+    return result;
   }
 
   if (status === 'completed') {
     // AC007 resume path: local state already advanced past the completion write.
     const existing = findCompletionCommit(root, milestoneId);
     if (existing !== undefined) {
+      reconcilePending(root, milestoneId);
       return { id: milestoneId, outcome: 'already-committed', commit: existing };
     }
-    assertNoUnexpectedDirtyPaths(root, completionPaths(milestoneId));
+    assertNoUnexpectedDirtyPaths(root, expectedPaths);
     // Re-apply the (idempotent) state clear in case the write was interrupted.
     clearActiveMilestone(root, milestoneId);
-    return createCompletionCommit(root, milestoneId);
+    const result = createCompletionCommit(root, milestoneId, expectedPaths);
+    reconcilePending(root, milestoneId);
+    return result;
   }
 
   throw new MilestoneCompleteError(

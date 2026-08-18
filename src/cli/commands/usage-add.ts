@@ -3,12 +3,8 @@ import { recordUsage, type UsageAddView } from '../../core/metrics/aggregate.js'
 import { renderOutput } from '../output.js';
 
 function renderUsageAddHuman(view: UsageAddView): string {
-  const recorded = view.outcome === 'already-committed' ? 'already recorded in' : 'recorded in';
-  if (view.operation === 'resume') {
-    return `📊 Committed pending usage for ${view.id}; no new usage applied; ${recorded} commit ${view.commit}.`;
-  }
   const totals = view.usage === null ? '' : ` (attempt ${view.usage.attempts}, ${view.usage.total_tokens} total tokens)`;
-  return `📊 Recorded ${view.category} usage for ${view.id}${totals}; ${recorded} commit ${view.commit}.`;
+  return `📊 Recorded pending ${view.category} usage for ${view.id}${totals}; will be included in the next checkpoint commit.`;
 }
 
 export interface CommandDeps {

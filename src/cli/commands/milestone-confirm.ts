@@ -1,12 +1,15 @@
 import type { Command } from 'commander';
-import { confirmMilestone, type MilestoneConfirmView } from '../../core/milestones/confirm.js';
+import { confirmMilestone, type ConfirmMilestoneView } from '../../core/milestones/confirm.js';
 import { renderOutput } from '../output.js';
 
-function renderMilestoneConfirmHuman(view: MilestoneConfirmView): string {
-  const recorded = view.outcome === 'already-committed' ? 'already recorded in' : 'recorded in';
+function renderMilestoneConfirmHuman(view: ConfirmMilestoneView): string {
   if (view.operation === 'amend') {
-    return `🏁 Amended milestone ${view.id}: hash ${view.hash} ${recorded} commit ${view.commit}.`;
+    return (
+      `🏁 Recorded pending amendment for ${view.id}: hash ${view.hash}; ` +
+      `will be included in the next checkpoint commit.`
+    );
   }
+  const recorded = view.outcome === 'already-committed' ? 'already recorded in' : 'recorded in';
   const ready = view.readyTasks.length > 0 ? ` Ready tasks: ${view.readyTasks.join(', ')}.` : '';
   return `🏁 Confirmed milestone ${view.id}: hash ${view.hash} ${recorded} baseline ${view.commit}.${ready}`;
 }
@@ -21,11 +24,12 @@ export function registerMilestoneConfirmCommand(program: Command, deps: CommandD
   program
     .command('milestone-confirm <id>')
     .description('Confirm a draft milestone, or record an amended verification plan with --amend.')
-    .option('--amend', 'recompute and commit the hash of an amended contract')
+    .option('--amend', 'record a pending amendment; requires --file')
+    .option('--file <path>', 'path to the validated draft contract file holding the full amended contract')
     .option('--json', 'output machine-readable JSON')
-    .action((id: string, options: { amend?: boolean; json?: boolean }) => {
+    .action((id: string, options: { amend?: boolean; file?: string; json?: boolean }) => {
       const root = deps.root ?? process.cwd();
-      const view = confirmMilestone(root, id, { amend: options.amend });
+      const view = confirmMilestone(root, id, { amend: options.amend, file: options.file });
       write(renderOutput(view, { json: options.json }, renderMilestoneConfirmHuman));
     });
 }

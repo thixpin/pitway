@@ -3,9 +3,10 @@ import { parse } from 'yaml';
 import { z } from 'zod';
 import { commitOrResume } from '../../git/commit-or-resume.js';
 import { git } from '../../git/exec.js';
-import { checkWorkingTreeClean } from '../../git/safety.js';
+import { checkWorkingTreeClean, classifyDirtyPaths } from '../../git/safety.js';
 import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
 import { formatIssues } from '../../state/contract-file.js';
+import { reconcilePending } from '../../state/journal.js';
 import {
   taskStatusSchema,
   taskUsageSchema,
@@ -183,7 +184,14 @@ function completeTask(
   // the new style); this line predates write_scope enforcement, which is
   // M005/T004's job. Defensive fallback only — no real task omits
   // relevant_files yet, so behavior for every existing task is unchanged.
-  const expectedPaths = [...(task.relevant_files ?? []), tasksPath];
+  //
+  // Any usage.yaml/contract.md already materialized by a pending journal
+  // entry (usage-add / milestone-confirm --amend, both immediate-write, no
+  // commit of their own — see src/core/metrics/aggregate.ts and
+  // src/core/milestones/confirm.ts) is expected to ride along in this
+  // completion commit rather than being refused as unrelated dirt.
+  const journalExpected = classifyDirtyPaths(root, { journalMilestone: milestoneId }).expected;
+  const expectedPaths = [...new Set([...(task.relevant_files ?? []), tasksPath, ...journalExpected])];
   const trailers = { 'PitWay-Milestone': milestoneId, 'PitWay-Task': task.id };
   const attempts = task.attempts ?? null;
 
@@ -198,6 +206,10 @@ function completeTask(
     }
     const existing = findCompletionCommit(root, milestoneId, task.id, persisted);
     if (existing !== undefined) {
+      // Safe/idempotent regardless of whether this commit was the one that
+      // actually captured a pending journal entry — reconcilePending derives
+      // that from HEAD's content itself.
+      reconcilePending(root, milestoneId);
       return { id: task.id, status: 'completed', attempts, outcome: 'already-committed', commit: existing };
     }
     if (inputs.messagePath === undefined) {
@@ -211,6 +223,7 @@ function completeTask(
       localStateAdvanced: true,
       message: composeMessage(readInput(inputs.messagePath, 'message'), trailers),
     });
+    reconcilePending(root, milestoneId);
     return { id: task.id, status: 'completed', attempts, outcome: committed.outcome, commit: committed.sha };
   }
 
@@ -251,6 +264,7 @@ function completeTask(
     localStateAdvanced: true,
     message: composeMessage(message, trailers),
   });
+  reconcilePending(root, milestoneId);
   return { id: task.id, status: 'completed', attempts, outcome: committed.outcome, commit: committed.sha };
 }
 

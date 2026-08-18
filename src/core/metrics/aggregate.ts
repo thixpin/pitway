@@ -1,11 +1,8 @@
-import { parse } from 'yaml';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { commitOrResume } from '../../git/commit-or-resume.js';
-import { git } from '../../git/exec.js';
-import { checkWorkingTreeClean } from '../../git/safety.js';
-import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
 import { formatIssues } from '../../state/contract-file.js';
-import { usageFileSchema, type Task, type Usage, type UsageFile } from '../../state/schemas.js';
+import { appendJournalEntry } from '../../state/journal.js';
+import { type Task, type Usage, type UsageFile } from '../../state/schemas.js';
 import { loadUsage, saveUsage } from '../../state/store.js';
 
 export class UsageAddError extends Error {}
@@ -23,11 +20,9 @@ export interface UsageAddInputs {
 export interface UsageAddView {
   id: string;
   category: UsageCategory;
-  // 'record' applied the delta; 'resume' only committed a pending recording
-  // whose write had already landed (accumulation is not idempotent).
-  operation: 'record' | 'resume';
-  outcome: 'committed' | 'already-committed';
-  commit: string;
+  // Materialized immediately to usage.yaml — no commit of its own; this
+  // recording is folded into whichever checkpoint commit lands next (see
+  // task-update's completion path and milestone-complete).
   usage: Usage;
 }
 
@@ -41,11 +36,6 @@ const usageDeltaSchema = z.strictObject({
 });
 
 type UsageDelta = z.infer<typeof usageDeltaSchema>;
-
-const usageRepoPath = (milestoneId: string): string =>
-  `.pitway/milestones/${milestoneId}/usage.yaml`;
-
-const usageSubject = (milestoneId: string): string => `workflow: record usage for ${milestoneId}`;
 
 function parseCategory(input: string | undefined): UsageCategory {
   const match = USAGE_CATEGORIES.find((c) => c === input);
@@ -89,39 +79,6 @@ function accumulate(prior: Usage, delta: UsageDelta): NonNullable<Usage> {
   };
 }
 
-function usageEquals(a: Usage, b: Usage): boolean {
-  if (a === null || b === null) return a === b;
-  return (
-    a.attempts === b.attempts &&
-    a.input_tokens === b.input_tokens &&
-    a.output_tokens === b.output_tokens &&
-    a.total_tokens === b.total_tokens
-  );
-}
-
-// AC008 identity: a usage-subject candidate whose committed usage.yaml parses
-// equal to the currently persisted values. Each recording changes content
-// (attempts strictly increases), so older usage commits never falsely match.
-function findUsageCommit(root: string, milestoneId: string, persisted: UsageFile): string | undefined {
-  const sha = resolveCommitSha(root, {
-    milestone: milestoneId,
-    messagePrefix: usageSubject(milestoneId),
-  });
-  if (sha === undefined) return undefined;
-  let committed: unknown;
-  try {
-    committed = parse(git(['show', `${sha}:${usageRepoPath(milestoneId)}`], root));
-  } catch {
-    return undefined;
-  }
-  const parsed = usageFileSchema.safeParse(committed);
-  if (!parsed.success) return undefined;
-  return usageEquals(parsed.data.planning, persisted.planning) &&
-    usageEquals(parsed.data.qa, persisted.qa)
-    ? sha
-    : undefined;
-}
-
 export function recordUsage(root: string, milestoneId: string, inputs: UsageAddInputs): UsageAddView {
   const category = parseCategory(inputs.category);
   if (inputs.usage === undefined) {
@@ -130,41 +87,25 @@ export function recordUsage(root: string, milestoneId: string, inputs: UsageAddI
   const delta = parseDelta(inputs.usage);
   const persisted = loadUsage(root, milestoneId);
 
-  // AC008: unrelated dirty paths refuse the entire operation before anything
-  // is written or staged.
-  const usagePath = usageRepoPath(milestoneId);
-  const { dirtyPaths } = checkWorkingTreeClean(root);
-  const unexpected = dirtyPaths.filter((p) => p !== usagePath);
-  if (unexpected.length > 0) {
-    throw new UsageAddError(
-      `cannot safely proceed: unrelated dirty changes present: ${unexpected.join(', ')}`,
-    );
-  }
+  const updated = { ...persisted };
+  updated[category] = accumulate(persisted[category], delta);
+  const recorded = updated[category];
 
-  // A dirty usage.yaml means a prior recording persisted its accumulation but
-  // its commit did not land; complete that commit without re-applying.
-  const operation: 'record' | 'resume' = dirtyPaths.includes(usagePath) ? 'resume' : 'record';
-  let updated = persisted;
-  if (operation === 'record') {
-    updated = { ...persisted };
-    updated[category] = accumulate(persisted[category], delta);
-    saveUsage(root, milestoneId, updated);
-  }
-
-  const result = commitOrResume(root, {
-    expectedPaths: [usagePath],
-    findExistingCommit: () => findUsageCommit(root, milestoneId, updated),
-    localStateAdvanced: true,
-    message: composeMessage(usageSubject(milestoneId), { 'PitWay-Milestone': milestoneId }),
+  // Journal first, then materialize — self-healing recovery (reconcilePending,
+  // called from task-update's completion path and milestone-complete) can
+  // always tell a crash-before-write apart from a crash-after-write by
+  // comparing the target file's on-disk content against what a later
+  // checkpoint commit actually captured.
+  appendJournalEntry(root, {
+    milestone: milestoneId,
+    type: 'usage_recording',
+    operationId: randomUUID(),
+    target: category,
+    payload: { category, ...recorded },
   });
-  return {
-    id: milestoneId,
-    category,
-    operation,
-    outcome: result.outcome,
-    commit: result.sha,
-    usage: updated[category],
-  };
+  saveUsage(root, milestoneId, updated);
+
+  return { id: milestoneId, category, usage: recorded };
 }
 
 export interface UsageAggregate {

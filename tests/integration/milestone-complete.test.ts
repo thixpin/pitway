@@ -10,6 +10,9 @@ import { registerMilestoneCompleteCommand } from '../../src/cli/commands/milesto
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
 import { registerVerifyCommand } from '../../src/cli/commands/verify.js';
 import { loadContract, loadState } from '../../src/state/store.js';
+import { recordUsage } from '../../src/core/metrics/aggregate.js';
+import { derivePending } from '../../src/core/journal/operations.js';
+import { readJournal } from '../../src/state/journal.js';
 
 function git(args: string[], cwd: string): string {
   return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
@@ -408,5 +411,41 @@ describe('pitway milestone-complete re-entry (AC007)', () => {
     const { error } = await run(['milestone-complete', 'M001'], root);
     expect(error?.message).toMatch(/ambiguous/i);
     expect(commitCount(root)).toBe(3);
+  });
+});
+
+describe('pitway milestone-complete folds in pending journal entries (M005 T004)', () => {
+  it('commits an already-materialized pending usage recording alongside completion and reconciles its checkpoint marker', async () => {
+    await readyToComplete();
+    recordUsage(root, 'M001', { category: 'planning', usage: '{"total_tokens":99}' });
+    // Materialized immediately by usage-add's core, uncommitted.
+    expect(git(['status', '--porcelain'], root)).toMatch(/usage\.yaml/);
+    expect(derivePending(readJournal(root)).filter((e) => e.type === 'usage_recording')).toHaveLength(1);
+
+    const { error } = await run(['milestone-complete', 'M001'], root);
+    expect(error).toBeUndefined();
+    expect(loadContract(root, 'M001').frontmatter.status).toBe('completed');
+    expect(headFiles(root)).toEqual(
+      [...EXPECTED_COMPLETION_FILES, '.pitway/milestones/M001/usage.yaml'].sort(),
+    );
+    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+
+    // Reconciled: the pending entry now has a checkpoint marker.
+    expect(derivePending(readJournal(root)).filter((e) => e.type === 'usage_recording')).toHaveLength(0);
+  });
+
+  it('reconciles on the already-committed re-entry path too, without disturbing an unrelated still-pending entry', async () => {
+    await completed();
+    recordUsage(root, 'M001', { category: 'qa', usage: '{"total_tokens":11}' });
+
+    // Re-entry: the milestone is already completed and its commit already
+    // exists, so this call takes the already-committed branch.
+    const { lines, error } = await run(['milestone-complete', 'M001', '--json'], root);
+    expect(error).toBeUndefined();
+    expect(JSON.parse(lines[0]!)).toMatchObject({ outcome: 'already-committed' });
+    // The usage recording is unrelated to the already-landed completion
+    // commit, so reconcilePending correctly leaves it pending rather than
+    // guessing it was captured.
+    expect(derivePending(readJournal(root)).filter((e) => e.type === 'usage_recording')).toHaveLength(1);
   });
 });

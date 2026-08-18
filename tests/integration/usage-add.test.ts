@@ -6,18 +6,14 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerUsageAddCommand } from '../../src/cli/commands/usage-add.js';
 import { loadUsage, saveUsage } from '../../src/state/store.js';
+import { derivePending } from '../../src/core/journal/operations.js';
+import { readJournal, type JournalEntry } from '../../src/state/journal.js';
 
 function git(args: string[], cwd: string): string {
   return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
 }
 
 const commitCount = (cwd: string): number => Number(git(['rev-list', '--count', 'HEAD'], cwd).trim());
-const headMessage = (cwd: string): string => git(['log', '-1', '--format=%B'], cwd);
-const headFiles = (cwd: string): string[] =>
-  git(['show', '--name-only', '--format='], cwd)
-    .split('\n')
-    .filter((l) => l.trim().length > 0)
-    .sort();
 
 let root: string;
 
@@ -31,6 +27,10 @@ async function run(args: string[]): Promise<{ lines: string[]; error?: Error }> 
   } catch (error) {
     return { lines, error: error as Error };
   }
+}
+
+function pendingUsageEntries(): JournalEntry[] {
+  return derivePending(readJournal(root)).filter((e) => e.type === 'usage_recording');
 }
 
 function installFailingHook(): string {
@@ -56,7 +56,7 @@ afterEach(() => {
 });
 
 describe('pitway usage-add', () => {
-  it('first recording creates attempts 1 with measured tokens and commits exactly usage.yaml', async () => {
+  it('first recording creates attempts 1 with measured tokens, journals it, and writes usage.yaml immediately with no commit of its own', async () => {
     const { lines, error } = await run([
       'usage-add',
       'M001',
@@ -68,10 +68,15 @@ describe('pitway usage-add', () => {
     ]);
     expect(error).toBeUndefined();
 
-    const view = JSON.parse(lines[0]!) as { outcome: string; operation: string };
-    expect(view.outcome).toBe('committed');
-    expect(view.operation).toBe('record');
+    const view = JSON.parse(lines[0]!) as { id: string; category: string; usage: unknown };
+    expect(view).toEqual({
+      id: 'M001',
+      category: 'planning',
+      usage: { attempts: 1, input_tokens: 100, output_tokens: 50, total_tokens: 150 },
+    });
 
+    // AC3: a read immediately after the command reflects the amended state,
+    // before any checkpoint commit exists.
     const usage = loadUsage(root, 'M001');
     expect(usage.planning).toEqual({
       attempts: 1,
@@ -81,15 +86,17 @@ describe('pitway usage-add', () => {
     });
     expect(usage.qa).toBeNull();
 
-    expect(headFiles(root)).toEqual(['.pitway/milestones/M001/usage.yaml']);
-    const message = headMessage(root);
-    expect(message.startsWith('workflow: record usage for M001')).toBe(true);
-    expect(message).toContain('PitWay-Milestone: M001');
-    expect(message).not.toMatch(/PitWay-Task/);
-    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+    // No commit of its own: usage.yaml sits dirty, waiting for the next checkpoint.
+    expect(commitCount(root)).toBe(1);
+    const status = git(['status', '--porcelain'], root).trim();
+    expect(status).toContain('.pitway/milestones/M001/usage.yaml');
+
+    const pending = pendingUsageEntries();
+    expect(pending).toHaveLength(1);
+    expect(pending[0]).toMatchObject({ milestone: 'M001', type: 'usage_recording', target: 'planning' });
   });
 
-  it('subsequent recordings increment attempts once and sum token fields honestly', async () => {
+  it('subsequent recordings increment attempts once and sum token fields honestly, journaling each recording separately', async () => {
     await run(['usage-add', 'M001', '--category', 'planning', '--usage', '{"total_tokens":100}']);
     const { error } = await run([
       'usage-add',
@@ -108,9 +115,9 @@ describe('pitway usage-add', () => {
       input_tokens: 30,
       total_tokens: 150,
     });
-    // Each recording is its own commit; the tree ends clean.
-    expect(commitCount(root)).toBe(3);
-    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+    // usage-add never commits — every recording is a pending journal entry.
+    expect(commitCount(root)).toBe(1);
+    expect(pendingUsageEntries()).toHaveLength(2);
   });
 
   it('planning and qa accumulate independently', async () => {
@@ -128,10 +135,10 @@ describe('pitway usage-add', () => {
     const usage = loadUsage(root, 'M001');
     expect(usage.planning).toEqual({ attempts: 1, total_tokens: 100 });
     expect(usage.qa).toEqual({ attempts: 1, total_tokens: 40 });
-    expect(commitCount(root)).toBe(3);
+    expect(commitCount(root)).toBe(1);
   });
 
-  it('rejects malformed, unknown-field, or negative input without writing or committing', async () => {
+  it('rejects malformed, unknown-field, or negative input without writing anything or journaling', async () => {
     const cases: string[][] = [
       ['usage-add', 'M001', '--category', 'planning', '--usage', 'not-json'],
       ['usage-add', 'M001', '--category', 'planning', '--usage', 'null'],
@@ -149,6 +156,7 @@ describe('pitway usage-add', () => {
     expect(loadUsage(root, 'M001')).toEqual({ schema_version: 1, planning: null, qa: null });
     expect(commitCount(root)).toBe(1);
     expect(git(['status', '--porcelain'], root).trim()).toBe('');
+    expect(pendingUsageEntries()).toHaveLength(0);
   });
 
   it('fails for a milestone without a usage file', async () => {
@@ -164,7 +172,7 @@ describe('pitway usage-add', () => {
     expect(commitCount(root)).toBe(1);
   });
 
-  it('refuses unrelated dirty paths before writing anything', async () => {
+  it('succeeds regardless of unrelated dirty paths — there is no commit for a dirty tree to threaten', async () => {
     writeFileSync(join(root, 'wip.txt'), 'wip\n');
     const { error } = await run([
       'usage-add',
@@ -174,50 +182,23 @@ describe('pitway usage-add', () => {
       '--usage',
       '{"total_tokens":100}',
     ]);
-    expect(error?.message).toMatch(/wip\.txt/);
-    expect(loadUsage(root, 'M001')).toEqual({ schema_version: 1, planning: null, qa: null });
-    expect(git(['diff', '--cached', '--name-only'], root).trim()).toBe('');
+    expect(error).toBeUndefined();
+    expect(loadUsage(root, 'M001').planning).toEqual({ attempts: 1, total_tokens: 100 });
     expect(commitCount(root)).toBe(1);
   });
 
-  it('resumes a pending usage commit after a hook failure without re-applying the delta', async () => {
+  it('a full re-run after a hook failure elsewhere is unaffected — usage-add never invokes git at all', async () => {
     await run(['usage-add', 'M001', '--category', 'qa', '--usage', '{"total_tokens":100}']);
-    const hook = installFailingHook();
-    const { error } = await run([
-      'usage-add',
-      'M001',
-      '--category',
-      'qa',
-      '--usage',
-      '{"total_tokens":25}',
-    ]);
-    expect(error).toBeDefined();
-    // Local state advanced; only the commit is pending.
+    installFailingHook();
+    const { error } = await run(['usage-add', 'M001', '--category', 'qa', '--usage', '{"total_tokens":25}']);
+    // A failing pre-commit hook cannot affect usage-add: it never creates a commit.
+    expect(error).toBeUndefined();
     expect(loadUsage(root, 'M001').qa).toEqual({ attempts: 2, total_tokens: 125 });
-    expect(commitCount(root)).toBe(2);
-
-    rmSync(hook);
-    const { lines, error: retryError } = await run([
-      'usage-add',
-      'M001',
-      '--category',
-      'qa',
-      '--usage',
-      '{"total_tokens":25}',
-      '--json',
-    ]);
-    expect(retryError).toBeUndefined();
-    const view = JSON.parse(lines[0]!) as { operation: string; outcome: string };
-    expect(view.operation).toBe('resume');
-    expect(view.outcome).toBe('committed');
-    // Resume completes the pending commit only — never double-accumulates.
-    expect(loadUsage(root, 'M001').qa).toEqual({ attempts: 2, total_tokens: 125 });
-    expect(commitCount(root)).toBe(3);
-    expect(headFiles(root)).toEqual(['.pitway/milestones/M001/usage.yaml']);
-    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+    expect(commitCount(root)).toBe(1);
+    expect(pendingUsageEntries()).toHaveLength(2);
   });
 
-  it('creates one commit per recording; older usage commits never falsely match', async () => {
+  it('journals and writes one pending recording per invocation; nothing is ever committed by usage-add', async () => {
     for (const total of [10, 20, 30]) {
       const { error } = await run([
         'usage-add',
@@ -230,7 +211,7 @@ describe('pitway usage-add', () => {
       expect(error).toBeUndefined();
     }
     expect(loadUsage(root, 'M001').planning).toEqual({ attempts: 3, total_tokens: 60 });
-    expect(commitCount(root)).toBe(4);
-    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+    expect(commitCount(root)).toBe(1);
+    expect(pendingUsageEntries()).toHaveLength(3);
   });
 });

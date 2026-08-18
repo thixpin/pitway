@@ -11,6 +11,9 @@ import { registerMilestoneConfirmCommand } from '../../src/cli/commands/mileston
 import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js';
 import { loadTasks, saveTasks } from '../../src/state/store.js';
 import type { Task } from '../../src/state/schemas.js';
+import { recordUsage } from '../../src/core/metrics/aggregate.js';
+import { derivePending } from '../../src/core/journal/operations.js';
+import { readJournal } from '../../src/state/journal.js';
 
 function git(args: string[], cwd: string): string {
   return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
@@ -437,5 +440,57 @@ describe('pitway task-update completion re-entry (AC018)', () => {
     const { error } = await update(['T001', 'completed']);
     expect(error?.message).toMatch(/ambiguous/i);
     expect(commitCount(root)).toBe(3);
+  });
+});
+
+describe('pitway task-update completion folds in pending journal entries (M005 T004)', () => {
+  it('recognizes an already-materialized pending usage.yaml as expected-dirty, commits it alongside the completion, and reconciles the checkpoint marker', async () => {
+    await inReview();
+    recordUsage(root, 'M001', { category: 'planning', usage: '{"total_tokens":42}' });
+    // Materialized immediately by usage-add's core, uncommitted.
+    expect(git(['status', '--porcelain'], root)).toMatch(/usage\.yaml/);
+    expect(derivePending(readJournal(root)).filter((e) => e.type === 'usage_recording')).toHaveLength(1);
+
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(headFiles(root)).toEqual(
+      [TASKS_PATH, '.pitway/milestones/M001/usage.yaml', 'src/a.ts'].sort(),
+    );
+    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+
+    // Reconciled: the pending entry now has a checkpoint marker.
+    expect(derivePending(readJournal(root)).filter((e) => e.type === 'usage_recording')).toHaveLength(0);
+  });
+
+  it('folds in a pending usage recording regardless of whether it was recorded before the task reached review (AC5)', async () => {
+    // Recorded mid-execution, while T001 is in_progress rather than already
+    // in review — the completion commit still picks it up the same way.
+    await update(['T001', 'in_progress']);
+    recordUsage(root, 'M001', { category: 'qa', usage: '{"total_tokens":7}' });
+    await update(['T001', 'review']);
+
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(headFiles(root)).toEqual(
+      [TASKS_PATH, '.pitway/milestones/M001/usage.yaml', 'src/a.ts'].sort(),
+    );
+    expect(derivePending(readJournal(root)).filter((e) => e.type === 'usage_recording')).toHaveLength(0);
+  });
+
+  it('reconciles on the already-committed re-entry path too', async () => {
+    await inReview();
+    const first = await completeT001();
+    expect(first.error).toBeUndefined();
+
+    recordUsage(root, 'M001', { category: 'planning', usage: '{"total_tokens":9}' });
+    // Re-entry: the task is already completed and its commit already exists,
+    // so this call takes the already-committed branch, not a fresh commit.
+    const again = await update(['T001', 'completed', '--json']);
+    expect(again.error).toBeUndefined();
+    expect(JSON.parse(again.lines[0]!)).toMatchObject({ outcome: 'already-committed' });
+    // The usage recording is unrelated to T001's own completion commit, so it
+    // is never captured by it — reconcilePending is safe to call regardless,
+    // and correctly leaves a genuinely-still-pending entry alone.
+    expect(derivePending(readJournal(root)).filter((e) => e.type === 'usage_recording')).toHaveLength(1);
   });
 });

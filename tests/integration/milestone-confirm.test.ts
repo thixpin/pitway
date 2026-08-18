@@ -8,6 +8,8 @@ import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
 import { computeVerificationHash } from '../../src/core/contracts/verification-hash.js';
+import { derivePending } from '../../src/core/journal/operations.js';
+import { readJournal, reconcilePending, type JournalEntry } from '../../src/state/journal.js';
 import { loadContract, loadTasks } from '../../src/state/store.js';
 
 function git(args: string[], cwd: string): string {
@@ -142,13 +144,36 @@ async function confirmed(): Promise<void> {
   expect(error).toBeUndefined();
 }
 
-// Arranges an amendable edit: verification block change plus a Change Log entry.
-function editForAmend(): void {
-  editContract((text) =>
+// Writes a scratch draft contract file — the --file input --amend now
+// requires — derived from whatever is currently persisted at contract.md
+// (which, post-amend, already reflects any prior immediate materialization).
+function draftFromCurrent(transform: (text: string) => string): string {
+  const draft = join(root, `amend-draft-${Date.now()}-${Math.random().toString(36).slice(2)}.md`);
+  writeFileSync(draft, transform(readFileSync(contractPath(), 'utf8')));
+  return draft;
+}
+
+// Arranges an amendable draft: verification block change plus a Change Log entry.
+function amendDraft(command = 'npm run verify', changeLogEntry = 'Tightened verification command.'): string {
+  return draftFromCurrent((text) =>
     text
-      .replace('command: npm test', 'command: npm run verify')
-      .replace('## Change Log', '## Change Log\n\n- Tightened verification command.'),
+      .replace(/command: .*/, `command: ${command}`)
+      .replace('## Change Log', `## Change Log\n\n- ${changeLogEntry}`),
   );
+}
+
+function pendingAmendEntries(): JournalEntry[] {
+  return derivePending(readJournal(root)).filter((e) => e.type === 'contract_amendment');
+}
+
+// Simulates the checkpoint commit that task-update's completion path /
+// milestone-complete would create around a pending amendment, then the
+// reconciliation call they make afterwards — this test file has neither
+// command registered, so the checkpoint itself is stood up directly.
+function checkpointPendingContract(): void {
+  git(['add', '.pitway/milestones/M001/contract.md'], root);
+  git(['commit', '-m', 'workflow: simulate checkpoint\n\nPitWay-Milestone: M001'], root);
+  reconcilePending(root, 'M001');
 }
 
 beforeEach(async () => {
@@ -302,17 +327,34 @@ describe('pitway milestone-confirm', () => {
 });
 
 describe('pitway milestone-confirm --amend', () => {
-  it('recomputes the hash and commits exactly contract.md with the amend subject', async () => {
+  it('requires --file', async () => {
+    await confirmed();
+    const { error } = await run(['milestone-confirm', 'M001', '--amend'], root);
+    expect(error?.message).toMatch(/--file/);
+    expect(commitCount(root)).toBe(2);
+  });
+
+  it('recomputes the hash and materializes contract.md immediately from --file, journaling the amendment with no commit of its own', async () => {
     await confirmed();
     const before = loadContract(root, 'M001').frontmatter;
-    editForAmend();
+    const draft = amendDraft();
 
-    const { lines, error } = await run(['milestone-confirm', 'M001', '--amend', '--json'], root);
+    const { lines, error } = await run(
+      ['milestone-confirm', 'M001', '--amend', '--file', draft, '--json'],
+      root,
+    );
     expect(error).toBeUndefined();
-    const view = JSON.parse(lines[0]!) as { outcome: string; hash: string };
-    expect(view.outcome).toBe('committed');
+    const view = JSON.parse(lines[0]!) as {
+      id: string;
+      operation: string;
+      hash: string;
+      confirmedAt: string | null;
+    };
+    expect(view).toEqual({ id: 'M001', operation: 'amend', hash: expect.any(String), confirmedAt: before.confirmed_at });
     expect(view.hash).not.toBe(before.verification_approved_hash);
 
+    // AC3: a read immediately after the command reflects the amended state,
+    // before any checkpoint commit exists.
     const after = loadContract(root, 'M001').frontmatter;
     expect(after.verification_approved_hash).toBe(view.hash);
     expect(after.verification_approved_hash).toBe(
@@ -321,17 +363,25 @@ describe('pitway milestone-confirm --amend', () => {
     expect(after.status).toBe(before.status);
     expect(after.confirmed_at).toBe(before.confirmed_at);
 
-    expect(headFiles(root)).toEqual(['.pitway/milestones/M001/contract.md']);
-    const message = headMessage(root);
-    expect(message.startsWith('workflow: amend milestone M001')).toBe(true);
-    expect(message).toContain('PitWay-Milestone: M001');
-    expect(message).not.toMatch(/PitWay-Task/);
-    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+    // No commit of its own: contract.md sits dirty, waiting for the next checkpoint.
+    expect(commitCount(root)).toBe(2);
+    expect(git(['status', '--porcelain'], root).trim()).toContain(
+      '.pitway/milestones/M001/contract.md',
+    );
+
+    const pending = pendingAmendEntries();
+    expect(pending).toHaveLength(1);
+    expect(pending[0]).toMatchObject({
+      milestone: 'M001',
+      type: 'contract_amendment',
+      payload: { hash: view.hash },
+    });
   });
 
   it('refuses while the milestone is still draft', async () => {
     await addMilestone();
-    const { error } = await run(['milestone-confirm', 'M001', '--amend'], root);
+    const draft = amendDraft();
+    const { error } = await run(['milestone-confirm', 'M001', '--amend', '--file', draft], root);
     expect(error?.message).toMatch(/draft/);
     expect(commitCount(root)).toBe(1);
   });
@@ -341,7 +391,8 @@ describe('pitway milestone-confirm --amend', () => {
     const hook = installFailingHook();
     await run(['milestone-confirm', 'M001'], root);
     rmSync(hook);
-    const { error } = await run(['milestone-confirm', 'M001', '--amend'], root);
+    const draft = amendDraft();
+    const { error } = await run(['milestone-confirm', 'M001', '--amend', '--file', draft], root);
     expect(error?.message).toMatch(/baseline/);
     expect(commitCount(root)).toBe(1);
   });
@@ -349,89 +400,115 @@ describe('pitway milestone-confirm --amend', () => {
   it('refuses without a Change Log entry, writing nothing', async () => {
     await confirmed();
     const before = loadContract(root, 'M001').frontmatter.verification_approved_hash;
-    editContract((text) => text.replace('command: npm test', 'command: npm run verify'));
-    const { error } = await run(['milestone-confirm', 'M001', '--amend'], root);
+    const draft = draftFromCurrent((text) => text.replace(/command: .*/, 'command: npm run verify'));
+    const { error } = await run(['milestone-confirm', 'M001', '--amend', '--file', draft], root);
     expect(error?.message).toMatch(/Change Log/);
     expect(loadContract(root, 'M001').frontmatter.verification_approved_hash).toBe(before);
     expect(commitCount(root)).toBe(2);
+    expect(pendingAmendEntries()).toHaveLength(0);
   });
 
-  it('refuses unexpected dirty paths, writing and staging nothing', async () => {
+  it('refuses an unreadable or malformed --file, writing nothing', async () => {
     await confirmed();
     const before = loadContract(root, 'M001').frontmatter.verification_approved_hash;
-    editForAmend();
-    writeFileSync(join(root, 'wip.txt'), 'wip\n');
-    const { error } = await run(['milestone-confirm', 'M001', '--amend'], root);
-    expect(error?.message).toMatch(/wip\.txt/);
+    const missing = join(root, 'does-not-exist.md');
+    const { error } = await run(['milestone-confirm', 'M001', '--amend', '--file', missing], root);
+    expect(error?.message).toMatch(/amendment/);
     expect(loadContract(root, 'M001').frontmatter.verification_approved_hash).toBe(before);
-    expect(git(['diff', '--cached', '--name-only'], root).trim()).toBe('');
-  });
-
-  it('resumes the pending amend commit after a hook failure is fixed', async () => {
-    await confirmed();
-    editForAmend();
-    const hook = installFailingHook();
-    const { error } = await run(['milestone-confirm', 'M001', '--amend'], root);
-    expect(error).toBeDefined();
     expect(commitCount(root)).toBe(2);
-
-    rmSync(hook);
-    const { lines, error: retryError } = await run(['milestone-confirm', 'M001', '--amend', '--json'], root);
-    expect(retryError).toBeUndefined();
-    expect((JSON.parse(lines[0]!) as { outcome: string }).outcome).toBe('committed');
-    expect(commitCount(root)).toBe(3);
-    expect(headFiles(root)).toEqual(['.pitway/milestones/M001/contract.md']);
   });
 
-  it('re-entry after the amend commit landed is idempotent', async () => {
+  it('refuses a --file draft whose id does not match the target milestone, writing nothing', async () => {
     await confirmed();
-    editForAmend();
-    await run(['milestone-confirm', 'M001', '--amend'], root);
-    const before = commitCount(root);
-    const { lines, error } = await run(['milestone-confirm', 'M001', '--amend', '--json'], root);
+    const before = loadContract(root, 'M001').frontmatter.verification_approved_hash;
+    const draft = draftFromCurrent((text) =>
+      text.replace('id: M001', 'id: M002').replace('## Change Log', '## Change Log\n\n- Wrong id.'),
+    );
+    const { error } = await run(['milestone-confirm', 'M001', '--amend', '--file', draft], root);
+    expect(error?.message).toMatch(/does not match/);
+    expect(loadContract(root, 'M001').frontmatter.verification_approved_hash).toBe(before);
+    expect(commitCount(root)).toBe(2);
+    expect(pendingAmendEntries()).toHaveLength(0);
+  });
+
+  it('succeeds regardless of unrelated dirty paths — materialization is not a commit staging step', async () => {
+    await confirmed();
+    const draft = amendDraft();
+    writeFileSync(join(root, 'wip.txt'), 'wip\n');
+    const { error } = await run(['milestone-confirm', 'M001', '--amend', '--file', draft], root);
     expect(error).toBeUndefined();
-    const view = JSON.parse(lines[0]!) as { outcome: string; commit: string };
-    expect(view.outcome).toBe('already-committed');
-    expect(view.commit).toBe(git(['rev-parse', 'HEAD'], root).trim());
-    expect(commitCount(root)).toBe(before);
+    expect(loadContract(root, 'M001').frontmatter.verification_approved_hash).not.toBeNull();
   });
 
-  it('each amendment matches only its own commit across multiple amends', async () => {
+  it('a hook failure elsewhere does not affect amend — it never invokes git at all', async () => {
     await confirmed();
-    editForAmend();
-    const first = await run(['milestone-confirm', 'M001', '--amend', '--json'], root);
-    const firstView = JSON.parse(first.lines[0]!) as { hash: string; commit: string };
+    const draft = amendDraft();
+    installFailingHook();
+    const { error } = await run(['milestone-confirm', 'M001', '--amend', '--file', draft], root);
+    expect(error).toBeUndefined();
+    expect(commitCount(root)).toBe(2);
+  });
 
-    editContract((text) =>
-      text
-        .replace('command: npm run verify', 'command: npm run verify:all')
-        .replace('## Change Log', '## Change Log\n\n- Broadened verification command.'),
-    );
-    const second = await run(['milestone-confirm', 'M001', '--amend', '--json'], root);
+  it('re-entry with the same draft while it is still pending is idempotent: no second journal entry, same hash returned', async () => {
+    await confirmed();
+    const draft = amendDraft();
+    const first = await run(['milestone-confirm', 'M001', '--amend', '--file', draft, '--json'], root);
+    expect(first.error).toBeUndefined();
+    const firstView = JSON.parse(first.lines[0]!) as { hash: string };
+
+    const second = await run(['milestone-confirm', 'M001', '--amend', '--file', draft, '--json'], root);
     expect(second.error).toBeUndefined();
-    const secondView = JSON.parse(second.lines[0]!) as { outcome: string; hash: string; commit: string };
-    expect(secondView.outcome).toBe('committed');
-    expect(secondView.hash).not.toBe(firstView.hash);
-    expect(secondView.commit).not.toBe(firstView.commit);
-    expect(commitCount(root)).toBe(4);
-
-    const again = await run(['milestone-confirm', 'M001', '--amend', '--json'], root);
-    expect(again.error).toBeUndefined();
-    const againView = JSON.parse(again.lines[0]!) as { outcome: string; commit: string };
-    expect(againView).toMatchObject({ outcome: 'already-committed', commit: secondView.commit });
-    expect(commitCount(root)).toBe(4);
+    const secondView = JSON.parse(second.lines[0]!) as { hash: string };
+    expect(secondView.hash).toBe(firstView.hash);
+    expect(pendingAmendEntries()).toHaveLength(1);
+    expect(commitCount(root)).toBe(2);
   });
 
-  it('stops with a diagnostic when the amend commit exists but local state is not advanced', async () => {
+  it('re-running the same amendment after it has already been checkpointed is a no-op: no new journal entry', async () => {
     await confirmed();
-    const baselineHash = loadContract(root, 'M001').frontmatter.verification_approved_hash!;
-    editForAmend();
-    await run(['milestone-confirm', 'M001', '--amend'], root);
-    editContract((text) =>
-      text.replace(/verification_approved_hash: .*/, `verification_approved_hash: ${baselineHash}`),
-    );
-    const { error } = await run(['milestone-confirm', 'M001', '--amend'], root);
-    expect(error?.message).toMatch(/ambiguous/i);
+    const draft = amendDraft();
+    await run(['milestone-confirm', 'M001', '--amend', '--file', draft], root);
+    checkpointPendingContract();
+    expect(pendingAmendEntries()).toHaveLength(0);
+
+    const { error } = await run(['milestone-confirm', 'M001', '--amend', '--file', draft], root);
+    expect(error).toBeUndefined();
+    expect(pendingAmendEntries()).toHaveLength(0);
     expect(commitCount(root)).toBe(3);
+  });
+
+  it('refuses a second amendment with a different hash while the first is still pending, diagnosing the ambiguity (AC6)', async () => {
+    await confirmed();
+    const first = amendDraft('npm run verify', 'Tightened verification command.');
+    const firstRun = await run(['milestone-confirm', 'M001', '--amend', '--file', first, '--json'], root);
+    expect(firstRun.error).toBeUndefined();
+    const firstView = JSON.parse(firstRun.lines[0]!) as { hash: string };
+
+    // A second, differently-hashed amendment before the first has been
+    // checkpointed — genuinely ambiguous, must not silently pick one.
+    const second = amendDraft('npm run verify:all', 'Broadened verification command.');
+    const { error } = await run(['milestone-confirm', 'M001', '--amend', '--file', second], root);
+    expect(error?.message).toMatch(/ambiguous/i);
+    expect(pendingAmendEntries()).toHaveLength(1);
+    expect(pendingAmendEntries()[0]?.payload.hash).toBe(firstView.hash);
+  });
+
+  it('permits a new, differently-hashed amendment once the prior one has been checkpointed', async () => {
+    await confirmed();
+    const first = amendDraft('npm run verify', 'Tightened verification command.');
+    const firstRun = await run(['milestone-confirm', 'M001', '--amend', '--file', first, '--json'], root);
+    const firstView = JSON.parse(firstRun.lines[0]!) as { hash: string };
+    checkpointPendingContract();
+
+    const second = amendDraft('npm run verify:all', 'Broadened verification command.');
+    const secondRun = await run(
+      ['milestone-confirm', 'M001', '--amend', '--file', second, '--json'],
+      root,
+    );
+    expect(secondRun.error).toBeUndefined();
+    const secondView = JSON.parse(secondRun.lines[0]!) as { hash: string };
+    expect(secondView.hash).not.toBe(firstView.hash);
+    expect(pendingAmendEntries()).toHaveLength(1);
+    expect(loadContract(root, 'M001').frontmatter.verification_approved_hash).toBe(secondView.hash);
   });
 });
