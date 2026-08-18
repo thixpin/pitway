@@ -60,7 +60,7 @@ tasks:
       Implement the state store: load/save all .pitway/ artifacts with
       validation and lossless round-trips, including the contract.md
       frontmatter/body reader-writer with byte-for-byte body preservation.
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -76,7 +76,13 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/unit/state-store.test.ts tests/unit/contract-file.test.ts
-    result: null
+    result:
+      summary: >-
+        src/state/store.ts + src/state/contract-file.ts: validated load/save
+        for all six artifacts with StateStoreError context (path, field
+        issues), save-side validation, and contract.md frontmatter/body
+        split preserving the body byte-for-byte.
+      evidence: TDD RED confirmed, then 16 new tests green (42/42 suite); typecheck clean
     usage: null
   - id: T004
     objective: >-
