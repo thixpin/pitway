@@ -1,0 +1,15 @@
+schema_version: 1
+id: M001
+title: Example milestone
+status: racing
+requirement: null
+confirmed_at: null
+verification_approved_hash: null
+acceptance_criteria:
+  - id: AC001
+    text: The example criterion holds.
+verification:
+  - id: CT001
+    criterion: AC001
+    type: command
+    command: npm test

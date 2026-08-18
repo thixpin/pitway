@@ -1,0 +1,14 @@
+schema_version: 1
+tasks:
+  - id: T001
+    objective: Do the first thing.
+    status: racing
+    depends_on: []
+    acceptance_criteria:
+      - It works
+    relevant_files: []
+    verification:
+      strategy: command
+      detail: npm test
+    result: null
+    usage: null

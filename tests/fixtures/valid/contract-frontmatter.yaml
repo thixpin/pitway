@@ -1,0 +1,25 @@
+schema_version: 1
+id: M001
+title: Example milestone
+status: in_progress
+requirement: null
+confirmed_at: 2026-08-18T08:12:50Z
+verification_approved_hash: sha256:5cc6287924bc2ccede8f231c627f8018ec6a9b4560b85ac16852821fa6720013
+acceptance_criteria:
+  - id: AC001
+    text: The example criterion holds.
+  - id: AC002
+    text: The second criterion holds.
+verification:
+  - id: CT001
+    criterion: AC001
+    type: command
+    command: npm test
+  - id: CT002
+    criterion: AC002
+    type: manual
+    instruction: Check the behavior by hand.
+  - id: CT003
+    criterion: AC002
+    type: review
+    instruction: Review the implementation for purity.

@@ -1,0 +1,5 @@
+schema_version: 1
+planning:
+  attempts: 1
+  total_tokens: -50
+qa: null

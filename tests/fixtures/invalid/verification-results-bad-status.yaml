@@ -1,0 +1,7 @@
+schema_version: 1
+results:
+  - check: CT001
+    status: maybe
+    at: 2026-08-18T09:00:00Z
+    evidence: unclear
+    recorded_by: developer

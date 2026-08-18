@@ -1,0 +1,34 @@
+schema_version: 1
+tasks:
+  - id: T001
+    objective: Do the first thing.
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - It works
+    relevant_files:
+      - src/a.ts
+    verification:
+      strategy: command
+      detail: npm test
+    result:
+      summary: Done.
+      evidence: tests passed
+    usage:
+      attempts: 2
+      input_tokens: 100
+      output_tokens: 50
+      total_tokens: 150
+  - id: T002
+    objective: Do the second thing.
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - It also works
+    relevant_files: []
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/x.test.ts
+    result: null
+    usage: null

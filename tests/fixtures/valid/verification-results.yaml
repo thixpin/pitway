@@ -1,0 +1,12 @@
+schema_version: 1
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-18T09:00:00Z
+    evidence: vitest 12/12 passed
+    recorded_by: command
+  - check: CT002
+    status: fail
+    at: 2026-08-18T09:05:00Z
+    evidence: login did not redirect
+    recorded_by: developer
