@@ -5,6 +5,7 @@ import {
   configSchema,
   contractFrontmatterSchema,
   stateSchema,
+  taskSchema,
   tasksFileSchema,
   usageFileSchema,
   verificationResultsSchema,
@@ -82,6 +83,44 @@ describe.each(cases)('$artifact schema', ({ schema, valid, invalid, offendingFie
     const data = fixture(valid) as Record<string, unknown>;
     const result = schema.safeParse({ ...data, unexpected_key: true });
     expect(result.success).toBe(false);
+  });
+});
+
+// AC019: task-side schema split — attempts is an optional task-level field
+// independent of usage; task usage carries only token counts; the shared
+// milestone-level usage schema (planning/qa) is unchanged.
+describe('task schema attempts/usage split', () => {
+  const validTask = (): Record<string, unknown> => {
+    const file = fixture('valid/tasks.yaml') as { tasks: Record<string, unknown>[] };
+    return file.tasks[0]!;
+  };
+
+  it('accepts a task-level attempts counter alongside usage without attempts', () => {
+    const task = validTask();
+    expect(task['attempts']).toBe(2);
+    expect(taskSchema.safeParse(task).success).toBe(true);
+  });
+
+  it('accepts an existing task record without attempts unedited', () => {
+    const { attempts: _attempts, ...withoutAttempts } = validTask();
+    expect(taskSchema.safeParse(withoutAttempts).success).toBe(true);
+  });
+
+  it('rejects negative and fractional attempts', () => {
+    expect(taskSchema.safeParse({ ...validTask(), attempts: -1 }).success).toBe(false);
+    expect(taskSchema.safeParse({ ...validTask(), attempts: 1.5 }).success).toBe(false);
+  });
+
+  it('rejects attempts inside task usage', () => {
+    const task = { ...validTask(), usage: { attempts: 1, total_tokens: 10 } };
+    expect(taskSchema.safeParse(task).success).toBe(false);
+  });
+
+  it('keeps attempts required in milestone-level planning/qa usage', () => {
+    const file = fixture('valid/usage.yaml') as { planning: Record<string, unknown> };
+    const { attempts: _attempts, ...planning } = file.planning;
+    expect(usageFileSchema.safeParse({ ...file, planning }).success).toBe(false);
+    expect(usageFileSchema.safeParse(file).success).toBe(true);
   });
 });
 

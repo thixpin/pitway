@@ -14,8 +14,8 @@ tasks:
     result:
       summary: Done.
       evidence: tests passed
+    attempts: 2
     usage:
-      attempts: 2
       input_tokens: 100
       output_tokens: 50
       total_tokens: 150

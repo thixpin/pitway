@@ -99,8 +99,8 @@ tasks:
       evidence: >-
         Sub-agent confirmed RED, then 6/6 task tests green; driver
         independently re-verified 205/205 full suite and clean typecheck
+    attempts: 1
     usage:
-      attempts: 1
       total_tokens: 47403
   - id: T004
     objective: >-
@@ -141,8 +141,8 @@ tasks:
         hook-failure/retry, post-commit interruption, multi-amend identity,
         and ambiguity refusals; driver re-verified 223/223 suite, clean
         typecheck, and zero fs/exec in the CLI module
+    attempts: 1
     usage:
-      attempts: 1
       total_tokens: 83749
   - id: T005
     objective: >-
@@ -151,7 +151,7 @@ tasks:
       record comparison ignoring siblings), and the AC019 schema split
       (task.attempts optional independent; taskUsageSchema without
       attempts; planning/qa usage schema unchanged) (AC013-AC019).
-    status: waiting
+    status: completed
     depends_on:
       - T001
       - T004
@@ -173,8 +173,24 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/task-update.test.ts tests/unit/schemas.test.ts
-    result: null
-    usage: null
+    result:
+      summary: >-
+        Executed by a bounded sub-agent from its task-context bundle.
+        src/core/tasks/update.ts: updateTask — state-machine-gated
+        transitions, attempts increment at the in_progress boundary,
+        completion with dirty-subset validation and commitOrResume using
+        parsed task-specific identity (target record only, siblings
+        ignored), honest usage accumulation. src/cli/commands/task-update.ts
+        orchestration-only. AC019 split landed in schemas.ts with
+        schema_version 1. Driver migrated the two real M003 records
+        (T003/T004) whose attempts sat inside usage under the old shape.
+      evidence: >-
+        Sub-agent confirmed RED, then 48/48 across its two test files;
+        driver re-verified 246/246 full suite, clean typecheck, and that
+        the real M003 tasks.yaml validates after the record migration
+    attempts: 1
+    usage:
+      total_tokens: 101110
   - id: T006
     objective: >-
       Self-hosting readiness scenario (end-to-end in a real temp repo, incl.

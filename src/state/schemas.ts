@@ -44,6 +44,17 @@ export const usageSchema = z
   })
   .nullable();
 
+// AC019 task-side split: task usage carries token counts only — the attempts
+// counter lives on the task itself, incremented at the in_progress boundary.
+// Milestone-level planning/qa usage keeps the shared usageSchema unchanged.
+export const taskUsageSchema = z
+  .strictObject({
+    input_tokens: z.number().int().nonnegative().optional(),
+    output_tokens: z.number().int().nonnegative().optional(),
+    total_tokens: z.number().int().nonnegative(),
+  })
+  .nullable();
+
 export const configSchema = z.strictObject({
   schema_version: schemaVersion,
 });
@@ -103,7 +114,8 @@ export const taskSchema = z.strictObject({
   result: z
     .strictObject({ summary: z.string().min(1), evidence: z.string().min(1) })
     .nullable(),
-  usage: usageSchema,
+  attempts: z.number().int().nonnegative().optional(),
+  usage: taskUsageSchema,
 });
 
 export const tasksFileSchema = z.strictObject({
@@ -141,3 +153,4 @@ export type MilestoneStatus = z.infer<typeof milestoneStatusSchema>;
 export type VerificationResults = z.infer<typeof verificationResultsSchema>;
 export type UsageFile = z.infer<typeof usageFileSchema>;
 export type Usage = z.infer<typeof usageSchema>;
+export type TaskUsage = z.infer<typeof taskUsageSchema>;
