@@ -193,7 +193,11 @@ describe('pitway verify hash gate (AC001)', () => {
     const refused = await run(['verify'], root);
     expect(refused.error?.message).toMatch(/hash/);
 
-    const amend = await run(['milestone-confirm', 'M001', '--amend'], root);
+    // M005/T004: --amend no longer reads the hand-edited live contract.md —
+    // it requires a validated --file draft carrying the desired content.
+    const amendDraft = join(root, 'amend-draft.md');
+    writeFileSync(amendDraft, readFileSync(contractPath(), 'utf8'));
+    const amend = await run(['milestone-confirm', 'M001', '--amend', '--file', amendDraft], root);
     expect(amend.error).toBeUndefined();
 
     const { lines, error } = await run(['verify', '--json'], root);
