@@ -1,2 +1,46 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-18T15:31:57Z
+    evidence: tsc --noEmit completed with no errors
+    recorded_by: command
+  - check: CT002
+    status: pass
+    at: 2026-08-18T15:31:58Z
+    evidence: vitest 25/25 passed (tests/unit/schemas.test.ts)
+    recorded_by: command
+  - check: CT003
+    status: pass
+    at: 2026-08-18T15:31:59Z
+    evidence: vitest 11/11 passed (tests/unit/state-store.test.ts)
+    recorded_by: command
+  - check: CT004
+    status: pass
+    at: 2026-08-18T15:31:59Z
+    evidence: vitest 5/5 passed (tests/unit/contract-file.test.ts)
+    recorded_by: command
+  - check: CT005
+    status: pass
+    at: 2026-08-18T15:32:00Z
+    evidence: vitest 73/73 passed (tests/unit/task-state.test.ts)
+    recorded_by: command
+  - check: CT006
+    status: pass
+    at: 2026-08-18T15:32:00Z
+    evidence: vitest 31/31 passed (tests/unit/milestone-state.test.ts)
+    recorded_by: command
+  - check: CT007
+    status: pass
+    at: 2026-08-18T15:32:01Z
+    evidence: vitest 6/6 passed (tests/unit/dependencies.test.ts)
+    recorded_by: command
+  - check: CT008
+    status: pass
+    at: 2026-08-18T15:32:30Z
+    evidence: >-
+      src/core/ has zero readFileSync/writeFileSync/mkdirSync/child_process/
+      fetch/http references (grep-verified); all filesystem I/O confined to
+      src/state/store.ts. package.json matches approved metadata: name
+      "pitway", license MIT, type module, engines.node ">=20". LICENSE is MIT.
+    recorded_by: developer

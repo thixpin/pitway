@@ -2,7 +2,7 @@
 schema_version: 1
 id: M001
 title: Project scaffold and state layer
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-18T08:12:50Z
 verification_approved_hash: sha256:5cc6287924bc2ccede8f231c627f8018ec6a9b4560b85ac16852821fa6720013
