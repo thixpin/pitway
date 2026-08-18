@@ -1,2 +1,125 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-18T14:23:36Z
+    evidence: vitest 5/5 passed (tests/integration/init.test.ts)
+    recorded_by: command
+  - check: CT002
+    status: pass
+    at: 2026-08-18T14:23:36Z
+    evidence: vitest 5/5 passed (tests/integration/init.test.ts)
+    recorded_by: command
+  - check: CT003
+    status: pass
+    at: 2026-08-18T14:23:36Z
+    evidence: vitest 5/5 passed (tests/integration/init.test.ts)
+    recorded_by: command
+  - check: CT004
+    status: pass
+    at: 2026-08-18T14:23:36Z
+    evidence: vitest 5/5 passed (tests/integration/init.test.ts)
+    recorded_by: command
+  - check: CT005
+    status: pass
+    at: 2026-08-18T14:23:36Z
+    evidence: vitest 6/6 passed (tests/integration/milestone-add.test.ts)
+    recorded_by: command
+  - check: CT006
+    status: pass
+    at: 2026-08-18T14:23:36Z
+    evidence: vitest 6/6 passed (tests/integration/milestone-add.test.ts)
+    recorded_by: command
+  - check: CT007
+    status: pass
+    at: 2026-08-18T14:23:36Z
+    evidence: vitest 6/6 passed (tests/integration/milestone-add.test.ts)
+    recorded_by: command
+  - check: CT008
+    status: pass
+    at: 2026-08-18T14:23:36Z
+    evidence: vitest 6/6 passed (tests/integration/milestone-add.test.ts)
+    recorded_by: command
+  - check: CT009
+    status: pass
+    at: 2026-08-18T14:23:47Z
+    evidence: vitest 18/18 passed (tests/integration/milestone-confirm.test.ts)
+    recorded_by: command
+  - check: CT010
+    status: pass
+    at: 2026-08-18T14:23:47Z
+    evidence: vitest 18/18 passed (tests/integration/milestone-confirm.test.ts)
+    recorded_by: command
+  - check: CT011
+    status: pass
+    at: 2026-08-18T14:23:47Z
+    evidence: vitest 18/18 passed (tests/integration/milestone-confirm.test.ts)
+    recorded_by: command
+  - check: CT012
+    status: pass
+    at: 2026-08-18T14:23:47Z
+    evidence: >-
+      vitest 18/18 passed incl. hook-failure/retry, post-commit
+      interruption, multi-amend identity, ambiguity refusals
+    recorded_by: command
+  - check: CT013
+    status: pass
+    at: 2026-08-18T14:23:58Z
+    evidence: vitest 18/18 passed (tests/integration/task-update.test.ts)
+    recorded_by: command
+  - check: CT014
+    status: pass
+    at: 2026-08-18T14:23:58Z
+    evidence: vitest 18/18 passed (tests/integration/task-update.test.ts)
+    recorded_by: command
+  - check: CT015
+    status: pass
+    at: 2026-08-18T14:23:58Z
+    evidence: vitest 18/18 passed (tests/integration/task-update.test.ts)
+    recorded_by: command
+  - check: CT016
+    status: pass
+    at: 2026-08-18T14:23:58Z
+    evidence: vitest 18/18 passed (tests/integration/task-update.test.ts)
+    recorded_by: command
+  - check: CT017
+    status: pass
+    at: 2026-08-18T14:23:58Z
+    evidence: vitest 18/18 passed (tests/integration/task-update.test.ts)
+    recorded_by: command
+  - check: CT018
+    status: pass
+    at: 2026-08-18T14:23:58Z
+    evidence: >-
+      vitest 18/18 passed incl. task-specific identity with sibling changes
+      ignored and message-resupplied resume
+    recorded_by: command
+  - check: CT019
+    status: pass
+    at: 2026-08-18T14:23:58Z
+    evidence: >-
+      vitest 30/30 passed (tests/unit/schemas.test.ts) incl. AC019 split
+      cases; planning/qa usage schema unchanged
+    recorded_by: command
+  - check: CT020
+    status: pass
+    at: 2026-08-18T14:24:30Z
+    evidence: >-
+      grep of src/cli/commands/{init,milestone-add,milestone-confirm,
+      task-update}.ts for node:fs/child_process/readFileSync/writeFileSync/
+      mkdirSync/execFileSync finds zero references; all state access via
+      store.ts and core modules, all git via the git module. Noted core-
+      layer debt (outside CT020 scope): create.ts uses direct fs for the
+      requirements artifact since store.ts lacks requirement functions.
+    recorded_by: developer
+  - check: CT021
+    status: pass
+    at: 2026-08-18T14:24:01Z
+    evidence: >-
+      vitest 8/8 passed (tests/integration/self-hosting-readiness.test.ts):
+      full command-driven lifecycle with exact baseline set, dual-trailer
+      completion commit, resume reconstruction, and non-destructive
+      dirty-injection refusals at all three boundaries. Verified finding:
+      completion does not auto-promote dependents (explicit task-update
+      ready required).
+    recorded_by: command

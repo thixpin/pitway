@@ -2,7 +2,7 @@
 schema_version: 1
 id: M003
 title: Mutation commands and self-hosting readiness
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-18T13:48:48Z
 verification_approved_hash: sha256:ad12275ad2158ce0d4d504c7dc740d42af4fe20cd04c90ee5241d3702dffbeaf
