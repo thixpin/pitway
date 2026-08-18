@@ -1,0 +1,112 @@
+schema_version: 1
+tasks:
+  - id: T001
+    objective: >-
+      Create the project scaffold: package.json (name pitway, ESM, MIT,
+      Node >= 20, typecheck/test scripts), strict tsconfig, vitest config,
+      LICENSE, .gitignore, and the src/ and tests/ directory skeleton.
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - npm install succeeds on Node >= 20
+      - npm run typecheck passes with strict mode enabled
+      - npm test runs vitest successfully (placeholder test)
+      - LICENSE is MIT and package.json metadata matches the approved stack
+    relevant_files:
+      - package.json
+      - tsconfig.json
+      - vitest.config.ts
+      - LICENSE
+      - .gitignore
+    verification:
+      strategy: command
+      detail: npm run typecheck && npm test
+    result: null
+    usage: null
+  - id: T002
+    objective: >-
+      Implement schema v1 types and zod validators for all six .pitway/
+      artifacts, driven by fixture-based unit tests (valid accepted, invalid
+      rejected with errors naming the offending field).
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - Covers config, state, contract frontmatter, tasks, verification-results, usage
+      - schema_version literal 1 enforced on every artifact
+      - Exported TS types derive from the zod schemas
+    relevant_files:
+      - src/state/schemas.ts
+      - tests/unit/schemas.test.ts
+      - tests/fixtures/
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/schemas.test.ts
+    result: null
+    usage: null
+  - id: T003
+    objective: >-
+      Implement the state store: load/save all .pitway/ artifacts with
+      validation and lossless round-trips, including the contract.md
+      frontmatter/body reader-writer with byte-for-byte body preservation.
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - Round-trips every artifact without data loss
+      - Rejects unknown schema_version with a clear error
+      - Clear errors for missing or malformed milestone directories
+      - Contract body preserved verbatim across load/save
+    relevant_files:
+      - src/state/store.ts
+      - src/state/contract-file.ts
+      - tests/unit/state-store.test.ts
+      - tests/unit/contract-file.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/state-store.test.ts tests/unit/contract-file.test.ts
+    result: null
+    usage: null
+  - id: T004
+    objective: >-
+      Implement the task and milestone state machines as pure functions
+      permitting exactly the approved transitions and rejecting all others
+      with errors naming the allowed target states.
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - Task transitions exactly match the approved state machine
+      - Milestone transitions exactly match the approved state machine
+      - Every legal and illegal transition is unit-tested
+    relevant_files:
+      - src/core/tasks/state-machine.ts
+      - src/core/milestones/state-machine.ts
+      - tests/unit/task-state.test.ts
+      - tests/unit/milestone-state.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/task-state.test.ts tests/unit/milestone-state.test.ts
+    result: null
+    usage: null
+  - id: T005
+    objective: >-
+      Implement dependency resolution: promote waiting tasks to ready when all
+      depends_on tasks are completed; detect cycles and unknown dependency
+      references with explicit errors.
+    status: waiting
+    depends_on:
+      - T002
+      - T004
+    acceptance_criteria:
+      - Promotion only when all dependencies are completed
+      - Cycle detection with an error naming the cycle
+      - Unknown depends_on references reported explicitly
+    relevant_files:
+      - src/core/tasks/dependencies.ts
+      - tests/unit/dependencies.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/dependencies.test.ts
+    result: null
+    usage: null
