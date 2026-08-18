@@ -1,2 +1,101 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-18T17:54:15Z
+    evidence: Tests  14 passed (14) | Start at  00:53:02 | Duration  5.62s
+      (transform 99ms, setup 0ms, import 162ms, tests 5.37s, environment 0ms)
+    recorded_by: command
+  - check: CT002
+    status: pass
+    at: 2026-08-18T17:54:15Z
+    evidence: Tests  14 passed (14) | Start at  00:53:07 | Duration  5.75s
+      (transform 101ms, setup 0ms, import 168ms, tests 5.50s, environment 0ms)
+    recorded_by: command
+  - check: CT003
+    status: pass
+    at: 2026-08-18T17:54:15Z
+    evidence: Tests  14 passed (14) | Start at  00:53:14 | Duration  5.70s
+      (transform 100ms, setup 0ms, import 164ms, tests 5.45s, environment 0ms)
+    recorded_by: command
+  - check: CT004
+    status: pass
+    at: 2026-08-18T17:54:15Z
+    evidence: Tests  14 passed (14) | Start at  00:53:20 | Duration  5.90s
+      (transform 117ms, setup 0ms, import 184ms, tests 5.63s, environment 0ms)
+    recorded_by: command
+  - check: CT005
+    status: pass
+    at: 2026-08-18T17:54:15Z
+    evidence: Tests  14 passed (14) | Start at  00:53:26 | Duration  9.28s
+      (transform 103ms, setup 0ms, import 166ms, tests 9.04s, environment 0ms)
+    recorded_by: command
+  - check: CT006
+    status: pass
+    at: 2026-08-18T17:54:15Z
+    evidence: Tests  14 passed (14) | Start at  00:53:35 | Duration  9.27s
+      (transform 108ms, setup 0ms, import 182ms, tests 9.01s, environment 0ms)
+    recorded_by: command
+  - check: CT007
+    status: pass
+    at: 2026-08-18T17:54:15Z
+    evidence: Tests  14 passed (14) | Start at  00:53:45 | Duration  9.91s
+      (transform 103ms, setup 0ms, import 186ms, tests 9.63s, environment 0ms)
+    recorded_by: command
+  - check: CT008
+    status: pass
+    at: 2026-08-18T17:54:15Z
+    evidence: Tests  8 passed (8) | Start at  00:53:55 | Duration  4.24s (transform
+      108ms, setup 0ms, import 199ms, tests 3.96s, environment 0ms)
+    recorded_by: command
+  - check: CT009
+    status: pass
+    at: 2026-08-18T17:54:15Z
+    evidence: Tests  6 passed (6) | Start at  00:54:00 | Duration  1.22s (transform
+      103ms, setup 0ms, import 167ms, tests 976ms, environment 0ms)
+    recorded_by: command
+  - check: CT010
+    status: pass
+    at: 2026-08-18T17:54:15Z
+    evidence: Tests  31 passed (31) | Start at  00:54:01 | Duration  11.82s
+      (transform 628ms, setup 0ms, import 875ms, tests 13.81s, environment 0ms)
+    recorded_by: command
+  - check: CT011
+    status: pass
+    at: 2026-08-18T17:54:15Z
+    evidence: Tests  25 passed (25) | Start at  00:54:14 | Duration  563ms
+      (transform 127ms, setup 0ms, import 262ms, tests 343ms, environment 0ms)
+    recorded_by: command
+  - check: CT015
+    status: pass
+    at: 2026-08-18T17:54:15Z
+    evidence: Tests  16 passed (16) | Start at  00:54:14 | Duration  240ms
+      (transform 92ms, setup 0ms, import 153ms, tests 8ms, environment 0ms)
+    recorded_by: command
+  - check: CT014
+    status: pass
+    at: 2026-08-18T17:54:45Z
+    evidence: "Reviewed the full M004 commit range (c3bff98 baseline through
+      520f2b2, the latest amend). Baseline carries \"workflow: add milestone
+      M004\" with PitWay-Milestone trailer only, touching only the baseline
+      paths. All six task-completion commits (ea0cc17/T001, d90a976/T002,
+      1403c04/T003, d584ef9/T004, 6afa5db/T005, 61b3956/T007) are
+      feat(...)-prefixed with both PitWay-Milestone and PitWay-Task trailers,
+      each staging exactly its task's relevant_files plus tasks.yaml, matching
+      task-update's completion shape. All four \"workflow: amend milestone
+      M004\" commits (54dd03e, e8e23fe, and this review's own amend 520f2b2,
+      plus the earlier amend preceding T004) carry PitWay-Milestone trailer only
+      and touch exclusively contract.md, matching milestone-confirm --amend.
+      Explicitly detected and confirmed 179491c (\"workflow: update M004 T004
+      for resume-priority amendment\") as the single known exception:
+      PitWay-Milestone trailer only, touches only tasks.yaml, matches no real
+      command shape (not a completion, not an amend, not any other command) — a
+      direct hand-edit of T004's task definition, now disclosed by name in
+      AC014's text rather than hidden. No other commit in the range hand-edits
+      authoritative .pitway/ state outside a real command's shape. T006's
+      cancellation (task-update, ready -> cancelled, no separate commit — folded
+      into T007's completion commit per the non-completion-writes-don't-commit
+      design) is a supported command path, not a hand-edit. CT014 verified
+      against the amended AC014 criterion: M004 crossed the self-hosting
+      boundary with exactly the one disclosed exception, no undisclosed ones."
+    recorded_by: developer

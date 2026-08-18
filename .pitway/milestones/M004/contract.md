@@ -2,7 +2,7 @@
 schema_version: 1
 id: M004
 title: Verification, completion, and usage accounting
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-18T14:39:30Z
 verification_approved_hash: sha256:083090de621aee7d36cbbd72a5d6f8e749c140b96aa3e26529a15258ff21dd57
