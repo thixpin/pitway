@@ -33,7 +33,7 @@ tasks:
       helper that commits staged changes and returns the SHA (refusing empty
       commits), a dedicated baseline-commit helper built on it, and SHA
       resolution by searching commit trailers in history.
-    status: waiting
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -54,7 +54,21 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/unit/git-commit.test.ts tests/unit/git-baseline.test.ts tests/integration/git-trailers.test.ts
-    result: null
+    result:
+      summary: >-
+        src/git/trailers.ts: composeMessage (closed-set stripping of
+        Claude-/Codex-/Gemini-Session keys and exact-email AI Co-Authored-By
+        lines only, via last-paragraph trailer-block detection; all other
+        trailers and prose preserved) + resolveCommitSha (reads full git log,
+        matches PitWay-Milestone/-Task trailers, nothing persisted).
+        src/git/commit.ts: createCommit (SHA return, empty-commit refusal).
+        src/git/baseline.ts: createBaselineCommit (stages only intended
+        paths, refuses on unrelated dirty changes, refuses empty). Also
+        hardened src/git/safety.ts (T001) with --untracked-files=all: a
+        collapsed untracked-directory entry (e.g. ".pitway/") was masking
+        per-file dirty detection needed for the baseline's intended-vs-
+        unrelated distinction; caught by this task's own baseline tests.
+      evidence: TDD RED confirmed, then 19 new tests green (171/171 suite); typecheck clean
     usage: null
   - id: T003
     objective: >-
