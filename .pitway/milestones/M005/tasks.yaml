@@ -1,0 +1,366 @@
+schema_version: 1
+tasks:
+  - id: T001
+    objective: "Resumable, git-invisible runtime journal at a path resolved through
+      the Git module (git rev-parse --git-path pitway/journal.yaml equivalent —
+      never hard-coded, works when .git is a linked-worktree file), passed into
+      the State layer, which owns the actual read/write. Append-only entries
+      carrying at minimum milestone id, operation type (usage_recording |
+      contract_amendment | task_amendment), operation identity, target
+      identifier where applicable, and validated payload; checkpoint marker
+      entries referencing an original entry's identity plus the capturing commit
+      SHA — never clearing or deleting prior entries, and a single commit SHA
+      may be referenced by multiple markers (tested); a read-pending query
+      deriving entries with no matching marker; self-healing crash recovery
+      reusing the existing resolveCommitSha/commitOrResume
+      commit-identity-lookup pattern when a commit exists but its marker doesn't
+      yet; disclosed limitation that journal durability covers only the current
+      local repository/worktree. task_transition and verification_result stay
+      entirely outside this journal. Layering: filesystem persistence lives in
+      src/state/, not src/core/ — Core defines entry validation and
+      pending-derivation as pure functions operating on data already loaded
+      through the state layer (AC001)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Journal path is resolved via the Git module (git rev-parse --git-path
+        pitway/journal.yaml equivalent), not a hard-coded .git/... string, and
+        resolves correctly under a linked worktree (.git as a file)
+      - Journal never appears in git status, never committed, never requires its
+        own commit; a test explicitly documents/asserts it does not survive .git
+        deletion or a fresh clone
+      - Every entry carries milestone id, operation type, operation identity,
+        target identifier (where applicable), and validated payload
+      - Entries are append-only; mark-checkpointed appends a marker, never
+        clears or deletes an original entry; a test covers multiple pending
+        operations captured by one checkpoint commit SHA (more than one marker
+        referencing the same SHA)
+      - read-pending derives entries lacking a matching checkpoint marker
+        (computed, not stored deletion)
+      - Crash recovery after a checkpoint commit but before its marker is
+        written self-heals via existing commit-identity lookup rather than
+        re-applying or getting stuck
+      - task_transition and verification_result are not journal entries; no code
+        path writes them there
+      - src/core/journal/ contains zero direct node:fs / node:path imports
+        (layering verification, same pattern as M004/T005); all persistence goes
+        through src/state/journal.ts
+    relevant_files:
+      - src/git/paths.ts
+      - src/state/journal.ts
+      - src/core/journal/operations.ts
+      - tests/unit/journal.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/journal.test.ts
+    result: null
+    usage: null
+  - id: T002
+    objective: "Working-tree dirty-path classification built on a verified clean
+      start: a path is expected only if the current in_progress task's write
+      scope covers it AND that task began from a confirmed clean tree (the
+      existing invariant, unchanged), or the path is a state file tied to a
+      pending journal entry (T001) or an ordinary pending
+      task_transition/verification_result write. Declaring a path in write_scope
+      grants no expectation by itself. Discloses (does not hide) that a worker's
+      edit and a concurrent developer edit to the same permitted file are
+      indistinguishable (AC002)."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - Classification never marks a path expected from write_scope declaration
+        alone — only after the task's own verified clean-start check has passed
+      - A dirty path matching a pending journal entry, or an ordinary pending
+        task_transition/verification_result write, is never reported as
+        unexpected
+      - Existing refusal diagnostics keep naming genuinely unexpected paths only
+      - The concurrent-edit-indistinguishability limitation is documented in
+        code comments and covered by a test asserting the behavior (not silently
+        assumed away)
+    relevant_files:
+      - src/git/safety.ts
+      - src/state/journal.ts
+      - tests/unit/git-safety.test.ts
+      - tests/unit/journal.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/git-safety.test.ts tests/unit/journal.test.ts
+    result: null
+    usage: null
+  - id: T003
+    objective: "tasks.yaml gains additive-optional context_files (declarative-only
+      in M005, no runtime read-enforcement) and write_scope (the real enforced
+      write/completion boundary) fields with the full five-case combination
+      rule: relevant_files only (legacy); write_scope only (unrestricted reads,
+      bounded writes); context_files + write_scope (bounded both ways, every
+      write_scope path must appear in context_files); context_files alone
+      (rejected, incomplete); relevant_files with either new field (rejected,
+      ambiguous). Both relevant_files and the new fields become schema-optional
+      so a task may declare either style, never both. task-status --context's
+      bundle output reflects the new fields (AC003)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - relevant_files only behaves exactly as today (legacy, unchanged)
+      - write_scope only allows unrestricted task-relevant reads with
+        write_scope as the sole enforced write/completion boundary
+      - context_files + write_scope together requires every write_scope path to
+        also appear in context_files, rejecting violations by name
+      - context_files alone is rejected as incomplete (write boundary undefined)
+      - relevant_files together with context_files or write_scope on the same
+        task is rejected as ambiguous, naming the conflicting fields
+      - context-bundle.ts surfaces context_files/write_scope in its output
+        without claiming read enforcement that doesn't exist yet
+    relevant_files:
+      - src/state/schemas.ts
+      - src/core/tasks/context-bundle.ts
+      - tests/unit/schemas.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/schemas.test.ts
+    result: null
+    usage: null
+  - id: T004
+    objective: "Checkpoint-model revision with corrected materialization semantics:
+      usage-add and milestone-confirm --amend (1) validate input, (2) append a
+      journal entry (T001, type usage_recording / contract_amendment), (3)
+      immediately and idempotently write the change to the real .pitway/ file —
+      not deferred to checkpoint time, so resume/verify/task-status/task-context
+      see it right away — and create no commit of their own. milestone-confirm
+      --amend gains a supported amendment-input path (validated draft contract
+      file or structured field changes) replacing the direct contract.md
+      hand-edit it depended on before; validated command writes are the only
+      writes ever made to contract.md. Since the change is already materialized
+      as an ordinary dirty PitWay-expected file (T002), the checkpoint-creating
+      code (task-update's completion path, milestone-complete) needs no
+      knowledge of journal payloads — it commits the already-materialized state
+      exactly as any other expected-dirty file, and only after that commit
+      succeeds does it append the checkpoint marker(s) for whichever pending
+      entries the commit covered (possibly more than one). Regardless of whether
+      a task was in progress when the entry was recorded. Recovery covers three
+      distinct interruption windows: before the authoritative write, after the
+      write but before the next checkpoint commit, and after the commit but
+      before its marker. Ambiguous journal recovery blocks execution with a
+      diagnostic. M004's historical AC008 commits and behavior are unchanged;
+      this criterion only becomes usable once this task lands, and is not
+      retroactively true of M005's own earlier task-completion commits (AC004)."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+    acceptance_criteria:
+      - usage-add appends a usage_recording journal entry, then immediately and
+        idempotently writes usage.yaml — no commit of its own
+      - milestone-confirm --amend appends a contract_amendment journal entry,
+        then immediately and idempotently writes contract.md via a validated
+        draft file or structured field changes as input (never a pre-existing
+        hand-edit) — no commit of its own
+      - A read immediately after either command (resume / verify / task-status /
+        task-context) reflects the amended state, before any checkpoint commit
+        exists
+      - task-update's completion path and milestone-complete recognize the
+        already-materialized files as expected-dirty (via T002) and commit them
+        normally, then append the checkpoint marker(s) only after that commit
+        succeeds
+      - Folding into the next checkpoint never depends on whether a task
+        happened to already be in progress when the entry was recorded
+      - Recovery is tested for all three interruption windows (before
+        authoritative write; after write, before checkpoint commit; after
+        commit, before marker)
+      - Ambiguous journal recovery blocks execution with a diagnostic rather
+        than guessing
+      - M001-M004 history and M004's actual AC008 commits are unaffected; no
+        historical rewrite
+    relevant_files:
+      - src/core/metrics/aggregate.ts
+      - src/core/milestones/confirm.ts
+      - src/state/contract-file.ts
+      - src/core/tasks/update.ts
+      - src/core/milestones/complete.ts
+      - src/state/journal.ts
+      - src/cli/commands/usage-add.ts
+      - src/cli/commands/milestone-confirm.ts
+      - tests/integration/usage-add.test.ts
+      - tests/integration/milestone-confirm.test.ts
+      - tests/integration/task-update.test.ts
+      - tests/integration/milestone-complete.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/usage-add.test.ts
+        tests/integration/milestone-confirm.test.ts
+        tests/integration/task-update.test.ts
+        tests/integration/milestone-complete.test.ts
+    result: null
+    usage: null
+  - id: T005
+    objective: "Validated, developer-approved task-amend CLI command (new top-level
+      command, registered on the single entry point): validates the proposed
+      task-definition change (schema, referential integrity, AC003's combination
+      rule), requires explicit developer approval, then follows T004's exact
+      sequence with journal type task_amendment — append the journal entry
+      (operation identity, validated field diff, Change Log evidence), then
+      immediately and idempotently write tasks.yaml (reads see it right away) —
+      never a standalone commit, never a direct tasks.yaml hand-edit; validated
+      command writes are the only writes ever made to tasks.yaml. Folds into the
+      next checkpoint and blocks on ambiguous recovery via T004's mechanics,
+      including its three-window interruption recovery. Durable fix for the
+      M004/T006 and M004/179491c gaps (AC005)."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+    acceptance_criteria:
+      - Proposed amendments are schema- and referential-integrity-validated
+        before anything is recorded
+      - Requires explicit developer approval before recording
+      - Journal-recorded (task_amendment) with resumable operation identity,
+        validated field diff, and Change Log evidence, then immediately and
+        idempotently written to tasks.yaml — never a standalone commit, never a
+        direct tasks.yaml edit
+      - A read immediately after (resume / task-status / task-context) reflects
+        the amended task before any checkpoint commit exists
+      - Folds into the next checkpoint and blocks on ambiguous recovery,
+        matching T004's mechanics exactly, including the three-window
+        interruption recovery
+      - task-amend is registered in src/cli/index.ts and reachable through the
+        single entry point, covered by cli.test.ts's registration and --help
+        reachability tests (same pattern as M004/T007)
+    relevant_files:
+      - src/core/tasks/amend.ts
+      - src/cli/commands/task-amend.ts
+      - src/cli/index.ts
+      - src/state/journal.ts
+      - tests/integration/task-amend.test.ts
+      - tests/integration/cli.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/task-amend.test.ts
+        tests/integration/cli.test.ts
+    result: null
+    usage: null
+  - id: T006
+    objective: "write-ms-artifacts CLI command (new top-level command, registered on
+      the single entry point): reuses milestone-add's existing input validation
+      (contract schema, criterion-reference check, dependency-graph resolution
+      via resolveReadyTasks) factored out of createMilestone, without its
+      state-mutating half — writes the draft contract and task graph as plain
+      non-authoritative files to an explicit, required destination, confirms
+      nothing, commits nothing, dispatches nothing, mutates no authoritative
+      .pitway/ state. Refuses to write inside .pitway/ and refuses to overwrite
+      an existing destination file unless overwrite is explicitly requested
+      (AC006)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Destination is an explicit, required argument — never implicit or
+        inferred
+      - Refuses a destination path under .pitway/, naming the conflict, before
+        writing anything
+      - Refuses to overwrite an existing file at the destination unless
+        overwrite is explicitly requested, naming the pre-existing path
+      - Writes draft artifact files only; makes no authoritative state or git
+        change
+      - Reuses milestone-add's existing validation logic rather than duplicating
+        it
+      - Never confirms the milestone, commits, or dispatches a task
+      - Artifacts are reusable as input to the normal milestone-add flow
+        unmodified
+      - write-ms-artifacts is registered in src/cli/index.ts and reachable
+        through the single entry point, covered by cli.test.ts's registration
+        and --help reachability tests
+    relevant_files:
+      - src/core/milestones/write-artifacts.ts
+      - src/core/milestones/create.ts
+      - src/cli/commands/write-ms-artifacts.ts
+      - src/cli/index.ts
+      - tests/integration/write-ms-artifacts.test.ts
+      - tests/integration/cli.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/write-ms-artifacts.test.ts
+        tests/integration/cli.test.ts
+    result: null
+    usage: null
+  - id: T007
+    objective: "Slugged milestone directories: slug generated once from the title at
+      milestone-add (lowercase, hyphen-collapsed, trimmed, 40-char word
+      boundary, bare-id fallback), effective for milestones created from M006
+      onward; canonical bare id everywhere except the directory name; resolution
+      in the state store only, succeeding only on exactly one candidate;
+      M001-M005 grandfathered bare (AC007)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - New milestones created after M005 use MNNN-<slug>; slug never regenerated
+      - State, frontmatter, deps, trailers, CLI args carry bare ids only
+      - Resolution succeeds only on exactly one candidate; bare+slugged
+        coexistence refuses, naming both, never silently preferred
+      - M001-M005 bare directories keep working unmodified
+    relevant_files:
+      - src/state/store.ts
+      - src/core/milestones/create.ts
+      - tests/integration/milestone-add.test.ts
+      - tests/unit/state-store.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-add.test.ts
+        tests/unit/state-store.test.ts
+    result: null
+    usage: null
+  - id: T008
+    objective: "Migration/compatibility verification: confirm M001-M004 history
+      (bare directories, relevant_files-only tasks, pre-journal commit shapes)
+      continues to load, resolve, and resume correctly unmodified under every
+      change in this milestone; full suite green (AC008)."
+    status: waiting
+    depends_on:
+      - T003
+      - T004
+      - T005
+      - T007
+    acceptance_criteria:
+      - M001-M004 contract.md/tasks.yaml load unchanged under the new schema and
+        resolution logic
+      - resume reconstructs M001-M004 state correctly from history alone
+      - No historical file or commit is rewritten
+      - Full suite green
+    relevant_files:
+      - tests/integration/self-hosting-readiness.test.ts
+      - tests/integration/resume.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test
+    result: null
+    usage: null
+  - id: T009
+    objective: "Roadmap-reconciliation review: confirm IMPLEMENTATION_PLAN.md's
+      command surface (13 commands once T005/T006 land), milestone table, and
+      M005-M011 roadmap section — including the M005-vs-M006
+      authoritative-checkpoint wording — accurately describe the repository's
+      actual state as of M005's completion; correct any discovered drift in the
+      plan through this task (AC009)."
+    status: waiting
+    depends_on:
+      - T004
+      - T005
+      - T006
+      - T007
+      - T008
+    acceptance_criteria:
+      - Command table checked against buildCli's actual registered commands (13,
+        naming task-amend and write-ms-artifacts explicitly)
+      - Bootstrap delivery table and roadmap section checked against actual M005
+        delivered scope, including the "authoritative starting M006, not M005"
+        wording
+      - Any drift found is corrected in IMPLEMENTATION_PLAN.md as part of this
+        task, not left stale
+    relevant_files:
+      - IMPLEMENTATION_PLAN.md
+    verification:
+      strategy: manual
+      detail: developer/driver review per CT009's instruction
+    result: null
+    usage: null
