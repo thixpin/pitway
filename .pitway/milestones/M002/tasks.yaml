@@ -102,7 +102,7 @@ tasks:
       Implement pitway milestone-status and pitway milestone-list, reading
       state and resolving the baseline commit SHA via the git module,
       with deterministic progress and no per-task percentages.
-    status: waiting
+    status: completed
     depends_on:
       - T002
       - T003
@@ -120,13 +120,24 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-status.test.ts tests/integration/milestone-list.test.ts
-    result: null
+    result:
+      summary: >-
+        src/core/milestones/progress.ts: computeMilestoneProgress (pure,
+        excludes cancelled from both completed/total). src/cli/format.ts:
+        shared taskStatusLabel/milestoneStatusLabel (presentation only).
+        src/cli/commands/milestone-status.ts: buildMilestoneStatusView reads
+        contract + tasks + resolves baseline SHA via trailer search.
+        src/cli/commands/milestone-list.ts: buildMilestoneListView reads
+        state.yaml as an id index and only each milestone's contract
+        frontmatter — verified by omitting tasks/verification/usage files
+        from a fixture milestone and confirming no error.
+      evidence: TDD RED confirmed, then 4 new tests green (179/179 suite); typecheck clean
     usage: null
   - id: T005
     objective: >-
       Implement pitway task-status, including the --context flag that emits
       exactly the minimal task-context bundle and nothing else.
-    status: waiting
+    status: ready
     depends_on:
       - T003
     acceptance_criteria:
