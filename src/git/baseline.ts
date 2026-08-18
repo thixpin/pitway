@@ -1,47 +1,66 @@
-import { git, GitError } from './exec.js';
 import { checkWorkingTreeClean } from './safety.js';
-import { composeMessage } from './trailers.js';
-import { createCommit } from './commit.js';
+import { composeMessage, resolveCommitSha } from './trailers.js';
+import { commitOrResume } from './commit-or-resume.js';
 
 export interface BaselineCommitOptions {
   milestoneId: string;
+  // Files (or directory prefixes, expanded against the current dirty set)
+  // this baseline is allowed to stage.
   paths: string[];
 }
 
-function pathsOverlap(a: string, b: string): boolean {
-  const na = a.replace(/\/+$/, '');
-  const nb = b.replace(/\/+$/, '');
-  return na === nb || na.startsWith(`${nb}/`) || nb.startsWith(`${na}/`);
+// The exact file set a milestone baseline commit may contain. Confirmation
+// stages precisely these (subset check — clean entries are fine); anything
+// else dirty, even inside the milestone directory, refuses the commit.
+export function computeExpectedBaselinePaths(
+  milestoneId: string,
+  requirementId?: string | null,
+): string[] {
+  const paths = [
+    '.pitway/config.yaml',
+    '.pitway/state.yaml',
+    `.pitway/milestones/${milestoneId}/contract.md`,
+    `.pitway/milestones/${milestoneId}/tasks.yaml`,
+    `.pitway/milestones/${milestoneId}/verification-results.yaml`,
+    `.pitway/milestones/${milestoneId}/usage.yaml`,
+  ];
+  if (requirementId) paths.push(`.pitway/requirements/${requirementId}.md`);
+  return paths;
 }
 
-// git status --porcelain collapses an entirely-untracked directory (e.g.
-// ".pitway/") into a single entry, so containment must be checked in both
-// directions: the dirty entry may be a parent of an intended path, not only
-// a child of one.
-function isWithinIntendedPaths(dirtyPath: string, paths: string[]): boolean {
-  return paths.some((intended) => pathsOverlap(dirtyPath, intended));
+// Expands caller-supplied files/directory prefixes into the exact dirty
+// files they cover. One-directional only: with --untracked-files=all the
+// status list is always individual files, so a dirty entry can never be a
+// parent of an intended path.
+function expandToDirtyFiles(cwd: string, paths: string[]): string[] {
+  const { dirtyPaths } = checkWorkingTreeClean(cwd);
+  return dirtyPaths.filter((dirty) =>
+    paths.some((p) => {
+      const base = p.replace(/\/+$/, '');
+      return dirty === base || dirty.startsWith(`${base}/`);
+    }),
+  );
 }
 
 // Stages only the intended milestone artifacts and creates the baseline
-// commit. Distinguishes those intended paths from any unrelated dirty
-// working-tree changes: an unrelated change refuses the commit and stages
-// nothing, rather than being silently absorbed.
+// commit, resumably: if this milestone's baseline commit already exists
+// (unique per milestone — matched by trailer, "workflow: add milestone"
+// subject, and no task trailer), reports it idempotently. Unrelated dirty
+// changes refuse the commit with nothing staged.
 export function createBaselineCommit(cwd: string, options: BaselineCommitOptions): string {
-  const { dirtyPaths } = checkWorkingTreeClean(cwd);
-
-  const unexpected = dirtyPaths.filter((p) => !isWithinIntendedPaths(p, options.paths));
-  if (unexpected.length > 0) {
-    throw new GitError(
-      `refusing baseline commit: unrelated dirty changes present outside the milestone artifacts: ${unexpected.join(', ')}`,
-    );
-  }
-  if (dirtyPaths.length === 0) {
-    throw new GitError('refusing to create an empty baseline commit: nothing to stage');
-  }
-
-  git(['add', '--', ...options.paths], cwd);
+  const expected = expandToDirtyFiles(cwd, options.paths);
   const message = composeMessage(`workflow: add milestone ${options.milestoneId}`, {
     'PitWay-Milestone': options.milestoneId,
   });
-  return createCommit(cwd, message);
+  const result = commitOrResume(cwd, {
+    expectedPaths: expected,
+    findExistingCommit: () =>
+      resolveCommitSha(cwd, {
+        milestone: options.milestoneId,
+        messagePrefix: `workflow: add milestone ${options.milestoneId}`,
+      }),
+    localStateAdvanced: true,
+    message,
+  });
+  return result.sha;
 }

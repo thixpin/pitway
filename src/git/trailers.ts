@@ -50,6 +50,10 @@ export function composeMessage(message: string, trailers: Record<string, string>
 export interface TrailerQuery {
   milestone: string;
   task?: string;
+  // When set, the commit's subject line (first message line) must start
+  // with this prefix — used to distinguish e.g. baseline from amendment
+  // commits that carry the same trailers.
+  messagePrefix?: string;
 }
 
 // Resolves a commit SHA by searching commit message trailers in git
@@ -66,6 +70,8 @@ export function resolveCommitSha(cwd: string, query: TrailerQuery): string | und
     const sha = record.slice(0, sepIndex).trim();
     const body = record.slice(sepIndex + 1);
     const lines = body.split('\n');
+
+    if (query.messagePrefix !== undefined && !lines[0]!.startsWith(query.messagePrefix)) continue;
 
     const hasMilestone = lines.some((l) => l.trim() === `PitWay-Milestone: ${query.milestone}`);
     if (!hasMilestone) continue;

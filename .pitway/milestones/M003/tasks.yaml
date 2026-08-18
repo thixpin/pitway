@@ -8,7 +8,7 @@ tasks:
       with an operation-specific matchesCommit(sha) predicate,
       computeExpectedBaselinePaths (including the optional requirement
       path), computeVerificationHash, and TrailerQuery.messagePrefix.
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - Exact-set subset check rejects any dirty path not exactly matching an expected file
@@ -25,7 +25,18 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/unit/commit-or-resume.test.ts tests/unit/verification-hash.test.ts tests/unit/git-baseline.test.ts
-    result: null
+    result:
+      summary: >-
+        src/git/commit-or-resume.ts: commitOrResume (idempotent / resume /
+        precise-refusal; stages only the dirty subset of expected paths).
+        src/core/contracts/verification-hash.ts: computeVerificationHash
+        matching the manual sed/shasum canonicalization (verified against
+        the real M003 recorded hash). src/git/trailers.ts: messagePrefix
+        subject filter. src/git/baseline.ts: rebuilt on commitOrResume with
+        computeExpectedBaselinePaths (incl. optional requirement path);
+        bidirectional pathsOverlap deleted, one-directional dir expansion
+        retained for the legacy paths API. M002 tests untouched and green.
+      evidence: TDD RED confirmed, then 10 new tests green (194/194 suite); typecheck clean
     usage: null
   - id: T002
     objective: >-
