@@ -139,6 +139,7 @@ Usage capture: when the Claude Code runtime reports subagent token usage, the dr
 - **Baseline commit** at `milestone-confirm` (`workflow: add milestone M001` + milestone trailer) — this is also the moment the milestone's `.pitway/` artifacts get committed, closing the state/commit circularity at a defined boundary. Never empty (spec §27).
 - `.pitway/` is version-controlled (decision 3); `init` does *not* gitignore it; runtime-disposable data is simply never written there.
 - Never RED states, retries, or intermediate edits committed; no branches/worktrees/stashes/merges; sequential execution (MVP, preserved decision).
+- **Branch strategy is a repository-level policy, single-branch by default.** MVP behavior is `git.branch_strategy: main` — PitWay never creates or switches branches automatically; task and baseline commits land on whatever branch is currently checked out. A `milestone` strategy (each milestone isolated on its own branch) is designed but deliberately deferred — see §15.
 
 ## 11. Verification Strategy
 
@@ -168,7 +169,22 @@ Everything in §§1–13 above and nothing more, proving spec §55's eight point
 
 ## 15. Deferred Features
 
-Codex/Gemini/OpenCode adapters · parallel execution, worktrees/branches · plugin/adapter SDK · weighted or per-task progress · contract versioning beyond the changelog · schema migration framework · requirement/BRS tooling beyond a plain markdown template · milestone archiving/pruning · `pitway doctor` · non-git support · any web/UI anything (non-goal).
+Codex/Gemini/OpenCode adapters · parallel execution, worktrees · plugin/adapter SDK · weighted or per-task progress · contract versioning beyond the changelog · schema migration framework · requirement/BRS tooling beyond a plain markdown template · milestone archiving/pruning · `pitway doctor` · non-git support · any web/UI anything (non-goal).
+
+### Deferred: milestone-level Git branch strategy
+
+**Architectural principle (durable, applies once implemented): milestones may own branches; tasks own commits.** Branch isolation, if ever added, is at the milestone level only — never per-task (`pitway/M001-auth` holding all of T001..Tn's commits, not a branch per task). This preserves the MVP rule that sequential execution and atomic task commits are the core workflow; branch isolation is an optional Git policy layered on top, not a prerequisite for it.
+
+Design sketch for a future milestone (tentatively **"Milestone Git Isolation"**, not yet scheduled or contracted):
+
+- **Config**: repository-level policy, e.g. `git.branch_strategy: main` (current MVP default — no automatic branch creation/switching) or `git.branch_strategy: milestone`. Exact key naming may be refined against the config schema in place when this is built.
+- **Flow under `milestone`**: git safety check passes → create a deterministically-named branch (`pitway/M001-<slug>`, naming not over-engineered) from the current base branch → record that base branch name and base revision in the milestone's state (never hard-code `main`; repos may use `master`, `develop`, `release/*`, etc.) → baseline commit → task atomic commits stay on that branch → contract verification → milestone completion leaves the branch **merge-ready / PR-ready**, without an automatic merge — integration stays developer-controlled, compatible with protected-branch/PR workflows. Automatic-merge behavior, if ever wanted, would be a separate, later decision.
+- **Resume**: a fresh session must be able to detect it's on (or reattach to) the correct milestone branch from persisted state, and detect a branch mismatch.
+- **Safety**: preserves every existing Git safety rule — dirty-tree checks stop and report rather than stash/reset; no force-push; no deleting branches containing work; no automatic conflict resolution. These are non-negotiable, not specific to this feature.
+- **Agent independence**: this is PitWay Core / Git-policy behavior, not Claude-specific — every driver (Claude, Codex, or otherwise) goes through the same Core git policy rather than inventing its own branch handling.
+- **Candidate acceptance criteria** for that future contract: configuration read/validated; branch created only after a passing safety check; deterministic naming; base branch and base revision tracked in state; resume reattaches to (or detects mismatch with) the milestone branch; task commits land on the milestone branch; contract verification required before completion; completion reaches a merge-ready/PR-ready state without an automatic merge; no automatic destructive Git operation is ever performed.
+
+This is a planning note only. **M002 is unaffected** — its confirmed contract already excludes branches, worktrees, stashes, and merges, and that boundary is preserved rather than modified. No current milestone owns this work; it becomes a candidate contract at a future milestone boundary, proposed and confirmed the same way every other milestone is.
 
 ## 16. Risks / Trade-offs
 
