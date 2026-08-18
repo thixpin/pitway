@@ -5,7 +5,7 @@ title: Verification, completion, and usage accounting
 status: in_progress
 requirement: null
 confirmed_at: 2026-08-18T14:39:30Z
-verification_approved_hash: sha256:12411c2658d555bc7acec526240f7252c26a0e3fa2a3c58f5ad56a885af147e5
+verification_approved_hash: sha256:57ff2adf41f6331c64ad427f0e3fbadf02c8bec7461ab6540d8c3fbbeb23d772
 acceptance_criteria:
   - id: AC001
     text: pitway verify recomputes the verification hash first; a mismatch with the
@@ -69,21 +69,6 @@ acceptance_criteria:
     text: Requirement-artifact I/O moves into the state store; the milestone
       creation core retains zero direct filesystem access; existing
       milestone-add behavior is unchanged and the full suite stays green.
-  - id: AC012
-    text: "Newly created milestones use directory MNNN-<slug>: the slug is derived
-      once from the contract title (lowercase; runs of non-alphanumerics
-      collapse to single hyphens; trimmed of leading and trailing hyphens;
-      truncated at a word boundary to at most 40 characters; empty result falls
-      back to the bare id), never regenerated or renamed; the bare MNNN id
-      remains the sole canonical identifier in CLI arguments, state.yaml,
-      contract frontmatter, depends_on, and git trailers."
-  - id: AC013
-    text: "Directory resolution by canonical id lives only in the state store and
-      succeeds only when exactly one candidate exists: a bare MNNN directory
-      (grandfathering M001-M004) or a single MNNN-* directory. Zero candidates,
-      multiple slugged candidates, or a bare and a slugged directory coexisting
-      all refuse with a precise diagnostic naming the candidates — no candidate
-      is ever silently preferred."
   - id: AC014
     text: "Self-hosting evidence, pre-completion scope: M004 was created, confirmed,
       executed, and verified through pitway commands — its baseline commit and
@@ -147,14 +132,6 @@ verification:
     type: command
     command: npm test -- tests/unit/state-store.test.ts
       tests/integration/milestone-add.test.ts
-  - id: CT012
-    criterion: AC012
-    type: command
-    command: npm test -- tests/integration/milestone-add.test.ts
-  - id: CT013
-    criterion: AC013
-    type: command
-    command: npm test -- tests/unit/state-store.test.ts
   - id: CT014
     criterion: AC014
     type: review
@@ -177,9 +154,8 @@ verification:
 
 Implement verification execution (verify), milestone-level completion
 (milestone-complete), and usage accounting (usage-add plus aggregation in
-milestone-status), together with dependent-task auto-promotion, the
-requirement-store refactor closing the recorded core-fs debt, and stable
-slugged-directory support for milestones created after this one. M004 is
+milestone-status), together with dependent-task auto-promotion and the
+requirement-store refactor closing the recorded core-fs debt. M004 is
 the self-hosting transition: it is created and confirmed through pitway
 commands, and completing it through the milestone-complete command it
 implements demonstrates full lifecycle self-hosting.
@@ -196,18 +172,26 @@ implements demonstrates full lifecycle self-hosting.
   its exact completion commit set.
 - Dependent auto-promotion at task completion.
 - Requirement I/O moved into the state store.
-- Slugged milestone directories for newly created milestones — M004 stays
-  the grandfathered bare directory; slugged paths begin with M005.
 - All commands reachable through the single CLI entry point (buildCli main
   path); only packaging is deferred.
 
 ## Non-Goals
 
+- Slugged milestone directories: deferred out of M004. T006 (originally
+  scoped here) required editing five test files outside its declared
+  relevant_files, and no validated command exists to amend a task's scope
+  without a direct .pitway/ hand-edit; see Change Log. Slugged-directory
+  implementation moves to a later milestone alongside the amendment command
+  that makes such scope changes safe.
 - Claude integration assets, README, npm packaging/distribution (later
-  milestones per the corrected sequence: M005 is dependency-aware Claude
-  integration including /milestone-draft; M006 is the six-point Dogfood
-  Validation; release/docs follow, with the Adaptive Workflow Intensity
-  decision point after M006).
+  milestones per the corrected sequence: the next milestone is workflow
+  hardening — a validated/auditable task-definition amendment command plus
+  slugged-directory implementation, itself created as a grandfathered bare
+  directory since slug support does not exist yet when it starts; slugged
+  directories then apply from the milestone after that onward; Claude
+  integration and the previously recorded context/token/shared-worktree/LSP
+  requirements follow; then the six-point Dogfood Validation; release/docs
+  and the Adaptive Workflow Intensity decision point come last).
 - No automatic merges, no parallel execution, no new state values or
   transitions, no plugin framework.
 
@@ -216,9 +200,6 @@ implements demonstrates full lifecycle self-hosting.
 - Auto-promotion replaces the explicit task-update ready step: it is
   deterministic, occurs in the same write/commit as the completion, and
   removes a pure-ceremony command invocation with no safety value.
-- Slug rule applies to all newly created milestones with bare-id
-  directories grandfathered — no repository-specific threshold constant in
-  generic tool code.
 - Verification results are append-only with the latest result per check
   authoritative, preserving honest failure history.
 
@@ -234,3 +215,21 @@ implements demonstrates full lifecycle self-hosting.
 - 2026-08-18 — Amended AC010/CT010/T004: resume prioritizes an in_progress
   task as the continuation target; ready-task selection applies only when
   none is in progress. Developer-requested during T003 review.
+- 2026-08-18 — Removed AC012/AC013/CT012/CT013 (slugged milestone
+  directories) from M004's scope and deferred them, along with the slug
+  Design Decision and the corresponding Scope/Non-Goals text. Discovered
+  during T006 dispatch preparation: implementing slugged directories
+  requires updating five test files (milestone-complete.test.ts,
+  milestone-confirm.test.ts, self-hosting-readiness.test.ts,
+  task-update.test.ts, verify.test.ts) that hardcode the pre-slug bare
+  M001 directory path for milestones created through the real
+  milestone-add path — none of which were in T006's declared
+  relevant_files, and PitWay has no validated command to amend a task's
+  relevant_files without a direct .pitway/ hand-edit (forbidden by the
+  driver/state layering rule). Rather than expand T006's scope
+  unilaterally or hand-edit tasks.yaml, the developer approved deferring
+  slugged directories to a later milestone, which will also introduce the
+  validated task-definition/scope amendment command that makes this class
+  of change safe. T006 itself is cancelled via task-update (not deleted or
+  hand-edited) once this amendment is committed. Developer-approved
+  2026-08-18.
