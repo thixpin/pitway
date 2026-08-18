@@ -5,7 +5,7 @@ tasks:
       Create the project scaffold: package.json (name pitway, ESM, MIT,
       Node >= 20, typecheck/test scripts), strict tsconfig, vitest config,
       LICENSE, .gitignore, and the src/ and tests/ directory skeleton.
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - npm install succeeds on Node >= 20
@@ -21,14 +21,19 @@ tasks:
     verification:
       strategy: command
       detail: npm run typecheck && npm test
-    result: null
+    result:
+      summary: >-
+        Scaffold created: package.json (pitway, ESM, MIT, Node >= 20), strict
+        tsconfig (NodeNext), vitest config, LICENSE, .gitignore, metadata test.
+        Deps pinned: zod 4.4.3, yaml 2.9.0; dev: typescript, vitest, @types/node.
+      evidence: npm run typecheck passed; vitest 1/1 passed
     usage: null
   - id: T002
     objective: >-
       Implement schema v1 types and zod validators for all six .pitway/
       artifacts, driven by fixture-based unit tests (valid accepted, invalid
       rejected with errors naming the offending field).
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
