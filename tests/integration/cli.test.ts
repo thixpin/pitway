@@ -22,6 +22,7 @@ const ALL_COMMAND_NAMES = [
   'task-update',
   'usage-add',
   'verify',
+  'write-ms-artifacts',
 ].sort();
 
 // Node's native TS loader resolves relative import specifiers literally — it
@@ -58,7 +59,7 @@ describe('pitway bin entry point', () => {
 });
 
 describe('registerAllCommands', () => {
-  it('registers all 12 commands on a fresh buildCli() program', () => {
+  it('registers all 13 commands on a fresh buildCli() program', () => {
     const program = buildCli();
     registerAllCommands(program, {});
     expect(program.commands.map((c) => c.name()).sort()).toEqual(ALL_COMMAND_NAMES);

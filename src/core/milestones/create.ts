@@ -91,6 +91,19 @@ function assertActiveMilestoneTerminal(root: string, state: PitwayState): void {
   }
 }
 
+export interface ValidatedDraftInputs {
+  contract: ContractFile;
+  tasksInput: TasksFile;
+}
+
+export function validateDraftInputs(contractPath: string, tasksPath: string): ValidatedDraftInputs {
+  const contract = parseContractInput(contractPath);
+  checkCriterionReferences(contract);
+  const tasksInput = parseTasksInput(tasksPath);
+  resolveReadyTasks(tasksInput.tasks);
+  return { contract, tasksInput };
+}
+
 export function createMilestone(root: string, inputs: MilestoneAddInputs): MilestoneAddView {
   const state = loadState(root);
   assertActiveMilestoneTerminal(root, state);
@@ -103,10 +116,7 @@ export function createMilestone(root: string, inputs: MilestoneAddInputs): Miles
     );
   }
 
-  const contract = parseContractInput(inputs.contractPath);
-  checkCriterionReferences(contract);
-  const tasksInput = parseTasksInput(inputs.tasksPath);
-  resolveReadyTasks(tasksInput.tasks);
+  const { contract, tasksInput } = validateDraftInputs(inputs.contractPath, inputs.tasksPath);
   const requirementText =
     inputs.requirementPath === undefined ? null : readInput(inputs.requirementPath, 'requirement');
 

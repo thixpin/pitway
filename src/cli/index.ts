@@ -15,6 +15,7 @@ import { registerTaskAmendCommand } from './commands/task-amend.js';
 import { registerTaskUpdateCommand } from './commands/task-update.js';
 import { registerUsageAddCommand } from './commands/usage-add.js';
 import { registerVerifyCommand } from './commands/verify.js';
+import { registerWriteMsArtifactsCommand } from './commands/write-ms-artifacts.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(here, '../../package.json'), 'utf8')) as {
@@ -48,6 +49,7 @@ export function registerAllCommands(program: Command, deps: CommandDeps = {}): v
   registerTaskUpdateCommand(program, deps);
   registerUsageAddCommand(program, deps);
   registerVerifyCommand(program, deps);
+  registerWriteMsArtifactsCommand(program, deps);
 }
 
 const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);

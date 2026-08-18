@@ -435,7 +435,7 @@ tasks:
       .pitway/ state. Refuses to write inside .pitway/ and refuses to overwrite
       an existing destination file unless overwrite is explicitly requested
       (AC006)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Destination is an explicit, required argument — never implicit or
@@ -465,8 +465,38 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/integration/write-ms-artifacts.test.ts
         tests/integration/cli.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "Executed by a bounded sub-agent from its task-context bundle.
+        src/core/milestones/create.ts gains an exported validateDraftInputs
+        (contractPath, tasksPath), composing the existing private
+        parseContractInput -> checkCriterionReferences -> parseTasksInput ->
+        resolveReadyTasks sequence; createMilestone now calls it instead of
+        inlining those four lines — pure extraction, MilestoneAddView and every
+        error message unchanged. New src/core/milestones/write-artifacts.ts:
+        writeMilestoneArtifacts(root, {contractPath, tasksPath, destination,
+        overwrite?}) calls validateDraftInputs for shared validation, refuses a
+        destination resolving under .pitway/ (exact match or subdirectory,
+        boundary-safe against a .pitway-backup false positive) before any write,
+        checks both target files' existence before writing either (avoiding a
+        partial write from one invocation), then copies the raw original bytes
+        (not re-serialized) to <destination>/contract.md and
+        <destination>/tasks.yaml. No .pitway/ I/O anywhere in this path. New
+        src/cli/commands/write-ms-artifacts.ts: `write-ms-artifacts --contract
+        <path> --tasks <path> --destination <dir> [--overwrite] [--json]`, all
+        three required. Wired into src/cli/index.ts and cli.test.ts's command
+        list (now 13)."
+      evidence: "Sub-agent confirmed RED (removed the new files/registration, suite
+        failed to load/register) then GREEN, 27/27 on first pass, no scope
+        violation. Independently re-verified by the driver: target command 27/27
+        green; full suite 388/388 green; typecheck clean; read
+        write-artifacts.ts and create.ts's diff in full — confirmed the
+        extraction is behavior-preserving (pure move, no logic change) and the
+        destination-safety/overwrite checks are correctly ordered (validation
+        before any write, existence checks for both files before writing
+        either). Diff confirmed scoped to exactly the 6 declared files."
+    attempts: 1
+    usage:
+      total_tokens: 65969
   - id: T007
     objective: "Slugged milestone directories: slug generated once from the title at
       milestone-add (lowercase, hyphen-collapsed, trimmed, 40-char word
