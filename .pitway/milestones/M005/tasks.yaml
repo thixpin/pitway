@@ -355,7 +355,7 @@ tasks:
       next checkpoint and blocks on ambiguous recovery via T004's mechanics,
       including its three-window interruption recovery. Durable fix for the
       M004/T006 and M004/179491c gaps (AC005)."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -388,8 +388,42 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/integration/task-amend.test.ts
         tests/integration/cli.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "Executed by a bounded sub-agent from its task-context bundle. New
+        src/core/tasks/amend.ts: amendTask(root, milestoneId?, taskId, {
+        filePath, changeLogEvidence }) resolves the active milestone, requires
+        non-empty changeLogEvidence, asserts contract.md already has a non-empty
+        Change Log entry (recorded separately via the existing milestone-confirm
+        --amend), loads the task, parses --file as a partial update restricted
+        to objective/acceptance_criteria/relevant_files/
+        context_files/write_scope/verification (rejecting any other key by
+        name), shallow-merges onto the current task and validates the FULL
+        merged object against taskSchema (reusing T003's combination-rule
+        validation rather than reimplementing it), then follows the same
+        journal-then-materialize idempotency pattern as milestone-confirm
+        --amend: pending task_amendment entries for this task id (zero+no change
+        -> no-op; zero+real change -> append entry then write; one matching ->
+        harmless re-materialize; one different or >1 -> ambiguous refusal).
+        Deliberately never writes contract.md itself (task_amendment only maps
+        to tasks.yaml in T001's resolveTargetPath; writing contract.md too would
+        create unrecognized dirt at the next checkpoint) — the Change Log
+        rationale is instead recorded durably in the journal entry's own
+        payload. New src/cli/commands/task-amend.ts: `task-amend <id> --file
+        <path> --change-log <text> [--json]`. Wired into src/cli/index.ts
+        (registerAllCommands) and tests/integration/cli.test.ts's command list
+        (now 12)."
+      evidence: "Sub-agent confirmed RED (removed the two new files, suite failed to
+        load) then GREEN, 33/33 on first pass, no scope violation. Independently
+        re-verified by the driver: target command 33/33 green; full suite
+        378/378 green; typecheck clean; read amend.ts and the CLI command in
+        full — confirmed the resolveTargetPath constraint is respected (only
+        tasks.yaml is ever written), idempotency logic mirrors confirm.ts's
+        proven pattern, and the merge-then-validate approach correctly reuses
+        taskSchema's combination-rule enforcement rather than duplicating it.
+        Diff confirmed scoped to exactly the 6 declared files."
+    attempts: 1
+    usage:
+      total_tokens: 127652
   - id: T006
     objective: "write-ms-artifacts CLI command (new top-level command, registered on
       the single entry point): reuses milestone-add's existing input validation

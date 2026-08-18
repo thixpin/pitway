@@ -11,6 +11,7 @@ import { registerMilestoneListCommand } from './commands/milestone-list.js';
 import { registerMilestoneStatusCommand } from './commands/milestone-status.js';
 import { registerResumeCommand } from './commands/resume.js';
 import { registerTaskStatusCommand } from './commands/task-status.js';
+import { registerTaskAmendCommand } from './commands/task-amend.js';
 import { registerTaskUpdateCommand } from './commands/task-update.js';
 import { registerUsageAddCommand } from './commands/usage-add.js';
 import { registerVerifyCommand } from './commands/verify.js';
@@ -43,6 +44,7 @@ export function registerAllCommands(program: Command, deps: CommandDeps = {}): v
   registerMilestoneStatusCommand(program, deps);
   registerResumeCommand(program, deps);
   registerTaskStatusCommand(program, deps);
+  registerTaskAmendCommand(program, deps);
   registerTaskUpdateCommand(program, deps);
   registerUsageAddCommand(program, deps);
   registerVerifyCommand(program, deps);
