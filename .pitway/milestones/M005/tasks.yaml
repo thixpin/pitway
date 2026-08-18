@@ -178,7 +178,7 @@ tasks:
       ambiguous). Both relevant_files and the new fields become schema-optional
       so a task may declare either style, never both. task-status --context's
       bundle output reflects the new fields (AC003)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - relevant_files only behaves exactly as today (legacy, unchanged)
@@ -198,8 +198,37 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/unit/schemas.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "Executed by a bounded sub-agent from its task-context bundle.
+        src/state/schemas.ts: taskSchema's relevant_files is now optional, with
+        new optional context_files/write_scope arrays, gated by a superRefine
+        implementing the full six-case rule (relevant_files only: legacy;
+        write_scope only: unrestricted reads; context_files+write_scope: every
+        write_scope path must appear in context_files, missing paths named;
+        context_files alone: rejected, incomplete; relevant_files combined with
+        either new field: rejected, ambiguous, naming the conflict; all three
+        unset: rejected). Diagnostics use zod's ctx.addIssue so formatIssues
+        surfaces them normally. src/core/tasks/context-bundle.ts passes
+        context_files/write_scope through to the returned bundle as optional
+        contextFiles/writeScope, explicitly disclaiming read-enforcement for
+        context_files in a comment. src/core/tasks/update.ts required one
+        mechanical, disclosed, driver-approved out-of-scope line: making
+        relevant_files optional broke completeTask's spread; fixed with
+        `task.relevant_files ?? []`, no new enforcement logic (that stays T004's
+        job), zero behavior change for any existing task."
+      evidence: "Sub-agent confirmed RED first (7 new combination-rule cases failed
+        for the right reasons; the untouched legacy case stayed green as
+        expected), then 43/43 green. Independently re-verified by the driver:
+        target command `npm test -- tests/unit/schemas.test.ts` 43/43 green;
+        full suite `npm test` 352/352 green; `npm run typecheck` clean; read
+        schemas.ts, context-bundle.ts, and the update.ts diff directly — the
+        update.ts change is exactly the one disclosed line, nothing else. All
+        five real milestones' tasks.yaml (M001-M005, including M005's own
+        completed T001/T002 using plain relevant_files) independently confirmed
+        to still load via loadTasks."
+    attempts: 1
+    usage:
+      total_tokens: 98541
   - id: T004
     objective: "Checkpoint-model revision with corrected materialization semantics:
       usage-add and milestone-confirm --amend (1) validate input, (2) append a

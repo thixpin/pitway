@@ -100,23 +100,79 @@ export const contractFrontmatterSchema = z.strictObject({
   verification: z.array(verificationCheckSchema).min(1),
 });
 
-export const taskSchema = z.strictObject({
-  id: taskId,
-  objective: z.string().min(1),
-  status: taskStatusSchema,
-  depends_on: z.array(taskId),
-  acceptance_criteria: z.array(z.string().min(1)).min(1),
-  relevant_files: z.array(z.string().min(1)),
-  verification: z.strictObject({
-    strategy: z.enum(['tdd', 'command', 'manual', 'review']),
-    detail: z.string().min(1),
-  }),
-  result: z
-    .strictObject({ summary: z.string().min(1), evidence: z.string().min(1) })
-    .nullable(),
-  attempts: z.number().int().nonnegative().optional(),
-  usage: taskUsageSchema,
-});
+// relevant_files (legacy) and the context_files/write_scope pair are two
+// mutually exclusive ways to scope a task; both are schema-optional so a
+// task may declare either style, never both — see the superRefine below for
+// the full five-case combination rule.
+export const taskSchema = z
+  .strictObject({
+    id: taskId,
+    objective: z.string().min(1),
+    status: taskStatusSchema,
+    depends_on: z.array(taskId),
+    acceptance_criteria: z.array(z.string().min(1)).min(1),
+    relevant_files: z.array(z.string().min(1)).optional(),
+    context_files: z.array(z.string().min(1)).optional(),
+    write_scope: z.array(z.string().min(1)).optional(),
+    verification: z.strictObject({
+      strategy: z.enum(['tdd', 'command', 'manual', 'review']),
+      detail: z.string().min(1),
+    }),
+    result: z
+      .strictObject({ summary: z.string().min(1), evidence: z.string().min(1) })
+      .nullable(),
+    attempts: z.number().int().nonnegative().optional(),
+    usage: taskUsageSchema,
+  })
+  .superRefine((task, ctx) => {
+    const hasRelevant = task.relevant_files !== undefined;
+    const hasContext = task.context_files !== undefined;
+    const hasWriteScope = task.write_scope !== undefined;
+
+    if (hasRelevant && (hasContext || hasWriteScope)) {
+      const conflicting = [
+        hasContext ? 'context_files' : null,
+        hasWriteScope ? 'write_scope' : null,
+      ].filter((field): field is string => field !== null);
+      ctx.addIssue({
+        code: 'custom',
+        message: `relevant_files cannot be combined with ${conflicting.join('/')}: ambiguous scope declaration — use one style or the other`,
+        path: ['relevant_files'],
+      });
+      return;
+    }
+
+    if (!hasRelevant && !hasContext && !hasWriteScope) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'one of relevant_files or write_scope must be set',
+        path: ['relevant_files'],
+      });
+      return;
+    }
+
+    if (hasContext && !hasWriteScope) {
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          'context_files alone is incomplete: write_scope must be declared (the write boundary is undefined)',
+        path: ['context_files'],
+      });
+      return;
+    }
+
+    if (hasWriteScope && hasContext) {
+      const contextSet = new Set(task.context_files);
+      const missing = task.write_scope!.filter((path) => !contextSet.has(path));
+      if (missing.length > 0) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `write_scope path(s) not present in context_files: ${missing.join(', ')}`,
+          path: ['write_scope'],
+        });
+      }
+    }
+  });
 
 export const tasksFileSchema = z.strictObject({
   schema_version: schemaVersion,

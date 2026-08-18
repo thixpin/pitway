@@ -8,7 +8,15 @@ export interface TaskContextBundle {
     acceptanceCriteria: ContractFrontmatter['acceptance_criteria'];
   };
   dependencyResults: Array<{ id: string; summary: string | null }>;
-  relevantFiles: string[];
+  // Legacy scoping style: present only for relevant_files-only tasks.
+  relevantFiles?: string[];
+  // New (M005) fields, passed through as-is for the driver's information.
+  // context_files is declarative-only in M005 — nothing in PitWay reads it
+  // to restrict what a worker may read. write_scope is the real write/
+  // completion boundary, but this bundle only surfaces it; enforcement
+  // happens elsewhere in the workflow, not here.
+  contextFiles?: string[];
+  writeScope?: string[];
   verificationInstructions: string;
 }
 
@@ -38,6 +46,8 @@ export function buildTaskContextBundle(
       summary: byId.get(depId)?.result?.summary ?? null,
     })),
     relevantFiles: task.relevant_files,
+    contextFiles: task.context_files,
+    writeScope: task.write_scope,
     verificationInstructions: task.verification.detail,
   };
 }
