@@ -1,0 +1,169 @@
+schema_version: 1
+tasks:
+  - id: T001
+    objective: "pitway verify: hash-gated execution of approved command checks in
+      contract order with trimmed-output evidence, developer recording for
+      manual/review checks (--check --pass|--fail --evidence), append-only
+      timestamped results with latest-per-check authoritative (AC001-AC004)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Hash mismatch refuses before executing or recording anything
+      - Only approved command checks execute; failures recorded, never hidden
+      - Developer recording works for manual/review, refused for command type
+        and unknown ids
+      - Results append-only with timestamps; latest per check authoritative
+    relevant_files:
+      - src/cli/commands/verify.ts
+      - src/core/verification/run.ts
+      - tests/integration/verify.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/verify.test.ts
+    result: null
+    usage: null
+  - id: T002
+    objective: "pitway milestone-complete: refuse unless in_progress with all
+      non-cancelled tasks completed and latest result for every check pass;
+      transition in_progress -> review -> completed in one persisted write,
+      clearing active_milestone to null in state.yaml; resumable completion
+      commit with milestone-only trailer staging exactly the milestone's four
+      files plus state.yaml (AC005-AC007)."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - Refusals name exactly the missing tasks or failing/missing checks
+      - Single persisted status write; active_milestone cleared to null
+      - Exact commit set is the milestone's four files plus state.yaml
+      - Re-entry idempotent/resumes/refuses per completion identity;
+        hook-failure, retry, post-commit interruption tested
+    relevant_files:
+      - src/cli/commands/milestone-complete.ts
+      - src/core/milestones/complete.ts
+      - tests/integration/milestone-complete.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-complete.test.ts
+    result: null
+    usage: null
+  - id: T003
+    objective: pitway usage-add for planning/qa accumulation with a clean-tree
+      preserving ancillary commit, and honest aggregation display in
+      milestone-status (sum of measured task usage plus planning plus qa,
+      unmeasured tasks surfaced as N/A count, never blended or double-counted)
+      (AC008-AC009).
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - usage-add accumulates attempts and token sums; rejects
+        malformed/negative input
+      - Each recording commits exactly the milestone's usage.yaml with a
+        milestone-only trailer via commitOrResume (resumable; unrelated dirty
+        paths refuse the whole operation)
+      - milestone-status shows aggregate with explicit N/A surfacing
+      - No estimation anywhere; null stays null
+    relevant_files:
+      - src/cli/commands/usage-add.ts
+      - src/core/metrics/aggregate.ts
+      - src/cli/commands/milestone-status.ts
+      - tests/integration/usage-add.test.ts
+      - tests/integration/milestone-status.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/usage-add.test.ts
+        tests/integration/milestone-status.test.ts
+    result: null
+    usage: null
+  - id: T004
+    objective: "Dependent auto-promotion: task completion promotes waiting
+      dependents whose dependencies are all completed within the same persisted
+      write and commit; resume reports them ready; readiness scenario assertion
+      updated to the new guarantee (AC010)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Promotion happens in the completion write/commit, not as a separate step
+      - resume reports newly ready dependents
+      - Readiness scenario updated and green
+    relevant_files:
+      - src/core/tasks/update.ts
+      - tests/integration/task-update.test.ts
+      - tests/integration/self-hosting-readiness.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/task-update.test.ts
+        tests/integration/self-hosting-readiness.test.ts
+    result: null
+    usage: null
+  - id: T005
+    objective: "Requirement store refactor: move requirement-artifact I/O (next id
+      computation, read, write) into the state store; milestone creation core
+      retains zero direct filesystem access; behavior unchanged (AC011)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - store.ts owns requirement I/O with unit coverage
+      - create.ts has zero direct fs imports
+      - Existing milestone-add tests green unmodified
+    relevant_files:
+      - src/state/store.ts
+      - src/core/milestones/create.ts
+      - tests/unit/state-store.test.ts
+      - tests/integration/milestone-add.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/state-store.test.ts
+        tests/integration/milestone-add.test.ts
+    result: null
+    usage: null
+  - id: T006
+    objective: "Slugged milestone directories: slug generated once from the title at
+      milestone-add (lowercase, hyphen-collapsed, trimmed, 40-char word
+      boundary, bare-id fallback); canonical bare id everywhere except the
+      directory name; resolution in the state store only, succeeding only on
+      exactly one candidate — zero, multiple slugged, or bare-and-slugged
+      coexisting all refuse naming the candidates; bare directories
+      grandfathered (AC012-AC013)."
+    status: waiting
+    depends_on:
+      - T005
+    acceptance_criteria:
+      - New milestones created under MNNN-<slug>; slug never regenerated
+      - State, frontmatter, deps, trailers, CLI args carry bare ids only
+      - Resolution succeeds only on exactly one candidate; bare+slugged
+        coexistence refuses with a diagnostic naming both — never a silent
+        preference
+      - M001-M004 bare directories keep working unmodified
+    relevant_files:
+      - src/state/store.ts
+      - src/core/milestones/create.ts
+      - tests/integration/milestone-add.test.ts
+      - tests/unit/state-store.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-add.test.ts
+        tests/unit/state-store.test.ts
+    result: null
+    usage: null
+  - id: T007
+    objective: "CLI reachability: register every existing and new command in the
+      program built by buildCli's main entry path so each is reachable through
+      the single pitway entry point; packaging remains deferred (AC015)."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+      - T003
+    acceptance_criteria:
+      - buildCli main path registers all eleven commands
+      - Invoking each through the single entry point works
+      - Existing deps-injection test pattern remains supported
+    relevant_files:
+      - src/cli/index.ts
+      - tests/integration/cli.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/cli.test.ts
+    result: null
+    usage: null
