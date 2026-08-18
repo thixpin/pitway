@@ -81,7 +81,7 @@ tasks:
       milestone-status (sum of measured task usage plus planning plus qa,
       unmeasured tasks surfaced as N/A count, never blended or double-counted)
       (AC008-AC009).
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - usage-add accumulates attempts and token sums; rejects
@@ -101,8 +101,26 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/integration/usage-add.test.ts
         tests/integration/milestone-status.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "Executed by a bounded sub-agent from its task-context bundle.
+        src/core/metrics/aggregate.ts: recordUsage accumulates honestly
+        (attempts +1 per recording, token fields summed, absent-in-both stays
+        absent) and aggregateUsage sums measured task usage plus planning plus
+        qa with explicit unmeasured-task count — null stays null, no estimation,
+        no blending. src/cli/commands/usage-add.ts: strict schema rejects
+        malformed/negative input; each recording commits exactly the milestone's
+        usage.yaml with a PitWay-Milestone-only trailer via commitOrResume
+        (dirty usage.yaml resumes without re-applying the delta; unrelated dirty
+        paths refuse the whole operation). milestone-status extended with
+        aggregate JSON field and human Tokens line (e.g. \"84.2k (2 tasks
+        N/A)\"). Command modules orchestration-only."
+      evidence: Sub-agent confirmed RED (missing usage-add module; 4 new
+        milestone-status aggregation tests failing), then 14/14 task tests green
+        (8 usage-add + 6 milestone-status); driver re-verified 294/294 full
+        suite and clean typecheck.
+    attempts: 1
+    usage:
+      total_tokens: 95892
   - id: T004
     objective: "Dependent auto-promotion: task completion promotes waiting
       dependents whose dependencies are all completed within the same persisted

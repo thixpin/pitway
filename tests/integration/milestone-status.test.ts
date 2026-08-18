@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { saveContract, saveTasks } from '../../src/state/store.js';
+import { saveContract, saveTasks, saveUsage } from '../../src/state/store.js';
 import { buildCli } from '../../src/cli/index.js';
 import { registerMilestoneStatusCommand } from '../../src/cli/commands/milestone-status.js';
 import type { ContractFrontmatter, Task } from '../../src/state/schemas.js';
@@ -56,6 +56,7 @@ beforeEach(() => {
       task({ id: 'T004', status: 'cancelled' }),
     ],
   });
+  saveUsage(root, 'M001', { schema_version: 1, planning: null, qa: null });
 
   writeFileSync(join(root, 'seed.txt'), 'x\n');
   git(['add', 'seed.txt'], root);
@@ -95,5 +96,67 @@ describe('pitway milestone-status', () => {
     expect(output).toContain('Completed');
     expect(output).not.toContain('%');
     expect(output).not.toMatch(/\b\d+%/);
+  });
+});
+
+async function runStatus(args: string[] = []): Promise<string> {
+  const program = buildCli();
+  const lines: string[] = [];
+  registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
+  await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001', ...args]);
+  return lines.join('\n');
+}
+
+describe('pitway milestone-status usage aggregation', () => {
+  it('reports a null aggregate with every task unmeasured when nothing is measured', async () => {
+    const view = JSON.parse(await runStatus(['--json'])) as {
+      aggregate: { totalTokens: number | null; unmeasuredTasks: number };
+    };
+    expect(view.aggregate).toEqual({ totalTokens: null, unmeasuredTasks: 4 });
+    expect(await runStatus()).toContain('Tokens: N/A');
+  });
+
+  it('sums measured task usage plus planning plus qa, surfacing unmeasured tasks as N/A', async () => {
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [
+        task({ id: 'T001', status: 'completed', usage: { total_tokens: 60000 } }),
+        task({ id: 'T002', status: 'in_progress' }),
+        task({ id: 'T003', status: 'waiting' }),
+      ],
+    });
+    saveUsage(root, 'M001', {
+      schema_version: 1,
+      planning: { attempts: 2, total_tokens: 20000 },
+      qa: { attempts: 1, total_tokens: 4200 },
+    });
+
+    const view = JSON.parse(await runStatus(['--json'])) as {
+      aggregate: { totalTokens: number | null; unmeasuredTasks: number };
+    };
+    expect(view.aggregate).toEqual({ totalTokens: 84200, unmeasuredTasks: 2 });
+    expect(await runStatus()).toContain('Tokens: 84.2k (2 tasks N/A)');
+  });
+
+  it('renders small totals unabbreviated with a singular N/A count', async () => {
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [
+        task({ id: 'T001', status: 'completed', usage: { total_tokens: 500 } }),
+        task({ id: 'T002', status: 'completed', usage: { total_tokens: 450 } }),
+        task({ id: 'T003', status: 'waiting' }),
+      ],
+    });
+    expect(await runStatus()).toContain('Tokens: 950 (1 task N/A)');
+  });
+
+  it('omits the N/A suffix when every task is measured', async () => {
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [task({ id: 'T001', status: 'completed', usage: { total_tokens: 84200 } })],
+    });
+    const output = await runStatus();
+    expect(output).toContain('Tokens: 84.2k');
+    expect(output).not.toMatch(/tasks? N\/A/);
   });
 });

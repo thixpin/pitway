@@ -1,6 +1,7 @@
 import type { Command } from 'commander';
-import { loadContract, loadTasks } from '../../state/store.js';
+import { loadContract, loadTasks, loadUsage } from '../../state/store.js';
 import { computeMilestoneProgress, type MilestoneProgress } from '../../core/milestones/progress.js';
+import { aggregateUsage, type UsageAggregate } from '../../core/metrics/aggregate.js';
 import { resolveCommitSha } from '../../git/trailers.js';
 import { renderOutput } from '../output.js';
 import { taskStatusLabel } from '../format.js';
@@ -12,6 +13,7 @@ export interface MilestoneStatusView {
   status: MilestoneStatus;
   progress: MilestoneProgress;
   baselineSha: string | null;
+  aggregate: UsageAggregate;
   tasks: Array<{ id: string; status: TaskStatus }>;
 }
 
@@ -24,8 +26,22 @@ export function buildMilestoneStatusView(root: string, milestoneId: string): Mil
     status: contract.frontmatter.status,
     progress: computeMilestoneProgress(tasksFile.tasks),
     baselineSha: resolveCommitSha(root, { milestone: milestoneId }) ?? null,
+    aggregate: aggregateUsage(tasksFile.tasks, loadUsage(root, milestoneId)),
     tasks: tasksFile.tasks.map((t) => ({ id: t.id, status: t.status })),
   };
+}
+
+const formatTokens = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+
+// AC009: measured and unavailable values are never blended — unmeasured tasks
+// are surfaced as an explicit count, and "N/A" means nothing was measured.
+function renderAggregate(aggregate: UsageAggregate): string {
+  if (aggregate.totalTokens === null) return 'N/A';
+  const suffix =
+    aggregate.unmeasuredTasks > 0
+      ? ` (${aggregate.unmeasuredTasks} task${aggregate.unmeasuredTasks === 1 ? '' : 's'} N/A)`
+      : '';
+  return `${formatTokens(aggregate.totalTokens)}${suffix}`;
 }
 
 export function renderMilestoneStatusHuman(view: MilestoneStatusView): string {
@@ -35,6 +51,7 @@ export function renderMilestoneStatusHuman(view: MilestoneStatusView): string {
     `Status: ${view.status}`,
     `Progress: ${view.progress.completed}/${view.progress.total} required tasks completed`,
     `Baseline: ${view.baselineSha ?? 'N/A'}`,
+    `Tokens: ${renderAggregate(view.aggregate)}`,
     '',
     '🛠 Tasks',
   ];

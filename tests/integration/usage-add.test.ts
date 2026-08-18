@@ -1,0 +1,236 @@
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { buildCli } from '../../src/cli/index.js';
+import { registerUsageAddCommand } from '../../src/cli/commands/usage-add.js';
+import { loadUsage, saveUsage } from '../../src/state/store.js';
+
+function git(args: string[], cwd: string): string {
+  return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
+}
+
+const commitCount = (cwd: string): number => Number(git(['rev-list', '--count', 'HEAD'], cwd).trim());
+const headMessage = (cwd: string): string => git(['log', '-1', '--format=%B'], cwd);
+const headFiles = (cwd: string): string[] =>
+  git(['show', '--name-only', '--format='], cwd)
+    .split('\n')
+    .filter((l) => l.trim().length > 0)
+    .sort();
+
+let root: string;
+
+async function run(args: string[]): Promise<{ lines: string[]; error?: Error }> {
+  const program = buildCli();
+  const lines: string[] = [];
+  registerUsageAddCommand(program, { root, write: (s) => lines.push(s) });
+  try {
+    await program.parseAsync(['node', 'pitway', ...args]);
+    return { lines };
+  } catch (error) {
+    return { lines, error: error as Error };
+  }
+}
+
+function installFailingHook(): string {
+  const hook = join(root, '.git', 'hooks', 'pre-commit');
+  writeFileSync(hook, '#!/bin/sh\nexit 1\n');
+  chmodSync(hook, 0o755);
+  return hook;
+}
+
+beforeEach(() => {
+  root = mkdtempSync(join(tmpdir(), 'pitway-usage-'));
+  git(['init', '-q'], root);
+  git(['config', 'user.email', 'test@example.com'], root);
+  git(['config', 'user.name', 'Test'], root);
+  mkdirSync(join(root, '.pitway', 'milestones', 'M001'), { recursive: true });
+  saveUsage(root, 'M001', { schema_version: 1, planning: null, qa: null });
+  git(['add', '-A'], root);
+  git(['commit', '-q', '-m', 'seed'], root);
+});
+
+afterEach(() => {
+  rmSync(root, { recursive: true, force: true });
+});
+
+describe('pitway usage-add', () => {
+  it('first recording creates attempts 1 with measured tokens and commits exactly usage.yaml', async () => {
+    const { lines, error } = await run([
+      'usage-add',
+      'M001',
+      '--category',
+      'planning',
+      '--usage',
+      '{"input_tokens":100,"output_tokens":50,"total_tokens":150}',
+      '--json',
+    ]);
+    expect(error).toBeUndefined();
+
+    const view = JSON.parse(lines[0]!) as { outcome: string; operation: string };
+    expect(view.outcome).toBe('committed');
+    expect(view.operation).toBe('record');
+
+    const usage = loadUsage(root, 'M001');
+    expect(usage.planning).toEqual({
+      attempts: 1,
+      input_tokens: 100,
+      output_tokens: 50,
+      total_tokens: 150,
+    });
+    expect(usage.qa).toBeNull();
+
+    expect(headFiles(root)).toEqual(['.pitway/milestones/M001/usage.yaml']);
+    const message = headMessage(root);
+    expect(message.startsWith('workflow: record usage for M001')).toBe(true);
+    expect(message).toContain('PitWay-Milestone: M001');
+    expect(message).not.toMatch(/PitWay-Task/);
+    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+  });
+
+  it('subsequent recordings increment attempts once and sum token fields honestly', async () => {
+    await run(['usage-add', 'M001', '--category', 'planning', '--usage', '{"total_tokens":100}']);
+    const { error } = await run([
+      'usage-add',
+      'M001',
+      '--category',
+      'planning',
+      '--usage',
+      '{"input_tokens":30,"total_tokens":50}',
+    ]);
+    expect(error).toBeUndefined();
+
+    // absent+absent stays absent (output_tokens); absent+present is the
+    // present value (input_tokens); present+present sums (total_tokens).
+    expect(loadUsage(root, 'M001').planning).toEqual({
+      attempts: 2,
+      input_tokens: 30,
+      total_tokens: 150,
+    });
+    // Each recording is its own commit; the tree ends clean.
+    expect(commitCount(root)).toBe(3);
+    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+  });
+
+  it('planning and qa accumulate independently', async () => {
+    await run(['usage-add', 'M001', '--category', 'planning', '--usage', '{"total_tokens":100}']);
+    const { error } = await run([
+      'usage-add',
+      'M001',
+      '--category',
+      'qa',
+      '--usage',
+      '{"total_tokens":40}',
+    ]);
+    expect(error).toBeUndefined();
+
+    const usage = loadUsage(root, 'M001');
+    expect(usage.planning).toEqual({ attempts: 1, total_tokens: 100 });
+    expect(usage.qa).toEqual({ attempts: 1, total_tokens: 40 });
+    expect(commitCount(root)).toBe(3);
+  });
+
+  it('rejects malformed, unknown-field, or negative input without writing or committing', async () => {
+    const cases: string[][] = [
+      ['usage-add', 'M001', '--category', 'planning', '--usage', 'not-json'],
+      ['usage-add', 'M001', '--category', 'planning', '--usage', 'null'],
+      ['usage-add', 'M001', '--category', 'planning', '--usage', '{"total_tokens":1,"attempts":1}'],
+      ['usage-add', 'M001', '--category', 'planning', '--usage', '{"total_tokens":-5}'],
+      ['usage-add', 'M001', '--category', 'planning', '--usage', '{"input_tokens":10}'],
+      ['usage-add', 'M001', '--category', 'dev', '--usage', '{"total_tokens":1}'],
+      ['usage-add', 'M001', '--category', 'planning'],
+      ['usage-add', 'M001', '--usage', '{"total_tokens":1}'],
+    ];
+    for (const args of cases) {
+      const { error } = await run(args);
+      expect(error, args.join(' ')).toBeDefined();
+    }
+    expect(loadUsage(root, 'M001')).toEqual({ schema_version: 1, planning: null, qa: null });
+    expect(commitCount(root)).toBe(1);
+    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+  });
+
+  it('fails for a milestone without a usage file', async () => {
+    const { error } = await run([
+      'usage-add',
+      'M999',
+      '--category',
+      'planning',
+      '--usage',
+      '{"total_tokens":1}',
+    ]);
+    expect(error?.message).toMatch(/M999/);
+    expect(commitCount(root)).toBe(1);
+  });
+
+  it('refuses unrelated dirty paths before writing anything', async () => {
+    writeFileSync(join(root, 'wip.txt'), 'wip\n');
+    const { error } = await run([
+      'usage-add',
+      'M001',
+      '--category',
+      'planning',
+      '--usage',
+      '{"total_tokens":100}',
+    ]);
+    expect(error?.message).toMatch(/wip\.txt/);
+    expect(loadUsage(root, 'M001')).toEqual({ schema_version: 1, planning: null, qa: null });
+    expect(git(['diff', '--cached', '--name-only'], root).trim()).toBe('');
+    expect(commitCount(root)).toBe(1);
+  });
+
+  it('resumes a pending usage commit after a hook failure without re-applying the delta', async () => {
+    await run(['usage-add', 'M001', '--category', 'qa', '--usage', '{"total_tokens":100}']);
+    const hook = installFailingHook();
+    const { error } = await run([
+      'usage-add',
+      'M001',
+      '--category',
+      'qa',
+      '--usage',
+      '{"total_tokens":25}',
+    ]);
+    expect(error).toBeDefined();
+    // Local state advanced; only the commit is pending.
+    expect(loadUsage(root, 'M001').qa).toEqual({ attempts: 2, total_tokens: 125 });
+    expect(commitCount(root)).toBe(2);
+
+    rmSync(hook);
+    const { lines, error: retryError } = await run([
+      'usage-add',
+      'M001',
+      '--category',
+      'qa',
+      '--usage',
+      '{"total_tokens":25}',
+      '--json',
+    ]);
+    expect(retryError).toBeUndefined();
+    const view = JSON.parse(lines[0]!) as { operation: string; outcome: string };
+    expect(view.operation).toBe('resume');
+    expect(view.outcome).toBe('committed');
+    // Resume completes the pending commit only — never double-accumulates.
+    expect(loadUsage(root, 'M001').qa).toEqual({ attempts: 2, total_tokens: 125 });
+    expect(commitCount(root)).toBe(3);
+    expect(headFiles(root)).toEqual(['.pitway/milestones/M001/usage.yaml']);
+    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+  });
+
+  it('creates one commit per recording; older usage commits never falsely match', async () => {
+    for (const total of [10, 20, 30]) {
+      const { error } = await run([
+        'usage-add',
+        'M001',
+        '--category',
+        'planning',
+        '--usage',
+        `{"total_tokens":${total}}`,
+      ]);
+      expect(error).toBeUndefined();
+    }
+    expect(loadUsage(root, 'M001').planning).toEqual({ attempts: 3, total_tokens: 60 });
+    expect(commitCount(root)).toBe(4);
+    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+  });
+});
