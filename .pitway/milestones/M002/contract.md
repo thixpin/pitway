@@ -2,7 +2,7 @@
 schema_version: 1
 id: M002
 title: Git module and read-only status commands
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-18T08:43:39Z
 verification_approved_hash: sha256:b01f43cf8cdfb28c39e4d1695c60c3bb2ef861f5ed1c1b6e26e07e2eb729e4d3

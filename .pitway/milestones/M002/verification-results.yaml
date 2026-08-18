@@ -1,2 +1,69 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-18T13:14:31Z
+    evidence: vitest 4/4 passed (tests/unit/git-safety.test.ts)
+    recorded_by: command
+  - check: CT002
+    status: pass
+    at: 2026-08-18T13:14:31Z
+    evidence: vitest 4/4 passed (tests/unit/git-safety.test.ts, non-git-repo case included)
+    recorded_by: command
+  - check: CT003
+    status: pass
+    at: 2026-08-18T13:14:32Z
+    evidence: vitest 9/9 passed (tests/unit/git-commit.test.ts, composer cases)
+    recorded_by: command
+  - check: CT004
+    status: pass
+    at: 2026-08-18T13:14:32Z
+    evidence: vitest 9/9 passed (tests/unit/git-commit.test.ts, createCommit cases)
+    recorded_by: command
+  - check: CT005
+    status: pass
+    at: 2026-08-18T13:14:34Z
+    evidence: vitest 3/3 passed (tests/unit/git-baseline.test.ts)
+    recorded_by: command
+  - check: CT006
+    status: pass
+    at: 2026-08-18T13:14:35Z
+    evidence: vitest 3/3 passed (tests/integration/git-trailers.test.ts)
+    recorded_by: command
+  - check: CT007
+    status: pass
+    at: 2026-08-18T13:14:36Z
+    evidence: vitest 4/4 passed (tests/integration/cli.test.ts)
+    recorded_by: command
+  - check: CT008
+    status: pass
+    at: 2026-08-18T13:14:36Z
+    evidence: vitest 2/2 passed (tests/integration/milestone-status.test.ts)
+    recorded_by: command
+  - check: CT009
+    status: pass
+    at: 2026-08-18T13:14:37Z
+    evidence: vitest 2/2 passed (tests/integration/milestone-list.test.ts)
+    recorded_by: command
+  - check: CT010
+    status: pass
+    at: 2026-08-18T13:14:38Z
+    evidence: vitest 2/2 passed (tests/integration/task-status.test.ts)
+    recorded_by: command
+  - check: CT011
+    status: pass
+    at: 2026-08-18T13:14:38Z
+    evidence: vitest 3/3 passed (tests/integration/resume.test.ts)
+    recorded_by: command
+  - check: CT012
+    status: pass
+    at: 2026-08-18T13:15:10Z
+    evidence: >-
+      grep of src/cli/ for readFileSync/writeFileSync/mkdirSync/execFileSync/
+      child_process finds exactly one match: src/cli/index.ts reading its own
+      package.json for the --version banner (tool metadata, not .pitway/
+      workflow state). All five command modules (milestone-status,
+      milestone-list, task-status, resume, and the shared output/format
+      helpers) perform zero direct fs or git calls; every read routes through
+      src/state/store.ts or src/git/trailers.ts.
+    recorded_by: developer
