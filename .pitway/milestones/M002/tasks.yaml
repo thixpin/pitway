@@ -75,7 +75,7 @@ tasks:
       Scaffold the pitway CLI: commander-based bin entry point and shared
       --json / human-readable output plumbing, with no commands registered
       yet beyond a smoke-testable structure.
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - bin/pitway resolves and runs via the package bin field
@@ -88,7 +88,14 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/cli.test.ts
-    result: null
+    result:
+      summary: >-
+        src/cli/index.ts: commander-based pitway program (name, description,
+        version from package.json), executed directly via Node's built-in
+        TypeScript support (no build step) through package.json's bin field.
+        src/cli/output.ts: renderOutput() shared --json/human formatting, no
+        commands registered yet (out of scope for this task).
+      evidence: TDD RED confirmed, then 4 new tests green (175/175 suite); typecheck clean
     usage: null
   - id: T004
     objective: >-

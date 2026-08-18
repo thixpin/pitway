@@ -4,6 +4,9 @@
   "description": "A controlled workflow for agentic software development.",
   "type": "module",
   "license": "MIT",
+  "bin": {
+    "pitway": "./src/cli/index.ts"
+  },
   "engines": {
     "node": ">=20"
   },
@@ -12,6 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "commander": "15.0.0",
     "yaml": "2.9.0",
     "zod": "4.4.3"
   },
