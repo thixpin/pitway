@@ -5,7 +5,7 @@ title: Verification, completion, and usage accounting
 status: in_progress
 requirement: null
 confirmed_at: 2026-08-18T14:39:30Z
-verification_approved_hash: sha256:eb9904cc54e4adcef1b204cc03fc651fa4f47e1dbf30328844537f7184a997ae
+verification_approved_hash: sha256:12411c2658d555bc7acec526240f7252c26a0e3fa2a3c58f5ad56a885af147e5
 acceptance_criteria:
   - id: AC001
     text: pitway verify recomputes the verification hash first; a mismatch with the
@@ -60,9 +60,11 @@ acceptance_criteria:
   - id: AC010
     text: Task completion auto-promotes dependent tasks whose dependencies are now
       all completed (waiting -> ready via the existing resolver) within the same
-      persisted write and commit; resume then reports them ready; the
-      self-hosting readiness scenario's assertion is updated to this new
-      guarantee.
+      persisted write and commit; resume then reports them ready. When any task
+      is in_progress, resume reports that task as the continuation target and
+      recommends no ready task; ready-task selection (lowest id) applies only
+      when no task is in_progress. The self-hosting readiness scenario's
+      assertion is updated to these guarantees.
   - id: AC011
     text: Requirement-artifact I/O moves into the state store; the milestone
       creation core retains zero direct filesystem access; existing
@@ -138,6 +140,7 @@ verification:
     criterion: AC010
     type: command
     command: npm test -- tests/integration/task-update.test.ts
+      tests/integration/resume.test.ts
       tests/integration/self-hosting-readiness.test.ts
   - id: CT011
     criterion: AC011
@@ -227,3 +230,7 @@ implements demonstrates full lifecycle self-hosting.
   store fs debt, deferred slug design.
 
 ## Change Log
+
+- 2026-08-18 — Amended AC010/CT010/T004: resume prioritizes an in_progress
+  task as the continuation target; ready-task selection applies only when
+  none is in progress. Developer-requested during T003 review.
