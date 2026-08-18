@@ -1,0 +1,155 @@
+import { commitOrResume } from '../../git/commit-or-resume.js';
+import { git } from '../../git/exec.js';
+import { checkWorkingTreeClean } from '../../git/safety.js';
+import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
+import { parseContractFile } from '../../state/contract-file.js';
+import {
+  loadContract,
+  loadState,
+  loadTasks,
+  loadVerificationResults,
+  saveContract,
+  saveState,
+} from '../../state/store.js';
+import type { ContractFile } from '../../state/contract-file.js';
+import { transitionMilestone } from './state-machine.js';
+
+export class MilestoneCompleteError extends Error {}
+
+export interface MilestoneCompleteView {
+  id: string;
+  outcome: 'committed' | 'already-committed';
+  commit: string;
+}
+
+const contractRepoPath = (milestoneId: string): string =>
+  `.pitway/milestones/${milestoneId}/contract.md`;
+
+// AC006 completion set: the milestone's own four files plus state.yaml
+// (subset check — clean entries are fine; anything else dirty refuses).
+const completionPaths = (milestoneId: string): string[] => [
+  contractRepoPath(milestoneId),
+  `.pitway/milestones/${milestoneId}/tasks.yaml`,
+  `.pitway/milestones/${milestoneId}/verification-results.yaml`,
+  `.pitway/milestones/${milestoneId}/usage.yaml`,
+  '.pitway/state.yaml',
+];
+
+// AC007 completion identity: a completion-subject candidate whose committed
+// contract.md shows status completed.
+function findCompletionCommit(root: string, milestoneId: string): string | undefined {
+  const sha = resolveCommitSha(root, {
+    milestone: milestoneId,
+    messagePrefix: `workflow: complete milestone ${milestoneId}`,
+  });
+  if (sha === undefined) return undefined;
+  const committed = parseContractFile(git(['show', `${sha}:${contractRepoPath(milestoneId)}`], root));
+  return committed.frontmatter.status === 'completed' ? sha : undefined;
+}
+
+// AC005: every non-cancelled task completed and the latest result for every
+// check pass — diagnostics name exactly what is missing.
+function assertGatesSatisfied(root: string, milestoneId: string, contract: ContractFile): void {
+  const incompleteTasks = loadTasks(root, milestoneId)
+    .tasks.filter((t) => t.status !== 'cancelled' && t.status !== 'completed')
+    .map((t) => `${t.id} (${t.status})`);
+
+  const latest = new Map<string, 'pass' | 'fail'>();
+  for (const result of loadVerificationResults(root, milestoneId).results) {
+    latest.set(result.check, result.status);
+  }
+  const missingChecks: string[] = [];
+  const failingChecks: string[] = [];
+  for (const check of contract.frontmatter.verification) {
+    const status = latest.get(check.id);
+    if (status === undefined) missingChecks.push(check.id);
+    else if (status !== 'pass') failingChecks.push(check.id);
+  }
+
+  const problems: string[] = [];
+  if (incompleteTasks.length > 0) problems.push(`tasks not completed: ${incompleteTasks.join(', ')}`);
+  if (missingChecks.length > 0) {
+    problems.push(`checks with no recorded result: ${missingChecks.join(', ')}`);
+  }
+  if (failingChecks.length > 0) {
+    problems.push(`checks whose latest result is fail: ${failingChecks.join(', ')}`);
+  }
+  if (problems.length > 0) {
+    throw new MilestoneCompleteError(`cannot complete ${milestoneId}: ${problems.join('; ')}`);
+  }
+}
+
+// Refuses before anything is written or staged.
+function assertNoUnexpectedDirtyPaths(root: string, expectedPaths: string[]): void {
+  const expected = new Set(expectedPaths);
+  const unexpected = checkWorkingTreeClean(root).dirtyPaths.filter((p) => !expected.has(p));
+  if (unexpected.length > 0) {
+    throw new MilestoneCompleteError(
+      `cannot safely proceed: unrelated dirty changes present: ${unexpected.join(', ')}`,
+    );
+  }
+}
+
+// AC006: clears active_milestone only if it currently points at this
+// milestone; idempotent on re-entry.
+function clearActiveMilestone(root: string, milestoneId: string): void {
+  const state = loadState(root);
+  if (state.active_milestone === milestoneId) {
+    saveState(root, { ...state, active_milestone: null });
+  }
+}
+
+function createCompletionCommit(root: string, milestoneId: string): MilestoneCompleteView {
+  const result = commitOrResume(root, {
+    expectedPaths: completionPaths(milestoneId),
+    findExistingCommit: () => findCompletionCommit(root, milestoneId),
+    localStateAdvanced: true,
+    message: composeMessage(`workflow: complete milestone ${milestoneId}`, {
+      'PitWay-Milestone': milestoneId,
+    }),
+  });
+  return { id: milestoneId, outcome: result.outcome, commit: result.sha };
+}
+
+export function completeMilestone(root: string, milestoneId: string): MilestoneCompleteView {
+  const contract = loadContract(root, milestoneId);
+  const { status } = contract.frontmatter;
+
+  if (status === 'in_progress') {
+    const existing = findCompletionCommit(root, milestoneId);
+    if (existing !== undefined) {
+      throw new MilestoneCompleteError(
+        `ambiguous state: completion commit ${existing} already exists but ${milestoneId} is ` +
+          `still in_progress; inspect manually`,
+      );
+    }
+    assertGatesSatisfied(root, milestoneId, contract);
+    assertNoUnexpectedDirtyPaths(root, completionPaths(milestoneId));
+
+    // One persisted status write: in_progress -> review -> completed collapsed.
+    const finalStatus = transitionMilestone(transitionMilestone(status, 'review'), 'completed');
+    saveContract(root, milestoneId, {
+      frontmatter: { ...contract.frontmatter, status: finalStatus },
+      body: contract.body,
+    });
+    clearActiveMilestone(root, milestoneId);
+    return createCompletionCommit(root, milestoneId);
+  }
+
+  if (status === 'completed') {
+    // AC007 resume path: local state already advanced past the completion write.
+    const existing = findCompletionCommit(root, milestoneId);
+    if (existing !== undefined) {
+      return { id: milestoneId, outcome: 'already-committed', commit: existing };
+    }
+    assertNoUnexpectedDirtyPaths(root, completionPaths(milestoneId));
+    // Re-apply the (idempotent) state clear in case the write was interrupted.
+    clearActiveMilestone(root, milestoneId);
+    return createCompletionCommit(root, milestoneId);
+  }
+
+  throw new MilestoneCompleteError(
+    `cannot complete ${milestoneId} in status "${status}"; milestone-complete requires an ` +
+      `in_progress milestone`,
+  );
+}

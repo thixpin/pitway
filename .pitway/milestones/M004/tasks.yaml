@@ -43,7 +43,7 @@ tasks:
       clearing active_milestone to null in state.yaml; resumable completion
       commit with milestone-only trailer staging exactly the milestone's four
       files plus state.yaml (AC005-AC007)."
-    status: waiting
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -59,8 +59,22 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-complete.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "Executed by a bounded sub-agent from its task-context bundle.
+        src/core/milestones/complete.ts: completeMilestone — gates (in_progress,
+        all non-cancelled tasks completed, latest result per check pass) with
+        exact-naming diagnostics; single persisted write collapsing
+        in_progress->review->completed; clears active_milestone when pointing at
+        the milestone; commitOrResume with the four files + state.yaml and
+        completion-specific identity (git show contract status). CLI module
+        orchestration-only."
+      evidence: Sub-agent confirmed RED, then 14/14 task tests green incl. gates,
+        exact commit set, hook-failure resume, idempotent re-entry, ambiguity
+        refusal; driver re-verified 282/282 full suite, clean typecheck, clean
+        CLI-module grep
+    attempts: 1
+    usage:
+      total_tokens: 83272
   - id: T003
     objective: pitway usage-add for planning/qa accumulation with a clean-tree
       preserving ancillary commit, and honest aggregation display in
