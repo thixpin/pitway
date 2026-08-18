@@ -5,7 +5,7 @@ title: Verification, completion, and usage accounting
 status: in_progress
 requirement: null
 confirmed_at: 2026-08-18T14:39:30Z
-verification_approved_hash: sha256:57ff2adf41f6331c64ad427f0e3fbadf02c8bec7461ab6540d8c3fbbeb23d772
+verification_approved_hash: sha256:083090de621aee7d36cbbd72a5d6f8e749c140b96aa3e26529a15258ff21dd57
 acceptance_criteria:
   - id: AC001
     text: pitway verify recomputes the verification hash first; a mismatch with the
@@ -70,13 +70,21 @@ acceptance_criteria:
       creation core retains zero direct filesystem access; existing
       milestone-add behavior is unchanged and the full suite stays green.
   - id: AC014
-    text: "Self-hosting evidence, pre-completion scope: M004 was created, confirmed,
-      executed, and verified through pitway commands — its baseline commit and
-      every task commit in this repository carry PitWay-written trailers with no
-      direct edits to authoritative .pitway/ state. The completion commit itself
-      is audited after completion (it cannot gate the completion that creates
-      it); that post-completion audit is recorded as follow-up evidence, not as
-      a completion precondition."
+    text: "Self-hosting evidence, pre-completion scope: M004 crossed the
+      self-hosting boundary — created, confirmed, executed, and verified through
+      pitway commands — with one disclosed exception: commit 179491c
+      (\"workflow: update M004 T004 for resume-priority amendment\") directly
+      hand-edited T004's authoritative task definition in tasks.yaml because no
+      supported task-amendment command existed at that point in M004's history.
+      Every other commit in the milestone's range — the baseline commit and
+      every task-completion commit — carries PitWay-written trailers matching a
+      real command's commit shape, with no other direct edits to authoritative
+      .pitway/ state. M004 is not claimed as fully self-hosted end-to-end; it is
+      a self-hosting-boundary crossing with this one disclosed manual
+      task-definition amendment. The completion commit itself is audited after
+      completion (it cannot gate the completion that creates it); that
+      post-completion audit is recorded as follow-up evidence, not as a
+      completion precondition."
   - id: AC015
     text: Every command — existing (milestone-status, milestone-list, task-status,
       resume, init, milestone-add, milestone-confirm, task-update) and new
@@ -135,12 +143,19 @@ verification:
   - id: CT014
     criterion: AC014
     type: review
-    instruction: "Before completion, review this repository's git history to confirm
-      M004's baseline commit (\"workflow: add milestone M004\", PitWay-Milestone
-      trailer only) and every task commit (both trailers) were produced by
-      pitway commands, and that no commit in the milestone's range hand-edits
-      authoritative .pitway/ state outside those commands. The completion commit
-      is audited separately after completion and recorded as follow-up
+    instruction: "Before completion, review this repository's full M004 commit range
+      (baseline through the latest task/amend commits) to confirm: the baseline
+      commit (\"workflow: add milestone M004\", PitWay-Milestone trailer only)
+      and every task-completion commit (feat(...)-prefixed, both
+      PitWay-Milestone and PitWay-Task trailers) match a real pitway command's
+      commit shape; both milestone-confirm --amend commits (\"workflow: amend
+      milestone M004\", PitWay-Milestone trailer only) touch only contract.md.
+      Explicitly detect and report commit 179491c (\"workflow: update M004 T004
+      for resume-priority amendment\") as the single known exception — a direct
+      hand-edit of tasks.yaml with no matching command, disclosed rather than
+      hidden. Confirm no other commit in the range hand-edits authoritative
+      .pitway/ state outside a real command's shape. The completion commit
+      itself is audited separately after completion and recorded as follow-up
       evidence."
   - id: CT015
     criterion: AC015
@@ -233,3 +248,23 @@ implements demonstrates full lifecycle self-hosting.
   of change safe. T006 itself is cancelled via task-update (not deleted or
   hand-edited) once this amendment is committed. Developer-approved
   2026-08-18.
+- 2026-08-19 — Amended AC014/CT014: the CT014 review (performed while
+  preparing to complete M004) found that this same task-scope-amendment
+  gap had already been worked around once earlier in M004's own history —
+  commit 179491c ("workflow: update M004 T004 for resume-priority
+  amendment") directly hand-edited T004's task definition in tasks.yaml,
+  with no supported command to do so at the time, committed with a
+  PitWay-Milestone trailer that mimics but does not match any real
+  command's commit shape. This directly contradicted AC014's original
+  unqualified "no direct edits to authoritative .pitway/ state" claim.
+  Per developer direction: 179491c is preserved as-is (history is not
+  rewritten); AC014 is amended to disclose it explicitly by name rather
+  than claim M004 as fully self-hosted end-to-end — M004 crossed the
+  self-hosting boundary with this one disclosed manual task-definition
+  amendment; CT014 is amended to explicitly detect and report 179491c as
+  the single known exception on every review, not just note its absence.
+  This is the same root-cause gap as the T006 deferral above (no
+  validated task-definition/scope amendment command) — the M005 durable
+  fix (validated, auditable task-definition amendment command with
+  Change Log recording and resumable operation identity) now closes both
+  occurrences, not just the T006 one. Developer-approved 2026-08-19.
