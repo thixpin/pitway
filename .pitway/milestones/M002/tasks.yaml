@@ -171,7 +171,7 @@ tasks:
       Implement pitway resume: reconstruct the full workflow picture from
       .pitway/ alone (active milestone, contract status, task states,
       ready/waiting/blocked tasks, recommended next task).
-    status: waiting
+    status: completed
     depends_on:
       - T003
       - T004
@@ -186,5 +186,14 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/resume.test.ts
-    result: null
+    result:
+      summary: >-
+        src/cli/commands/resume.ts: buildResumeView reads only .pitway/
+        (state.yaml -> contract -> tasks), reports ready/waiting/blocked id
+        lists and picks the lexicographically-lowest ready task id as
+        nextTask (fixed-width TNNN ids, so string sort matches numeric
+        order) — deterministic tie-break, proven independent of declared
+        task order in the test fixture. Gracefully reports a null-active
+        view when no milestone is active, rather than throwing.
+      evidence: TDD RED confirmed, then 3 new tests green (184/184 suite); typecheck clean
     usage: null
