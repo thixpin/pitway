@@ -196,7 +196,7 @@ tasks:
       Self-hosting readiness scenario (end-to-end in a real temp repo, incl.
       --requirement variant and dirty-injection refusals at all three git
       boundaries) and the CT020 thin-CLI layering review (AC020-AC021).
-    status: waiting
+    status: completed
     depends_on:
       - T002
       - T003
@@ -211,5 +211,22 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/self-hosting-readiness.test.ts
-    result: null
-    usage: null
+    result:
+      summary: >-
+        Sub-agent implemented the AC021 end-to-end scenario (8 tests): full
+        init -> milestone-add (--requirement) -> milestone-confirm (exact
+        7-file baseline, milestone-only trailer) -> task lifecycle with
+        dual-trailer completion commit -> resume reconstruction, plus
+        dirty-injection refusals at all three git boundaries proving
+        non-destructive behavior. Documented finding: completion does not
+        auto-promote dependents — promotion is an explicit task-update
+        ready step; resume reports dependents as waiting until then.
+        Driver performed the CT020 review: zero fs/child_process in all
+        four command modules.
+      evidence: >-
+        8/8 scenario tests green on first run (exercises existing
+        commands); driver re-verified 254/254 full suite, clean typecheck,
+        and the CT020 grep
+    attempts: 1
+    usage:
+      total_tokens: 63183
