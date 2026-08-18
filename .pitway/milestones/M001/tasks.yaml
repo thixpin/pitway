@@ -116,7 +116,7 @@ tasks:
       Implement dependency resolution: promote waiting tasks to ready when all
       depends_on tasks are completed; detect cycles and unknown dependency
       references with explicit errors.
-    status: waiting
+    status: completed
     depends_on:
       - T002
       - T004
@@ -130,5 +130,11 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/unit/dependencies.test.ts
-    result: null
+    result:
+      summary: >-
+        src/core/tasks/dependencies.ts: pure resolveReadyTasks() promoting
+        waiting tasks to ready only when all dependencies are completed, with
+        DFS-based cycle detection (names the cycle) and unknown-reference
+        checks (names the missing task).
+      evidence: TDD RED confirmed, then all cases green (152/152 suite); typecheck clean
     usage: null
