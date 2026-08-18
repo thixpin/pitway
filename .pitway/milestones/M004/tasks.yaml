@@ -122,23 +122,32 @@ tasks:
     usage:
       total_tokens: 95892
   - id: T004
-    objective: "Dependent auto-promotion: task completion promotes waiting
-      dependents whose dependencies are all completed within the same persisted
-      write and commit; resume reports them ready; readiness scenario assertion
-      updated to the new guarantee (AC010)."
+    objective: "Dependent auto-promotion and resume continuation: task completion
+      promotes waiting dependents whose dependencies are all completed within the
+      same persisted write and commit; resume reports them ready, reports any
+      in_progress task as the continuation target with no ready-task
+      recommendation, and recommends the lowest ready id only when no task is
+      in_progress; readiness scenario assertion updated to the new guarantees
+      (AC010)."
     status: ready
     depends_on: []
     acceptance_criteria:
       - Promotion happens in the completion write/commit, not as a separate step
       - resume reports newly ready dependents
+      - resume reports an in_progress task as the continuation target and
+        suppresses the ready-task recommendation
+      - Lowest-ready-id selection applies only when no task is in_progress
       - Readiness scenario updated and green
     relevant_files:
       - src/core/tasks/update.ts
+      - src/cli/commands/resume.ts
       - tests/integration/task-update.test.ts
+      - tests/integration/resume.test.ts
       - tests/integration/self-hosting-readiness.test.ts
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/task-update.test.ts
+        tests/integration/resume.test.ts
         tests/integration/self-hosting-readiness.test.ts
     result: null
     usage: null
