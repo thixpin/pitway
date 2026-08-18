@@ -89,7 +89,7 @@ tasks:
       Implement the task and milestone state machines as pure functions
       permitting exactly the approved transitions and rejecting all others
       with errors naming the allowed target states.
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -104,7 +104,12 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/unit/task-state.test.ts tests/unit/milestone-state.test.ts
-    result: null
+    result:
+      summary: >-
+        src/core/tasks/state-machine.ts + src/core/milestones/state-machine.ts:
+        pure transition tables matching the approved state machines exactly,
+        with errors naming the allowed target states.
+      evidence: TDD RED confirmed, then all legal + illegal transitions green (146/146 suite); typecheck clean
     usage: null
   - id: T005
     objective: >-
