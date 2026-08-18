@@ -71,7 +71,7 @@ tasks:
       with optional requirement artifact, state.yaml registration last,
       sequential-active-milestone guard, interrupted-add detection
       (AC005-AC008).
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Full input validation before any write; failures leave .pitway/ unchanged
@@ -85,8 +85,23 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-add.test.ts
-    result: null
-    usage: null
+    result:
+      summary: >-
+        Executed by a bounded sub-agent from its task-context bundle.
+        src/core/milestones/create.ts: createMilestone validates everything
+        before any write (schemas, CT-to-AC refs, dependency refs/cycles via
+        resolveReadyTasks), assigns next Mnnn/Rnnn ids, forces draft/planned,
+        writes milestone files first and registers state.yaml last; refuses
+        non-terminal active milestone and unregistered next-id directory.
+        src/cli/commands/milestone-add.ts is orchestration-only (zero fs).
+        Noted layering debt: core uses direct fs for the requirements
+        artifact because store.ts has no requirement functions.
+      evidence: >-
+        Sub-agent confirmed RED, then 6/6 task tests green; driver
+        independently re-verified 205/205 full suite and clean typecheck
+    usage:
+      attempts: 1
+      total_tokens: 47403
   - id: T004
     objective: >-
       pitway milestone-confirm including --amend and resumable re-entry with

@@ -1,0 +1,153 @@
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { parse } from 'yaml';
+import {
+  loadContract,
+  loadState,
+  saveContract,
+  saveState,
+  saveTasks,
+  saveUsage,
+  saveVerificationResults,
+} from '../../state/store.js';
+import { tasksFileSchema, type PitwayState, type TasksFile } from '../../state/schemas.js';
+import { formatIssues, parseContractFile, type ContractFile } from '../../state/contract-file.js';
+import { resolveReadyTasks } from '../tasks/dependencies.js';
+
+export class MilestoneAddError extends Error {}
+
+export interface MilestoneAddInputs {
+  contractPath: string;
+  tasksPath: string;
+  requirementPath?: string;
+}
+
+export interface MilestoneAddView {
+  id: string;
+  title: string;
+  requirement: string | null;
+}
+
+const formatId = (prefix: string, n: number): string => `${prefix}${String(n).padStart(3, '0')}`;
+
+function nextMilestoneId(milestones: string[]): string {
+  const max = milestones.reduce((acc, id) => Math.max(acc, Number(id.slice(1))), 0);
+  return formatId('M', max + 1);
+}
+
+function nextRequirementId(root: string): string {
+  let entries: string[];
+  try {
+    entries = readdirSync(join(root, '.pitway', 'requirements'));
+  } catch {
+    entries = [];
+  }
+  const max = entries.reduce((acc, name) => {
+    const match = /^R(\d{3})\.md$/.exec(name);
+    return match ? Math.max(acc, Number(match[1])) : acc;
+  }, 0);
+  return formatId('R', max + 1);
+}
+
+function readInput(path: string, label: string): string {
+  try {
+    return readFileSync(path, 'utf8');
+  } catch (error) {
+    throw new MilestoneAddError(`cannot read ${label} file ${path}: ${(error as Error).message}`);
+  }
+}
+
+function parseContractInput(path: string): ContractFile {
+  const text = readInput(path, 'contract');
+  try {
+    return parseContractFile(text);
+  } catch (error) {
+    throw new MilestoneAddError(`invalid contract ${path}: ${(error as Error).message}`);
+  }
+}
+
+function parseTasksInput(path: string): TasksFile {
+  const text = readInput(path, 'tasks');
+  let data: unknown;
+  try {
+    data = parse(text);
+  } catch (error) {
+    throw new MilestoneAddError(`malformed YAML in ${path}: ${(error as Error).message}`);
+  }
+  const result = tasksFileSchema.safeParse(data);
+  if (!result.success) {
+    throw new MilestoneAddError(`invalid tasks ${path}: ${formatIssues(result.error)}`);
+  }
+  return result.data;
+}
+
+function checkCriterionReferences(contract: ContractFile): void {
+  const known = new Set(contract.frontmatter.acceptance_criteria.map((c) => c.id));
+  for (const check of contract.frontmatter.verification) {
+    if (!known.has(check.criterion)) {
+      throw new MilestoneAddError(
+        `verification check ${check.id} references unknown criterion ${check.criterion}`,
+      );
+    }
+  }
+}
+
+function assertActiveMilestoneTerminal(root: string, state: PitwayState): void {
+  if (state.active_milestone === null) return;
+  const status = loadContract(root, state.active_milestone).frontmatter.status;
+  if (status !== 'completed' && status !== 'cancelled') {
+    throw new MilestoneAddError(
+      `cannot add a milestone while ${state.active_milestone} is active (status: ${status}); ` +
+        `complete or cancel it first`,
+    );
+  }
+}
+
+export function createMilestone(root: string, inputs: MilestoneAddInputs): MilestoneAddView {
+  const state = loadState(root);
+  assertActiveMilestoneTerminal(root, state);
+
+  const id = nextMilestoneId(state.milestones);
+  if (existsSync(join(root, '.pitway', 'milestones', id))) {
+    throw new MilestoneAddError(
+      `.pitway/milestones/${id} already exists but is not registered in state.yaml; ` +
+        `a previous milestone-add may have been interrupted — inspect and reconcile manually`,
+    );
+  }
+
+  const contract = parseContractInput(inputs.contractPath);
+  checkCriterionReferences(contract);
+  const tasksInput = parseTasksInput(inputs.tasksPath);
+  resolveReadyTasks(tasksInput.tasks);
+  const requirementText =
+    inputs.requirementPath === undefined ? null : readInput(inputs.requirementPath, 'requirement');
+
+  let requirementId: string | null = null;
+  if (requirementText !== null) {
+    requirementId = nextRequirementId(root);
+    const requirementsDir = join(root, '.pitway', 'requirements');
+    mkdirSync(requirementsDir, { recursive: true });
+    writeFileSync(join(requirementsDir, `${requirementId}.md`), requirementText);
+  }
+
+  saveContract(root, id, {
+    frontmatter: {
+      ...contract.frontmatter,
+      id,
+      status: 'draft',
+      requirement: requirementId,
+      confirmed_at: null,
+      verification_approved_hash: null,
+    },
+    body: contract.body,
+  });
+  saveTasks(root, id, {
+    schema_version: tasksInput.schema_version,
+    tasks: tasksInput.tasks.map((t) => ({ ...t, status: 'planned', result: null, usage: null })),
+  });
+  saveVerificationResults(root, id, { schema_version: 1, results: [] });
+  saveUsage(root, id, { schema_version: 1, planning: null, qa: null });
+  saveState(root, { ...state, active_milestone: id, milestones: [...state.milestones, id] });
+
+  return { id, title: contract.frontmatter.title, requirement: requirementId };
+}
