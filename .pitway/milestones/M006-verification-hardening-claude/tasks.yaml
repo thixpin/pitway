@@ -471,7 +471,7 @@ tasks:
       delivery table, and M006-M011 roadmap section accurately describe the
       repository's actual state as of M006's completion; correct any discovered
       drift through this task."
-    status: ready
+    status: completed
     depends_on:
       - T003
       - T004
@@ -489,5 +489,20 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review per CT-review instruction
-    result: null
+    result:
+      summary: "[truncated] uidance-only, corrected auto-run to a real CLI command not
+        integration-layer-writes-state-directly, added the honest raw-vs-per-AC
+        token comparison); final Status line (M006's real state, both hotfix
+        commits named, pointer to .git/pitway/m006-report-notes.md, next step ->
+        M007 drafting)."
+      evidence: Full document read end-to-end before and after editing to confirm
+        internal consistency (asset counts, command counts, and cross-references
+        all verified against the real repository state via direct commands --
+        find src/integrations/claude -type f | wc -l = 20, not the 18 initially
+        assumed, caught and corrected before completion). Diff scoped to exactly
+        IMPLEMENTATION_PLAN.md (the sole declared write_scope file). No test
+        suite run (docs-only change, task's own verification strategy is
+        manual/developer-review, not tdd) -- consistent with M005/T009's
+        identical precedent.
+    attempts: 1
     usage: null
