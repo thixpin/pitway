@@ -173,6 +173,33 @@ describe('pitway init Claude Code asset installation (AC003)', () => {
     expect(existsSync(join(root, '.claude', shipped[0]!))).toBe(false);
   });
 
+  // T005/AC010: the last asset-creating task in this milestone -- proves
+  // init installs the COMPLETE current set of source .md files, including
+  // auto-run.md and interactive-ux.md added by this very task, not merely
+  // whatever subset existed when the installer/glob was first written.
+  // Independently re-implements the recursive .md scan (via
+  // listFilesRecursive, already used above against .claude/) directly
+  // against the source tree, rather than delegating to listClaudeAssets()
+  // -- so this doesn't just restate the installer's own idea of what's
+  // shipped, it re-derives it from disk.
+  it('installs the complete current asset set, including this task\'s own new files (AC010)', async () => {
+    const sourceRoot = new URL('../../src/integrations/claude/', import.meta.url);
+    const actualAssets = listFilesRecursive(sourceRoot.pathname);
+
+    expect(actualAssets).toContain(join('commands', 'auto-run.md'));
+    expect(actualAssets).toContain('interactive-ux.md');
+
+    const { error } = await runInit(root);
+    expect(error).toBeUndefined();
+    const installed = listFilesRecursive(join(root, '.claude'));
+    expect(installed).toEqual(actualAssets);
+    for (const asset of actualAssets) {
+      expect(readFileSync(join(root, '.claude', asset), 'utf8')).toBe(
+        readFileSync(new URL(`../../src/integrations/claude/${asset}`, import.meta.url), 'utf8'),
+      );
+    }
+  });
+
   it('never inspects or disturbs unrelated files already under .claude/', async () => {
     mkdirSync(join(root, '.claude'), { recursive: true });
     writeFileSync(join(root, '.claude', 'settings.json'), '{"unrelated": true}\n');

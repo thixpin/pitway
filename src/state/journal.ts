@@ -45,9 +45,27 @@ export const journalCheckpointSchema = z.strictObject({
   commitSha: z.string().min(1),
 });
 
+// Sibling third member of the discriminated union (M005 T005): records an
+// auto-run authorization decision. Never referenced by a checkpoint marker
+// -- there is no target state file for one to check against -- and never
+// folded into a commit. `action: 'enable'` is never a 4th value of
+// journalOperationTypeSchema's operation-type enum; it's a field on a wholly
+// separate top-level `kind`. `hash` records the milestone's
+// verification_approved_hash at the moment of an `enable`; a `disable`
+// record carries no hash. See src/core/journal/auto-run.ts's
+// isAutoRunAuthorized for how authorization is derived, purely, from these
+// records' position in the existing log order.
+export const journalAutoRunSchema = z.strictObject({
+  kind: z.literal('auto_run'),
+  milestone: journalMilestoneId,
+  action: z.enum(['enable', 'disable']),
+  hash: z.string().min(1).optional(),
+});
+
 export const journalRecordSchema = z.discriminatedUnion('kind', [
   journalEntrySchema,
   journalCheckpointSchema,
+  journalAutoRunSchema,
 ]);
 
 export const journalFileSchema = z.strictObject({
@@ -58,6 +76,7 @@ export const journalFileSchema = z.strictObject({
 export type JournalOperationType = z.infer<typeof journalOperationTypeSchema>;
 export type JournalEntry = z.infer<typeof journalEntrySchema>;
 export type JournalCheckpoint = z.infer<typeof journalCheckpointSchema>;
+export type JournalAutoRun = z.infer<typeof journalAutoRunSchema>;
 export type JournalRecord = z.infer<typeof journalRecordSchema>;
 export type JournalFile = z.infer<typeof journalFileSchema>;
 
@@ -127,6 +146,25 @@ export function appendCheckpointMarker(
   }
   saveJournalFile(cwd, result.data);
   return record;
+}
+
+// Appends an auto_run authorization record -- enable or disable -- as a
+// sibling record kind, never a checkpoint-eligible entry. Idempotency and
+// authorization derivation are the caller's job (isAutoRunAuthorized in
+// src/core/journal/auto-run.ts, a pure function over already-read records);
+// this function only ever appends what it's given.
+export function appendAutoRunRecord(
+  cwd: string,
+  record: Omit<JournalAutoRun, 'kind'>,
+): JournalAutoRun {
+  const file = loadJournalFile(cwd);
+  const full: JournalAutoRun = { kind: 'auto_run', ...record };
+  const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
+  if (!result.success) {
+    throw new JournalError(`refusing to append invalid auto_run record: ${formatIssues(result.error)}`);
+  }
+  saveJournalFile(cwd, result.data);
+  return full;
 }
 
 // HEAD carries the PitWay-Milestone trailer this milestone would produce on

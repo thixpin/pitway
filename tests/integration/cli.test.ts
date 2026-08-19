@@ -10,6 +10,7 @@ const pkg = JSON.parse(
 ) as { version: string };
 
 const ALL_COMMAND_NAMES = [
+  'auto-run',
   'init',
   'milestone-add',
   'milestone-complete',
@@ -59,7 +60,7 @@ describe('pitway bin entry point', () => {
 });
 
 describe('registerAllCommands', () => {
-  it('registers all 13 commands on a fresh buildCli() program', () => {
+  it('registers all 14 commands on a fresh buildCli() program', () => {
     const program = buildCli();
     registerAllCommands(program, {});
     expect(program.commands.map((c) => c.name()).sort()).toEqual(ALL_COMMAND_NAMES);
@@ -72,6 +73,22 @@ describe('registerAllCommands', () => {
       registerAllCommands(program, {});
       await expect(program.parseAsync(['node', 'pitway', name, '--help'])).rejects.toThrow();
       expect(lines.join('')).toContain(name);
+    },
+  );
+
+  // auto-run's subcommands nest under the top-level 'auto-run' entry rather
+  // than registering their own top-level program.commands entries, so
+  // program.commands only ever gains ONE new entry for auto-run itself --
+  // each subcommand needs its own explicit reachability coverage here.
+  it.each(['enable', 'disable', 'status'])(
+    'the real entry-point construction registers "auto-run %s" and it responds to --help',
+    async (subcommand) => {
+      const { program, lines } = captureProgram();
+      registerAllCommands(program, {});
+      await expect(
+        program.parseAsync(['node', 'pitway', 'auto-run', subcommand, '--help']),
+      ).rejects.toThrow();
+      expect(lines.join('')).toContain(subcommand);
     },
   );
 });

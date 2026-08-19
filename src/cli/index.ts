@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
+import { registerAutoRunCommand } from './commands/auto-run.js';
 import { registerInitCommand } from './commands/init.js';
 import { registerMilestoneAddCommand } from './commands/milestone-add.js';
 import { registerMilestoneCompleteCommand } from './commands/milestone-complete.js';
@@ -37,6 +38,7 @@ export function buildCli(): Command {
 }
 
 export function registerAllCommands(program: Command, deps: CommandDeps = {}): void {
+  registerAutoRunCommand(program, deps);
   registerInitCommand(program, deps);
   registerMilestoneAddCommand(program, deps);
   registerMilestoneCompleteCommand(program, deps);

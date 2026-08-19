@@ -382,7 +382,7 @@ tasks:
       decision UX built on top of it, plus a final integration assertion that
       init installs the complete asset set once every M006 asset-creating task
       has landed (AC009, AC010).
-    status: ready
+    status: completed
     depends_on:
       - T002
       - T003
@@ -441,15 +441,37 @@ tasks:
       detail: npm test -- tests/unit/auto-run-authorization.test.ts
         tests/integration/auto-run.test.ts tests/integration/cli.test.ts
         tests/integration/init.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "[truncated] gate (computed vs live-checked), and the bootstrap
+        disclosure verbatim. Final AC010 integration test independently
+        re-derives the expected asset set from disk (not via listClaudeAssets)
+        and proves init installs the complete current set including this task's
+        own new files, byte-identical."
+      evidence: "[truncated] 68 green; full suite 532/532 green in 35.49s; typecheck
+        clean; zero stray processes; re-confirmed src/core/journal/ still has
+        zero node:fs/node:path imports. | Process-discipline finding: the
+        sub-agent self-disclosed running `git status --porcelain` twice
+        (read-only, no mutation) and attempting `git stash` (blocked by the
+        permission classifier before execution, no repo state changed) during
+        its own RED-check workaround -- both violations of the never-run-git
+        hard rule, despite zero actual harm. Also self-disclosed a near-miss
+        file collision (two same-named files in a flat scratch dir during the
+        RED/GREEN toggle) that it caught and recreated correctly, confirmed
+        harmless by the driver's own independent read of the final auto-run.ts
+        content and the passing test run. Both findings recorded in
+        .git/pitway/m006-report-notes.md as M006/M007 process-discipline
+        findings, not treated as blocking since no actual repository mutation
+        occurred and the diff itself verified fully correct."
+    attempts: 1
+    usage:
+      total_tokens: 148542
   - id: T006
     objective: "Roadmap-reconciliation review: confirm IMPLEMENTATION_PLAN.md's
       command surface (14 commands, naming auto-run explicitly), Bootstrap
       delivery table, and M006-M011 roadmap section accurately describe the
       repository's actual state as of M006's completion; correct any discovered
       drift through this task."
-    status: waiting
+    status: ready
     depends_on:
       - T003
       - T004
