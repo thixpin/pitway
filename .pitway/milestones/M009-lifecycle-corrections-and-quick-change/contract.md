@@ -2,7 +2,7 @@
 schema_version: 1
 id: M009
 title: Lifecycle Corrections and Quick Change
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-19T16:38:03Z
 verification_approved_hash: sha256:b80f5c612c570d592e71cbf398fa109e6dbe9cef8ce2bf7a17c36693770b8c7f

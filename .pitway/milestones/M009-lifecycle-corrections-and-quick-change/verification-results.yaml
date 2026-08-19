@@ -1,2 +1,150 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-19T17:57:20Z
+    evidence: Tests  16 passed (16) | Start at  00:57:17 | Duration  2.54s
+      (transform 344ms, setup 0ms, import 503ms, tests 2.99s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3007
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-19T17:57:53Z
+    evidence: Tests  29 passed (29) | Start at  00:57:20 | Duration  32.77s
+      (transform 190ms, setup 0ms, import 280ms, tests 32.39s, environment 0ms)
+    recorded_by: command
+    duration_ms: 33180
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-19T17:58:02Z
+    evidence: Tests  14 passed (14) | Start at  00:57:54 | Duration  8.39s
+      (transform 179ms, setup 0ms, import 286ms, tests 7.99s, environment 0ms)
+    recorded_by: command
+    duration_ms: 8894
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-19T17:58:58Z
+    evidence: Tests  693 passed (693) | Start at  00:58:02 | Duration  55.21s
+      (transform 2.49s, setup 0ms, import 7.97s, tests 315.12s, environment 7ms)
+    recorded_by: command
+    duration_ms: 55670
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-19T17:59:16Z
+    evidence: "Reviewed src/core/milestones/create.ts (replaceMilestoneDraft) and
+      cancel.ts directly: --replace preserves the same id, no git operation for
+      a draft, requirement preserved when --requirement omitted, refuses outside
+      draft status pointing to --amend; milestone-cancel never deletes the
+      directory/contract.md, id never reused (state.milestones untouched,
+      nextMilestoneId skips it forever). Draft-id-burning resolved by the
+      two-path split per AC001's own text. 16/16 tests independently confirmed
+      (CT001)."
+    recorded_by: developer
+  - check: CT004
+    status: pass
+    at: 2026-08-19T17:59:16Z
+    evidence: "Reviewed src/core/verification/repair.ts directly: approve/commit are
+      two distinct ordered actions, gate is the explicit approved scope not
+      write_scope membership, commit validates the dirty diff subset and reruns
+      approved checks via run.ts's runSingleCheck (fail-closed), atomic commit
+      carries PitWay-Milestone+PitWay-Verification-Repair,
+      retry/resume/pre-commit-failure/post-commit-interruption/ambiguity each
+      covered by real tests, contract.md/tasks.yaml/state.yaml structurally
+      refused as targets, milestone-complete gates on pending VR. 29/29 tests
+      independently confirmed (CT003)."
+    recorded_by: developer
+  - check: CT006
+    status: pass
+    at: 2026-08-19T17:59:16Z
+    evidence: "Reviewed src/core/quick-change/{create,run,commit,promote}.ts
+      directly across all three tasks: active_milestone:null and clean-start
+      enforced at create, exact --scope census with .pitway/ protected,
+      append-only run history, PitWay-Change trailer commit identity via
+      commitOrResume, cancel (draft/approved only) and promote (draft/approved
+      only, terminal, never fabricates a milestone contract) both implemented
+      and tested, pitway resume confirmed as the authoritative recovery view
+      with quick-change status as a pure convenience. Threshold-override
+      disclosure present in AC003's text. 14/14 tests independently confirmed
+      (CT005)."
+    recorded_by: developer
+  - check: CT007
+    status: pass
+    at: 2026-08-19T17:59:16Z
+    evidence: "Reviewed IMPLEMENTATION_PLAN.md directly: M008's Bootstrap row added
+      (M009's own correctly omitted), command surface/count and Claude-asset
+      count updated against the real CLI (17 commands via --help) and a real
+      file count (23 files), M010 Worker Verification Evidence and M011 Claude
+      Skills bullets present with full required content including the vendoring
+      requirement, every M009/M010/M011->M012/M013/M014 cross-reference (S10,
+      S15, roadmap bullets) grepped and consistent,
+      docs/evidence/M009/token-accounting-feasibility.md present with all nine
+      required points preserved verbatim."
+    recorded_by: developer
+  - check: CT001
+    status: pass
+    at: 2026-08-19T17:59:25Z
+    evidence: Tests  16 passed (16) | Start at  00:59:22 | Duration  2.84s
+      (transform 390ms, setup 0ms, import 596ms, tests 3.36s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3264
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-19T17:59:56Z
+    evidence: Tests  29 passed (29) | Start at  00:59:25 | Duration  31.19s
+      (transform 272ms, setup 0ms, import 347ms, tests 30.76s, environment 0ms)
+    recorded_by: command
+    duration_ms: 31501
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-19T18:00:04Z
+    evidence: Tests  14 passed (14) | Start at  00:59:57 | Duration  7.67s
+      (transform 156ms, setup 0ms, import 252ms, tests 7.33s, environment 0ms)
+    recorded_by: command
+    duration_ms: 8066
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-19T18:01:01Z
+    evidence: Tests  693 passed (693) | Start at  01:00:05 | Duration  55.85s
+      (transform 1.85s, setup 0ms, import 7.24s, tests 322.35s, environment 5ms)
+    recorded_by: command
+    duration_ms: 56246
+    termination_reason: exited
+  - check: CT001
+    status: pass
+    at: 2026-08-19T18:08:51Z
+    evidence: Tests  16 passed (16) | Start at  01:08:48 | Duration  2.60s
+      (transform 439ms, setup 0ms, import 664ms, tests 2.96s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3046
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-19T18:09:20Z
+    evidence: Tests  29 passed (29) | Start at  01:08:51 | Duration  29.10s
+      (transform 198ms, setup 0ms, import 292ms, tests 28.72s, environment 0ms)
+    recorded_by: command
+    duration_ms: 29400
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-19T18:09:27Z
+    evidence: Tests  14 passed (14) | Start at  01:09:20 | Duration  6.95s
+      (transform 169ms, setup 0ms, import 273ms, tests 6.59s, environment 0ms)
+    recorded_by: command
+    duration_ms: 7362
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-19T18:10:19Z
+    evidence: Tests  698 passed (698) | Start at  01:09:28 | Duration  51.35s
+      (transform 2.00s, setup 0ms, import 7.25s, tests 294.39s, environment 4ms)
+    recorded_by: command
+    duration_ms: 51704
+    termination_reason: exited
