@@ -138,7 +138,7 @@ tasks:
       M006's (81c99a2, 1e07014, 81a420a) standalone hotfixes as evidence; record
       an explicit adopt, defer, or reject decision and, if adopted, the
       mechanism, at docs/evidence/M007/ ripple-fix-policy-decision.md (AC004).
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -152,7 +152,17 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review of the recorded decision and its evidence
-    result: null
+    result:
+      summary: "[truncated]  discovering task's own commit (not standalone) when
+        directly causal, bounded, tested, and its file first added to
+        write_scope via an explicitly approved task-amend before editing.
+        Independent/broad defects still become separate corrective work.
+        Per-instance developer approval unchanged."
+      evidence: "docs/evidence/M007/ripple-fix-policy-decision.md. Developer adopted
+        the recommendation with an added refinement closing a real gap: without
+        the write_scope task-amend step first, checkWriteScope/assertDirtySubset
+        would refuse the commit anyway."
+    attempts: 1
     usage: null
   - id: T005
     objective: "Design (not implement) a lightweight quick-change/hotfix workflow at
