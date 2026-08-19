@@ -25,13 +25,18 @@ for the flags).
 
 ## Dispatch discipline
 
-Task execution happens through dispatched subagents, not inline in your own
-context — see `dispatch.md` for the full bounded-context contract and
-`protocol-worker.md` for the fixed text a dispatched worker receives. In
-short: you gather the task-context bundle via
-`pitway task-status <id> --context --json`, dispatch a worker with that
-bundle plus the fixed wrapper text, and persist whatever it reports back
-via `pitway task-update`. The worker never calls `pitway` itself.
+Task execution is not automatically a sub-agent dispatch — you choose
+between executing a task **inline**, in your own turn, and **dispatching**
+it to a sub-agent, and you make that choice deliberately before starting
+each task. See `dispatch.md` for the full rule and, when you do dispatch,
+the bounded-context contract and dispatch sequence; `protocol-worker.md` is
+the fixed text a dispatched worker receives. When you dispatch: gather the
+task-context bundle via `pitway task-status <id> --context --json`,
+dispatch a worker with that bundle plus the fixed wrapper text, and persist
+whatever it reports back via `pitway task-update`. The worker never calls
+`pitway` itself, whether dispatched or not — when you execute inline, you
+call `pitway` yourself in the same way a worker's report would have driven
+you to.
 
 ## Decision gates
 

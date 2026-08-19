@@ -2,9 +2,36 @@
 
 This is the driver-facing detail behind `protocol-driver.md`'s "dispatch
 discipline" summary: how a task actually gets handed to a worker, and what
-PitWay does and does not guarantee once it has been.
+PitWay does and does not guarantee once it has been. It also covers
+**whether** to dispatch at all — inline execution is a first-class option,
+not a fallback.
 
-## The dispatch sequence
+## Choosing inline vs. sub-agent dispatch (M007/AC010)
+
+**Inline is the default** for documentation, review/manual work, localized
+fixes, and small-scope tasks. `verification.strategy: tdd` alone is
+**not** a reason to dispatch — a task can produce real test code and still
+be small and well-understood enough to execute inline.
+
+**Dispatch to a sub-agent when it provides a material isolation or
+concurrency benefit**: an independently bounded multi-file implementation,
+cross-subsystem work, disjoint parallel-ready scope, or a context-heavy
+investigation that benefits from a separate, focused context rather than
+crowding the driver's own. Weigh the task's expected effort against
+observed sub-agent startup overhead (measured at roughly 32K tokens for
+even a trivial single-file task, M007/T001) — avoid dispatch when that
+overhead is disproportionate to the work.
+
+**A contract-mandated sub-agent dispatch is never overridden** by this
+rule — if a task or contract explicitly requires dispatch (e.g. for
+independent-review integrity), that requirement stands regardless of size
+or strategy.
+
+**The driver chooses autonomously.** Record the selected mode and a brief
+rationale before starting the task; do not ask the developer per task
+unless the choice is materially ambiguous.
+
+## The dispatch sequence (once you've chosen to dispatch)
 
 1. Confirm the task is actually ready: `pitway resume` or
    `pitway task-status <id>`. Never dispatch a task PitWay hasn't marked

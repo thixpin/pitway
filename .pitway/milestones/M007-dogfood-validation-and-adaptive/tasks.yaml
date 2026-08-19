@@ -342,7 +342,7 @@ tasks:
       with a concrete task-metadata-driven rule at docs/evidence/
       M007/dispatch-mode-decision.md; if adopted, formalize the rule directly
       into protocol-driver.md and dispatch.md within this same task (AC010).
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -361,7 +361,16 @@ tasks:
       strategy: manual
       detail: developer/driver review of the recorded decision and, if adopted, the
         updated protocol text
-    result: null
+    result:
+      summary: "[truncated] or docs/review/localized/small-scope, tdd alone never
+        forces dispatch, sub-agent only for material isolation/concurrency
+        benefit weighed against startup overhead, contract-mandated dispatch
+        never overridden, driver chooses autonomously without per-task asking
+        unless materially ambiguous."
+      evidence: docs/evidence/M007/dispatch-mode-decision.md. Formalized into
+        src/integrations/claude/protocol-driver.md and dispatch.md within this
+        task. Typecheck clean.
+    attempts: 1
     usage: null
   - id: T010
     objective: "Fix the M006/AC005-measured context-bundle duplication defect: add
@@ -441,7 +450,7 @@ tasks:
       dispatch.md and protocol-driver.md; this task incorporates T009's outcome
       first, then layers its own additions, never reverting or overwriting
       T009's edits) (AC013)."
-    status: waiting
+    status: ready
     depends_on:
       - T009
     acceptance_criteria:
