@@ -1,2 +1,65 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-19T05:01:53Z
+    evidence: Tests  15 passed (15) | Start at  12:00:42 | Duration  3.38s
+      (transform 51ms, setup 0ms, import 99ms, tests 3.20s, environment 0ms)
+    recorded_by: command
+  - check: CT002
+    status: pass
+    at: 2026-08-19T05:01:53Z
+    evidence: Tests  27 passed (27) | Start at  12:00:46 | Duration  3.70s
+      (transform 111ms, setup 0ms, import 210ms, tests 5.78s, environment 0ms)
+    recorded_by: command
+  - check: CT003
+    status: pass
+    at: 2026-08-19T05:01:53Z
+    evidence: Tests  43 passed (43) | Start at  12:00:50 | Duration  182ms
+      (transform 31ms, setup 0ms, import 76ms, tests 23ms, environment 0ms)
+    recorded_by: command
+  - check: CT004
+    status: pass
+    at: 2026-08-19T05:01:53Z
+    evidence: Tests  74 passed (74) | Start at  12:00:51 | Duration  21.44s
+      (transform 579ms, setup 0ms, import 935ms, tests 45.93s, environment 0ms)
+    recorded_by: command
+  - check: CT005
+    status: pass
+    at: 2026-08-19T05:01:53Z
+    evidence: Tests  20 passed (20) | Start at  12:01:13 | Duration  10.39s
+      (transform 125ms, setup 0ms, import 217ms, tests 10.08s, environment 0ms)
+    recorded_by: command
+  - check: CT006
+    status: pass
+    at: 2026-08-19T05:01:53Z
+    evidence: Tests  27 passed (27) | Start at  12:01:23 | Duration  751ms
+      (transform 271ms, setup 0ms, import 452ms, tests 444ms, environment 0ms)
+    recorded_by: command
+  - check: CT007
+    status: pass
+    at: 2026-08-19T05:01:53Z
+    evidence: Tests  41 passed (41) | Start at  12:01:24 | Duration  702ms
+      (transform 150ms, setup 0ms, import 266ms, tests 492ms, environment 0ms)
+    recorded_by: command
+  - check: CT008
+    status: pass
+    at: 2026-08-19T05:01:53Z
+    evidence: Tests  424 passed (424) | Start at  12:01:25 | Duration  27.81s
+      (transform 1.28s, setup 0ms, import 4.22s, tests 117.13s, environment 2ms)
+    recorded_by: command
+  - check: CT009
+    status: pass
+    at: 2026-08-19T05:03:36Z
+    evidence: "Re-read IMPLEMENTATION_PLAN.md sec7 command table, Bootstrap delivery
+      table, sec11 Verification Strategy, and M005-M011 Revised Roadmap against
+      actual repo state (T009, commit f721d8b). Corrected 3 drift points:
+      command count 11->13 (added task-amend, write-ms-artifacts rows), sec11
+      pre-M005 hand-edit-amend flow description updated to journal-backed --file
+      flow, closing next-step line updated to point at M006. Re-verified
+      M005-vs-M006 authoritative-checkpoint wording (commit 87eb6bb) against
+      M005's actual delivery: confirmed accurate, no change needed. Bootstrap
+      delivery table left unchanged pending milestone-complete. Full npm test
+      424/424 green; command count cross-checked against
+      tests/integration/cli.test.ts ALL_COMMAND_NAMES (13)."
+    recorded_by: developer

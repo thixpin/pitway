@@ -3,7 +3,7 @@ schema_version: 1
 id: M005
 title: "Workflow Hardening: checkpoint semantics, task amendments, and slugged
   directories"
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-18T18:29:51Z
 verification_approved_hash: sha256:e637335476d65cb930e435dbce38a55777f747ab5d74938321cbc81b2db80b67
