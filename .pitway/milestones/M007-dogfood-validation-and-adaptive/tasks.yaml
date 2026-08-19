@@ -74,7 +74,7 @@ tasks:
       needs new Core mechanism or is achievable through disciplined task-amend
       use, at docs/evidence/M007/ contract-fixed-task-adaptive-decision.md
       (AC002).
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -88,7 +88,17 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review of the recorded decision and its evidence
-    result: null
+    result:
+      summary: "[truncated] le against real M005 (T001/T003/ T004/T007) and fresh
+        M007/T001 evidence. Decision: adopt as documented practice only
+        (filtering criteria guide task-amend-vs-contract-amendment tool choice);
+        no automatic-approval Core mechanism, explicit developer approval
+        unchanged for every invocation."
+      evidence: docs/evidence/M007/contract-fixed-task-adaptive-decision.md. Developer
+        selected 'Adopt as recommended (documented practice only)' via explicit
+        decision-gate confirmation, rejecting the literal
+        automatic-without-reapproval clause from M005 report §11.1.
+    attempts: 1
     usage: null
   - id: T003
     objective: Dogfood-evaluate exhaustive positive write_scope file lists against

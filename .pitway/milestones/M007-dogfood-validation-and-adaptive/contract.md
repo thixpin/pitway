@@ -15,47 +15,49 @@ acceptance_criteria:
       M006/AC005's docs/evidence/ M006-context-efficiency.md precedent):
       fresh-session state reconstruction (already demonstrated 2026-08-18,
       formalized here as a regression-covered scenario), API-interrupted
-      sub-agent resume (attempted during M004/T007; first interruption resumed
-      cleanly via SendMessage to the same agent id, second interruption was a
-      hard session-limit stop requiring a different recovery approach — both
-      outcomes recorded and evaluated here), task-amendment behavior audited
-      against every amendment actually made during M005 (2 contract amends, 2
-      task-amend calls, plus the T007 bootstrap repair), a Git traceability
-      audit across the full M001-M006 commit history (trailer coverage, and the
-      standalone-fix-commit pattern's frequency including BOTH M005's four
-      hotfix commits AND ALL THREE of M006's — `81c99a2` fix(workflow): honor
-      write_scope during task completion, `1e07014` fix(workflow): recognize
-      managed Claude assets at baseline, and `81a420a` test(verification):
-      isolate recursion guard environment — seven standalone recovery/hotfix
-      commits total across M005-M006, plus squash/rewrite exposure). The audit
-      additionally classifies `85fa243` chore: ignore local workflow reports as
-      a separate category — a between-milestone maintenance commit, not an
-      eighth hotfix: it fixes no defect and recovers from no incident, it
-      normalizes repository-local tooling (`.gitignore`) between M006's
-      completion and M007's drafting, and it carries no PitWay trailer for the
-      same underlying reason as the seven recovery commits (no supported
-      PitWay-attributed path existed for landing it any other way — see AC005).
-      The distinction is preserved throughout, never collapsed into one number:
-      7 standalone recovery/hotfix commits across M005-M006, plus 1
-      between-milestone maintenance commit (`85fa243`). Also part of this task:
-      context-efficiency evidence compiled as an explicit before/after
-      comparison against M006's own measurements (docs/evidence/
-      M006-context-efficiency.md, itself unedited — a new comparison document,
-      not a rewrite of that historical snapshot). This task also investigates
-      M006's own disclosed CT012 full-suite flakiness finding (two bounded
-      full-suite runs after M006/T002 each completed without hanging and left
-      zero surviving processes, but reported a different, small,
-      non-T002-related transient failure set each run under concurrent
-      subprocess load) and records a decision — the cause remains unproven and
-      may be explicitly deferred with the evidence stated as such, or a specific
-      vitest concurrency/isolation change (e.g. `--pool=forks` tuning,
-      serialized execution for subprocess-heavy files) may be adopted — never
-      asserted as proven environmental noise either way, rather than leaving it
-      uninvestigated. Finally, this task constructs one genuinely matched
-      inline-vs-sub-agent dispatch pair (same model/config held constant, per
-      M006/AC005's own comparability methodology) as fresh evidence for AC010,
-      since M006's own T004-vs-T001/T002/T003/T005 split is real but
-      retrospective and unmatched."
+      sub-agent resume attempted during M004/T007, with its actual resolution
+      recorded only when supported by a durable primary source (Git history,
+      `.pitway/` state, or a committed report) — if no such source exists for a
+      specific claimed outcome, that outcome is recorded explicitly as
+      unverifiable from this repository's own record, naming which sources were
+      searched, rather than inferred or fabricated from prior conversational
+      context alone, task-amendment behavior audited against every amendment
+      actually made during M005 (2 contract amends, 2 task-amend calls, plus the
+      T007 bootstrap repair), a Git traceability audit across the full M001-M006
+      commit history (trailer coverage, and the standalone-fix-commit pattern's
+      frequency including BOTH M005's four hotfix commits AND ALL THREE of
+      M006's — `81c99a2` fix(workflow): honor write_scope during task
+      completion, `1e07014` fix(workflow): recognize managed Claude assets at
+      baseline, and `81a420a` test(verification): isolate recursion guard
+      environment — seven standalone recovery/hotfix commits total across
+      M005-M006, plus squash/rewrite exposure). The audit additionally
+      classifies `85fa243` chore: ignore local workflow reports as a separate
+      category — a between-milestone maintenance commit, not an eighth hotfix:
+      it fixes no defect and recovers from no incident, it normalizes
+      repository-local tooling (`.gitignore`) between M006's completion and
+      M007's drafting, and it carries no PitWay trailer for the same underlying
+      reason as the seven recovery commits (no supported PitWay-attributed path
+      existed for landing it any other way — see AC005). The distinction is
+      preserved throughout, never collapsed into one number: 7 standalone
+      recovery/hotfix commits across M005-M006, plus 1 between-milestone
+      maintenance commit (`85fa243`). Also part of this task: context-efficiency
+      evidence compiled as an explicit before/after comparison against M006's
+      own measurements (docs/evidence/ M006-context-efficiency.md, itself
+      unedited — a new comparison document, not a rewrite of that historical
+      snapshot). This task also investigates M006's own disclosed CT012
+      full-suite flakiness finding (two bounded full-suite runs after M006/T002
+      each completed without hanging and left zero surviving processes, but
+      reported a different, small, non-T002-related transient failure set each
+      run under concurrent subprocess load) and records a decision — the cause
+      remains unproven and may be explicitly deferred with the evidence stated
+      as such, or a specific vitest concurrency/isolation change (e.g.
+      `--pool=forks` tuning, serialized execution for subprocess-heavy files)
+      may be adopted — never asserted as proven environmental noise either way,
+      rather than leaving it uninvestigated. Finally, this task constructs one
+      genuinely matched inline-vs-sub-agent dispatch pair (same model/config
+      held constant, per M006/AC005's own comparability methodology) as fresh
+      evidence for AC010, since M006's own T004-vs-T001/T002/T003/T005 split is
+      real but retrospective and unmatched."
   - id: AC002
     text: "A design evaluation of the M005 report's contract-fixed, task-adaptive
       execution model (reports/M005.md §11.1, a local, non-authoritative
@@ -609,3 +611,14 @@ never taking a local report's prose as evidence on its own.
   instruction only; T012's write_scope and its dependency on T009 are
   unchanged. T012's task-level acceptance_criteria gains one corresponding
   bullet via a separate `task-amend T012` call.
+- 2026-08-19 — AC001 amended: the M004/T007 sub-agent-interruption clause no
+  longer asserts a specific two-outcome resolution (SendMessage-resumed /
+  hard-session-limit-stop) as established fact. T001's own real-repository
+  audit (docs/evidence/M007/dogfood-evidence.md §2) found no durable primary
+  source for that specific narrative anywhere in this repository's own
+  record. AC001 now requires the actual resolution be recorded only when a
+  durable primary source supports it; otherwise the outcome is recorded
+  explicitly as unverifiable from this repository's own record, naming
+  which sources were searched, never inferred or fabricated. Bounded
+  amendment: this one clause only. T001's task-level acceptance_criteria
+  gains the same wording via a separate `task-amend T001` call.
