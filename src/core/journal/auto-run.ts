@@ -33,9 +33,9 @@ export function isAutoRunAuthorized(
 ): AutoRunAuthorization {
   const relevant = records.filter(
     (r) =>
-      r.milestone === milestone &&
       (r.kind === 'auto_run' ||
-        (r.kind === 'entry' && (r.type === 'contract_amendment' || r.type === 'task_amendment'))),
+        (r.kind === 'entry' && (r.type === 'contract_amendment' || r.type === 'task_amendment'))) &&
+      r.milestone === milestone,
   );
 
   let lastEnableIndex = -1;

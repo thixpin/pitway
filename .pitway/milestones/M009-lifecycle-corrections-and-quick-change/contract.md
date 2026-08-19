@@ -5,7 +5,7 @@ title: Lifecycle Corrections and Quick Change
 status: in_progress
 requirement: null
 confirmed_at: 2026-08-19T16:38:03Z
-verification_approved_hash: sha256:5c8eb28bff2d3ab9e07b4169121fad06341acf98f57cfb5c0463d0b7d6de77a3
+verification_approved_hash: sha256:b80f5c612c570d592e71cbf398fa109e6dbe9cef8ce2bf7a17c36693770b8c7f
 acceptance_criteria:
   - id: AC001
     text: "A supported, git-safe way exists to correct an unconfirmed draft
@@ -117,38 +117,58 @@ acceptance_criteria:
       quick-change) and the resulting total; the Claude-asset file count (S9) is
       updated for the new command .md assets and the protocol-driver.md
       addition; a new Revised Roadmap placeholder bullet is added for M010 --
-      Claude Skills, scheduled before branch/worktree work per explicit
-      2026-08-19 developer directive, overriding M007/AC009's own 'revisit when
-      a concrete use case exists, not on a fixed schedule' recommendation --
-      carrying, in this document's own committed text (never by reference to any
-      gitignored reports/*.md or the non-clone-durable
-      .git/pitway/m006-report-notes.md), the full vendoring requirement: skills
-      may be copied and adapted directly from github.com/thixpin/claude-config
-      because it is the developer's own MIT-licensed repository; they are
-      vendored into PitWay's own src/integrations/claude/skills/ tree, never a
-      runtime dependency on that external repository; appropriate MIT
-      attribution is preserved in each vendored file; skills are adapted to
-      PitWay's own task/contract shapes, never duplicating
-      contract/AC/context_files/write_scope content; they install through
-      PitWay's existing Claude-assets installer with no installer changes
-      anticipated (already verified by M007/T008); a task declares at most the
-      specific skill(s) it needs, never all skills unconditionally; and adoption
-      is verified with tests plus real dogfood evidence before being called
-      complete, not assumed from the reference repository's design alone. The
-      milestones this document previously numbered M009 (Milestone Git branch
-      isolation), M010 (parallel task worktrees), and M011 (extended dogfood
-      validation) are renumbered M011, M012, and M013 respectively, consistently
-      across every cross-reference (S10's trailer-lookup note, S15's
-      design-sketch note, the Revised Roadmap bullets and their gating
-      language), not just the summary table. Separately, this task also
-      incorporates an independently reviewed token-accounting feasibility
-      conclusion, recorded durably at docs/evidence/M009/
-      token-accounting-feasibility.md (never only in a gitignored reports/*.md
-      file) and preserved accurately, never paraphrased away: verdict is
-      feasible only partially; PitWay's exact supported data is four token
-      dimensions, named precisely as the review states them, never approximated
-      to a different count or set; the real session partition is main + subagent
-      + auxiliary, not main + subagent; inline-main-task and
+      Worker Verification Evidence (positioned before Claude Skills, which
+      shifts to M011), whose objective is eliminating routine duplicate driver
+      test runs without weakening verification: a new PitWay-owned task-verify
+      command executes only a task's approved verification command(s); captures
+      the exact command, exit code, pass/fail counts where available, duration,
+      timeout/termination reason, typecheck result when required, and a
+      deterministic fingerprint covering tracked changes plus untracked in-scope
+      files; persists a resumable local evidence record under a unique evidence
+      id; task completion accepts that evidence only when the current
+      fingerprint, task id, attempt, approved command/hash, and write_scope all
+      still match -- any later file change makes the evidence stale and forces
+      re-verification; missing, malformed, timed-out, failed, non-approved, or
+      background-process-leaking evidence is refused outright; the driver still
+      reviews the diff/write_scope but does not rerun matching worker
+      verification; full typecheck and the full suite remain milestone-level
+      gates, never per-task; only concise evidence is persisted in the task
+      result, never full logs; runtime-reported worker usage may be attached
+      without estimation, but whole-run/main-agent token accounting stays the
+      separate, already-deferred Token Telemetry Spike investigation below, not
+      something this milestone resolves. A second new Revised Roadmap
+      placeholder bullet is added for M011 -- Claude Skills, scheduled before
+      branch/worktree work per explicit 2026-08-19 developer directive,
+      overriding M007/AC009's own 'revisit when a concrete use case exists, not
+      on a fixed schedule' recommendation -- carrying, in this document's own
+      committed text (never by reference to any gitignored reports/*.md or the
+      non-clone-durable .git/pitway/m006-report-notes.md), the full vendoring
+      requirement: skills may be copied and adapted directly from
+      github.com/thixpin/claude-config because it is the developer's own
+      MIT-licensed repository; they are vendored into PitWay's own
+      src/integrations/claude/skills/ tree, never a runtime dependency on that
+      external repository; appropriate MIT attribution is preserved in each
+      vendored file; skills are adapted to PitWay's own task/contract shapes,
+      never duplicating contract/AC/context_files/write_scope content; they
+      install through PitWay's existing Claude-assets installer with no
+      installer changes anticipated (already verified by M007/T008); a task
+      declares at most the specific skill(s) it needs, never all skills
+      unconditionally; and adoption is verified with tests plus real dogfood
+      evidence before being called complete, not assumed from the reference
+      repository's design alone. The milestones this document previously
+      numbered M009 (Milestone Git branch isolation), M010 (parallel task
+      worktrees), and M011 (extended dogfood validation) are renumbered M012,
+      M013, and M014 respectively, consistently across every cross-reference
+      (S10's trailer-lookup note, S15's design-sketch note, the Revised Roadmap
+      bullets and their gating language), not just the summary table.
+      Separately, this task also incorporates an independently reviewed
+      token-accounting feasibility conclusion, recorded durably at
+      docs/evidence/M009/ token-accounting-feasibility.md (never only in a
+      gitignored reports/*.md file) and preserved accurately, never paraphrased
+      away: verdict is feasible only partially; PitWay's exact supported data is
+      four token dimensions, named precisely as the review states them, never
+      approximated to a different count or set; the real session partition is
+      main + subagent + auxiliary, not main + subagent; inline-main-task and
       orchestration-overhead values are PitWay-derived and conditional, not
       directly measured, and must be labeled as such; stable
       per-subagent-instance attribution requires beta traces; multi-session
@@ -160,9 +180,9 @@ acceptance_criteria:
       and rejected; and any value that is unknown or incomplete stays null/N/A,
       never estimated, unchanged from decision 8's existing discipline. The
       Revised Roadmap gains exactly one new, unnumbered, time-boxed 'Token
-      Telemetry Spike' candidate, positioned after M010 -- Claude Skills --
+      Telemetry Spike' candidate, positioned after M011 -- Claude Skills --
       never consuming a milestone number itself and never shifting the
-      M011/M012/M013 renumbering -- scoped as exactly seven experiments E0-E6,
+      M012/M013/M014 renumbering -- scoped as exactly seven experiments E0-E6,
       each targeting one load-bearing join the feasibility conclusion
       identifies: E0 confirms the four supported dimensions against real
       captured data; E1 validates the three-way main/subagent/auxiliary session
@@ -249,25 +269,35 @@ verification:
     instruction: Confirm IMPLEMENTATION_PLAN.md gains M008's Bootstrap-table row
       (correctly omitting M009's own), the command surface and Claude-asset
       counts are updated for every new command/asset this milestone actually
-      added, the new M010 -- Claude Skills bullet carries the full
-      vendoring/attribution/routing/evidence requirement in its own committed
-      text, and every cross-reference to the old M009/M010/M011 numbering is
-      consistently renumbered to M011/M012/M013. Separately confirm
-      docs/evidence/M009/token-accounting-feasibility.md exists and states,
-      accurately and without softening, the partial-feasibility verdict, the
-      four supported token dimensions named precisely, the three-way session
-      partition, the derived-and-conditional labeling of the inline-main-task
-      and orchestration-overhead values, the beta-trace requirement for stable
-      per-subagent-instance attribution, the never-exact partial accumulation of
-      multi-session totals, the opt-in operational cost of OpenTelemetry, and
-      the four rejected alternative approaches (transcript parsing, TUI
-      scraping, snapshot accumulation, Agent SDK inversion); confirm the new
-      unnumbered, post-M010, time-boxed Token Telemetry Spike roadmap bullet
-      names all seven E0-E6 experiments and states plainly that a full Usage
-      Accounting milestone is scheduled only if every load-bearing join
-      validates exactly, otherwise the limitation is documented and the idea
-      deferred; confirm no token-accounting implementation, schema, or CLI code
-      exists anywhere in this milestone's diff.
+      added, the new M010 -- Worker Verification Evidence bullet names
+      task-verify and every one of its captured evidence fields (command, exit
+      code, pass/fail counts, duration, timeout/termination reason, typecheck
+      result, deterministic fingerprint), the resumable evidence-id record, the
+      fingerprint/task-id/attempt/approved-command-hash/write_scope staleness
+      gate, the refusal conditions, the driver-does-not-rerun-matching-
+      verification behavior, full typecheck/suite staying milestone-level gates,
+      concise-not-full-log evidence, and the explicit separation from
+      whole-run/main-agent token accounting; confirm the M011 -- Claude Skills
+      bullet carries the full vendoring/attribution/routing/evidence requirement
+      in its own committed text; confirm every cross-reference to the old
+      M009/M010/M011 numbering is consistently renumbered to M012/M013/M014.
+      Separately confirm docs/evidence/M009/token-accounting-feasibility.md
+      exists and states, accurately and without softening, the
+      partial-feasibility verdict, the four supported token dimensions named
+      precisely, the three-way session partition, the derived-and-conditional
+      labeling of the inline-main-task and orchestration-overhead values, the
+      beta-trace requirement for stable per-subagent-instance attribution, the
+      never-exact partial accumulation of multi-session totals, the opt-in
+      operational cost of OpenTelemetry, and the four rejected alternative
+      approaches (transcript parsing, TUI scraping, snapshot accumulation, Agent
+      SDK inversion); confirm the new unnumbered, post-M011, time-boxed Token
+      Telemetry Spike roadmap bullet names all seven E0-E6 experiments and
+      states plainly that a full Usage Accounting milestone is scheduled only if
+      every load-bearing join validates exactly, otherwise the limitation is
+      documented and the idea deferred; confirm no token-accounting
+      implementation, schema, or CLI code exists anywhere in this milestone's
+      diff; confirm no task-verify implementation, schema, or CLI code exists
+      anywhere in this milestone's diff either.
   - id: CT008
     criterion: AC001
     type: command
@@ -477,3 +507,18 @@ the branch/worktree roadmap entries around it.
   `write_scope` via a matching `task-amend`. No implementation, schema, or
   CLI change of any kind is introduced by this amendment -- roadmap
   recording only.
+- 2026-08-20: post-confirmation amendment (T002 still in progress) -- AC004
+  and CT007 extended to require T006 to record a new, dedicated `M010 --
+  Worker Verification Evidence` roadmap milestone, positioned before Claude
+  Skills (which shifts to `M011`): a `task-verify` command, worker/driver
+  evidence-acceptance fields and staleness rules, refusal conditions, the
+  driver-does-not-rerun-matching-verification behavior formalized from this
+  session's own live protocol change, milestone-level-only full
+  typecheck/suite, concise-only persisted evidence, and the explicit
+  separation from whole-run/main-agent token accounting (left to the
+  already-deferred Token Telemetry Spike). The milestones this document
+  previously renumbered `M011`/`M012`/`M013` shift one further to
+  `M012`/`M013`/`M014`; the Token Telemetry Spike's own positioning
+  reference moves from "after M010" to "after M011" accordingly. No
+  implementation, schema, or CLI change of any kind is introduced by this
+  amendment -- roadmap recording only.

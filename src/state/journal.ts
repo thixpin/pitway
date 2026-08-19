@@ -62,10 +62,64 @@ export const journalAutoRunSchema = z.strictObject({
   hash: z.string().min(1).optional(),
 });
 
+// Fourth sibling member of the discriminated union (M007/T003): records one
+// step of a quick-change's draft -> approved -> committed lifecycle (plus
+// draft|approved -> cancelled and approved -> promoted). Like auto_run, this
+// is never referenced by a checkpoint marker and never folded into a
+// milestone commit -- there is no target state file for resolveTargetPath to
+// map it to, and derivePending's `kind === 'entry'` filter already excludes
+// it structurally, the same way it already excludes auto_run.
+//
+// Storage decision (documented per T003's brief): appendJournalEntry/
+// appendCheckpointMarker/appendAutoRunRecord only ever APPEND; none of them
+// mutate an existing record. A quick-change's lifecycle needs to move
+// through several states over time, so every transition (create, approve, a
+// run attempt, cancel, promote) appends a NEW quick_change record carrying
+// the change's id and its full current field set -- never a partial patch.
+// "Current state" is derived by folding over every record sharing that id,
+// in append order, and taking the latest one (see deriveQuickChangeState in
+// src/core/quick-change/create.ts, mirroring isAutoRunAuthorized's
+// pure-derivation-over-record-order style). `runs` is itself append-only
+// within each snapshot -- a later record's `runs` array is always the prior
+// one plus zero or one newly appended attempt, never shorter -- which is how
+// "every quick-change run attempt, pass or fail, is preserved" holds even
+// though the underlying journal file only ever appends whole records.
+export const journalQuickChangeStatusSchema = z.enum([
+  'draft',
+  'approved',
+  'committed',
+  'cancelled',
+  'promoted',
+]);
+
+export const journalQuickChangeRunSchema = z.strictObject({
+  at: z.string().min(1),
+  status: z.enum(['pass', 'fail']),
+  evidence: z.string().min(1),
+});
+
+export const journalQuickChangeSchema = z.strictObject({
+  kind: z.literal('quick_change'),
+  id: z.string().min(1),
+  status: journalQuickChangeStatusSchema,
+  objective: z.string().min(1),
+  // The exact file census declared at create time -- locked (never
+  // widened/narrowed) once approvedHash is set at approve.
+  scope: z.array(z.string().min(1)),
+  verifyCommand: z.string().min(1),
+  // Set once approved: sha256 over {scope, verifyCommand} exactly as
+  // declared at create. Absent on a still-draft record. Gates `quick-change
+  // run` (T004's job) the same way verification_approved_hash gates
+  // `pitway verify` today.
+  approvedHash: z.string().min(1).optional(),
+  runs: z.array(journalQuickChangeRunSchema),
+});
+
 export const journalRecordSchema = z.discriminatedUnion('kind', [
   journalEntrySchema,
   journalCheckpointSchema,
   journalAutoRunSchema,
+  journalQuickChangeSchema,
 ]);
 
 export const journalFileSchema = z.strictObject({
@@ -77,6 +131,9 @@ export type JournalOperationType = z.infer<typeof journalOperationTypeSchema>;
 export type JournalEntry = z.infer<typeof journalEntrySchema>;
 export type JournalCheckpoint = z.infer<typeof journalCheckpointSchema>;
 export type JournalAutoRun = z.infer<typeof journalAutoRunSchema>;
+export type JournalQuickChangeStatus = z.infer<typeof journalQuickChangeStatusSchema>;
+export type JournalQuickChangeRun = z.infer<typeof journalQuickChangeRunSchema>;
+export type JournalQuickChange = z.infer<typeof journalQuickChangeSchema>;
 export type JournalRecord = z.infer<typeof journalRecordSchema>;
 export type JournalFile = z.infer<typeof journalFileSchema>;
 
@@ -162,6 +219,25 @@ export function appendAutoRunRecord(
   const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
   if (!result.success) {
     throw new JournalError(`refusing to append invalid auto_run record: ${formatIssues(result.error)}`);
+  }
+  saveJournalFile(cwd, result.data);
+  return full;
+}
+
+// Appends a quick_change lifecycle snapshot -- a full record, never a patch.
+// Callers (src/core/quick-change/create.ts) are responsible for computing the
+// next full field set (carrying forward runs/approvedHash/etc. as
+// appropriate) before calling this; this function only ever appends what
+// it's given, exactly like appendAutoRunRecord.
+export function appendQuickChangeRecord(
+  cwd: string,
+  record: Omit<JournalQuickChange, 'kind'>,
+): JournalQuickChange {
+  const file = loadJournalFile(cwd);
+  const full: JournalQuickChange = { kind: 'quick_change', ...record };
+  const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
+  if (!result.success) {
+    throw new JournalError(`refusing to append invalid quick_change record: ${formatIssues(result.error)}`);
   }
   saveJournalFile(cwd, result.data);
   return full;

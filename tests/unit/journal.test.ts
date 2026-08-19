@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   appendCheckpointMarker,
   appendJournalEntry,
+  appendQuickChangeRecord,
   JournalError,
   readJournal,
   reconcilePending,
@@ -329,6 +330,106 @@ describe('self-healing crash recovery (reconcilePending)', () => {
     expect(referenced).toEqual(new Set(['op-a', 'op-b']));
 
     expect(derivePending(readJournal(repo))).toHaveLength(0);
+  });
+});
+
+describe('quick_change records (M007/T003)', () => {
+  it('appends a quick_change record and reads it back', () => {
+    const record = appendQuickChangeRecord(repo, {
+      id: 'qc-1',
+      status: 'draft',
+      objective: 'Fix the thing',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      runs: [],
+    });
+    expect(record.kind).toBe('quick_change');
+
+    const all = readJournal(repo);
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({
+      kind: 'quick_change',
+      id: 'qc-1',
+      status: 'draft',
+      objective: 'Fix the thing',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      runs: [],
+    });
+  });
+
+  it('is excluded from derivePending the same way auto_run is, needing zero change to derivePending/resolveTargetPath', () => {
+    appendQuickChangeRecord(repo, {
+      id: 'qc-1',
+      status: 'draft',
+      objective: 'Fix the thing',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      runs: [],
+    });
+    appendJournalEntry(repo, {
+      milestone: 'M005',
+      type: 'usage_recording',
+      operationId: 'op-1',
+      payload: {},
+    });
+
+    const pending = derivePending(readJournal(repo));
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.operationId).toBe('op-1');
+  });
+
+  it('never appears in git status -- quick_change records share the same journal-invisibility as every other record kind', () => {
+    appendQuickChangeRecord(repo, {
+      id: 'qc-1',
+      status: 'draft',
+      objective: 'Fix the thing',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      runs: [],
+    });
+    const status = git(['status', '--porcelain'], repo).trim();
+    expect(status).toBe('');
+  });
+
+  it('rejects a quick_change record missing required fields', () => {
+    expect(() =>
+      appendQuickChangeRecord(repo, {
+        id: 'qc-1',
+        // @ts-expect-error deliberately invalid status
+        status: 'bogus',
+        objective: 'Fix the thing',
+        scope: ['README.md'],
+        verifyCommand: 'echo ok',
+        runs: [],
+      }),
+    ).toThrow(JournalError);
+    expect(readJournal(repo)).toHaveLength(0);
+  });
+
+  it('supports appending more than one snapshot for the same id, preserving every prior snapshot append-only', () => {
+    appendQuickChangeRecord(repo, {
+      id: 'qc-1',
+      status: 'draft',
+      objective: 'Fix the thing',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      runs: [],
+    });
+    appendQuickChangeRecord(repo, {
+      id: 'qc-1',
+      status: 'approved',
+      objective: 'Fix the thing',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      approvedHash: 'sha256:' + 'a'.repeat(64),
+      runs: [],
+    });
+
+    const all = readJournal(repo).filter((r) => r.kind === 'quick_change');
+    expect(all).toHaveLength(2);
+    expect(all[0]).toMatchObject({ status: 'draft' });
+    expect(all[1]).toMatchObject({ status: 'approved', approvedHash: 'sha256:' + 'a'.repeat(64) });
   });
 });
 

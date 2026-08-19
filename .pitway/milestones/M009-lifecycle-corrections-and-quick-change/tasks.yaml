@@ -199,13 +199,14 @@ tasks:
       create (mirroring task-update's clean-start invariant), and every path
       under .pitway/ refused as part of --scope. No CLI surface yet -- that is
       T005 (AC003)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - AC003
     context_files:
       - src/state/journal.ts
       - src/core/journal/operations.ts
+      - src/core/journal/auto-run.ts
       - src/core/quick-change/create.ts
       - tests/unit/journal.test.ts
       - tests/unit/quick-change-lifecycle.test.ts
@@ -215,6 +216,7 @@ tasks:
     write_scope:
       - src/state/journal.ts
       - src/core/journal/operations.ts
+      - src/core/journal/auto-run.ts
       - src/core/quick-change/create.ts
       - tests/unit/journal.test.ts
       - tests/unit/quick-change-lifecycle.test.ts
@@ -224,8 +226,28 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/unit/quick-change-lifecycle.test.ts
         tests/unit/journal.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "[truncated] eState as plain, CLI-agnostic Core functions. Folded in a
+        bounded ripple fix (src/core/journal/auto-run.ts's isAutoRunAuthorized
+        accessed .milestone before narrowing by kind, which the new
+        no-milestone-field quick_change variant broke at the type level) via
+        task-amend before this commit."
+      evidence: "Fingerprint recipe corrected before trusting it: git status
+        --porcelain (default) collapses a fully-untracked directory to one line,
+        so the worker's and driver's identical-but-flawed recipes both hashed
+        \"src/core/quick-change/\" as an empty-content path rather than
+        create.ts's real bytes -- fixed to --untracked-files=all for this and
+        all future tasks. Given that, independently reran the targeted command
+        rather than trusting the fingerprint match alone: npm test --
+        tests/unit/quick-change-lifecycle.test.ts tests/unit/journal.test.ts ->
+        42/42 passed (matches worker report exactly). npx tsc --noEmit -> clean
+        after the auto-run.ts one-line reorder fix; npm test --
+        tests/unit/auto-run-authorization.test.ts
+        tests/integration/auto-run.test.ts -> 34/34 passed (confirms the reorder
+        is behaviorally identical). Diff confined to the amended write_scope."
+    attempts: 1
+    usage:
+      total_tokens: 123808
   - id: T004
     objective: "Quick-change, part 2 of 3 -- verification/commit/recovery/ trailer.
       src/core/quick-change/run.ts executes exactly the approved-and-hashed
@@ -241,7 +263,7 @@ tasks:
       interrupted commit resumes via commitOrResume's existing identity-lookup
       pattern against this new trailer, the same as task/milestone commits
       already do (AC003)."
-    status: waiting
+    status: ready
     depends_on:
       - T002
       - T003
@@ -335,11 +357,19 @@ tasks:
       Claude-asset file count, the Bootstrap delivery table gaining M008's row
       (M009's own row correctly omitted, left for whichever milestone next runs
       its own reconciliation task), a new Revised Roadmap placeholder bullet for
-      M010 -- Claude Skills carrying the full
+      M010 -- Worker Verification Evidence (a task-verify command; captured
+      command/exit-code/pass-fail-counts/duration/timeout-reason/typecheck-
+      result/deterministic-fingerprint evidence; a resumable evidence-id record;
+      a fingerprint/task-id/attempt/approved-command-hash/write_scope staleness
+      gate; explicit refusal conditions; the driver-does-not-rerun-matching-
+      verification behavior; milestone-level-only full typecheck/suite;
+      concise-only persisted evidence; and the explicit separation from
+      whole-run/main-agent token accounting), positioned before a second new
+      bullet for M011 -- Claude Skills carrying the full
       vendoring/attribution/installer/routing/evidence requirement in this
       document's own committed text, and the consistent renumbering of the
       milestones this document previously called M009 (branch isolation), M010
-      (parallel worktrees), and M011 (extended dogfood) to M011, M012, and M013
+      (parallel worktrees), and M011 (extended dogfood) to M012, M013, and M014
       across every cross-reference, not just the summary table (AC004).
       Separately: record an independently reviewed token-accounting feasibility
       conclusion at docs/evidence/M009/token-accounting-feasibility.md,
@@ -351,12 +381,13 @@ tasks:
       partial accumulation of multi-session totals; OpenTelemetry's opt-in
       operational cost; and the four rejected alternatives (transcript parsing,
       TUI scraping, snapshot accumulation, Agent SDK architectural inversion) --
-      and add exactly one new, unnumbered, post-M010, time-boxed 'Token
+      and add exactly one new, unnumbered, post-M011, time-boxed 'Token
       Telemetry Spike' roadmap bullet naming all seven E0-E6 experiments,
       stating that a full 'Usage Accounting' milestone is scheduled only if
       every load-bearing join validates exactly, otherwise the limitation is
-      documented and the idea deferred. No token-accounting implementation,
-      schema, or CLI code lands in this or any task of this milestone."
+      documented and the idea deferred. No token-accounting or task-verify
+      implementation, schema, or CLI code lands in this or any task of this
+      milestone."
     status: waiting
     depends_on:
       - T001
