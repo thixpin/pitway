@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createBaselineCommit } from '../../src/git/baseline.js';
+import { computeExpectedBaselinePaths, createBaselineCommit } from '../../src/git/baseline.js';
 import { GitError } from '../../src/git/exec.js';
 
 function git(args: string[], cwd: string): string {
@@ -27,6 +27,42 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(repo, { recursive: true, force: true });
+});
+
+// M006 hotfix regression coverage: computeExpectedBaselinePaths previously
+// had no direct unit coverage at all (only createBaselineCommit, above, was
+// tested) -- this is what let the .claude/-asset gap go unnoticed until it
+// surfaced as 79 integration failures.
+describe('computeExpectedBaselinePaths', () => {
+  it('returns exactly the .pitway/ baseline paths when no extra paths are given (existing behavior unchanged)', () => {
+    expect(computeExpectedBaselinePaths('M002', null)).toEqual([
+      '.pitway/config.yaml',
+      '.pitway/state.yaml',
+      '.pitway/milestones/M002/contract.md',
+      '.pitway/milestones/M002/tasks.yaml',
+      '.pitway/milestones/M002/verification-results.yaml',
+      '.pitway/milestones/M002/usage.yaml',
+    ]);
+  });
+
+  it('still includes the requirement path when a requirement id is given, unchanged from before', () => {
+    expect(computeExpectedBaselinePaths('M002', 'R001')).toContain('.pitway/requirements/R001.md');
+  });
+
+  it('appends exact extra paths verbatim -- never a directory prefix or glob', () => {
+    const extra = ['.claude/protocol-driver.md', '.claude/commands/verify.md'];
+    const result = computeExpectedBaselinePaths('M002', null, extra);
+    expect(result).toEqual(expect.arrayContaining(extra));
+    // Exactly the two given entries were appended -- nothing broader like a
+    // bare ".claude" or ".claude/" prefix was synthesized.
+    expect(result.filter((p) => p.startsWith('.claude')).sort()).toEqual([...extra].sort());
+  });
+
+  it('defaults extra paths to none when the parameter is omitted', () => {
+    const withDefault = computeExpectedBaselinePaths('M002', null);
+    const withExplicitEmpty = computeExpectedBaselinePaths('M002', null, []);
+    expect(withDefault).toEqual(withExplicitEmpty);
+  });
 });
 
 describe('createBaselineCommit', () => {

@@ -11,6 +11,7 @@ import { computeVerificationHash } from '../../src/core/contracts/verification-h
 import { derivePending } from '../../src/core/journal/operations.js';
 import { readJournal, reconcilePending, type JournalEntry } from '../../src/state/journal.js';
 import { loadContract, loadTasks } from '../../src/state/store.js';
+import { listClaudeAssetDestinations } from '../../src/state/claude-assets.js';
 
 function git(args: string[], cwd: string): string {
   return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
@@ -90,6 +91,11 @@ function milestoneDirName(id: string): string {
   return match;
 }
 
+// M006 hotfix: the shared beforeEach below runs default `init` (Claude
+// assets on), so the real baseline commit also covers every installed
+// .claude/ asset -- resolved from the one authoritative list
+// (listClaudeAssetDestinations), never hardcoded here, so this helper never
+// drifts from what the installer actually ships.
 const expectedBaselineFiles = (): string[] => {
   const dir = milestoneDirName('M001');
   return [
@@ -99,6 +105,7 @@ const expectedBaselineFiles = (): string[] => {
     `.pitway/milestones/${dir}/usage.yaml`,
     `.pitway/milestones/${dir}/verification-results.yaml`,
     '.pitway/state.yaml',
+    ...listClaudeAssetDestinations(),
   ].sort();
 };
 
@@ -336,6 +343,66 @@ describe('pitway milestone-confirm', () => {
     const { error } = await run(['milestone-confirm', 'M001'], root);
     expect(error?.message).toMatch(/ambiguous/i);
     expect(commitCount(root)).toBe(2);
+  });
+
+  // M006 hotfix (baseline safety previously refused every default-init'd
+  // repo's own installed Claude assets as "unrelated dirty changes" -- see
+  // src/git/baseline.ts's extraExpectedPaths).
+  it('accepts the exact installed Claude asset set at confirmation, committed in the same baseline', async () => {
+    // beforeEach already ran default `init` (Claude assets on); confirming
+    // must succeed and the assets must land in the same baseline commit,
+    // exactly like .pitway/config.yaml/state.yaml already do.
+    await confirmed();
+    expect(headFiles(root)).toEqual(expectedBaselineFiles());
+    for (const asset of listClaudeAssetDestinations()) {
+      expect(git(['status', '--porcelain', asset], root).trim()).toBe('');
+    }
+  });
+
+  it('still refuses an unmanaged file under .claude/ as unrelated dirty, naming it exactly', async () => {
+    await addMilestone();
+    writeFileSync(join(root, '.claude', 'unmanaged.md'), 'not installed by pitway\n');
+    const { error } = await run(['milestone-confirm', 'M001'], root);
+    expect(error?.message).toMatch(/\.claude\/unmanaged\.md/);
+    expect(loadContract(root, 'M001').frontmatter.status).toBe('draft');
+    expect(git(['diff', '--cached', '--name-only'], root).trim()).toBe('');
+  });
+});
+
+// M006 hotfix: --no-claude must remain entirely unaffected -- no Claude
+// paths are ever expected or committed when no assets were installed. Uses
+// its own root (not the shared default-init beforeEach above).
+describe('pitway milestone-confirm with --no-claude (M006 hotfix regression)', () => {
+  let noClaudeRoot: string;
+
+  beforeEach(async () => {
+    noClaudeRoot = mkdtempSync(join(tmpdir(), 'pitway-mconf-noclaude-'));
+    git(['init', '-q'], noClaudeRoot);
+    git(['config', 'user.email', 'test@example.com'], noClaudeRoot);
+    git(['config', 'user.name', 'Test'], noClaudeRoot);
+    writeFileSync(join(noClaudeRoot, 'README.md'), 'seed\n');
+    git(['add', 'README.md'], noClaudeRoot);
+    git(['commit', '-q', '-m', 'init'], noClaudeRoot);
+    await run(['init', '--no-claude'], noClaudeRoot);
+  });
+
+  afterEach(() => {
+    rmSync(noClaudeRoot, { recursive: true, force: true });
+  });
+
+  it('confirms cleanly with no .claude/ directory and no Claude paths in the baseline commit', async () => {
+    const contract = join(noClaudeRoot, 'draft-contract.md');
+    const tasks = join(noClaudeRoot, 'draft-tasks.yaml');
+    writeFileSync(contract, CONTRACT_FIXTURE);
+    writeFileSync(tasks, TASKS_FIXTURE);
+    await run(['milestone-add', '--contract', contract, '--tasks', tasks], noClaudeRoot);
+    rmSync(contract);
+    rmSync(tasks);
+    const { error } = await run(['milestone-confirm', 'M001'], noClaudeRoot);
+    expect(error).toBeUndefined();
+    const committed = headFiles(noClaudeRoot);
+    expect(committed.some((f) => f.startsWith('.claude/'))).toBe(false);
+    expect(git(['status', '--porcelain'], noClaudeRoot).trim()).toBe('');
   });
 });
 

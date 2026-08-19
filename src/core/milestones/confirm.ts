@@ -3,6 +3,7 @@ import { computeExpectedBaselinePaths, createBaselineCommit } from '../../git/ba
 import { commitOrResume } from '../../git/commit-or-resume.js';
 import { checkWorkingTreeClean } from '../../git/safety.js';
 import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
+import { listClaudeAssetDestinations } from '../../state/claude-assets.js';
 import { parseContractFile, serializeContractFile } from '../../state/contract-file.js';
 import { appendJournalEntry, readJournal } from '../../state/journal.js';
 import {
@@ -81,7 +82,15 @@ function runConfirm(root: string, milestoneId: string, contract: ContractFile): 
   // passed into the Git-layer function — baseline.ts itself stays free of
   // any State import.
   const milestoneDir = resolveMilestoneDirName(root, milestoneId);
-  const expectedPaths = computeExpectedBaselinePaths(milestoneDir, requirement);
+  // M006 hotfix: init-installed Claude assets (when present) are exact-path
+  // expected too, the same way .pitway/config.yaml/state.yaml already are --
+  // resolved from the one authoritative asset list, never a broad .claude/**
+  // acceptance, so an unmanaged file under .claude/ still refuses.
+  const expectedPaths = computeExpectedBaselinePaths(
+    milestoneDir,
+    requirement,
+    listClaudeAssetDestinations(),
+  );
 
   if (status === 'draft') {
     if (baselineSha !== undefined) {

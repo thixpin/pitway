@@ -18,9 +18,20 @@ export interface BaselineCommitOptions {
 // lives in the State layer (src/state/store.ts's resolveMilestoneDirName);
 // this Git-layer module stays free of any State import, receiving the
 // resolved value from its Core-layer caller instead (see confirm.ts).
+//
+// `extraExpectedPaths` (M006 hotfix): exact repo-relative file paths beyond
+// `.pitway/` that this baseline may also cover -- e.g. init-installed
+// Claude assets (src/state/claude-assets.ts's listClaudeAssetDestinations).
+// This module has zero knowledge of what those paths are or represent; the
+// Core-layer caller resolves the exact managed set and passes it in, the
+// same agent-agnostic-boundary pattern already used for milestoneDir above.
+// Never a directory prefix or glob here -- each entry is one exact file, so
+// an unmanaged file living alongside managed ones is never silently
+// accepted.
 export function computeExpectedBaselinePaths(
   milestoneDir: string,
   requirementId?: string | null,
+  extraExpectedPaths: string[] = [],
 ): string[] {
   const paths = [
     '.pitway/config.yaml',
@@ -29,6 +40,7 @@ export function computeExpectedBaselinePaths(
     `.pitway/milestones/${milestoneDir}/tasks.yaml`,
     `.pitway/milestones/${milestoneDir}/verification-results.yaml`,
     `.pitway/milestones/${milestoneDir}/usage.yaml`,
+    ...extraExpectedPaths,
   ];
   if (requirementId) paths.push(`.pitway/requirements/${requirementId}.md`);
   return paths;

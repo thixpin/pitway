@@ -20,6 +20,7 @@ import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js
 import { buildResumeView, registerResumeCommand } from '../../src/cli/commands/resume.js';
 import { resolveCommitSha } from '../../src/git/trailers.js';
 import { loadContract, loadState, loadTasks } from '../../src/state/store.js';
+import { listClaudeAssetDestinations } from '../../src/state/claude-assets.js';
 
 function git(args: string[], cwd: string): string {
   return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
@@ -116,6 +117,10 @@ function milestoneDirName(root: string, id: string): string {
 const tasksPath = (root: string): string =>
   `.pitway/milestones/${milestoneDirName(root, 'M001')}/tasks.yaml`;
 
+// M006 hotfix: this describe block's `root` runs default `init` (Claude
+// assets on) below, so the real baseline commit also covers every installed
+// .claude/ asset -- resolved from the one authoritative list, never
+// hardcoded here.
 const expectedBaselineFiles = (root: string): string[] => {
   const dir = milestoneDirName(root, 'M001');
   return [
@@ -126,6 +131,7 @@ const expectedBaselineFiles = (root: string): string[] => {
     `.pitway/milestones/${dir}/verification-results.yaml`,
     '.pitway/requirements/R001.md',
     '.pitway/state.yaml',
+    ...listClaudeAssetDestinations(),
   ].sort();
 };
 
