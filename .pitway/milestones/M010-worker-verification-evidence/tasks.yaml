@@ -292,7 +292,7 @@ tasks:
       task), the Revised Roadmap's M010 entry reflecting actual delivery in
       place of its current placeholder text, and the Status line reflecting
       M010's actual delivery (AC002)."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -308,5 +308,18 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review per CT003
-    result: null
+    result:
+      summary: "[truncated] , no usage-attachment mechanism); the document's own
+        revision-history line and Status paragraph both updated to reflect
+        M010's completion. Performed directly by the driver (single-file
+        documentation task, manual verification per CT003) rather than
+        dispatched, per task-level right-sizing."
+      evidence: 'Full file reviewed section-by-section after editing (S7 CLI Commands
+        table, S9 Claude Code Adapter asset list/count, Bootstrap delivery
+        table, Revised Roadmap header/intro/M010 entry, Status paragraph,
+        top-of-file revision history). git diff --stat: 1 file changed, 13
+        insertions(+), 10 deletions(-). grep confirmed no stale "seventeen"/"23
+        files"/"as of M009"/"M010 onward"/"Not yet drafted" references remain
+        for M010 anywhere in the document.'
+    attempts: 1
     usage: null
