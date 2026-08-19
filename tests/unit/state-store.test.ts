@@ -13,6 +13,7 @@ import {
   loadState,
   loadTasks,
   loadUsage,
+  loadVerificationRepairs,
   loadVerificationResults,
   milestoneDirExists,
   nextRequirementId,
@@ -23,6 +24,7 @@ import {
   saveState,
   saveTasks,
   saveUsage,
+  saveVerificationRepairs,
   saveVerificationResults,
   slugifyTitle,
 } from '../../src/state/store.js';
@@ -31,6 +33,7 @@ import type {
   PitwayState,
   TasksFile,
   UsageFile,
+  VerificationRepairsFile,
   VerificationResults,
 } from '../../src/state/schemas.js';
 
@@ -86,6 +89,57 @@ describe('state store round-trips', () => {
     const loaded = loadContract(root, 'M001');
     expect(loaded.frontmatter).toEqual(frontmatter);
     expect(loaded.body).toBe(body);
+  });
+
+  it('round-trips verification-repairs.yaml when the file already exists', () => {
+    const repairs: VerificationRepairsFile = {
+      schema_version: 1,
+      records: [
+        {
+          id: 'VR001',
+          files: ['src/example.ts'],
+          checks: ['CT001'],
+          change_log: 'fix a thing',
+          approved_at: '2026-08-20T00:00:00Z',
+          status: 'pending',
+        },
+      ],
+    };
+    saveVerificationRepairs(root, 'M001', repairs);
+    expect(loadVerificationRepairs(root, 'M001')).toEqual(repairs);
+  });
+});
+
+// Bootstrap-tolerance regression coverage: a milestone materialized before
+// verification-repairs.yaml existed as a concept (M009's own draft
+// predates T002's own fix) has no such file at all -- distinct from a file
+// that exists but is malformed or otherwise unreadable, which must still
+// fail visibly through the same path every other per-milestone file uses.
+describe('loadVerificationRepairs bootstrap tolerance', () => {
+  it('treats a missing verification-repairs.yaml as an empty, schema-valid store', () => {
+    expect(loadVerificationRepairs(root, 'M001')).toEqual({ schema_version: 1, records: [] });
+  });
+
+  it('still round-trips a genuinely existing store (not masked by the tolerance path)', () => {
+    const repairs: VerificationRepairsFile = { schema_version: 1, records: [] };
+    saveVerificationRepairs(root, 'M001', repairs);
+    expect(loadVerificationRepairs(root, 'M001')).toEqual(repairs);
+  });
+
+  it('still reports malformed YAML with the file path, not silently treated as empty', () => {
+    writeFileSync(
+      join(root, '.pitway', 'milestones', 'M001', 'verification-repairs.yaml'),
+      'records: [unclosed\n',
+    );
+    expect(() => loadVerificationRepairs(root, 'M001')).toThrowError(StateStoreError);
+    expect(() => loadVerificationRepairs(root, 'M001')).toThrowError(/verification-repairs\.yaml/);
+  });
+
+  it('still fails visibly on a non-ENOENT read error (path is a directory, not a file)', () => {
+    // EISDIR, not ENOENT -- existsSync is true, but readFileSync itself
+    // fails, exactly the "other I/O error" case the tolerance must not mask.
+    mkdirSync(join(root, '.pitway', 'milestones', 'M001', 'verification-repairs.yaml'));
+    expect(() => loadVerificationRepairs(root, 'M001')).toThrowError(StateStoreError);
   });
 });
 

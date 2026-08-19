@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parse, stringify } from 'yaml';
 import type { ZodType } from 'zod';
@@ -174,11 +174,24 @@ export function saveVerificationResults(
   );
 }
 
+// Bootstrap/migration tolerance: a milestone materialized (via milestone-add
+// or --replace) before verification-repairs.yaml existed as a concept has no
+// such file on disk at all -- ENOENT specifically, checked via existsSync
+// before ever attempting a read, never inferred from a caught error's
+// message. Treated as an empty, schema-valid store, the same
+// additive-optional/grandfathered-migration pattern already used elsewhere
+// in this codebase (mapped_ac_ids absent on pre-M007 tasks; bare
+// M001-M005 milestone directories predating M006's slug support). A file
+// that DOES exist but is malformed YAML, fails schema validation, or can't
+// be read for any other reason (permissions, etc.) still fails visibly
+// through the exact same loadYaml/readText path every other per-milestone
+// file uses -- this tolerance is scoped to "file absent," nothing broader.
 export function loadVerificationRepairs(root: string, milestoneId: string): VerificationRepairsFile {
-  return loadYaml(
-    milestonePath(root, milestoneId, 'verification-repairs.yaml'),
-    verificationRepairsFileSchema,
-  );
+  const path = milestonePath(root, milestoneId, 'verification-repairs.yaml');
+  if (!existsSync(path)) {
+    return { schema_version: 1, records: [] };
+  }
+  return loadYaml(path, verificationRepairsFileSchema);
 }
 
 export function saveVerificationRepairs(
