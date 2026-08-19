@@ -1,4 +1,12 @@
-import { appendFileSync, chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -13,7 +21,7 @@ import { loadTasks, saveTasks } from '../../src/state/store.js';
 import type { Task } from '../../src/state/schemas.js';
 import { recordUsage } from '../../src/core/metrics/aggregate.js';
 import { derivePending } from '../../src/core/journal/operations.js';
-import { readJournal } from '../../src/state/journal.js';
+import { appendJournalEntry, readJournal } from '../../src/state/journal.js';
 
 function git(args: string[], cwd: string): string {
   return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
@@ -492,5 +500,114 @@ describe('pitway task-update completion folds in pending journal entries (M005 T
     // is never captured by it — reconcilePending is safe to call regardless,
     // and correctly leaves a genuinely-still-pending entry alone.
     expect(derivePending(readJournal(root)).filter((e) => e.type === 'usage_recording')).toHaveLength(1);
+  });
+});
+
+describe('pitway task-update start tolerates pending journal entries materialized between tasks (M005 T004 fix)', () => {
+  // Before this fix, an amendment/usage recording made while no task was
+  // in_progress had no way to ever reach a commit: the only checkpoints are
+  // task-completion and milestone-terminal, and starting the next task — the
+  // only path to a completion checkpoint — refused because the materialized
+  // file was dirty. classifyDirtyPaths now recognizes it as expected here too.
+  function amendDraft(changeLogEntry: string): string {
+    // Written under scratch (outside root) so the draft file itself never
+    // shows up as an unrelated dirty path in root's working tree.
+    const draft = join(scratch, `amend-draft-${Date.now()}-${Math.random().toString(36).slice(2)}.md`);
+    const current = readFileSync(join(root, '.pitway', 'milestones', 'M001', 'contract.md'), 'utf8');
+    writeFileSync(draft, current.replace('## Change Log', `## Change Log\n\n- ${changeLogEntry}`));
+    return draft;
+  }
+
+  it('a contract amendment materialized between tasks lets the next task start, and its completion commits the amendment', async () => {
+    const draft = amendDraft('Clarified AC001 wording.');
+    const { error: amendError } = await run(
+      ['milestone-confirm', 'M001', '--amend', '--file', draft],
+      root,
+    );
+    expect(amendError).toBeUndefined();
+    expect(git(['status', '--porcelain'], root)).toMatch(/contract\.md/);
+    expect(derivePending(readJournal(root)).filter((e) => e.type === 'contract_amendment')).toHaveLength(1);
+
+    // Previously refused here with "unrelated dirty changes present: contract.md".
+    const { error: startError } = await update(['T001', 'in_progress']);
+    expect(startError).toBeUndefined();
+    expect(task('T001').status).toBe('in_progress');
+
+    await update(['T001', 'review']);
+    const { error: completeError } = await completeT001();
+    expect(completeError).toBeUndefined();
+    expect(headFiles(root)).toEqual(
+      [TASKS_PATH, '.pitway/milestones/M001/contract.md', 'src/a.ts'].sort(),
+    );
+    expect(derivePending(readJournal(root)).filter((e) => e.type === 'contract_amendment')).toHaveLength(0);
+  });
+
+  it('a usage recording materialized between tasks (before any task starts) follows the same path', async () => {
+    recordUsage(root, 'M001', { category: 'planning', usage: '{"total_tokens":11}' });
+    expect(git(['status', '--porcelain'], root)).toMatch(/usage\.yaml/);
+
+    const { error: startError } = await update(['T001', 'in_progress']);
+    expect(startError).toBeUndefined();
+
+    await update(['T001', 'review']);
+    const { error: completeError } = await completeT001();
+    expect(completeError).toBeUndefined();
+    expect(headFiles(root)).toEqual(
+      [TASKS_PATH, '.pitway/milestones/M001/usage.yaml', 'src/a.ts'].sort(),
+    );
+    expect(derivePending(readJournal(root)).filter((e) => e.type === 'usage_recording')).toHaveLength(0);
+  });
+
+  it('multiple pending journal operations materialized between tasks are all captured by the same completion checkpoint', async () => {
+    const draft = amendDraft('Second clarification.');
+    await run(['milestone-confirm', 'M001', '--amend', '--file', draft], root);
+    recordUsage(root, 'M001', { category: 'qa', usage: '{"total_tokens":3}' });
+    expect(derivePending(readJournal(root))).toHaveLength(2);
+
+    const { error: startError } = await update(['T001', 'in_progress']);
+    expect(startError).toBeUndefined();
+    await update(['T001', 'review']);
+    const { error: completeError } = await completeT001();
+    expect(completeError).toBeUndefined();
+
+    expect(headFiles(root)).toEqual(
+      [
+        TASKS_PATH,
+        '.pitway/milestones/M001/contract.md',
+        '.pitway/milestones/M001/usage.yaml',
+        'src/a.ts',
+      ].sort(),
+    );
+    const markers = readJournal(root).filter((r) => r.kind === 'checkpoint');
+    expect(markers).toHaveLength(2);
+    const sha = git(['rev-parse', 'HEAD'], root).trim();
+    expect(markers.every((m) => m.kind === 'checkpoint' && m.commitSha === sha)).toBe(true);
+    expect(derivePending(readJournal(root))).toHaveLength(0);
+  });
+
+  it('an unrelated dirty file still blocks task start even while a pending journal entry for this milestone exists', async () => {
+    recordUsage(root, 'M001', { category: 'planning', usage: '{"total_tokens":1}' });
+    writeFileSync(join(root, 'wip.txt'), 'wip\n');
+    const { error } = await update(['T001', 'in_progress']);
+    expect(error?.message).toMatch(/wip\.txt/);
+    expect(error?.message).not.toMatch(/usage\.yaml/);
+    expect(task('T001').status).toBe('ready');
+  });
+
+  it('a pending journal entry for a different milestone is never treated as expected here', async () => {
+    // Fabricate a pending entry as if some other milestone had one — M001's
+    // own start check must not treat M002's target file as expected.
+    appendJournalEntry(root, {
+      milestone: 'M002',
+      type: 'usage_recording',
+      operationId: 'cross-milestone-op',
+      payload: {},
+    });
+    mkdirSync(join(root, '.pitway', 'milestones', 'M002'), { recursive: true });
+    writeFileSync(join(root, '.pitway', 'milestones', 'M002', 'usage.yaml'), 'schema_version: 1\n');
+
+    const { error } = await update(['T001', 'in_progress']);
+    expect(error?.message).toMatch(/M002.*usage\.yaml/);
+    expect(task('T001').status).toBe('ready');
   });
 });

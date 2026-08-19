@@ -294,9 +294,16 @@ export function updateTask(
   const next = transitionTask(task.status, target);
   const updated: Task = { ...task, status: next };
   if (target === 'in_progress') {
-    // AC014: execution starts here — the tree must be clean except tasks.yaml,
-    // and attempts increments exactly once per (re)start, deterministically.
-    assertDirtySubset(root, [tasksRepoPath(milestoneId)]);
+    // AC014/M005-T004: execution starts here — the tree must be clean except
+    // tasks.yaml and any path already materialized by a pending journal entry
+    // for THIS milestone (a contract/usage/task amendment recorded between
+    // tasks — see src/state/journal.ts). Without this, an amendment
+    // materialized while no task is in_progress would strand the milestone:
+    // it has no commit of its own, and no other task could ever start to
+    // reach the completion checkpoint that would fold it in. Attempts
+    // increments exactly once per (re)start, deterministically.
+    const journalExpected = classifyDirtyPaths(root, { journalMilestone: milestoneId }).expected;
+    assertDirtySubset(root, [tasksRepoPath(milestoneId), ...journalExpected]);
     updated.attempts = (task.attempts ?? 0) + 1;
   }
   // AC017: every non-completion write touches tasks.yaml only and never commits.
