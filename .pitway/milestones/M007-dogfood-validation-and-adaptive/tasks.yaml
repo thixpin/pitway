@@ -526,7 +526,7 @@ tasks:
       review confirming IMPLEMENTATION_PLAN.md accurately reflects the decision,
       M007's actually-delivered scope, and any milestone-numbering impact from
       deferred adoptions (AC006).
-    status: ready
+    status: completed
     depends_on:
       - T002
       - T003
@@ -554,5 +554,15 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review per CT-review instruction
-    result: null
+    result:
+      summary: "[truncated] s rewritten. Corrected per developer review: 7 hotfixes +
+        1 maintenance commit classification preserved exactly (never
+        8-as-one-pattern); worker read-boundary gap given explicit disposition,
+        assigned to M008's release contract, no README/release claim may imply
+        enforcement until decided."
+      evidence: docs/evidence/M007/adaptive-workflow-intensity-decision.md,
+        IMPLEMENTATION_PLAN.md. Typecheck clean, full suite 545/545 pass twice
+        (before and after the two corrections). No new milestone or task-graph
+        change.
+    attempts: 1
     usage: null
