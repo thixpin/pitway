@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
@@ -54,7 +54,16 @@ export function registerAllCommands(program: Command, deps: CommandDeps = {}): v
   registerWriteMsArtifactsCommand(program, deps);
 }
 
-const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
+// M008/T002: process.argv[1] stays the literal invoked path even when that
+// path is a symlink -- exactly how npm's generated bin entry always invokes
+// a package's CLI -- while import.meta.url resolves through the symlink to
+// the module's own realpath. A strict-equality comparison between the two
+// never matches for a real installed package, so the CLI silently no-ops
+// for every command. Resolving argv[1] to its own realpath first makes the
+// comparison symlink-safe.
+const isMainModule =
+  process.argv[1] !== undefined &&
+  realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMainModule) {
   const program = buildCli();
   registerAllCommands(program);

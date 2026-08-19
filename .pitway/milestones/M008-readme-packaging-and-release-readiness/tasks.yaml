@@ -65,7 +65,7 @@ tasks:
       JSON/exit-code behavior, default init with Claude assets, and the exact
       approved metadata in the packed package.json. No npm publish runs anywhere
       in this task (AC002)."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -101,11 +101,25 @@ tasks:
       - package-lock.json
       - LICENSE
       - tests/integration/npm-pack.test.ts
+      - src/cli/index.ts
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/npm-pack.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "[truncated]  ripple-fix policy) a real bug: isMainModule's
+        argv[1]===import.meta.url check failed for npm's real bin symlink
+        mechanism, silently no-oping every command when actually installed --
+        fixed with realpathSync. Registry: pitway confirmed unclaimed (fresh
+        404), no npm publish/login anywhere."
+      evidence: "20/20 target tests pass (npm-pack.test.ts), typecheck clean, full
+        suite 586/586 pass with zero regressions, zero stray processes, zero
+        leftover temp artifacts. Bug independently reproduced by the driver
+        before and after the fix (symlink invocation: silent no-op before,
+        correct --help output after). Diff matches the amended write_scope
+        exactly."
+    attempts: 1
+    usage:
+      total_tokens: 72429
   - id: T003
     objective: "Resolve the worker read-boundary enforcement question M007 left
       undecided and assigned to M008, held to a real technical bar: worktree
@@ -154,7 +168,7 @@ tasks:
       clone-durable evidence (committed Git history, .pitway/ state, tests,
       docs/evidence/**) -- never reports/ *.md, which may inform drafting but
       supports no public claim (AC003)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002

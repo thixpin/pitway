@@ -1,12 +1,29 @@
 {
   "name": "pitway",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A controlled workflow for agentic software development.",
   "type": "module",
   "license": "MIT",
+  "author": {
+    "name": "thixpin",
+    "url": "https://github.com/thixpin"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thixpin/pitway.git"
+  },
+  "bugs": {
+    "url": "https://github.com/thixpin/pitway/issues"
+  },
+  "homepage": "https://github.com/thixpin/pitway#readme",
   "bin": {
     "pitway": "./dist/cli/index.js"
   },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
   "engines": {
     "node": ">=20"
   },
