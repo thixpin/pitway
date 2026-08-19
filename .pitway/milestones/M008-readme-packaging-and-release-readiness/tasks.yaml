@@ -208,7 +208,7 @@ tasks:
       explicitly snapshot-labeled) rather than merely re-stated with facts that
       will go stale the same way a fourth time, and AC002/AC004's decisions
       reflected wherever the document currently states them as open (AC005)."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -230,5 +230,13 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review per CT-review instruction
-    result: null
+    result:
+      summary: "[truncated] hing README verbatim; M008's roadmap bullet rewritten with
+        actual delivery incl. the argv[1]/symlink defect fix; Status line
+        structurally fixed to point at live pitway resume/.pitway/state.yaml
+        with an explicit snapshot label, closing the staleness pattern repeated
+        across M005/M006/M007."
+      evidence: IMPLEMENTATION_PLAN.md updated, typecheck clean. Diff scoped to
+        exactly the one declared write_scope file.
+    attempts: 1
     usage: null
