@@ -5,12 +5,14 @@
   "type": "module",
   "license": "MIT",
   "bin": {
-    "pitway": "./src/cli/index.ts"
+    "pitway": "./dist/cli/index.js"
   },
   "engines": {
     "node": ">=20"
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-claude-assets.mjs",
+    "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

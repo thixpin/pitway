@@ -13,7 +13,7 @@ tasks:
       confirming all 14 commands individually registered/reachable plus a real
       init round trip confirming default Claude-asset installation. Closes the
       M004/T007 finding (AC001)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - tsc is the build tool; no new bundler dependency is added
@@ -39,8 +39,20 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/build-bin.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "[truncated] /prepack scripts wire both steps. Real subprocess spawn of
+        the compiled binary individually confirms all 14 commands + 3 auto-run
+        subcommands reachable, plus a real init round trip in an isolated temp
+        repo confirms default Claude-asset installation. Closes the M004/T007
+        finding for real."
+      evidence: "21/21 target tests pass (build-bin.test.ts), typecheck clean, full
+        suite 566/566 pass with zero regressions, zero stray processes. Diff
+        independently reviewed file-by-file: exactly the 4 declared write_scope
+        files touched. git-init exception confirmed used only inside the test's
+        own throwaway temp directory, never the real repo."
+    attempts: 1
+    usage:
+      total_tokens: 62525
   - id: T002
     objective: "Complete npm packaging metadata as explicit decisions
       (name/version/files/main-exports/license/author/repository/bugs/ homepage,
@@ -53,7 +65,7 @@ tasks:
       JSON/exit-code behavior, default init with Claude assets, and the exact
       approved metadata in the packed package.json. No npm publish runs anywhere
       in this task (AC002)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
