@@ -429,7 +429,7 @@ tasks:
       documented and the idea deferred. No token-accounting or task-verify
       implementation, schema, or CLI code lands in this or any task of this
       milestone."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -450,5 +450,25 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review per CT007
-    result: null
+    result:
+      summary: "[truncated] 4 renumbering of every cross-reference (S10, S15, the
+        roadmap bullets themselves), and a restructured Status line. Recorded
+        the independently reviewed token-accounting feasibility conclusion at
+        docs/evidence/M009/token-accounting-feasibility.md, preserving every
+        reviewed point precisely."
+      evidence: "Executed inline (documentation task, matches the dispatch protocol's
+        default). Diff confined to exactly write_scope: IMPLEMENTATION_PLAN.md
+        and the new docs/evidence/M009/token-accounting-feasibility.md -- no
+        other file touched, no implementation/schema/CLI code anywhere in the
+        diff. Verified via direct inspection rather than a command check (this
+        task's verification strategy is manual, per CT007): the command table
+        and 17/23 counts checked against the real CLI (--help) and a real `find
+        src/integrations/claude -type f | wc -l`; every M009/M010/M011 ->
+        M012/M013/M014 cross-reference grepped and individually reviewed for
+        consistency; the evidence document's nine required points (verdict, four
+        dimensions, three-way session partition, derived-value labeling,
+        beta-trace requirement, partial-accumulation caveat, OpenTelemetry cost,
+        four rejected approaches, null/N/A discipline) each present
+        verbatim-preserved, not paraphrased away."
+    attempts: 1
     usage: null
