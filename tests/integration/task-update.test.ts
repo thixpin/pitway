@@ -383,6 +383,54 @@ describe('pitway task-update to completed (AC015, AC016)', () => {
   });
 });
 
+// M005 integration defect discovered during M006/T001: completeTask's
+// expected-dirty set was built from task.relevant_files only, never
+// task.write_scope, so every write_scope-only task (the M006 style) refused
+// its own files as "unrelated dirty changes" and could never complete.
+// Fixed in completeTask to prefer write_scope, falling back to
+// relevant_files (schema-enforced either/or, never both).
+describe('pitway task-update honors write_scope during completion (M005 integration fix, M006/T001)', () => {
+  beforeEach(async () => {
+    await inReview();
+  });
+
+  it('completes a write_scope-only task, staging exactly its declared file', async () => {
+    editTask('T001', (t) => {
+      const { relevant_files: _relevant_files, ...rest } = t;
+      return { ...rest, write_scope: ['src/a.ts'] };
+    });
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(task('T001').status).toBe('completed');
+    expect(headFiles(root)).toEqual([tasksPath(), 'src/a.ts'].sort());
+    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+  });
+
+  it('still completes a legacy relevant_files-only task unchanged (no write_scope declared)', async () => {
+    // T001's fixture already declares relevant_files only, unmodified — this
+    // is the exact same path the pre-fix code already handled correctly;
+    // asserted explicitly here so this describe block stands on its own.
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(task('T001').status).toBe('completed');
+    expect(headFiles(root)).toEqual([tasksPath(), 'src/a.ts'].sort());
+  });
+
+  it('still refuses an unrelated dirty file for a write_scope-only task', async () => {
+    editTask('T001', (t) => {
+      const { relevant_files: _relevant_files, ...rest } = t;
+      return { ...rest, write_scope: ['src/a.ts'] };
+    });
+    touchRelevantFile();
+    writeFileSync(join(root, 'wip.txt'), 'wip\n');
+    const { error } = await update(['T001', 'completed', ...completionFlags()]);
+    expect(error?.message).toMatch(/wip\.txt/);
+    expect(task('T001').status).toBe('review');
+    expect(stagedFiles(root)).toBe('');
+    expect(commitCount(root)).toBe(2);
+  });
+});
+
 describe('pitway task-update completion re-entry (AC018)', () => {
   beforeEach(async () => {
     await inReview();

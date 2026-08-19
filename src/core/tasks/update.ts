@@ -184,10 +184,11 @@ function completeTask(
   inputs: TaskUpdateInputs,
 ): TaskUpdateView {
   const tasksPath = tasksRepoPath(root, milestoneId);
-  // relevant_files is optional as of M005/T003 (context_files/write_scope are
-  // the new style); this line predates write_scope enforcement, which is
-  // M005/T004's job. Defensive fallback only — no real task omits
-  // relevant_files yet, so behavior for every existing task is unchanged.
+  // write_scope (M005/T003) is the enforced completion-staging boundary when
+  // present; relevant_files is the legacy fallback for tasks that still use
+  // the old-style single field (M001-M005, and any future task that omits
+  // write_scope). A task never carries both (schema-enforced), so this is a
+  // straight either/or, not a merge.
   //
   // Any usage.yaml/contract.md already materialized by a pending journal
   // entry (usage-add / milestone-confirm --amend, both immediate-write, no
@@ -195,7 +196,9 @@ function completeTask(
   // src/core/milestones/confirm.ts) is expected to ride along in this
   // completion commit rather than being refused as unrelated dirt.
   const journalExpected = classifyDirtyPaths(root, { journalMilestone: milestoneId }).expected;
-  const expectedPaths = [...new Set([...(task.relevant_files ?? []), tasksPath, ...journalExpected])];
+  const expectedPaths = [
+    ...new Set([...(task.write_scope ?? task.relevant_files ?? []), tasksPath, ...journalExpected]),
+  ];
   const trailers = { 'PitWay-Milestone': milestoneId, 'PitWay-Task': task.id };
   const attempts = task.attempts ?? null;
 
