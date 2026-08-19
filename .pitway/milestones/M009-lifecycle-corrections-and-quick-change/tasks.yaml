@@ -1,0 +1,325 @@
+schema_version: 1
+tasks:
+  - id: T001
+    objective: "Extend milestone-add with a --replace <id> mode: draft-only,
+      same-id, no-git-operation in-place correction of a draft's
+      contract/tasks/verification-results/usage/verification-repairs, preserving
+      the currently materialized requirement id when --requirement is omitted.
+      Implement milestone-cancel <id> as the separate draft-only
+      preserve-and-retire path: no git operation, directory/contract.md never
+      deleted, id never reused. Core: src/core/milestones/create.ts (new
+      replaceMilestoneDraft export, reusing the existing validateDraftInputs),
+      src/core/milestones/ cancel.ts (new cancelMilestone export). CLI:
+      src/cli/commands/milestone-add.ts (new --replace option),
+      src/cli/commands/milestone-cancel.ts (new), registered in
+      src/cli/index.ts. Claude assets:
+      src/integrations/claude/commands/milestone-add.md (documents --replace),
+      src/integrations/claude/commands/milestone-cancel.md (new). Updates the
+      three hardcoded command-census arrays (tests/integration/cli.test.ts,
+      build-bin.test.ts, npm-pack.test.ts) for milestone-cancel (AC001)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC001
+    context_files:
+      - src/core/milestones/create.ts
+      - src/core/milestones/cancel.ts
+      - src/cli/commands/milestone-add.ts
+      - src/cli/commands/milestone-cancel.ts
+      - src/cli/index.ts
+      - src/integrations/claude/commands/milestone-add.md
+      - src/integrations/claude/commands/milestone-cancel.md
+      - tests/integration/milestone-add.test.ts
+      - tests/integration/milestone-cancel.test.ts
+      - tests/integration/cli.test.ts
+      - tests/integration/build-bin.test.ts
+      - tests/integration/npm-pack.test.ts
+      - src/core/milestones/complete.ts
+      - src/core/milestones/state-machine.ts
+      - src/core/milestones/confirm.ts
+      - src/state/store.ts
+      - src/state/schemas.ts
+      - src/git/baseline.ts
+    write_scope:
+      - src/core/milestones/create.ts
+      - src/core/milestones/cancel.ts
+      - src/cli/commands/milestone-add.ts
+      - src/cli/commands/milestone-cancel.ts
+      - src/cli/index.ts
+      - src/integrations/claude/commands/milestone-add.md
+      - src/integrations/claude/commands/milestone-cancel.md
+      - tests/integration/milestone-add.test.ts
+      - tests/integration/milestone-cancel.test.ts
+      - tests/integration/cli.test.ts
+      - tests/integration/build-bin.test.ts
+      - tests/integration/npm-pack.test.ts
+    mapped_ac_ids:
+      - AC001
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-add.test.ts
+        tests/integration/milestone-cancel.test.ts
+    result: null
+    usage: null
+  - id: T002
+    objective: "Implement verification-repair as a real two-phase,
+      approve-before-edit lifecycle, usable only when the target milestone is
+      in_progress and every non-cancelled task is completed.
+      'verification-repair approve <milestone> --file <path>... --check <id>...
+      --change-log <text>' rejects an empty or duplicate --file/--check list, a
+      --file path resolving outside the repository, and a --check id that is
+      unknown or not a command-type check in the contract; it then allocates a
+      durable VR\\d{3} id and persists it with its exact approved
+      files/checks/rationale as status: pending in a new self-contained-schema
+      verification-repairs.yaml (mirroring journal.ts's own local-schema
+      precedent) -- an uncommitted write, the same shape as task-update flipping
+      a task to in_progress -- with at most one pending VR allowed per
+      milestone. No implementation edit is permitted before this.
+      'verification-repair commit <milestone> <vr-id>' (run after edits)
+      validates the dirty tree is a subset of the approved files plus this
+      command's own state files, reruns every approved check by reusing
+      src/core/verification/run.ts's own command-check execution and
+      verification-results.yaml recording (refusing the whole commit if any
+      fails), and only then atomically commits the VR record, the corrected
+      files, and the fresh verification-results.yaml entries via commitOrResume,
+      carrying both PitWay-Milestone and PitWay-Verification-Repair: VR001
+      trailers (src/git/trailers.ts gains this query mode, plus a regression
+      test proving non-interference with existing lookups). 'verification-repair
+      cancel' is valid only while pending. verification-repairs.yaml is
+      initialized empty by src/core/milestones/create.ts (both fresh creation
+      and --replace) and included in the baseline commit's expected paths
+      (src/git/baseline.ts). src/core/milestones/ complete.ts gains a gate
+      refusing completion while any VR for that milestone is still pending.
+      Defines and tests retry/resume against a pending VR, pre-commit failure
+      (unexpected dirt, or a failed check rerun), post-commit interruption
+      (self-healing marker reconciliation, mirroring reconcilePending), and
+      ambiguity (a matching-trailer commit whose content diverges) -- refusing
+      cleanly in each case. Structurally refuses
+      contract.md/tasks.yaml/state.yaml as declared repair targets. CLI:
+      src/cli/commands/verification-repair.ts (approve/commit/cancel
+      subcommands), registered in src/cli/index.ts. Claude asset:
+      src/integrations/claude/commands/verification-repair.md. Updates the three
+      command-census arrays for verification-repair (AC002)."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - AC002
+    context_files:
+      - src/core/verification/repair.ts
+      - src/core/milestones/create.ts
+      - src/core/milestones/complete.ts
+      - src/core/verification/run.ts
+      - src/git/baseline.ts
+      - src/git/trailers.ts
+      - src/cli/commands/verification-repair.ts
+      - src/cli/index.ts
+      - src/integrations/claude/commands/verification-repair.md
+      - tests/integration/verification-repair.test.ts
+      - tests/unit/git-trailers.test.ts
+      - tests/integration/cli.test.ts
+      - tests/integration/build-bin.test.ts
+      - tests/integration/npm-pack.test.ts
+      - src/core/tasks/update.ts
+      - src/git/commit-or-resume.ts
+      - src/git/safety.ts
+      - src/state/journal.ts
+      - docs/evidence/M008/verification-repair-6f8b5e6.md
+    write_scope:
+      - src/core/verification/repair.ts
+      - src/core/milestones/create.ts
+      - src/core/milestones/complete.ts
+      - src/git/baseline.ts
+      - src/git/trailers.ts
+      - src/cli/commands/verification-repair.ts
+      - src/cli/index.ts
+      - src/integrations/claude/commands/verification-repair.md
+      - tests/integration/verification-repair.test.ts
+      - tests/unit/git-trailers.test.ts
+      - tests/integration/cli.test.ts
+      - tests/integration/build-bin.test.ts
+      - tests/integration/npm-pack.test.ts
+    mapped_ac_ids:
+      - AC002
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/verification-repair.test.ts
+    result: null
+    usage: null
+  - id: T003
+    objective: "Quick-change, part 1 of 3 -- state/schema/lifecycle. A new
+      quick_change journal record kind, sibling to entry/checkpoint/ auto_run
+      and structurally excluded from checkpoint-folding the same way auto_run
+      already is (src/state/journal.ts, src/core/journal/operations.ts).
+      src/core/quick-change/create.ts: the draft->approved->committed lifecycle
+      (draft|approved->cancelled, approved->promoted before commit), the
+      approved-and-hashed verification-command handshake (create declares
+      --scope <exact file list> and --verify <command>; approve hashes and locks
+      them, gated exactly like verification_approved_hash gates pitway verify),
+      active_milestone: null required at create, a clean-working-tree check at
+      create (mirroring task-update's clean-start invariant), and every path
+      under .pitway/ refused as part of --scope. No CLI surface yet -- that is
+      T005 (AC003)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC003
+    context_files:
+      - src/state/journal.ts
+      - src/core/journal/operations.ts
+      - src/core/quick-change/create.ts
+      - tests/unit/journal.test.ts
+      - tests/unit/quick-change-lifecycle.test.ts
+      - docs/evidence/M007/quick-change-design.md
+      - src/cli/commands/auto-run.ts
+      - tests/unit/auto-run-authorization.test.ts
+    write_scope:
+      - src/state/journal.ts
+      - src/core/journal/operations.ts
+      - src/core/quick-change/create.ts
+      - tests/unit/journal.test.ts
+      - tests/unit/quick-change-lifecycle.test.ts
+    mapped_ac_ids:
+      - AC003
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/quick-change-lifecycle.test.ts
+        tests/unit/journal.test.ts
+    result: null
+    usage: null
+  - id: T004
+    objective: "Quick-change, part 2 of 3 -- verification/commit/recovery/ trailer.
+      src/core/quick-change/run.ts executes exactly the approved-and-hashed
+      verification command from an approved change, refusing anything that
+      doesn't match the approved hash, and records each run attempt append-only
+      in the change's journal entry (pass or fail, never overwritten --
+      mirroring M007/AC002's flaky-pass-is-a- decision-gate discipline).
+      src/core/quick-change/commit.ts lands the approved change as one commit
+      via commitOrResume, exactly the declared --scope, carrying a
+      PitWay-Change: <change-id> trailer. src/git/trailers.ts gains the
+      PitWay-Change query mode, resolved from committed content the same way
+      every other PitWay trailer is (no SHA ever persisted). Crash recovery: an
+      interrupted commit resumes via commitOrResume's existing identity-lookup
+      pattern against this new trailer, the same as task/milestone commits
+      already do (AC003)."
+    status: waiting
+    depends_on:
+      - T002
+      - T003
+    acceptance_criteria:
+      - AC003
+    context_files:
+      - src/core/quick-change/run.ts
+      - src/core/quick-change/commit.ts
+      - src/git/trailers.ts
+      - tests/unit/quick-change-commit.test.ts
+      - src/core/verification/run.ts
+      - src/core/verification/repair.ts
+      - src/git/commit-or-resume.ts
+      - src/state/journal.ts
+      - src/core/quick-change/create.ts
+    write_scope:
+      - src/core/quick-change/run.ts
+      - src/core/quick-change/commit.ts
+      - src/git/trailers.ts
+      - tests/unit/quick-change-commit.test.ts
+    mapped_ac_ids:
+      - AC003
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/quick-change-commit.test.ts
+    result: null
+    usage: null
+  - id: T005
+    objective: "Quick-change, part 3 of 3 -- CLI/resume/assets/integration.
+      src/cli/commands/quick-change.ts (create/approve/run/commit/cancel/
+      promote/status subcommands), registered in src/cli/index.ts.
+      src/cli/commands/resume.ts extended as the AUTHORITATIVE recovery view for
+      a pending quick-change -- a fresh session must discover and be able to act
+      on it from resume's own output alone. The optional quick-change status
+      [<change-id>] subcommand exists only for focused inspection of one change
+      and never substitutes for resume; a test proves resume alone is sufficient
+      without it. src/core/quick-change/ promote.ts: valid only from draft or
+      approved (before commit), converts the change into a milestone draft
+      referencing its original objective, a terminal transition -- promoted
+      changes can never later be committed as a quick-change. Claude asset:
+      src/integrations/claude/commands/quick-change.md (new), plus a short
+      addition to src/integrations/claude/protocol-driver.md naming when to use
+      quick-change vs. a corrective milestone vs. a full milestone (no such
+      guidance exists in any committed driver asset today -- verified by direct
+      search). Real end-to-end integration test
+      (tests/integration/quick-change.test.ts) covering create through commit,
+      cancel, and promote. Updates the three command-census arrays for
+      quick-change (AC003)."
+    status: waiting
+    depends_on:
+      - T004
+    acceptance_criteria:
+      - AC003
+    context_files:
+      - src/cli/commands/quick-change.ts
+      - src/cli/index.ts
+      - src/cli/commands/resume.ts
+      - src/integrations/claude/commands/quick-change.md
+      - src/integrations/claude/protocol-driver.md
+      - src/core/quick-change/promote.ts
+      - tests/integration/quick-change.test.ts
+      - tests/integration/cli.test.ts
+      - tests/integration/build-bin.test.ts
+      - tests/integration/npm-pack.test.ts
+      - src/core/milestones/create.ts
+      - src/core/quick-change/run.ts
+      - src/core/quick-change/commit.ts
+      - src/cli/commands/auto-run.ts
+    write_scope:
+      - src/cli/commands/quick-change.ts
+      - src/cli/index.ts
+      - src/cli/commands/resume.ts
+      - src/integrations/claude/commands/quick-change.md
+      - src/integrations/claude/protocol-driver.md
+      - src/core/quick-change/promote.ts
+      - tests/integration/quick-change.test.ts
+      - tests/integration/cli.test.ts
+      - tests/integration/build-bin.test.ts
+      - tests/integration/npm-pack.test.ts
+    mapped_ac_ids:
+      - AC003
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/quick-change.test.ts
+    result: null
+    usage: null
+  - id: T006
+    objective: "Roadmap-reconciliation review, mirroring M005/T009, M006/T006,
+      M007/T013, M008/T005: confirm IMPLEMENTATION_PLAN.md accurately reflects
+      M009's actual delivery -- updated command surface and count, updated
+      Claude-asset file count, the Bootstrap delivery table gaining M008's row
+      (M009's own row correctly omitted, left for whichever milestone next runs
+      its own reconciliation task), a new Revised Roadmap placeholder bullet for
+      M010 -- Claude Skills carrying the full
+      vendoring/attribution/installer/routing/evidence requirement in this
+      document's own committed text, and the consistent renumbering of the
+      milestones this document previously called M009 (branch isolation), M010
+      (parallel worktrees), and M011 (extended dogfood) to M011, M012, and M013
+      across every cross-reference, not just the summary table (AC004)."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+      - T005
+    acceptance_criteria:
+      - AC004
+    context_files:
+      - IMPLEMENTATION_PLAN.md
+      - docs/evidence/M007/claude-skills-decision.md
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+    mapped_ac_ids:
+      - AC004
+    verification:
+      strategy: manual
+      detail: developer/driver review per CT007
+    result: null
+    usage: null
