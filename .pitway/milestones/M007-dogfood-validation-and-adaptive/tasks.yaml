@@ -1,0 +1,422 @@
+schema_version: 1
+tasks:
+  - id: T001
+    objective: "Compile dogfood evidence at docs/evidence/M007/ dogfood-evidence.md:
+      fresh-session state reconstruction as a regression-covered scenario, both
+      M004/T007 sub-agent interruption outcomes, a task-amendment audit against
+      every M005 amendment, a Git traceability audit across M001-M006 (including
+      M005's four and all three of M006's standalone hotfix commits — seven
+      total, plus 85fa243 classified separately as a between-milestone
+      maintenance commit, never merged into that count), a context-efficiency
+      before/after comparison against M006's measurements, an investigation and
+      decision on M006's disclosed CT012 full-suite flakiness, and one fresh,
+      matched inline-vs-sub-agent dispatch pair as evidence for AC010 (AC001)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Fresh-session resume is covered by a regression test, not only a
+        historical note
+      - Both M004/T007 sub-agent interruption outcomes are recorded with their
+        actual resolution, including the hard session-limit stop
+      - Every M005 amendment (2 contract amends, 2 task-amend calls, the T007
+        bootstrap repair) is audited against its journal entry and checkpoint
+        marker
+      - The Git traceability audit reports trailer coverage and the
+        standalone-fix-commit pattern's frequency across all seven M005/M006
+        hotfix commits, plus squash/rewrite exposure across M001-M006
+      - The audit classifies 85fa243 (chore, ignore local workflow reports)
+        separately as a between-milestone maintenance commit, not an eighth
+        hotfix, and never merges its count into the seven-hotfix figure
+      - Context-efficiency before/after figures are compiled against M006's
+        measurements, not re-derived from scratch
+      - The CT012 flakiness finding is investigated (the two bounded full-suite
+        runs each completed without hanging and left zero surviving processes
+        but reported different transient failure sets), and a decision is
+        recorded — the cause remains unproven and is explicitly deferred with
+        the evidence stated as such, or a specific vitest isolation change is
+        adopted — never asserted as proven environmental noise
+      - A fresh matched inline/sub-agent dispatch pair is constructed and
+        measured under comparable model/config conditions
+    write_scope:
+      - docs/evidence/M007/dogfood-evidence.md
+      - tests/integration/fresh-session-resume.test.ts
+      - tests/integration/git-traceability-audit.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/fresh-session-resume.test.ts
+        tests/integration/git-traceability-audit.test.ts
+    result: null
+    usage: null
+  - id: T002
+    objective: Evaluate the M005 report's contract-fixed, task-adaptive execution
+      model against the compiled dogfood evidence; record an explicit adopt,
+      defer, or reject decision with reasoning, and if adopted, state whether it
+      needs new Core mechanism or is achievable through disciplined task-amend
+      use, at docs/evidence/M007/ contract-fixed-task-adaptive-decision.md
+      (AC002).
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - The evaluation cites specific M005 incidents (T001, T003, T004, T007) as
+        evidence, not general reasoning alone
+      - The decision is explicit — adopt, defer, or reject — never left
+        open-ended
+      - If adopted, the evaluation states the mechanism required, if any
+    write_scope:
+      - docs/evidence/M007/contract-fixed-task-adaptive-decision.md
+    verification:
+      strategy: manual
+      detail: developer/driver review of the recorded decision and its evidence
+    result: null
+    usage: null
+  - id: T003
+    objective: Dogfood-evaluate exhaustive positive write_scope file lists against
+      glob/directory-scoped write_scope plus an explicit protected-path
+      denylist; record an explicit adopt, defer, or reject decision at
+      docs/evidence/M007/write-scope-boundary-decision.md (AC003).
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - The evaluation measures amendment frequency and scope-widening incidents
+        under the current file-list model as a baseline
+      - A comparison against a glob/directory-plus-denylist alternative is
+        recorded, even if only as a design sketch, with named tradeoffs
+      - The decision is explicit — adopt, defer, or reject — with a named reason
+    write_scope:
+      - docs/evidence/M007/write-scope-boundary-decision.md
+    verification:
+      strategy: manual
+      detail: developer/driver review of the recorded decision and its evidence
+    result: null
+    usage: null
+  - id: T004
+    objective: Dogfood-evaluate whether a worker may fix a small, directly-related
+      bug discovered mid-task within the current contract's existing
+      ACs/verification, without a standalone out-of-band commit or repeated
+      developer approval, citing both M005's (T003/T004/T007) and all three of
+      M006's (81c99a2, 1e07014, 81a420a) standalone hotfixes as evidence; record
+      an explicit adopt, defer, or reject decision and, if adopted, the
+      mechanism, at docs/evidence/M007/ ripple-fix-policy-decision.md (AC004).
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - The evaluation cites the M005 T003/T004/T007 AND all three of M006's
+        standalone hotfix commits as its baseline evidence
+      - The decision is explicit — adopt, defer, or reject
+      - If adopted, the mechanism preserves that contract/verification scope is
+        never expanded by a ripple fix
+    write_scope:
+      - docs/evidence/M007/ripple-fix-policy-decision.md
+    verification:
+      strategy: manual
+      detail: developer/driver review of the recorded decision and its evidence
+    result: null
+    usage: null
+  - id: T005
+    objective: "Design (not implement) a lightweight quick-change/hotfix workflow at
+      docs/evidence/M007/quick-change-design.md: lifecycle,
+      approved-verification handling, state/journal storage, crash recovery,
+      commit identity, PitWay-Change trailer lookup, cancellation, and
+      promotion-to-milestone semantics, with an exact-file census for a future
+      implementation; use 85fa243 (chore, ignore local workflow reports — a
+      tiny, legitimate, between-milestone maintenance commit with no supported
+      PitWay-attributed lightweight path) as a worked example; record an
+      explicit adopt, defer, or reject decision, with implementation deferred to
+      a later milestone regardless of outcome (AC005)."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - The design specifies lifecycle states, approved-verification
+        hash-gating, journal storage (a new quick_change kind, sibling to
+        entry/checkpoint/auto_run), crash recovery, PitWay-Change trailer
+        identity and lookup, cancellation, and promotion-to-milestone, naming
+        every anticipated file exactly (no directory or glob)
+      - The design states explicitly that an arbitrary, unapproved command can
+        never execute under this mechanism
+      - The design states explicitly whether 85fa243 is the kind of change
+        quick-change is meant to cover, and if so, what a PitWay-Change-trailed
+        version of that exact commit would have looked like under the designed
+        lifecycle
+      - The decision is explicit — adopt, defer, or reject
+      - No quick-change implementation code exists anywhere in this task's diff,
+        regardless of the decision
+    write_scope:
+      - docs/evidence/M007/quick-change-design.md
+    verification:
+      strategy: manual
+      detail: developer/driver review of the recorded design and decision
+    result: null
+    usage: null
+  - id: T006
+    objective: Define a first-class recovery path for defects discovered in
+      already-completed PitWay tooling itself, generalizing the M005/T007
+      task-amend bootstrap repair AND all three of M006's standalone hotfixes
+      (81c99a2 write_scope, 1e07014 baseline-assets, 81a420a recursion-guard
+      test isolation) into one repeatable procedure covering diagnosis,
+      in-scope-vs-deferred routing, and how the fix and its evidence are
+      recorded; incorporate the new-repository-managed-file- category
+      contract-drafting guidance from M006/T003's incident, at
+      docs/evidence/M007/tooling-defect-recovery-path.md (AC007).
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - The procedure is documented as a repeatable process, not a one-off
+        exception
+      - All four worked examples (M005/T007, M006/T001, M006/T003, M006's
+        recursion-guard test-isolation fix) are demonstrated against the
+        documented procedure
+      - The procedure states explicitly when a fix stays within the active
+        milestone's scope versus when it must be deferred
+      - The new-repository-managed-file-category guidance (check every existing
+        git-safety allowlist, not just declared write_scope) is included
+    write_scope:
+      - docs/evidence/M007/tooling-defect-recovery-path.md
+    verification:
+      strategy: manual
+      detail: developer/driver review of the documented procedure against the four
+        worked examples
+    result: null
+    usage: null
+  - id: T007
+    objective: "Prove, with a real integration test using only already- shipped
+      commands (milestone-add, task-update — zero new Core/CLI code), a
+      supported path to deliver corrective work for a previously- completed
+      task's deliverable later found incomplete: a new task in a subsequent
+      milestone that references the original milestone/task id, never reopening
+      completed state or rewriting a completion commit. Document the convention
+      at docs/evidence/M007/ completed-task-revision-path.md (AC008)."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - tests/integration/completed-task-revision-path.test.ts exercises the
+        real lifecycle order (never task completion before milestone
+        confirmation) — milestone-add A, milestone-confirm A, execute and
+        complete A's task (its deliverable deliberately incomplete),
+        milestone-complete A, THEN milestone-add B, milestone-confirm B, execute
+        and complete B's one corrective task, whose objective and completed
+        result reference A's milestone/task id
+      - The test asserts milestone A remains status completed and its completed
+        task/commit are byte-for-byte unchanged throughout every step of B's
+        lifecycle, no task ever leaves completed, and B's corrective work is
+        separately verified and separately committed under its own trailers
+      - No new Core/CLI production code is added — the test uses only existing
+        commands
+      - The documented convention matches exactly what the test proves
+    write_scope:
+      - docs/evidence/M007/completed-task-revision-path.md
+      - tests/integration/completed-task-revision-path.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/completed-task-revision-path.test.ts
+    result: null
+    usage: null
+  - id: T008
+    objective: Evaluate explicit, task-specific Claude Code skills adapted from
+      github.com/thixpin/claude-config, resolving every open design question
+      (glob pickup by the existing asset installer, a possible new task field
+      naming required skills with visible dispatch-time failure when missing,
+      installation strategy, and a behavioral skill-enabled- vs-skill-free
+      comparison under M006/AC005's methodology); record an explicit adopt,
+      defer, or reject decision at docs/evidence/M007/
+      claude-skills-decision.md. Strictly decision-only — no skills
+      implementation lands in this task regardless of the decision or how early
+      it resolves (AC009).
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - The decision confirms, by direct inspection, whether claude-assets.ts's
+        existing glob actually picks up a nested SKILL.md with zero installer
+        changes
+      - The decision resolves the task-field/dispatch-validation question
+        explicitly, not left open
+      - The decision names one installation strategy (project-local,
+        reference-only, or both) with reasoning
+      - The behavioral comparison (startup tokens, task tokens, reads outside
+        declared scope, report-format compliance, task outcome) is measured or
+        explicitly deferred with a named reason, not silently omitted
+      - The decision is explicit — adopt, defer, or reject
+      - No skills implementation code, schema field, or installer change exists
+        anywhere in this task's diff, regardless of the decision — adoption
+        always defers to a separately scoped later milestone
+    write_scope:
+      - docs/evidence/M007/claude-skills-decision.md
+    verification:
+      strategy: manual
+      detail: developer/driver review of the recorded decision and its evidence
+    result: null
+    usage: null
+  - id: T009
+    objective: Evaluate right-sized task dispatch (inline driver execution vs.
+      sub-agent dispatch) using AC001's fresh matched pair and M006's
+      retrospective split; record an explicit adopt, defer, or reject decision
+      with a concrete task-metadata-driven rule at docs/evidence/
+      M007/dispatch-mode-decision.md; if adopted, formalize the rule directly
+      into protocol-driver.md and dispatch.md within this same task (AC010).
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - The decision cites AC001's fresh matched pair and M006's T004-vs-
+        T001/T002/T003/T005 retrospective split as evidence
+      - The rule is concrete (named task-metadata signals), not vague judgment
+      - The rule states explicitly that a contract-mandated sub-agent dispatch
+        is never silently overridden
+      - If adopted, protocol-driver.md and dispatch.md are actually updated in
+        this task's diff; if not adopted, neither file is touched
+    write_scope:
+      - docs/evidence/M007/dispatch-mode-decision.md
+      - src/integrations/claude/protocol-driver.md
+      - src/integrations/claude/dispatch.md
+    verification:
+      strategy: manual
+      detail: developer/driver review of the recorded decision and, if adopted, the
+        updated protocol text
+    result: null
+    usage: null
+  - id: T010
+    objective: "Fix the M006/AC005-measured context-bundle duplication defect: add
+      an additive-optional mapped_ac_ids field to the task schema and filter
+      buildTaskContextBundle's contractExcerpt. acceptanceCriteria to exactly
+      those ids when present, leaving every task without the field byte-for-byte
+      unchanged. Depends on T001 so the M006-context-efficiency baseline
+      comparison is captured against context-bundle.ts's pre-fix behavior first.
+      Non-Bootstrap Disclosure: M007's own contract/tasks.yaml are already
+      confirmed via milestone-add before mapped_ac_ids exists, so M007's own
+      persisted tasks cannot gain the field through their own lifecycle without
+      an unsupported rewrite — this task proves the fix through its own
+      regression tests against synthetic task definitions, not by M007
+      dogfooding it on itself; real use starts with M008's own contract-drafting
+      (AC011)."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - mapped_ac_ids is a new, additive-optional string array field on the task
+        schema, absent from every M001-M006 historical task
+      - When present, buildTaskContextBundle filters
+        contractExcerpt.acceptanceCriteria to exactly those ids
+      - When absent, contractExcerpt.acceptanceCriteria is unchanged from
+        today's full-array behavior — a regression test proves this explicitly
+      - No existing milestone's stored task/contract data requires migration
+      - The regression tests exercise the new field against synthetic, test-only
+        task definitions — no claim is made or implied that M007's own
+        already-confirmed tasks receive mapped_ac_ids or a filtered bundle
+        themselves
+    write_scope:
+      - src/state/schemas.ts
+      - src/core/tasks/context-bundle.ts
+      - tests/unit/schemas.test.ts
+      - tests/integration/task-status.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/schemas.test.ts
+        tests/integration/task-status.test.ts
+    result: null
+    usage: null
+  - id: T011
+    objective: Evaluate structured failure-evidence extraction ahead of the
+      evidence-size cap — what 'structured' means across arbitrary command
+      output, whether it is a text-trim.ts change or a new extraction step, and
+      whether it is test-runner-specific or general; record an explicit adopt,
+      defer, or reject decision at docs/evidence/M007/
+      structured-failure-extraction-decision.md, with implementation deferred to
+      a later milestone if adopted. Depends on T001 so this decision uses T001's
+      compiled live failure-evidence findings (the CT002/CT012 recursion-guard
+      incident) rather than re-deriving them independently (AC012).
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - The decision addresses generality across arbitrary command output, not
+        only vitest's format
+      - The decision states whether extraction would be a text-trim.ts change or
+        a new, narrowly-scoped step ahead of it
+      - The decision is explicit — adopt, defer, or reject
+      - No structured-failure-extraction implementation code exists anywhere in
+        this task's diff, regardless of the decision
+    write_scope:
+      - docs/evidence/M007/structured-failure-extraction-decision.md
+    verification:
+      strategy: manual
+      detail: developer/driver review of the recorded decision
+    result: null
+    usage: null
+  - id: T012
+    objective: "Harden the dispatch/worker protocol against M006's own live
+      incidents: no unattended backgrounded verification, always-bounded
+      timeouts, non-standard worker reports are never completion evidence, and
+      an explicit git-free collision-safe RED-check toggle pattern — text-only
+      updates to protocol-worker.md, dispatch.md, and protocol-driver.md,
+      applied on top of T009's dispatch-mode decision (both tasks touch
+      dispatch.md and protocol-driver.md; this task incorporates T009's outcome
+      first, then layers its own additions, never reverting or overwriting
+      T009's edits) (AC013)."
+    status: waiting
+    depends_on:
+      - T009
+    acceptance_criteria:
+      - protocol-worker.md states the no-unattended-backgrounded-command rule
+        and the always-bounded-timeout rule
+      - protocol-driver.md explicitly reinforces that an empty or non-standard
+        worker report is never treated as completion evidence
+      - protocol-worker.md specifies the git-free RED-check toggle pattern
+        (rename via Edit/Write into distinctly-named backup files, never a flat
+        same-basename scratch directory, never git)
+      - If T009 adopted the dispatch-mode rule, this task's edits to dispatch.md
+        and protocol-driver.md build on T009's committed text rather than
+        reverting or overwriting it
+      - No Core/CLI production code changes anywhere in this task's diff
+    write_scope:
+      - src/integrations/claude/protocol-worker.md
+      - src/integrations/claude/dispatch.md
+      - src/integrations/claude/protocol-driver.md
+    verification:
+      strategy: manual
+      detail: developer/driver review of the four protocol additions against the
+        M006/T002 and M006/T005 incidents they codify
+    result: null
+    usage: null
+  - id: T013
+    objective: Make and record the Adaptive Workflow Intensity design decision from
+      AC001-AC005 and AC009-AC010's evidence at docs/evidence/
+      M007/adaptive-workflow-intensity-decision.md; roadmap-reconciliation
+      review confirming IMPLEMENTATION_PLAN.md accurately reflects the decision,
+      M007's actually-delivered scope, and any milestone-numbering impact from
+      deferred adoptions (AC006).
+    status: waiting
+    depends_on:
+      - T002
+      - T003
+      - T004
+      - T005
+      - T006
+      - T007
+      - T008
+      - T009
+      - T010
+      - T011
+      - T012
+    acceptance_criteria:
+      - The Adaptive Workflow Intensity decision cites AC001-AC005 and
+        AC009-AC010's evidence directly, not assumptions made ahead of it
+      - IMPLEMENTATION_PLAN.md's command surface, delivery table, and roadmap
+        section are checked against M007's actual delivery
+      - Any milestone-numbering impact from a deferred AC005/AC009/AC012
+        adoption is stated explicitly, not left implicit
+      - Any discovered drift is corrected in IMPLEMENTATION_PLAN.md as part of
+        this task, not left stale
+    write_scope:
+      - docs/evidence/M007/adaptive-workflow-intensity-decision.md
+      - IMPLEMENTATION_PLAN.md
+    verification:
+      strategy: manual
+      detail: developer/driver review per CT-review instruction
+    result: null
+    usage: null
