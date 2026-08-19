@@ -1,0 +1,327 @@
+schema_version: 1
+tasks:
+  - id: T001
+    objective: "Verification-execution process helpers, built and unit-tested
+      standalone before run.ts itself is touched: a timeout-bounded command
+      execution primitive with platform-aware descendant-process cleanup and
+      spawn_error detection, a pure repo+milestone-scoped recursion-guard
+      decision function, and one shared tail-truncation helper matching run.ts's
+      existing private trimEvidence behavior — this task creates and tests the
+      shared helper; it does not edit run.ts, which keeps its own private
+      trimEvidence until T002 removes it (AC001)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - A configurable-timeout, safe-default command execution helper exists in
+        src/core/verification/process-exec.ts, independent of run.ts
+      - On timeout, the full descendant process tree is terminated — POSIX via
+        detached process-group kill, Windows via taskkill /t /f — with the POSIX
+        path asserted by a test that spawns a fixture ignoring SIGTERM and
+        forking an ignoring child, proving zero survivors, and the Windows path
+        asserted by a platform-mocked test (process.platform forced to win32,
+        child_process execution mocked) proving taskkill is invoked with the
+        expected arguments — explicitly not a live Windows execution
+      - The helper returns a termination reason of exited, timeout, signal, or
+        spawn_error, distinguishing a command that could never be spawned from a
+        normal nonzero exit or a timeout-triggered kill
+      - process-exec.ts's execution primitive is evidence-gated, not preserved
+        synchronous for convenience — it stays synchronous only if the real
+        POSIX fixture test above proves bounded termination and zero survivors
+        using a synchronous implementation; if it cannot be made to pass
+        synchronously, the primitive is implemented async instead, and this
+        task's result records which outcome the evidence produced, since T002
+        depends on it
+      - src/core/verification/text-trim.ts exports one tail-truncation function
+        with a fixed character cap and preserved tail, matching run.ts's current
+        private trimEvidence behavior — a new, standalone module; run.ts itself
+        is not part of this task's write_scope and is not edited here
+      - src/core/verification/recursion-guard.ts exports a pure function taking
+        the current accumulated guard-token env value and a candidate
+        repo+milestone token, returning refuse-or-extend — no I/O, no git calls,
+        testable with plain strings
+      - A test proves two different repo+milestone tokens do not trip each
+        other's guard, and only an exact repeat of the same token is refused
+    write_scope:
+      - src/core/verification/process-exec.ts
+      - src/core/verification/recursion-guard.ts
+      - src/core/verification/text-trim.ts
+      - tests/unit/verification-process-exec.test.ts
+      - tests/unit/verification-recursion-guard.test.ts
+      - tests/unit/text-trim.test.ts
+      - tests/fixtures/verification/hang-with-children.js
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/verification-process-exec.test.ts
+        tests/unit/verification-recursion-guard.test.ts
+        tests/unit/text-trim.test.ts
+    result: null
+    usage: null
+  - id: T002
+    objective: "Wire T001's helpers into src/core/verification/run.ts and
+      src/cli/commands/verify.ts: per-check timeout_ms (schema-additive,
+      hash-covered by construction), removal of run.ts's own private
+      trimEvidence in favor of T001's shared helper, a canonical repo-identity
+      resolver in src/git/paths.ts feeding the recursion guard, incremental
+      result persistence, duration_ms/termination_reason persisted via new
+      schema fields, and CLI support for an isolated single command-check rerun.
+      Core mechanism only — no automatic retry policy (AC001, AC002)."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - run.ts's private trimEvidence implementation is removed; run.ts imports
+        and uses T001's src/core/verification/text-trim.ts instead — one
+        definition, not two
+      - verificationCheckSchema's command variant gains an additive-optional
+        timeout_ms, validated as an integer with a minimum of 1 and a maximum of
+        3,600,000 (one hour); adding it to a manual/review check is rejected by
+        the existing strictObject discrimination without new code; both bounds
+        and the omitted-default case are covered by dedicated schema tests
+      - A safe default (120000ms) applies when timeout_ms is omitted; every
+        M001-M005 historical contract still loads, hashes, and verifies
+        unchanged
+      - src/git/paths.ts gains a canonical-git-dir resolver; runVerification
+        uses it plus the target milestone id to build the recursion-guard token,
+        extending (not replacing) the guard-token environment passed to spawned
+        checks
+      - A test proves two nested pitway verify invocations against two different
+        temp-repo fixtures (this repository's own integration-test pattern) both
+        succeed without tripping the guard
+      - A test that deliberately introduces a test file which would recursively
+        invoke verification for the SAME live repo/milestone proves bounded-time
+        termination via the guard's refusal (not the timeout), the affected
+        check recorded failed with a clear reason, every already-completed
+        check's result preserved, and zero orphan processes — never a hang, a
+        silent continue, or a false pass
+      - runVerification persists each check's result immediately after that
+        check completes, not only once after the full loop
+      - verificationResultsSchema gains additive-optional duration_ms and
+        termination_reason fields; every pre-existing fixture and historical
+        result entry without them still validates unchanged
+      - verify <id> --check CTnnn, invoked without --pass/--fail/--evidence,
+        re-executes exactly that one command-type check through the same
+        hash-gated, timeout-protected path and appends its result; the existing
+        manual/review --check --pass/--fail/--evidence behavior is unchanged
+      - No retry is performed automatically anywhere in this task's code — an
+        isolated rerun happens only when explicitly invoked
+      - Both a timed-out attempt and a later isolated-rerun attempt for the same
+        check appear as distinct entries in verification-results.yaml
+      - The full suite (npm test) completes without hanging or leaving orphaned
+        processes
+    write_scope:
+      - src/git/paths.ts
+      - src/core/verification/run.ts
+      - src/cli/commands/verify.ts
+      - src/state/schemas.ts
+      - tests/unit/schemas.test.ts
+      - tests/integration/verify.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/verify.test.ts tests/unit/schemas.test.ts
+    result: null
+    usage: null
+  - id: T003
+    objective: "One consolidated Claude integration task: text assets for the full
+      12-command operational lifecycle (excluding init and auto-run), split at
+      authoring time into protocol-driver.md and protocol-worker.md; a
+      glob-based State-layer installer wiring them into init behind --no-claude;
+      dispatch-honesty and the write-only checkWriteScope helper; capped worker
+      reports; LSP and shared-worktree guidance. Text and small provider-neutral
+      code only — no agent-spawning code anywhere (AC003, AC004, AC006, AC007,
+      AC008)."
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - init installs every .md file under src/integrations/claude/ by default
+        (glob-based, not a hardcoded list); --no-claude skips installation
+        entirely; a partial/inconsistent .claude/ state is refused rather than
+        silently overwritten, matching init's existing config/state refusal
+        pattern
+      - protocol-worker.md never includes driver-only content (dispatch loop,
+        decision-gate handling); protocol-driver.md is the only asset
+        referencing them
+      - Each command asset is thin — names the domain use case, points at
+        protocol-driver.md, no duplicated logic
+      - A test asserts src/integrations/claude/ contains zero .ts files
+      - grep across src/core/, src/state/, src/git/, and
+        src/integrations/claude/ for any Claude/Anthropic SDK import returns
+        empty
+      - checkWriteScope(writePaths, task) (src/core/tasks/write-scope-check.ts)
+        takes only structured data — an explicit file list of paths to be
+        WRITTEN — never parses or infers paths from prose; it validates against
+        task.write_scope when present, falling back to legacy
+        task.relevant_files when write_scope is absent, and names every path
+        outside that boundary. It never validates against, and makes no claim
+        about enforcing, context_files or any other read boundary —
+        context_files stays declarative supplied-context metadata only, per
+        AC004
+      - dispatch.md states plainly that PitWay bounds only the supplied bundle,
+        not the subagent's total context, and that no runtime read-enforcement
+        exists — deferring that decision to M007
+      - task-update's --result summary/evidence exceeding the cap is truncated
+        via T001's shared text-trim helper with a preserved tail and truncation
+        marker, not silently dropped; the cap applies only to new writes, no
+        historical result is rewritten
+      - report-format.md states the testing-discipline guidance is a protocol
+        convention PitWay does not enforce in code
+      - lsp-guidance.md states PitWay has no LSP detection/integration code and
+        does not manage a driver's tool availability
+      - coordination.md references the existing src/git/safety.ts primitives by
+        name and prohibits trusting a pre-dispatch snapshot
+    write_scope:
+      - src/integrations/claude/protocol-driver.md
+      - src/integrations/claude/protocol-worker.md
+      - src/integrations/claude/dispatch.md
+      - src/integrations/claude/report-format.md
+      - src/integrations/claude/lsp-guidance.md
+      - src/integrations/claude/coordination.md
+      - src/integrations/claude/commands/milestone-add.md
+      - src/integrations/claude/commands/milestone-confirm.md
+      - src/integrations/claude/commands/milestone-status.md
+      - src/integrations/claude/commands/milestone-list.md
+      - src/integrations/claude/commands/task-status.md
+      - src/integrations/claude/commands/task-update.md
+      - src/integrations/claude/commands/task-amend.md
+      - src/integrations/claude/commands/resume.md
+      - src/integrations/claude/commands/verify.md
+      - src/integrations/claude/commands/milestone-complete.md
+      - src/integrations/claude/commands/usage-add.md
+      - src/integrations/claude/commands/write-ms-artifacts.md
+      - src/state/claude-assets.ts
+      - src/cli/commands/init.ts
+      - src/core/tasks/write-scope-check.ts
+      - src/core/tasks/update.ts
+      - tests/integration/init.test.ts
+      - tests/unit/write-scope-check.test.ts
+      - tests/integration/task-update.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/init.test.ts
+        tests/unit/write-scope-check.test.ts
+        tests/integration/task-update.test.ts
+    result: null
+    usage: null
+  - id: T004
+    objective: Compile and record a before/after context-efficiency comparison
+      against the M004/M005 baseline as a committed evidence document,
+      explicitly separating controllable-and-measured factors (installed asset
+      size, bundle size, duplicated text, repository-read count, output/report
+      size, full-suite invocation count) from inherited-and-not-promised ones
+      (harness system/tool/skill/memory context), under comparable model/config
+      conditions (AC005).
+    status: waiting
+    depends_on:
+      - T003
+    acceptance_criteria:
+      - Before/after figures are recorded against the M004/M005 baseline figures
+        from M005 report.md §8
+      - The document is committed at docs/evidence/M006-context-efficiency.md,
+        not a draft path
+      - The write-up explicitly states which factors this milestone measured and
+        controlled versus which it observed but does not claim credit for
+        reducing
+      - Any token comparison names the model/config held constant across the two
+        measurements it compares
+    write_scope:
+      - docs/evidence/M006-context-efficiency.md
+    verification:
+      strategy: manual
+      detail: developer/driver review of the recorded before/after comparison
+    result: null
+    usage: null
+  - id: T005
+    objective: Agent-agnostic auto-run authorization mechanism (a new sibling
+      journal record kind, never checkpoint-folded; a pure hash- and
+      amendment-computed authorization query; a new top-level `auto-run` command
+      with enable/disable/status subcommands) and the interactive arrow-key
+      decision UX built on top of it, plus a final integration assertion that
+      init installs the complete asset set once every M006 asset-creating task
+      has landed (AC009, AC010).
+    status: waiting
+    depends_on:
+      - T002
+      - T003
+    acceptance_criteria:
+      - auto_run is a new discriminated-union kind in journalRecordSchema,
+        sibling to entry/checkpoint, never referenced by a checkpoint marker and
+        never folded into a commit
+      - auto-run enable [milestone-id] requires the milestone be in_progress,
+        records the current verification_approved_hash, and is idempotent when
+        already authorized against the same hash
+      - auto-run disable [milestone-id] and auto-run status [milestone-id] both
+        work for a milestone in any status — neither requires in_progress
+      - isAutoRunAuthorized (pure) returns authorized only when the latest
+        record is enable, its recorded hash matches the CURRENT approved hash,
+        and no contract_amendment or task_amendment entry for the milestone
+        appears later in the append-only log — both invalidation checks are
+        computed from existing log order, no new invalidation event is written
+        for either
+      - auto-run status reports the specific reason when not authorized (never
+        enabled | explicitly disabled | hash changed since | amendment recorded
+        since)
+      - A dedicated test appends an auto_run record and asserts derivePending,
+        resolveTargetPath, checkpoint folding, and reconcilePending are all
+        unaffected by it, without modifying any of those four functions
+      - cli.test.ts's ALL_COMMAND_NAMES includes auto-run (14 total) and the
+        registration/reachability test passes for it and each subcommand
+      - interactive-ux.md documents every listed invalidation gate, marked
+        computed (hash change, amendment) or live-checked (unexpected dirty
+        files, verification failure needing a decision including a
+        flaky-pass-after-timeout, missing manual/review evidence, ambiguity,
+        permission requirement, merge conflict, destructive action), and states
+        that hitting any gate calls auto-run disable before falling back to
+        per-task confirmation
+      - interactive-ux.md states the bootstrap disclosure verbatim — M006's own
+        lifecycle uses the M005 journal/checkpoint model normally except for
+        this task's own confirmation UX, which could not have confirmed M006
+        itself
+      - A final init integration test, added in this task since it is the last
+        asset-creating task, asserts init installs the complete current set of
+        src/integrations/claude/**/*.md files — including auto-run.md and
+        interactive-ux.md added by this task — not merely the subset that
+        existed when the installer was first written
+    write_scope:
+      - src/state/journal.ts
+      - src/core/journal/auto-run.ts
+      - src/cli/commands/auto-run.ts
+      - src/cli/index.ts
+      - src/integrations/claude/commands/auto-run.md
+      - src/integrations/claude/interactive-ux.md
+      - tests/unit/auto-run-authorization.test.ts
+      - tests/integration/auto-run.test.ts
+      - tests/integration/cli.test.ts
+      - tests/integration/init.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/auto-run-authorization.test.ts
+        tests/integration/auto-run.test.ts tests/integration/cli.test.ts
+        tests/integration/init.test.ts
+    result: null
+    usage: null
+  - id: T006
+    objective: "Roadmap-reconciliation review: confirm IMPLEMENTATION_PLAN.md's
+      command surface (14 commands, naming auto-run explicitly), Bootstrap
+      delivery table, and M006-M011 roadmap section accurately describe the
+      repository's actual state as of M006's completion; correct any discovered
+      drift through this task."
+    status: waiting
+    depends_on:
+      - T003
+      - T004
+      - T005
+    acceptance_criteria:
+      - Command table and Bootstrap delivery table checked against actual M006
+        delivered scope, including the auto-run command-surface change
+      - M006-M011 roadmap section checked for drift against what M006 actually
+        delivered, including any AC/scope items descoped or deferred during
+        execution
+      - Any drift found is corrected in IMPLEMENTATION_PLAN.md as part of this
+        task, not left stale
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+    verification:
+      strategy: manual
+      detail: developer/driver review per CT-review instruction
+    result: null
+    usage: null
