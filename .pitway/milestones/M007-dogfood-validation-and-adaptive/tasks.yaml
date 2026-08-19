@@ -105,7 +105,7 @@ tasks:
       glob/directory-scoped write_scope plus an explicit protected-path
       denylist; record an explicit adopt, defer, or reject decision at
       docs/evidence/M007/write-scope-boundary-decision.md (AC003).
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -119,7 +119,16 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review of the recorded decision and its evidence
-    result: null
+    result:
+      summary: "[truncated] y + protected-path denylist using real data: 1/24 tasks
+        across M005+M006 (4.2%) needed a write_scope amendment, driven by
+        discovery latency a glob wouldn't prevent. Decision: reject the
+        alternative, keep exact-file write_scope unchanged; revisit only on
+        materially higher future friction."
+      evidence: docs/evidence/M007/write-scope-boundary-decision.md. Developer
+        selected 'Reject as recommended' via explicit decision-gate
+        confirmation.
+    attempts: 1
     usage: null
   - id: T004
     objective: Dogfood-evaluate whether a worker may fix a small, directly-related
