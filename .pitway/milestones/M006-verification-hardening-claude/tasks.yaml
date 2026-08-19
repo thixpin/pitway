@@ -9,7 +9,7 @@ tasks:
       existing private trimEvidence behavior — this task creates and tests the
       shared helper; it does not edit run.ts, which keeps its own private
       trimEvidence until T002 removes it (AC001)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - A configurable-timeout, safe-default command execution helper exists in
@@ -54,8 +54,53 @@ tasks:
       detail: npm test -- tests/unit/verification-process-exec.test.ts
         tests/unit/verification-recursion-guard.test.ts
         tests/unit/text-trim.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "Executed by a bounded sub-agent from its task-context bundle,
+        independently reviewed and re-run by the driver. src/core/verification/
+        text-trim.ts: trimTail(output, {cap?, lines?, emptyFallback?}) matches
+        run.ts's existing private trimEvidence behavior (last 3 non-empty lines,
+        ' | '-joined, 200-char tail-preserved cap) generalized for reuse by a
+        later worker-report-capping task. src/core/verification/
+        recursion-guard.ts: evaluateRecursionGuard(currentValue, candidateToken)
+        is a pure function over a comma-separated accumulated-token string,
+        returning extend/refuse; zero I/O, zero git calls, as scoped --
+        resolving real repo-identity tokens is a later task.
+        src/core/verification/ process-exec.ts: executeCommand(command, {cwd,
+        timeoutMs?}), synchronous, DEFAULT_TIMEOUT_MS=120000. Built on
+        spawnSync({detached: true, timeout, killSignal:'SIGKILL'}) plus an
+        explicit terminateDescendants() call after every return (POSIX:
+        negative-pid process-group SIGKILL; Windows: taskkill /pid <pid> /t /f,
+        platform-mocked test only). Classifies terminationReason as
+        exited/timeout/signal/spawn_error. Sync-vs-async was evidence-gated per
+        the AC: real (non-mocked) fixture experiments showed spawnSync's own
+        timeout+killSignal reaches only the immediate child (a grandchild
+        survived when relied on alone); adding the explicit process-group kill
+        after every spawnSync return closes that gap and reliably left zero
+        survivors within the configured timeout -- the primitive stays
+        synchronous on that evidence. tests/fixtures/verification/
+        hang-with-children.js: a real fixture ignoring SIGTERM and forking an
+        also-ignoring child inheriting stdio, reproducing the M005 incident's
+        process shape."
+      evidence: "Sub-agent confirmed RED first (all 3 new modules missing, imports
+        failed for the expected reason), then GREEN. Independently re-verified
+        by the driver: target command `npm test -- tests/unit/
+        verification-process-exec.test.ts tests/unit/verification-
+        recursion-guard.test.ts tests/unit/text-trim.test.ts` 20/20 green; full
+        suite `npm test` 444/444 green (32 files, ~39s, no hang); `npm run
+        typecheck` clean. Read every file in full: the descendant-cleanup test
+        spawns the real fixture, reads real pids from a file, and polls real
+        `process.kill(pid, 0)` until both parent and child are confirmed dead
+        (not merely unresponsive) -- a genuine POSIX assertion, not a stub. The
+        Windows test mocks node:child_process and process.platform, asserting
+        taskkill is invoked with the exact expected arguments -- explicitly a
+        decision-path test, never live Windows execution, matching the AC's own
+        disclosed limitation. Diff confirmed scoped to exactly T001's 7
+        authorized files (checked via `git status --porcelain`); no git command
+        was run by the sub-agent; `ps aux` confirmed zero stray fixture
+        processes after the test run."
+    attempts: 1
+    usage:
+      total_tokens: 88692
   - id: T002
     objective: "Wire T001's helpers into src/core/verification/run.ts and
       src/cli/commands/verify.ts: per-check timeout_ms (schema-additive,
@@ -65,7 +110,7 @@ tasks:
       result persistence, duration_ms/termination_reason persisted via new
       schema fields, and CLI support for an isolated single command-check rerun.
       Core mechanism only — no automatic retry policy (AC001, AC002)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
