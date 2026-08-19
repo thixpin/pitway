@@ -257,7 +257,7 @@ describe('self-healing crash recovery (reconcilePending)', () => {
 
     // Simulate: the commit that captures this pending change succeeded, but
     // the process crashed before appendCheckpointMarker ran.
-    const relTarget = resolveTargetPath({ milestone: 'M005', type: 'usage_recording' });
+    const relTarget = resolveTargetPath({ type: 'usage_recording' }, 'M005');
     expect(relTarget).toBe('.pitway/milestones/M005/usage.yaml');
     const sha = commitWithTrailers(repo, [relTarget], 'M005', 'T001');
 
@@ -315,8 +315,8 @@ describe('self-healing crash recovery (reconcilePending)', () => {
       payload: {},
     });
 
-    const relUsage = resolveTargetPath({ milestone: 'M005', type: 'usage_recording' });
-    const relContract = resolveTargetPath({ milestone: 'M005', type: 'contract_amendment' });
+    const relUsage = resolveTargetPath({ type: 'usage_recording' }, 'M005');
+    const relContract = resolveTargetPath({ type: 'contract_amendment' }, 'M005');
     const sha = commitWithTrailers(repo, [relUsage, relContract], 'M005');
 
     const created = reconcilePending(repo, 'M005');

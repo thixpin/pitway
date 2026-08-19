@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -122,7 +122,14 @@ async function confirmed(verification = DEFAULT_CHECKS): Promise<void> {
   expect(error).toBeUndefined();
 }
 
-const contractPath = (): string => join(root, '.pitway', 'milestones', 'M001', 'contract.md');
+function milestoneDirName(id: string): string {
+  const dir = join(root, '.pitway', 'milestones');
+  const match = readdirSync(dir).find((e) => e === id || e.startsWith(`${id}-`));
+  if (!match) throw new Error(`no milestone directory found for ${id}`);
+  return match;
+}
+
+const contractPath = (): string => join(root, '.pitway', 'milestones', milestoneDirName('M001'), 'contract.md');
 
 function editContract(transform: (text: string) => string): void {
   writeFileSync(contractPath(), transform(readFileSync(contractPath(), 'utf8')));

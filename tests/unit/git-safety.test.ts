@@ -122,7 +122,7 @@ describe('classifyDirtyPaths', () => {
       payload: { total_tokens: 10 },
     });
 
-    const relTarget = resolveTargetPath({ milestone: 'M005', type: 'usage_recording' });
+    const relTarget = resolveTargetPath({ type: 'usage_recording' }, 'M005');
     const result = classifyDirtyPaths(repo, { journalMilestone: 'M005' });
     expect(result.expected).toContain(relTarget);
     expect(result.unexpected).not.toContain(relTarget);
@@ -142,7 +142,7 @@ describe('classifyDirtyPaths', () => {
     });
     appendCheckpointMarker(repo, 'M005', 'op-usage-2', 'deadbeef');
 
-    const relTarget = resolveTargetPath({ milestone: 'M005', type: 'usage_recording' });
+    const relTarget = resolveTargetPath({ type: 'usage_recording' }, 'M005');
     const result = classifyDirtyPaths(repo, { journalMilestone: 'M005' });
     expect(result.unexpected).toContain(relTarget);
     expect(result.expected).not.toContain(relTarget);
@@ -161,7 +161,7 @@ describe('classifyDirtyPaths', () => {
       payload: { total_tokens: 10 },
     });
 
-    const relTarget = resolveTargetPath({ milestone: 'M005', type: 'usage_recording' });
+    const relTarget = resolveTargetPath({ type: 'usage_recording' }, 'M005');
     const result = classifyDirtyPaths(repo, { journalMilestone: 'M006' });
     expect(result.unexpected).toContain(relTarget);
     expect(result.expected).not.toContain(relTarget);

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parse, stringify } from 'yaml';
 import type { ZodType } from 'zod';
@@ -23,12 +23,79 @@ import {
 } from './contract-file.js';
 
 export class StateStoreError extends Error {}
+// Extends StateStoreError so existing `toThrowError(StateStoreError)` call
+// sites (e.g. loadTasks on a missing milestone) keep working now that
+// directory resolution can fail before a load/save even attempts I/O.
+export class MilestoneResolutionError extends StateStoreError {}
 
 const pitwayPath = (root: string, ...segments: string[]): string =>
   join(root, '.pitway', ...segments);
 
+/**
+ * Derives a milestone directory slug from its title: lowercased, runs of
+ * non-alphanumerics collapsed to a single hyphen, leading/trailing hyphens
+ * trimmed, truncated at a word boundary at or before 40 chars. A title that
+ * slugifies to nothing (e.g. all punctuation) yields an empty string; the
+ * caller falls back to the bare id in that case.
+ */
+export function slugifyTitle(title: string): string {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (slug.length <= 40) return slug;
+  const truncated = slug.slice(0, 40);
+  const lastHyphen = truncated.lastIndexOf('-');
+  return lastHyphen > 0 ? truncated.slice(0, lastHyphen) : truncated;
+}
+
+function milestoneDirEntries(root: string): string[] {
+  const milestonesDir = pitwayPath(root, 'milestones');
+  try {
+    return readdirSync(milestonesDir).filter((e) =>
+      statSync(join(milestonesDir, e)).isDirectory(),
+    );
+  } catch {
+    return [];
+  }
+}
+
+// Exported for Core-layer callers that need the resolved repo-relative
+// milestone directory name directly (e.g. to construct a git-relative path
+// for staging/trailers) rather than going through a loadX/saveX call.
+export function resolveMilestoneDirName(root: string, milestoneId: string): string {
+  const milestonesDir = pitwayPath(root, 'milestones');
+  const entries = milestoneDirEntries(root);
+  const candidates = entries.filter(
+    (e) => e === milestoneId || e.startsWith(`${milestoneId}-`),
+  );
+  if (candidates.length === 0) {
+    throw new MilestoneResolutionError(
+      `no directory found for milestone ${milestoneId} under ${milestonesDir}`,
+    );
+  }
+  if (candidates.length > 1) {
+    throw new MilestoneResolutionError(
+      `ambiguous directory for milestone ${milestoneId}: multiple candidates found (${candidates.sort().join(', ')})`,
+    );
+  }
+  return candidates[0]!;
+}
+
 const milestonePath = (root: string, milestoneId: string, file: string): string =>
-  pitwayPath(root, 'milestones', milestoneId, file);
+  pitwayPath(root, 'milestones', resolveMilestoneDirName(root, milestoneId), file);
+
+/**
+ * Creates the (possibly-slugged) on-disk directory for a newly created
+ * milestone. Must be called before any saveX call for that milestone id,
+ * since milestonePath (and therefore every saveX) resolves against
+ * directories that already exist on disk.
+ */
+export function createMilestoneDir(root: string, milestoneId: string, title: string): void {
+  const slug = slugifyTitle(title);
+  const dirName = slug.length > 0 ? `${milestoneId}-${slug}` : milestoneId;
+  mkdirSync(pitwayPath(root, 'milestones', dirName), { recursive: true });
+}
 
 function readText(path: string): string {
   try {
@@ -172,5 +239,7 @@ export function readInputFile(path: string, label: string): string {
 }
 
 export function milestoneDirExists(root: string, milestoneId: string): boolean {
-  return existsSync(pitwayPath(root, 'milestones', milestoneId));
+  return milestoneDirEntries(root).some(
+    (e) => e === milestoneId || e.startsWith(`${milestoneId}-`),
+  );
 }

@@ -9,6 +9,7 @@ import {
   loadState,
   loadTasks,
   loadVerificationResults,
+  resolveMilestoneDirName,
   saveContract,
   saveState,
 } from '../../state/store.js';
@@ -23,18 +24,24 @@ export interface MilestoneCompleteView {
   commit: string;
 }
 
-const contractRepoPath = (milestoneId: string): string =>
-  `.pitway/milestones/${milestoneId}/contract.md`;
+// Directory names are assigned once at creation and never renamed (AC007),
+// so resolving against the current on-disk listing is correct even when
+// looking up content at a past commit via git show.
+const contractRepoPath = (root: string, milestoneId: string): string =>
+  `.pitway/milestones/${resolveMilestoneDirName(root, milestoneId)}/contract.md`;
 
 // AC006 completion set: the milestone's own four files plus state.yaml
 // (subset check — clean entries are fine; anything else dirty refuses).
-const completionPaths = (milestoneId: string): string[] => [
-  contractRepoPath(milestoneId),
-  `.pitway/milestones/${milestoneId}/tasks.yaml`,
-  `.pitway/milestones/${milestoneId}/verification-results.yaml`,
-  `.pitway/milestones/${milestoneId}/usage.yaml`,
-  '.pitway/state.yaml',
-];
+const completionPaths = (root: string, milestoneId: string): string[] => {
+  const dir = resolveMilestoneDirName(root, milestoneId);
+  return [
+    `.pitway/milestones/${dir}/contract.md`,
+    `.pitway/milestones/${dir}/tasks.yaml`,
+    `.pitway/milestones/${dir}/verification-results.yaml`,
+    `.pitway/milestones/${dir}/usage.yaml`,
+    '.pitway/state.yaml',
+  ];
+};
 
 // AC007 completion identity: a completion-subject candidate whose committed
 // contract.md shows status completed.
@@ -44,7 +51,9 @@ function findCompletionCommit(root: string, milestoneId: string): string | undef
     messagePrefix: `workflow: complete milestone ${milestoneId}`,
   });
   if (sha === undefined) return undefined;
-  const committed = parseContractFile(git(['show', `${sha}:${contractRepoPath(milestoneId)}`], root));
+  const committed = parseContractFile(
+    git(['show', `${sha}:${contractRepoPath(root, milestoneId)}`], root),
+  );
   return committed.frontmatter.status === 'completed' ? sha : undefined;
 }
 
@@ -125,7 +134,7 @@ export function completeMilestone(root: string, milestoneId: string): MilestoneC
   // commit of their own) is expected to ride along in this completion
   // commit rather than being refused as unrelated dirt.
   const journalExpected = classifyDirtyPaths(root, { journalMilestone: milestoneId }).expected;
-  const expectedPaths = [...new Set([...completionPaths(milestoneId), ...journalExpected])];
+  const expectedPaths = [...new Set([...completionPaths(root, milestoneId), ...journalExpected])];
 
   if (status === 'in_progress') {
     const existing = findCompletionCommit(root, milestoneId);

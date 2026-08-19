@@ -12,17 +12,23 @@ export interface BaselineCommitOptions {
 // The exact file set a milestone baseline commit may contain. Confirmation
 // stages precisely these (subset check — clean entries are fine); anything
 // else dirty, even inside the milestone directory, refuses the commit.
+//
+// `milestoneDir` is the already-resolved repo-relative directory NAME (bare
+// or slugged) for this milestone, not the bare canonical id — resolution
+// lives in the State layer (src/state/store.ts's resolveMilestoneDirName);
+// this Git-layer module stays free of any State import, receiving the
+// resolved value from its Core-layer caller instead (see confirm.ts).
 export function computeExpectedBaselinePaths(
-  milestoneId: string,
+  milestoneDir: string,
   requirementId?: string | null,
 ): string[] {
   const paths = [
     '.pitway/config.yaml',
     '.pitway/state.yaml',
-    `.pitway/milestones/${milestoneId}/contract.md`,
-    `.pitway/milestones/${milestoneId}/tasks.yaml`,
-    `.pitway/milestones/${milestoneId}/verification-results.yaml`,
-    `.pitway/milestones/${milestoneId}/usage.yaml`,
+    `.pitway/milestones/${milestoneDir}/contract.md`,
+    `.pitway/milestones/${milestoneDir}/tasks.yaml`,
+    `.pitway/milestones/${milestoneDir}/verification-results.yaml`,
+    `.pitway/milestones/${milestoneDir}/usage.yaml`,
   ];
   if (requirementId) paths.push(`.pitway/requirements/${requirementId}.md`);
   return paths;

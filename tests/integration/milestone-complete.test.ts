@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -98,12 +98,23 @@ tasks:
 // The naturally dirty completion set: contract.md (status write), tasks.yaml
 // (task completion), verification-results.yaml (verify), state.yaml (active
 // milestone cleared). usage.yaml is expected too but only staged when dirty.
-const EXPECTED_COMPLETION_FILES = [
-  '.pitway/milestones/M001/contract.md',
-  '.pitway/milestones/M001/tasks.yaml',
-  '.pitway/milestones/M001/verification-results.yaml',
-  '.pitway/state.yaml',
-].sort();
+function milestoneDirName(id: string): string {
+  const dir = join(root, '.pitway', 'milestones');
+  const match = readdirSync(dir).find((e) => e === id || e.startsWith(`${id}-`));
+  if (!match) throw new Error(`no milestone directory found for ${id}`);
+  return match;
+}
+
+const milestoneRelFile = (file: string): string =>
+  `.pitway/milestones/${milestoneDirName('M001')}/${file}`;
+
+const expectedCompletionFiles = (): string[] =>
+  [
+    milestoneRelFile('contract.md'),
+    milestoneRelFile('tasks.yaml'),
+    milestoneRelFile('verification-results.yaml'),
+    '.pitway/state.yaml',
+  ].sort();
 
 async function run(args: string[], cwd: string): Promise<{ lines: string[]; error?: Error }> {
   const program = buildCli();
@@ -134,7 +145,8 @@ async function confirmed(): Promise<void> {
   expect(error).toBeUndefined();
 }
 
-const milestoneFile = (file: string): string => join(root, '.pitway', 'milestones', 'M001', file);
+const milestoneFile = (file: string): string =>
+  join(root, '.pitway', 'milestones', milestoneDirName('M001'), file);
 
 function taskEntry(id: string, dependsOn: string, status: string): string {
   const result =
@@ -311,7 +323,7 @@ describe('pitway milestone-complete success (AC006)', () => {
     expect(loadContract(root, 'M001').frontmatter.status).toBe('completed');
     expect(loadState(root).active_milestone).toBeNull();
 
-    expect(headFiles(root)).toEqual(EXPECTED_COMPLETION_FILES);
+    expect(headFiles(root)).toEqual(expectedCompletionFiles());
     const message = headMessage(root);
     expect(message.startsWith('workflow: complete milestone M001')).toBe(true);
     expect(message).toContain('PitWay-Milestone: M001');
@@ -329,7 +341,7 @@ describe('pitway milestone-complete success (AC006)', () => {
     const { error } = await run(['milestone-complete', 'M001'], root);
     expect(error).toBeUndefined();
     expect(headFiles(root)).toEqual(
-      [...EXPECTED_COMPLETION_FILES, '.pitway/milestones/M001/usage.yaml'].sort(),
+      [...expectedCompletionFiles(), milestoneRelFile('usage.yaml')].sort(),
     );
     expect(git(['status', '--porcelain'], root).trim()).toBe('');
   });
@@ -386,7 +398,7 @@ describe('pitway milestone-complete re-entry (AC007)', () => {
     const { lines, error: retryError } = await run(['milestone-complete', 'M001', '--json'], root);
     expect(retryError).toBeUndefined();
     expect((JSON.parse(lines[0]!) as { outcome: string }).outcome).toBe('committed');
-    expect(headFiles(root)).toEqual(EXPECTED_COMPLETION_FILES);
+    expect(headFiles(root)).toEqual(expectedCompletionFiles());
     const message = headMessage(root);
     expect(message.startsWith('workflow: complete milestone M001')).toBe(true);
     expect(git(['status', '--porcelain'], root).trim()).toBe('');
@@ -426,7 +438,7 @@ describe('pitway milestone-complete folds in pending journal entries (M005 T004)
     expect(error).toBeUndefined();
     expect(loadContract(root, 'M001').frontmatter.status).toBe('completed');
     expect(headFiles(root)).toEqual(
-      [...EXPECTED_COMPLETION_FILES, '.pitway/milestones/M001/usage.yaml'].sort(),
+      [...expectedCompletionFiles(), milestoneRelFile('usage.yaml')].sort(),
     );
     expect(git(['status', '--porcelain'], root).trim()).toBe('');
 

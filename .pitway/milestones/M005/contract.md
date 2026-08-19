@@ -381,3 +381,19 @@ already happened under the prior mechanism.
   authoritative-checkpoint wording was corrected separately, before this
   milestone's baseline, as its own `docs:` commit (87eb6bb) — not a
   contract amendment, since the contract itself does not yet exist.)
+- 2026-08-19 — Widened T007's declared relevant_files (via task-amend) to
+  include the seven test files that exercise the real milestone-add
+  creation path with titled fixtures — milestone-complete.test.ts,
+  milestone-confirm.test.ts, self-hosting-readiness.test.ts,
+  task-amend.test.ts, task-update.test.ts, verify.test.ts,
+  write-ms-artifacts.test.ts — beyond T007's originally-scoped
+  milestone-add.test.ts and state-store.test.ts. Discovered during T007
+  scoping (pre-dispatch, mirroring the M004/T006 finding exactly): once
+  slugging activates in createMilestone, every one of these files' fixture
+  milestones (created with real titles via the real milestone-add path)
+  would land in a slugged directory, breaking their hardcoded bare
+  `.pitway/milestones/M001/...` path assertions. Unlike the M004/T006 case
+  (which had no amendment command and had to be cancelled), this is
+  resolved through the validated task-amend command this milestone itself
+  built, closing the loop it exists to close. Developer-approved
+  2026-08-19.

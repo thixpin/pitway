@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -71,6 +79,13 @@ async function run(args: string[], cwd: string): Promise<{ lines: string[]; erro
   }
 }
 
+function milestoneDirName(id: string): string {
+  const dir = join(root, '.pitway', 'milestones');
+  const match = readdirSync(dir).find((e) => e === id || e.startsWith(`${id}-`));
+  if (!match) throw new Error(`no milestone directory found for ${id}`);
+  return match;
+}
+
 function writeInputs(dir: string): { contract: string; tasks: string } {
   const contract = join(dir, 'draft-contract.md');
   const tasks = join(dir, 'draft-tasks.yaml');
@@ -107,8 +122,32 @@ describe('pitway milestone-add', () => {
     const createdTasks = loadTasks(root, 'M001');
     expect(createdTasks.tasks[0]!.status).toBe('planned');
 
-    expect(existsSync(join(root, '.pitway', 'milestones', 'M001', 'verification-results.yaml'))).toBe(true);
-    expect(existsSync(join(root, '.pitway', 'milestones', 'M001', 'usage.yaml'))).toBe(true);
+    // CONTRACT_FIXTURE's title is "Example milestone" -> deterministic slug.
+    const dir = milestoneDirName('M001');
+    expect(dir).toBe('M001-example-milestone');
+    expect(existsSync(join(root, '.pitway', 'milestones', dir, 'verification-results.yaml'))).toBe(true);
+    expect(existsSync(join(root, '.pitway', 'milestones', dir, 'usage.yaml'))).toBe(true);
+  });
+
+  it('carries only the bare id in state.yaml, contract frontmatter, and tasks — never the slug', async () => {
+    const { contract, tasks } = writeInputs(root);
+    const { error } = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
+    expect(error).toBeUndefined();
+
+    const dir = milestoneDirName('M001');
+    expect(dir).not.toBe('M001');
+
+    const state = loadState(root);
+    expect(state.active_milestone).toBe('M001');
+    expect(state.milestones).toEqual(['M001']);
+
+    const created = loadContract(root, 'M001');
+    expect(created.frontmatter.id).toBe('M001');
+
+    const createdTasks = loadTasks(root, 'M001');
+    for (const t of createdTasks.tasks) {
+      expect(t.depends_on.every((d) => !d.includes('-'))).toBe(true);
+    }
   });
 
   it('writes the requirement artifact and links it when --requirement is given', async () => {
@@ -153,11 +192,32 @@ describe('pitway milestone-add', () => {
     expect(loadState(root).milestones).toEqual(['M001']);
   });
 
-  it('refuses when the next id directory exists unregistered', async () => {
+  it('refuses when the next id directory exists unregistered (bare)', async () => {
     const { contract, tasks } = writeInputs(root);
     mkdirSync(join(root, '.pitway', 'milestones', 'M001'), { recursive: true });
     const { error } = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
     expect(error?.message).toMatch(/M001/);
     expect(loadState(root).milestones).toEqual([]);
+  });
+
+  it('refuses when the next id directory exists unregistered (slugged)', async () => {
+    const { contract, tasks } = writeInputs(root);
+    mkdirSync(join(root, '.pitway', 'milestones', 'M001-stale-draft'), { recursive: true });
+    const { error } = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
+    expect(error?.message).toMatch(/M001/);
+    expect(loadState(root).milestones).toEqual([]);
+  });
+
+  it('grandfathers a pre-existing bare directory: a milestone created bare still resolves correctly', async () => {
+    // Simulates an M001-M005-style bare directory that predates slugging —
+    // milestone-add's own createMilestone path always slugs new directories,
+    // so grandfathering is tested by hand-creating the bare directory and
+    // confirming loads through it still work via the standard store API.
+    mkdirSync(join(root, '.pitway', 'milestones', 'M001'), { recursive: true });
+    writeFileSync(
+      join(root, '.pitway', 'milestones', 'M001', 'tasks.yaml'),
+      'schema_version: 1\ntasks: []\n',
+    );
+    expect(loadTasks(root, 'M001')).toEqual({ schema_version: 1, tasks: [] });
   });
 });

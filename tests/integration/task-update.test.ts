@@ -3,6 +3,7 @@ import {
   chmodSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -98,7 +99,17 @@ tasks:
     usage: null
 `;
 
-const TASKS_PATH = '.pitway/milestones/M001/tasks.yaml';
+function milestoneDirName(id: string): string {
+  const dir = join(root, '.pitway', 'milestones');
+  const match = readdirSync(dir).find((e) => e === id || e.startsWith(`${id}-`));
+  if (!match) throw new Error(`no milestone directory found for ${id}`);
+  return match;
+}
+
+const milestoneRelFile = (file: string): string =>
+  `.pitway/milestones/${milestoneDirName('M001')}/${file}`;
+
+const tasksPath = (): string => milestoneRelFile('tasks.yaml');
 
 const MESSAGE_FIXTURE = `task: complete T001
 
@@ -248,7 +259,7 @@ describe('pitway task-update to in_progress (AC014)', () => {
   });
 
   it('allows a dirty tasks.yaml but refuses any other dirty path, writing nothing', async () => {
-    appendFileSync(join(root, TASKS_PATH), '# annotation\n');
+    appendFileSync(join(root, tasksPath()), '# annotation\n');
     writeFileSync(join(root, 'wip.txt'), 'wip\n');
     const { error } = await update(['T001', 'in_progress']);
     expect(error?.message).toMatch(/wip\.txt/);
@@ -331,7 +342,7 @@ describe('pitway task-update to completed (AC015, AC016)', () => {
 
     expect(commitCount(root)).toBe(3);
     expect(view.commit).toBe(git(['rev-parse', 'HEAD'], root).trim());
-    expect(headFiles(root)).toEqual([TASKS_PATH, 'src/a.ts'].sort());
+    expect(headFiles(root)).toEqual([tasksPath(), 'src/a.ts'].sort());
     const message = headMessage(root);
     expect(message.startsWith('task: complete T001')).toBe(true);
     expect(message).toContain('Implemented the first thing.');
@@ -366,7 +377,7 @@ describe('pitway task-update to completed (AC015, AC016)', () => {
     // The promotion landed in the exact same commit as the completion, not a
     // separate one: the committed tasks.yaml at HEAD already shows T002 ready.
     const committed = parse(
-      git(['show', `HEAD:${TASKS_PATH}`], root),
+      git(['show', `HEAD:${tasksPath()}`], root),
     ) as { tasks: Array<{ id: string; status: string }> };
     expect(committed.tasks.find((t) => t.id === 'T002')?.status).toBe('ready');
   });
@@ -431,7 +442,7 @@ describe('pitway task-update completion re-entry (AC018)', () => {
     // Persisted result and usage stand; resupplied values were ignored.
     expect(task('T001').result?.summary).toBe('Implemented the thing.');
     expect(task('T001').usage).toEqual({ total_tokens: 15 });
-    expect(headFiles(root)).toEqual([TASKS_PATH, 'src/a.ts'].sort());
+    expect(headFiles(root)).toEqual([tasksPath(), 'src/a.ts'].sort());
   });
 
   it('refuses with a diagnostic when the commit exists but the local task is not completed', async () => {
@@ -462,7 +473,7 @@ describe('pitway task-update completion folds in pending journal entries (M005 T
     const { error } = await completeT001();
     expect(error).toBeUndefined();
     expect(headFiles(root)).toEqual(
-      [TASKS_PATH, '.pitway/milestones/M001/usage.yaml', 'src/a.ts'].sort(),
+      [tasksPath(), milestoneRelFile('usage.yaml'), 'src/a.ts'].sort(),
     );
     expect(git(['status', '--porcelain'], root).trim()).toBe('');
 
@@ -480,7 +491,7 @@ describe('pitway task-update completion folds in pending journal entries (M005 T
     const { error } = await completeT001();
     expect(error).toBeUndefined();
     expect(headFiles(root)).toEqual(
-      [TASKS_PATH, '.pitway/milestones/M001/usage.yaml', 'src/a.ts'].sort(),
+      [tasksPath(), milestoneRelFile('usage.yaml'), 'src/a.ts'].sort(),
     );
     expect(derivePending(readJournal(root)).filter((e) => e.type === 'usage_recording')).toHaveLength(0);
   });
@@ -513,7 +524,7 @@ describe('pitway task-update start tolerates pending journal entries materialize
     // Written under scratch (outside root) so the draft file itself never
     // shows up as an unrelated dirty path in root's working tree.
     const draft = join(scratch, `amend-draft-${Date.now()}-${Math.random().toString(36).slice(2)}.md`);
-    const current = readFileSync(join(root, '.pitway', 'milestones', 'M001', 'contract.md'), 'utf8');
+    const current = readFileSync(join(root, milestoneRelFile('contract.md')), 'utf8');
     writeFileSync(draft, current.replace('## Change Log', `## Change Log\n\n- ${changeLogEntry}`));
     return draft;
   }
@@ -537,7 +548,7 @@ describe('pitway task-update start tolerates pending journal entries materialize
     const { error: completeError } = await completeT001();
     expect(completeError).toBeUndefined();
     expect(headFiles(root)).toEqual(
-      [TASKS_PATH, '.pitway/milestones/M001/contract.md', 'src/a.ts'].sort(),
+      [tasksPath(), milestoneRelFile('contract.md'), 'src/a.ts'].sort(),
     );
     expect(derivePending(readJournal(root)).filter((e) => e.type === 'contract_amendment')).toHaveLength(0);
   });
@@ -553,7 +564,7 @@ describe('pitway task-update start tolerates pending journal entries materialize
     const { error: completeError } = await completeT001();
     expect(completeError).toBeUndefined();
     expect(headFiles(root)).toEqual(
-      [TASKS_PATH, '.pitway/milestones/M001/usage.yaml', 'src/a.ts'].sort(),
+      [tasksPath(), milestoneRelFile('usage.yaml'), 'src/a.ts'].sort(),
     );
     expect(derivePending(readJournal(root)).filter((e) => e.type === 'usage_recording')).toHaveLength(0);
   });
@@ -572,9 +583,9 @@ describe('pitway task-update start tolerates pending journal entries materialize
 
     expect(headFiles(root)).toEqual(
       [
-        TASKS_PATH,
-        '.pitway/milestones/M001/contract.md',
-        '.pitway/milestones/M001/usage.yaml',
+        tasksPath(),
+        milestoneRelFile('contract.md'),
+        milestoneRelFile('usage.yaml'),
         'src/a.ts',
       ].sort(),
     );

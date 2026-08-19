@@ -15,7 +15,7 @@ import {
   type TaskUsage,
   type TasksFile,
 } from '../../state/schemas.js';
-import { loadState, loadTasks, saveTasks } from '../../state/store.js';
+import { loadState, loadTasks, resolveMilestoneDirName, saveTasks } from '../../state/store.js';
 import { resolveReadyTasks } from './dependencies.js';
 import { transitionTask } from './state-machine.js';
 
@@ -43,7 +43,11 @@ const resultSchema = z.strictObject({
 
 type TaskResult = z.infer<typeof resultSchema>;
 
-const tasksRepoPath = (milestoneId: string): string => `.pitway/milestones/${milestoneId}/tasks.yaml`;
+// Directory names are assigned once at creation and never renamed (AC007),
+// so resolving against the current on-disk listing is correct even when
+// looking up content at a past commit via git show.
+const tasksRepoPath = (root: string, milestoneId: string): string =>
+  `.pitway/milestones/${resolveMilestoneDirName(root, milestoneId)}/tasks.yaml`;
 
 function resolveActiveMilestone(root: string): string {
   const state = loadState(root);
@@ -150,7 +154,7 @@ function findCompletionCommit(
   if (sha === undefined) return undefined;
   let record: CommittedTaskRecord | undefined;
   try {
-    const data = parse(git(['show', `${sha}:${tasksRepoPath(milestoneId)}`], root)) as {
+    const data = parse(git(['show', `${sha}:${tasksRepoPath(root, milestoneId)}`], root)) as {
       tasks?: CommittedTaskRecord[];
     };
     record = data.tasks?.find((t) => t.id === taskId);
@@ -179,7 +183,7 @@ function completeTask(
   task: Task,
   inputs: TaskUpdateInputs,
 ): TaskUpdateView {
-  const tasksPath = tasksRepoPath(milestoneId);
+  const tasksPath = tasksRepoPath(root, milestoneId);
   // relevant_files is optional as of M005/T003 (context_files/write_scope are
   // the new style); this line predates write_scope enforcement, which is
   // M005/T004's job. Defensive fallback only — no real task omits
@@ -303,7 +307,7 @@ export function updateTask(
     // reach the completion checkpoint that would fold it in. Attempts
     // increments exactly once per (re)start, deterministically.
     const journalExpected = classifyDirtyPaths(root, { journalMilestone: milestoneId }).expected;
-    assertDirtySubset(root, [tasksRepoPath(milestoneId), ...journalExpected]);
+    assertDirtySubset(root, [tasksRepoPath(root, milestoneId), ...journalExpected]);
     updated.attempts = (task.attempts ?? 0) + 1;
   }
   // AC017: every non-completion write touches tasks.yaml only and never commits.

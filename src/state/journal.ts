@@ -6,6 +6,7 @@ import { git } from '../git/exec.js';
 import { resolvePitwayJournalPath } from '../git/paths.js';
 import { derivePending, resolveTargetPath } from '../core/journal/operations.js';
 import { formatIssues } from './contract-file.js';
+import { resolveMilestoneDirName } from './store.js';
 
 export class JournalError extends Error {}
 
@@ -159,9 +160,19 @@ export function reconcilePending(cwd: string, milestone: string): JournalCheckpo
   }
   if (!headIsPitwayCheckpoint(cwd, milestone)) return [];
 
+  let milestoneDir: string;
+  try {
+    milestoneDir = resolveMilestoneDirName(cwd, milestone);
+  } catch {
+    // Directory not (yet, or ambiguously) resolvable — every entry stays
+    // genuinely pending rather than throwing out of a reconciliation call
+    // that other code paths invoke defensively after every commit.
+    return [];
+  }
+
   const created: JournalCheckpoint[] = [];
   for (const entry of pending) {
-    const relTarget = resolveTargetPath(entry);
+    const relTarget = resolveTargetPath(entry, milestoneDir);
     const absTarget = resolve(cwd, relTarget);
 
     let onDisk: string;

@@ -1,5 +1,6 @@
 import { assertGitWorkTree, git, GitError } from './exec.js';
 import { readJournal } from '../state/journal.js';
+import { resolveMilestoneDirName } from '../state/store.js';
 import { derivePending, resolveTargetPath } from '../core/journal/operations.js';
 
 export { GitError };
@@ -87,7 +88,20 @@ export function classifyDirtyPaths(
   if (options.journalMilestone !== undefined) {
     const milestone = options.journalMilestone;
     const pending = derivePending(readJournal(cwd)).filter((entry) => entry.milestone === milestone);
-    journalTargets = new Set(pending.map((entry) => resolveTargetPath(entry)));
+    if (pending.length > 0) {
+      try {
+        // safety.ts already depends on the State layer (readJournal/
+        // derivePending above) — resolving the milestone directory here
+        // extends that existing dependency rather than introducing a new
+        // one (unlike src/git/baseline.ts, which stays State-free and
+        // receives an already-resolved directory from its Core caller).
+        const milestoneDir = resolveMilestoneDirName(cwd, milestone);
+        journalTargets = new Set(pending.map((entry) => resolveTargetPath(entry, milestoneDir)));
+      } catch {
+        // Directory not resolvable — no journal-pending paths can be
+        // classified expected; everything falls through to the other rules.
+      }
+    }
   }
 
   const expected: string[] = [];

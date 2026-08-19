@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -102,7 +102,14 @@ tasks:
     usage: null
 `;
 
-const TASKS_PATH = '.pitway/milestones/M001/tasks.yaml';
+function milestoneDirName(id: string): string {
+  const dir = join(root, '.pitway', 'milestones');
+  const match = readdirSync(dir).find((e) => e === id || e.startsWith(`${id}-`));
+  if (!match) throw new Error(`no milestone directory found for ${id}`);
+  return match;
+}
+
+const tasksPath = (): string => `.pitway/milestones/${milestoneDirName('M001')}/tasks.yaml`;
 
 const MESSAGE_FIXTURE = `task: complete T001
 
@@ -262,7 +269,7 @@ describe('pitway task-amend validation (AC1)', () => {
   });
 
   it("refuses when the milestone's contract has no recorded Change Log entry", async () => {
-    const contractPath = join(root, '.pitway', 'milestones', 'M001', 'contract.md');
+    const contractPath = join(root, '.pitway', 'milestones', milestoneDirName('M001'), 'contract.md');
     writeFileSync(contractPath, readFileSync(contractPath, 'utf8').replace(/## Change Log[\s\S]*$/, '## Change Log\n'));
     const { error } = await amend('T001', { objective: 'Reworded.' });
     expect(error?.message).toMatch(/Change Log/);
@@ -325,14 +332,90 @@ describe('pitway task-amend idempotency and ambiguity (AC5)', () => {
     expect(task('T001').objective).toBe('Reworded objective.');
   });
 
-  it('refuses a second, differently-fielded amendment while the first is still pending', async () => {
+  it('allows a second amendment based on the first pending amendment\'s result — cumulative chain, not "latest wins"', async () => {
     const first = await amend('T001', { objective: 'First rewording.' });
     expect(first.error).toBeUndefined();
-
-    const { error } = await amend('T001', { objective: 'Second, conflicting rewording.' });
-    expect(error?.message).toMatch(/ambiguous/i);
     expect(pendingAmendEntries('T001')).toHaveLength(1);
+
+    // Based on the currently materialized state, which already reflects the
+    // first amendment — a genuinely new, distinct operation.
+    const second = await amend('T001', { relevant_files: ['src/a.ts', 'src/z.ts'] });
+    expect(second.error).toBeUndefined();
+
+    // Both entries remain, append-only — neither replaced the other.
+    const pending = pendingAmendEntries('T001');
+    expect(pending).toHaveLength(2);
+    expect(pending[0]!.operationId).not.toBe(pending[1]!.operationId);
+
+    // Cumulative result: both changes present in the materialized task.
     expect(task('T001').objective).toBe('First rewording.');
+    expect(task('T001').relevant_files).toEqual(['src/a.ts', 'src/z.ts']);
+  });
+
+  it('re-submitting the exact same second amendment is idempotent (same content-derived operation identity)', async () => {
+    await amend('T001', { objective: 'First rewording.' });
+    const fields = { relevant_files: ['src/a.ts', 'src/z.ts'] };
+    const first = await amend('T001', fields);
+    expect(first.error).toBeUndefined();
+    expect(pendingAmendEntries('T001')).toHaveLength(2);
+
+    const second = await amend('T001', fields);
+    expect(second.error).toBeUndefined();
+    // No third entry — same operation identity, same payload, idempotent.
+    expect(pendingAmendEntries('T001')).toHaveLength(2);
+    expect(task('T001').relevant_files).toEqual(['src/a.ts', 'src/z.ts']);
+  });
+
+  it('refuses as ambiguous when an existing journal entry has the same operation identity but a different recorded payload', async () => {
+    // Structurally near-unreachable via normal calls (operation identity is
+    // content-derived from milestone+task+base+fields), so this exercises
+    // the defensive safety net directly by constructing the collision.
+    const { computeTaskAmendOperationId } = await import('../../src/core/tasks/amend.js');
+    const before = task('T001');
+    const fields = { objective: 'Some rewording.' };
+    const baseFingerprint = JSON.stringify(before);
+    const operationId = computeTaskAmendOperationId('M001', 'T001', baseFingerprint, fields);
+    const { appendJournalEntry } = await import('../../src/state/journal.js');
+    appendJournalEntry(root, {
+      milestone: 'M001',
+      type: 'task_amendment',
+      operationId,
+      target: 'T001',
+      payload: {
+        changeLogEvidence: 'Tampered entry.',
+        fields,
+        baseFingerprint,
+        resultFingerprint: 'deliberately-mismatched-result',
+      },
+    });
+
+    const { error } = await amend('T001', fields);
+    expect(error?.message).toMatch(/ambiguous/i);
+    expect(error?.message).toContain(operationId);
+  });
+
+  it('refuses as a conflict when a proposed amendment is not based on the current pending chain\'s tip result', async () => {
+    const { appendJournalEntry } = await import('../../src/state/journal.js');
+    // Simulate a chain whose recorded tip result does not match what a fresh
+    // read of the current task would actually produce — e.g. external
+    // interference with the journal outside the amend flow.
+    appendJournalEntry(root, {
+      milestone: 'M001',
+      type: 'task_amendment',
+      operationId: 'fake-tip-op',
+      target: 'T001',
+      payload: {
+        changeLogEvidence: 'Fake tip.',
+        fields: { objective: 'Irrelevant.' },
+        baseFingerprint: 'irrelevant',
+        resultFingerprint: 'does-not-match-anything-real',
+      },
+    });
+
+    const { error } = await amend('T001', { objective: 'A perfectly normal new amendment.' });
+    expect(error?.message).toMatch(/conflict/i);
+    expect(pendingAmendEntries('T001')).toHaveLength(1); // only the fake tip, nothing new appended
+    expect(task('T001').objective).toBe('First task.'); // unchanged — never materialized
   });
 
   it('is a no-op once the amendment is already fully materialized and no longer pending', async () => {
@@ -346,7 +429,7 @@ describe('pitway task-amend idempotency and ambiguity (AC5)', () => {
 
     // Simulate the checkpoint commit + reconciliation a real completion would
     // perform (mirrors milestone-confirm.test.ts's checkpointPendingContract).
-    git(['add', TASKS_PATH], root);
+    git(['add', tasksPath()], root);
     git(['commit', '-m', 'workflow: simulate checkpoint\n\nPitWay-Milestone: M001'], root);
     const { reconcilePending } = await import('../../src/state/journal.js');
     reconcilePending(root, 'M001');
@@ -383,8 +466,37 @@ describe('pitway task-amend idempotency and ambiguity (AC5)', () => {
 
     expect(task('T001').objective).toBe('Reworded before completion.');
     expect(task('T001').status).toBe('completed');
-    expect(headFiles(root)).toContain(TASKS_PATH);
+    expect(headFiles(root)).toContain(tasksPath());
     expect(git(['status', '--porcelain'], root).trim()).toBe('');
     expect(pendingAmendEntries('T001')).toHaveLength(0);
+  });
+
+  it('a cumulative chain of two amendments is captured by the same checkpoint commit SHA, both entries reconciled', async () => {
+    const first = await amend('T001', { objective: 'First rewording.' });
+    expect(first.error).toBeUndefined();
+    const second = await amend('T001', { relevant_files: ['src/a.ts', 'src/z.ts'] });
+    expect(second.error).toBeUndefined();
+    expect(pendingAmendEntries('T001')).toHaveLength(2);
+
+    expect((await run(['task-update', 'T001', 'in_progress'], root)).error).toBeUndefined();
+    expect((await run(['task-update', 'T001', 'review'], root)).error).toBeUndefined();
+    const result = join(scratch, 'result.yaml');
+    const message = join(scratch, 'message.txt');
+    writeFileSync(result, RESULT_FIXTURE);
+    writeFileSync(message, MESSAGE_FIXTURE);
+    const { error } = await run(
+      ['task-update', 'T001', 'completed', '--result', result, '--message', message],
+      root,
+    );
+    expect(error).toBeUndefined();
+
+    expect(task('T001').objective).toBe('First rewording.');
+    expect(task('T001').relevant_files).toEqual(['src/a.ts', 'src/z.ts']);
+    expect(pendingAmendEntries('T001')).toHaveLength(0);
+
+    const sha = git(['rev-parse', 'HEAD'], root).trim();
+    const markers = readJournal(root).filter((r) => r.kind === 'checkpoint');
+    expect(markers).toHaveLength(2);
+    expect(markers.every((m) => m.kind === 'checkpoint' && m.commitSha === sha)).toBe(true);
   });
 });

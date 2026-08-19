@@ -504,7 +504,7 @@ tasks:
       onward; canonical bare id everywhere except the directory name; resolution
       in the state store only, succeeding only on exactly one candidate;
       M001-M005 grandfathered bare (AC007)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - New milestones created after M005 use MNNN-<slug>; slug never regenerated
@@ -515,20 +515,92 @@ tasks:
     relevant_files:
       - src/state/store.ts
       - src/core/milestones/create.ts
+      - src/git/baseline.ts
+      - src/core/milestones/confirm.ts
+      - src/core/milestones/complete.ts
+      - src/core/tasks/update.ts
+      - src/core/journal/operations.ts
+      - src/state/journal.ts
+      - src/git/safety.ts
       - tests/integration/milestone-add.test.ts
       - tests/unit/state-store.test.ts
+      - tests/integration/milestone-complete.test.ts
+      - tests/integration/milestone-confirm.test.ts
+      - tests/integration/self-hosting-readiness.test.ts
+      - tests/integration/task-amend.test.ts
+      - tests/integration/task-update.test.ts
+      - tests/integration/verify.test.ts
+      - tests/integration/write-ms-artifacts.test.ts
+      - tests/unit/journal.test.ts
+      - tests/unit/git-safety.test.ts
+      - src/core/tasks/amend.ts
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-add.test.ts
         tests/unit/state-store.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "Executed by a bounded sub-agent from its task-context bundle, with two
+        developer-approved cumulative scope widenings (via the task-amend
+        command T005 built) after real implementation revealed the true blast
+        radius, plus a one-time bootstrap repair to task-amend itself. Core:
+        slugifyTitle (lowercase, non-alnum collapse, trim, 40-char word-boundary
+        truncate, empty->bare-id fallback) and resolveMilestoneDirName
+        (exactly-one-candidate resolution: bare or MNNN-slug, refusing
+        zero/multiple/ambiguous with named candidates) added to
+        src/state/store.ts; milestonePath resolves through it, making every
+        existing loadX/saveX resolution-aware for free; createMilestoneDir
+        creates the (possibly-slugged) directory, wired into create.ts before
+        the first save. Seven more production files (found via a complete
+        read-only census, not guessed) independently constructed bare
+        .pitway/milestones/<id>/... paths for git staging/trailer purposes,
+        bypassing store.ts's resolution: src/git/baseline.ts
+        (computeExpectedBaselinePaths now takes an already-resolved directory
+        name, resolved by its Core-layer caller in confirm.ts — preserves
+        Git-module/State-layer independence per architecture rule),
+        src/core/milestones/complete.ts, src/core/tasks/update.ts (both
+        Core-layer, resolve directly), src/core/journal/operations.ts's
+        resolveTargetPath (kept pure/zero-fs-imports by taking the resolved
+        directory as a parameter instead), with src/state/journal.ts and
+        src/git/safety.ts (both already State-adjacent) resolving and passing it
+        in. Bootstrap repair: src/core/tasks/amend.ts's idempotency model was
+        corrected from single-pending-only to cumulative chained amendments
+        (content-derived operation identity; a second amendment chains onto the
+        first's materialized result rather than being refused;
+        same-identity-different-payload is a defensive ambiguity refusal; a
+        chain-tip mismatch is a conflict refusal; never silent latest-wins) —
+        discovered and fixed exactly because T007 needed a second scope widening
+        before its first had checkpointed."
+      evidence: "Sub-agent confirmed RED then GREEN for the originally-scoped work
+        (41/41 on milestone-add.test.ts + state-store.test.ts), then correctly
+        stopped at its declared boundary when the full suite (94 failures)
+        revealed 4 more production files needing the fix — reported rather than
+        editing unlisted files. Driver independently verified this via a
+        complete read-only census (full src/ grep sweep for milestones/${...}
+        construction, confirming exactly the 4 files plus 3 more discovered by
+        tracing resolveTargetPath's own call sites, with 2 candidate test files
+        — git-baseline.test.ts, verification-hash.test.ts — explicitly ruled out
+        by reading them). Two cumulative task-amend calls widened T007's
+        relevant_files (11 files, then a second chained amendment to the full
+        21) — the second call surfaced a real task-amend defect
+        (single-pending-amendment invariant), fixed with 9 new regression tests
+        in task-amend.test.ts (17/20 green before use, the other 3 being the
+        same pre-existing T007 gap this task was already fixing) and a
+        documented bootstrap-transition exception for the one pre-repair pending
+        entry. After all 7 additional production files and 2 test signature
+        updates: target command (milestone-add.test.ts + state-store.test.ts)
+        41/41 green; full suite 414/414 green; typecheck clean; diff reviewed
+        directly — all 20 actually-dirty files confirmed within the 21-file
+        amended relevant_files (write-ms-artifacts.test.ts needed no change,
+        confirmed by reading it)."
+    attempts: 1
+    usage:
+      total_tokens: 175697
   - id: T008
     objective: "Migration/compatibility verification: confirm M001-M004 history
       (bare directories, relevant_files-only tasks, pre-journal commit shapes)
       continues to load, resolve, and resume correctly unmodified under every
       change in this milestone; full suite green (AC008)."
-    status: waiting
+    status: ready
     depends_on:
       - T003
       - T004

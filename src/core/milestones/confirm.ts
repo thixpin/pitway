@@ -5,7 +5,14 @@ import { checkWorkingTreeClean } from '../../git/safety.js';
 import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
 import { parseContractFile, serializeContractFile } from '../../state/contract-file.js';
 import { appendJournalEntry, readJournal } from '../../state/journal.js';
-import { loadContract, loadTasks, readInputFile, saveContract, saveTasks } from '../../state/store.js';
+import {
+  loadContract,
+  loadTasks,
+  readInputFile,
+  resolveMilestoneDirName,
+  saveContract,
+  saveTasks,
+} from '../../state/store.js';
 import type { ContractFile } from '../../state/contract-file.js';
 import type { Task } from '../../state/schemas.js';
 import { derivePending } from '../journal/operations.js';
@@ -70,7 +77,11 @@ function promoteTasks(root: string, milestoneId: string): string[] {
 function runConfirm(root: string, milestoneId: string, contract: ContractFile): MilestoneConfirmView {
   const { status, requirement } = contract.frontmatter;
   const baselineSha = findBaselineCommit(root, milestoneId);
-  const expectedPaths = computeExpectedBaselinePaths(milestoneId, requirement);
+  // Resolved here (Core layer, already depends on the State layer) and
+  // passed into the Git-layer function — baseline.ts itself stays free of
+  // any State import.
+  const milestoneDir = resolveMilestoneDirName(root, milestoneId);
+  const expectedPaths = computeExpectedBaselinePaths(milestoneDir, requirement);
 
   if (status === 'draft') {
     if (baselineSha !== undefined) {

@@ -1,11 +1,13 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { readFileSync } from 'node:fs';
 import {
+  MilestoneResolutionError,
   StateStoreError,
+  createMilestoneDir,
   loadConfig,
   loadContract,
   loadState,
@@ -22,6 +24,7 @@ import {
   saveTasks,
   saveUsage,
   saveVerificationResults,
+  slugifyTitle,
 } from '../../src/state/store.js';
 import type {
   PitwayConfig,
@@ -156,11 +159,91 @@ describe('readInputFile', () => {
 });
 
 describe('milestoneDirExists', () => {
-  it('returns true when the milestone directory exists', () => {
+  it('returns true when a bare milestone directory exists', () => {
     expect(milestoneDirExists(root, 'M001')).toBe(true);
   });
 
-  it('returns false when the milestone directory does not exist', () => {
+  it('returns true when a slugged milestone directory exists', () => {
+    mkdirSync(join(root, '.pitway', 'milestones', 'M002-some-title'), { recursive: true });
+    expect(milestoneDirExists(root, 'M002')).toBe(true);
+  });
+
+  it('returns false when neither a bare nor a slugged directory exists', () => {
     expect(milestoneDirExists(root, 'M999')).toBe(false);
+  });
+});
+
+describe('slugifyTitle', () => {
+  it('lowercases the title', () => {
+    expect(slugifyTitle('Slugged Milestone')).toBe('slugged-milestone');
+  });
+
+  it('collapses runs of non-alphanumeric characters into a single hyphen', () => {
+    expect(slugifyTitle('Fix: bug #123 (urgent!!)')).toBe('fix-bug-123-urgent');
+  });
+
+  it('trims leading and trailing hyphens', () => {
+    expect(slugifyTitle('--already hyphenated--')).toBe('already-hyphenated');
+  });
+
+  it('truncates at a word boundary at or before 40 characters', () => {
+    const title = 'This title is deliberately long enough to require truncation';
+    const slug = slugifyTitle(title);
+    expect(slug.length).toBeLessThanOrEqual(40);
+    expect(slug).toBe('this-title-is-deliberately-long-enough');
+  });
+
+  it('produces an empty string for a title with no alphanumeric characters', () => {
+    expect(slugifyTitle('!!! --- ???')).toBe('');
+  });
+});
+
+describe('createMilestoneDir', () => {
+  it('creates a slugged directory derived from a real title', () => {
+    createMilestoneDir(root, 'M002', 'Slugged Milestone');
+    const entries = readdirSync(join(root, '.pitway', 'milestones'));
+    expect(entries).toContain('M002-slugged-milestone');
+  });
+
+  it('creates a bare directory when the title slugifies to empty', () => {
+    createMilestoneDir(root, 'M003', '!!! --- ???');
+    const entries = readdirSync(join(root, '.pitway', 'milestones'));
+    expect(entries).toContain('M003');
+  });
+});
+
+describe('milestone directory resolution (via loadTasks)', () => {
+  it('resolves a bare directory (grandfathering)', () => {
+    const tasks = fixture('valid/tasks.yaml') as TasksFile;
+    saveTasks(root, 'M001', tasks);
+    expect(loadTasks(root, 'M001')).toEqual(tasks);
+  });
+
+  it('resolves a single slugged directory', () => {
+    mkdirSync(join(root, '.pitway', 'milestones', 'M002-my-slug'), { recursive: true });
+    const tasks = fixture('valid/tasks.yaml') as TasksFile;
+    saveTasks(root, 'M002', tasks);
+    expect(loadTasks(root, 'M002')).toEqual(tasks);
+  });
+
+  it('refuses when zero candidates exist', () => {
+    expect(() => loadTasks(root, 'M999')).toThrowError(MilestoneResolutionError);
+    expect(() => loadTasks(root, 'M999')).toThrowError(/M999/);
+  });
+
+  it('refuses when multiple slugged candidates exist for the same id, naming them', () => {
+    mkdirSync(join(root, '.pitway', 'milestones', 'M002-first-slug'), { recursive: true });
+    mkdirSync(join(root, '.pitway', 'milestones', 'M002-second-slug'), { recursive: true });
+    expect(() => loadTasks(root, 'M002')).toThrowError(MilestoneResolutionError);
+    expect(() => loadTasks(root, 'M002')).toThrowError(/M002-first-slug/);
+    expect(() => loadTasks(root, 'M002')).toThrowError(/M002-second-slug/);
+  });
+
+  it('refuses when a bare and slugged directory coexist for the same id, naming both', () => {
+    mkdirSync(join(root, '.pitway', 'milestones', 'M002-some-slug'), { recursive: true });
+    mkdirSync(join(root, '.pitway', 'milestones', 'M002'), { recursive: true });
+    expect(() => loadTasks(root, 'M002')).toThrowError(MilestoneResolutionError);
+    expect(() => loadTasks(root, 'M002')).toThrowError(/M002-some-slug/);
+    expect(() => loadTasks(root, 'M002')).toThrowError(/M002(?!-)/);
   });
 });

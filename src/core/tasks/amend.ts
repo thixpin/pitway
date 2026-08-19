@@ -1,7 +1,7 @@
-import { randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { parse } from 'yaml';
 import { formatIssues } from '../../state/contract-file.js';
-import { appendJournalEntry, readJournal } from '../../state/journal.js';
+import { appendJournalEntry, readJournal, type JournalEntry } from '../../state/journal.js';
 import { taskSchema, type Task } from '../../state/schemas.js';
 import { loadContract, loadState, loadTasks, readInputFile, saveTasks } from '../../state/store.js';
 import { derivePending } from '../journal/operations.js';
@@ -90,7 +90,32 @@ function parseAmendmentInput(path: string): Record<string, unknown> {
   return fields;
 }
 
-const deepEqual = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
+// M005/T005 bootstrap repair (2026-08-19): the original design treated "one
+// pending amendment per task" as the invariant, refusing any second
+// amendment while the first was still pending — a real gap, discovered when
+// T007 legitimately needed to widen its own scope twice before its first
+// widening had reached a checkpoint. Corrected to cumulative chained
+// amendments: an operation identity derived from content (milestone + task +
+// base state + proposed fields) rather than a random one, so re-submitting
+// the exact same amendment is naturally idempotent, while a genuinely new
+// amendment based on the current (possibly already-amended) materialized
+// state is allowed to chain — never a silent "latest wins," always validated
+// against the pending chain's actual tip result.
+const fingerprint = (value: unknown): string => JSON.stringify(value);
+
+// Exported for tests exercising the defensive same-identity/different-payload
+// safety net directly (structurally near-unreachable via normal calls, since
+// the identity is derived from the payload itself).
+export function computeTaskAmendOperationId(
+  milestone: string,
+  taskId: string,
+  baseFingerprint: string,
+  fields: Record<string, unknown>,
+): string {
+  return createHash('sha256')
+    .update(JSON.stringify({ milestone, taskId, baseFingerprint, fields }))
+    .digest('hex');
+}
 
 export function amendTask(
   root: string,
@@ -108,8 +133,11 @@ export function amendTask(
   assertChangeLogEntry(milestone, contract.body);
 
   const tasksFile = loadTasks(root, milestone);
-  const task = tasksFile.tasks.find((t) => t.id === taskId);
-  if (task === undefined) {
+  // Freshly loaded — in normal operation this already reflects any prior
+  // pending amendment's immediate materialization, which is what makes a
+  // fresh read a valid "base" for a new amendment in the chain.
+  const currentTask = tasksFile.tasks.find((t) => t.id === taskId);
+  if (currentTask === undefined) {
     throw new TaskAmendError(`task ${taskId} not found`);
   }
 
@@ -118,58 +146,97 @@ export function amendTask(
   // omitted key keeps its current value — then the FULL merged object is
   // validated, which is what enforces the context_files/write_scope
   // combination rule automatically (reusing taskSchema, not reimplementing it).
-  const candidate = { ...task, ...fields };
+  const candidate = { ...currentTask, ...fields };
   const parsed = taskSchema.safeParse(candidate);
   if (!parsed.success) {
     throw new TaskAmendError(`invalid amended task ${taskId}: ${formatIssues(parsed.error)}`);
   }
   const mergedTask: Task = parsed.data;
 
-  const writeMerged = (): void => {
+  const writeMerged = (task: Task): void => {
     saveTasks(root, milestone, {
       schema_version: tasksFile.schema_version,
-      tasks: tasksFile.tasks.map((t) => (t.id === taskId ? mergedTask : t)),
+      tasks: tasksFile.tasks.map((t) => (t.id === taskId ? task : t)),
     });
   };
 
-  // Pre-write idempotency, mirroring confirm.ts's runAmend pattern: at most
-  // one pending task_amendment entry per task should ever exist at a time.
-  const pending = derivePending(readJournal(root)).filter(
-    (entry) => entry.type === 'task_amendment' && entry.target === taskId,
-  );
-  if (pending.length > 1) {
-    throw new TaskAmendError(
-      `ambiguous state: multiple pending task amendment journal entries exist for ${taskId}; inspect manually`,
-    );
+  const baseFp = fingerprint(currentTask);
+  const resultFp = fingerprint(mergedTask);
+
+  if (baseFp === resultFp) {
+    // The proposed fields produce no actual change against the currently
+    // materialized state — nothing to record or write.
+    return { id: taskId, milestone, operation: 'amend' };
   }
-  const pendingEntry = pending[0];
-  if (pendingEntry !== undefined) {
-    if (!deepEqual(pendingEntry.payload.fields, fields)) {
+
+  const operationId = computeTaskAmendOperationId(milestone, taskId, baseFp, fields);
+  const allEntries = readJournal(root);
+
+  // Re-entry: an entry (pending or already checkpointed) with this exact
+  // content-derived operation identity already exists. Same identity + same
+  // recorded payload/result is idempotent; same identity + a different
+  // recorded payload/result is a defensive ambiguity refusal (structurally
+  // near-unreachable via normal calls, since identity is derived from the
+  // payload — this only fires if the journal was tampered with outside the
+  // amend flow).
+  const existingSameOp = allEntries.find(
+    (e): e is JournalEntry => e.kind === 'entry' && e.operationId === operationId,
+  );
+  if (existingSameOp !== undefined) {
+    if (
+      existingSameOp.payload.baseFingerprint !== baseFp ||
+      existingSameOp.payload.resultFingerprint !== resultFp
+    ) {
       throw new TaskAmendError(
-        `ambiguous state: a different amendment is already pending for ${taskId}; ` +
-          `checkpoint or resolve it before amending again`,
+        `ambiguous state: operation ${operationId} for ${taskId} already recorded with a ` +
+          `different payload/result; inspect manually`,
       );
     }
     // Duplicate re-invocation of the same amendment: harmless to re-write the
     // same content again, no new journal entry needed.
-    writeMerged();
+    writeMerged(mergedTask);
     return { id: taskId, milestone, operation: 'amend' };
   }
 
-  // Zero pending: either genuinely new, or already fully materialized (and
-  // possibly already checkpointed) by a prior invocation of this exact
-  // amendment.
-  if (deepEqual(task, mergedTask)) {
-    return { id: taskId, milestone, operation: 'amend' };
+  // A genuinely new, distinct operation. If a pending amendment chain
+  // already exists for this task, this proposal must be based on exactly
+  // the chain's current tip result — cumulative chaining, never a
+  // conflicting fork or a silent "latest wins." In normal operation this
+  // always holds (currentTask was just freshly loaded, reflecting the tip's
+  // materialization); it only fails when the journal's recorded chain has
+  // diverged from what a fresh read actually produces.
+  const pendingForTarget = derivePending(allEntries).filter(
+    (entry) => entry.type === 'task_amendment' && entry.target === taskId,
+  );
+  if (pendingForTarget.length > 0) {
+    const tip = pendingForTarget[pendingForTarget.length - 1]!;
+    // Bootstrap-transition exception: an entry recorded before this
+    // cumulative-chaining repair (M005/T005, 2026-08-19) has no
+    // resultFingerprint to compare against — it predates the field. Its
+    // effect is already immediately materialized into currentTask (that
+    // invariant never changed), so a fresh read is trustworthy as the chain
+    // tip without a fingerprint match. This applies only to that one-time
+    // transition, never to entries recorded after the repair.
+    if (tip.payload.resultFingerprint !== undefined && tip.payload.resultFingerprint !== baseFp) {
+      throw new TaskAmendError(
+        `conflict: proposed amendment for ${taskId} is not based on the current pending ` +
+          `amendment chain's tip result; checkpoint or resolve the pending chain before amending again`,
+      );
+    }
   }
 
   appendJournalEntry(root, {
     milestone,
     type: 'task_amendment',
-    operationId: randomUUID(),
+    operationId,
     target: taskId,
-    payload: { changeLogEvidence: inputs.changeLogEvidence, fields },
+    payload: {
+      changeLogEvidence: inputs.changeLogEvidence,
+      fields,
+      baseFingerprint: baseFp,
+      resultFingerprint: resultFp,
+    },
   });
-  writeMerged();
+  writeMerged(mergedTask);
   return { id: taskId, milestone, operation: 'amend' };
 }

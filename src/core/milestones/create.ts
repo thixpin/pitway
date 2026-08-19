@@ -1,5 +1,6 @@
 import { parse } from 'yaml';
 import {
+  createMilestoneDir,
   loadContract,
   loadState,
   milestoneDirExists,
@@ -125,6 +126,8 @@ export function createMilestone(root: string, inputs: MilestoneAddInputs): Miles
     requirementId = nextRequirementId(root);
     saveRequirement(root, requirementId, requirementText);
   }
+
+  createMilestoneDir(root, id, contract.frontmatter.title);
 
   saveContract(root, id, {
     frontmatter: {

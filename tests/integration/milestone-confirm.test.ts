@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -83,14 +83,24 @@ tasks:
     usage: null
 `;
 
-const EXPECTED_BASELINE_FILES = [
-  '.pitway/config.yaml',
-  '.pitway/milestones/M001/contract.md',
-  '.pitway/milestones/M001/tasks.yaml',
-  '.pitway/milestones/M001/usage.yaml',
-  '.pitway/milestones/M001/verification-results.yaml',
-  '.pitway/state.yaml',
-].sort();
+function milestoneDirName(id: string): string {
+  const dir = join(root, '.pitway', 'milestones');
+  const match = readdirSync(dir).find((e) => e === id || e.startsWith(`${id}-`));
+  if (!match) throw new Error(`no milestone directory found for ${id}`);
+  return match;
+}
+
+const expectedBaselineFiles = (): string[] => {
+  const dir = milestoneDirName('M001');
+  return [
+    '.pitway/config.yaml',
+    `.pitway/milestones/${dir}/contract.md`,
+    `.pitway/milestones/${dir}/tasks.yaml`,
+    `.pitway/milestones/${dir}/usage.yaml`,
+    `.pitway/milestones/${dir}/verification-results.yaml`,
+    '.pitway/state.yaml',
+  ].sort();
+};
 
 async function run(args: string[], cwd: string): Promise<{ lines: string[]; error?: Error }> {
   const program = buildCli();
@@ -125,7 +135,9 @@ async function addMilestone(requirement = false): Promise<void> {
   if (requirement) rmSync(join(root, 'req.md'));
 }
 
-const contractPath = (): string => join(root, '.pitway', 'milestones', 'M001', 'contract.md');
+const contractRelPath = (): string => `.pitway/milestones/${milestoneDirName('M001')}/contract.md`;
+
+const contractPath = (): string => join(root, ...contractRelPath().split('/'));
 
 function editContract(transform: (text: string) => string): void {
   writeFileSync(contractPath(), transform(readFileSync(contractPath(), 'utf8')));
@@ -171,7 +183,7 @@ function pendingAmendEntries(): JournalEntry[] {
 // reconciliation call they make afterwards — this test file has neither
 // command registered, so the checkpoint itself is stood up directly.
 function checkpointPendingContract(): void {
-  git(['add', '.pitway/milestones/M001/contract.md'], root);
+  git(['add', contractRelPath()], root);
   git(['commit', '-m', 'workflow: simulate checkpoint\n\nPitWay-Milestone: M001'], root);
   reconcilePending(root, 'M001');
 }
@@ -220,7 +232,7 @@ describe('pitway milestone-confirm', () => {
       ['T002', 'waiting'],
     ]);
 
-    expect(headFiles(root)).toEqual(EXPECTED_BASELINE_FILES);
+    expect(headFiles(root)).toEqual(expectedBaselineFiles());
     const message = headMessage(root);
     expect(message.startsWith('workflow: add milestone M001')).toBe(true);
     expect(message).toContain('PitWay-Milestone: M001');
@@ -233,7 +245,7 @@ describe('pitway milestone-confirm', () => {
     const { error } = await run(['milestone-confirm', 'M001'], root);
     expect(error).toBeUndefined();
     expect(headFiles(root)).toEqual(
-      [...EXPECTED_BASELINE_FILES, '.pitway/requirements/R001.md'].sort(),
+      [...expectedBaselineFiles(), '.pitway/requirements/R001.md'].sort(),
     );
   });
 
@@ -247,10 +259,11 @@ describe('pitway milestone-confirm', () => {
 
   it('refuses unexpected dirty paths listing the offenders, writing and staging nothing', async () => {
     await addMilestone();
-    writeFileSync(join(root, '.pitway', 'milestones', 'M001', 'stray.txt'), 'stray\n');
+    const dir = milestoneDirName('M001');
+    writeFileSync(join(root, '.pitway', 'milestones', dir, 'stray.txt'), 'stray\n');
     writeFileSync(join(root, 'wip.txt'), 'wip\n');
     const { error } = await run(['milestone-confirm', 'M001'], root);
-    expect(error?.message).toMatch(/\.pitway\/milestones\/M001\/stray\.txt/);
+    expect(error?.message).toMatch(new RegExp(`\\.pitway/milestones/${dir}/stray\\.txt`));
     expect(error?.message).toMatch(/wip\.txt/);
     expect(loadContract(root, 'M001').frontmatter.status).toBe('draft');
     expect(git(['diff', '--cached', '--name-only'], root).trim()).toBe('');
@@ -294,7 +307,7 @@ describe('pitway milestone-confirm', () => {
     const { lines, error: retryError } = await run(['milestone-confirm', 'M001', '--json'], root);
     expect(retryError).toBeUndefined();
     expect((JSON.parse(lines[0]!) as { outcome: string }).outcome).toBe('committed');
-    expect(headFiles(root)).toEqual(EXPECTED_BASELINE_FILES);
+    expect(headFiles(root)).toEqual(expectedBaselineFiles());
     expect(loadTasks(root, 'M001').tasks.map((t) => t.status)).toEqual(['ready', 'waiting']);
   });
 
@@ -365,9 +378,7 @@ describe('pitway milestone-confirm --amend', () => {
 
     // No commit of its own: contract.md sits dirty, waiting for the next checkpoint.
     expect(commitCount(root)).toBe(2);
-    expect(git(['status', '--porcelain'], root).trim()).toContain(
-      '.pitway/milestones/M001/contract.md',
-    );
+    expect(git(['status', '--porcelain'], root).trim()).toContain(contractRelPath());
 
     const pending = pendingAmendEntries();
     expect(pending).toHaveLength(1);

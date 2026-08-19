@@ -48,14 +48,20 @@ export function buildJournalEntry(input: BuildJournalEntryInput): Omit<JournalEn
 
 // Maps an entry to the repo-relative state file it corresponds to, used by
 // self-healing recovery to compare on-disk content against what a commit at
-// HEAD actually committed.
-export function resolveTargetPath(entry: Pick<JournalEntry, 'milestone' | 'type'>): string {
+// HEAD actually committed. Pure — zero fs/path imports (layering-tested).
+// `milestoneDir` is the already-resolved directory name (bare or slugged);
+// resolving it is the caller's job (src/state/journal.ts, src/git/safety.ts
+// — both already State-layer-adjacent), keeping this module free of any I/O.
+export function resolveTargetPath(
+  entry: Pick<JournalEntry, 'type'>,
+  milestoneDir: string,
+): string {
   switch (entry.type) {
     case 'usage_recording':
-      return `.pitway/milestones/${entry.milestone}/usage.yaml`;
+      return `.pitway/milestones/${milestoneDir}/usage.yaml`;
     case 'contract_amendment':
-      return `.pitway/milestones/${entry.milestone}/contract.md`;
+      return `.pitway/milestones/${milestoneDir}/contract.md`;
     case 'task_amendment':
-      return `.pitway/milestones/${entry.milestone}/tasks.yaml`;
+      return `.pitway/milestones/${milestoneDir}/tasks.yaml`;
   }
 }

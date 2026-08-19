@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -97,17 +105,28 @@ const RESULT_FIXTURE = `summary: Implemented the greeter.
 evidence: npm test passed
 `;
 
-const TASKS_PATH = '.pitway/milestones/M001/tasks.yaml';
+function milestoneDirName(root: string, id: string): string {
+  const dir = join(root, '.pitway', 'milestones');
+  const match = readdirSync(dir).find((e) => e === id || e.startsWith(`${id}-`));
+  if (!match) throw new Error(`no milestone directory found for ${id}`);
+  return match;
+}
 
-const EXPECTED_BASELINE_FILES = [
-  '.pitway/config.yaml',
-  '.pitway/milestones/M001/contract.md',
-  '.pitway/milestones/M001/tasks.yaml',
-  '.pitway/milestones/M001/usage.yaml',
-  '.pitway/milestones/M001/verification-results.yaml',
-  '.pitway/requirements/R001.md',
-  '.pitway/state.yaml',
-].sort();
+const tasksPath = (root: string): string =>
+  `.pitway/milestones/${milestoneDirName(root, 'M001')}/tasks.yaml`;
+
+const expectedBaselineFiles = (root: string): string[] => {
+  const dir = milestoneDirName(root, 'M001');
+  return [
+    '.pitway/config.yaml',
+    `.pitway/milestones/${dir}/contract.md`,
+    `.pitway/milestones/${dir}/tasks.yaml`,
+    `.pitway/milestones/${dir}/usage.yaml`,
+    `.pitway/milestones/${dir}/verification-results.yaml`,
+    '.pitway/requirements/R001.md',
+    '.pitway/state.yaml',
+  ].sort();
+};
 
 // Flag/draft input files live outside the repo so they never appear as dirt.
 let scratch: string;
@@ -254,7 +273,7 @@ describe('self-hosting readiness scenario (AC021)', () => {
     expect((JSON.parse(lines[0]!) as { outcome: string }).outcome).toBe('committed');
 
     expect(commitCount(root)).toBe(2);
-    expect(headFiles(root)).toEqual(EXPECTED_BASELINE_FILES);
+    expect(headFiles(root)).toEqual(expectedBaselineFiles(root));
     const message = headMessage(root);
     expect(message.startsWith('workflow: add milestone M001')).toBe(true);
     expect(message).toContain('PitWay-Milestone: M001');
@@ -298,7 +317,7 @@ describe('self-hosting readiness scenario (AC021)', () => {
     expect(commitCount(root)).toBe(3);
     expect(view.commit).toBe(headSha(root));
     expect(resolveCommitSha(root, { milestone: 'M001', task: 'T001' })).toBe(headSha(root));
-    expect(headFiles(root)).toEqual([TASKS_PATH, 'src/greeter.ts'].sort());
+    expect(headFiles(root)).toEqual([tasksPath(root), 'src/greeter.ts'].sort());
     const message = headMessage(root);
     expect(message.startsWith('task: complete T001')).toBe(true);
     expect(message).toContain('PitWay-Milestone: M001');
