@@ -1,2 +1,247 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-19T10:38:39Z
+    evidence: Tests  20 passed (20) | Start at  17:38:39 | Duration  776ms
+      (transform 108ms, setup 0ms, import 138ms, tests 608ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 1233
+    termination_reason: exited
+  - check: CT002
+    status: fail
+    at: 2026-08-19T10:38:52Z
+    evidence: 584|   }); | 585| | ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+    recorded_by: command
+    duration_ms: 12591
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-19T10:38:53Z
+    evidence: Tests  12 passed (12) | Start at  17:38:52 | Duration  1.06s
+      (transform 139ms, setup 0ms, import 245ms, tests 723ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 1435
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-19T10:38:54Z
+    evidence: Tests  5 passed (5) | Start at  17:38:54 | Duration  103ms (transform
+      13ms, setup 0ms, import 20ms, tests 2ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 449
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-19T10:39:22Z
+    evidence: Tests  33 passed (33) | Start at  17:38:54 | Duration  28.20s
+      (transform 140ms, setup 0ms, import 215ms, tests 27.90s, environment 0ms)
+    recorded_by: command
+    duration_ms: 28514
+    termination_reason: exited
+  - check: CT010
+    status: pass
+    at: 2026-08-19T10:39:26Z
+    evidence: Tests  34 passed (34) | Start at  17:39:23 | Duration  3.26s
+      (transform 165ms, setup 0ms, import 270ms, tests 2.93s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3654
+    termination_reason: exited
+  - check: CT012
+    status: fail
+    at: 2026-08-19T10:40:05Z
+    evidence: 584|   }); | 585| | ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+    recorded_by: command
+    duration_ms: 38871
+    termination_reason: exited
+  - check: CT001
+    status: pass
+    at: 2026-08-19T10:56:25Z
+    evidence: Tests  20 passed (20) | Start at  17:56:24 | Duration  732ms
+      (transform 81ms, setup 0ms, import 105ms, tests 596ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 1131
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-19T10:56:38Z
+    evidence: Tests  83 passed (83) | Start at  17:56:25 | Duration  12.70s
+      (transform 200ms, setup 0ms, import 342ms, tests 12.41s, environment 0ms)
+    recorded_by: command
+    duration_ms: 13045
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-19T10:56:39Z
+    evidence: Tests  12 passed (12) | Start at  17:56:38 | Duration  1.09s
+      (transform 138ms, setup 0ms, import 228ms, tests 766ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 1506
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-19T10:56:40Z
+    evidence: Tests  5 passed (5) | Start at  17:56:40 | Duration  102ms (transform
+      15ms, setup 0ms, import 22ms, tests 2ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 446
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-19T10:57:09Z
+    evidence: Tests  33 passed (33) | Start at  17:56:40 | Duration  29.15s
+      (transform 140ms, setup 0ms, import 213ms, tests 28.86s, environment 0ms)
+    recorded_by: command
+    duration_ms: 29476
+    termination_reason: exited
+  - check: CT010
+    status: pass
+    at: 2026-08-19T10:57:14Z
+    evidence: Tests  34 passed (34) | Start at  17:57:10 | Duration  3.67s
+      (transform 166ms, setup 0ms, import 270ms, tests 3.34s, environment 0ms)
+    recorded_by: command
+    duration_ms: 4171
+    termination_reason: exited
+  - check: CT012
+    status: pass
+    at: 2026-08-19T10:57:52Z
+    evidence: Tests  533 passed (533) | Start at  17:57:14 | Duration  38.49s
+      (transform 1.58s, setup 0ms, import 4.85s, tests 173.16s, environment 3ms)
+    recorded_by: command
+    duration_ms: 38802
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-19T11:06:08Z
+    evidence: 'Hash-gated isolated rerun confirmed: runSingleCheck (run.ts) calls
+      loadApprovedContract before executing, refusing on hash mismatch.
+      executeCommandCheck comment states "Never retried automatically -- one
+      call, one outcome"; grep of src/core, src/cli, src/state, src/git for
+      "retry" finds only that comment, no retry logic anywhere. Dedicated test
+      verify.test.ts:530 "never runs automatically: a timed-out attempt and a
+      later isolated rerun are two distinct entries". Live proof this session:
+      verification-results.yaml preserves the original failed CT002/CT012
+      entries untouched, with new passing entries appended after -- exactly the
+      append-only two-distinct-entries behavior AC002 requires. No caveat.'
+    recorded_by: developer
+  - check: CT006
+    status: pass
+    at: 2026-08-19T11:06:15Z
+    evidence: "docs/evidence/M006-context-efficiency.md has explicit \"Controllable
+      and measured\" (6 numbered findings) and \"Inherited and not promised\"
+      sections, plus a \"Model/config caveat\" section that honestly discloses
+      the M004/M005-vs-M006 comparison cannot be verified as model-held-constant
+      and presents it as directional evidence only -- satisfies AC005's
+      comparable-conditions requirement by disclosure rather than an
+      unverifiable claim. Caveat: the document's asset count (18 files, 20,304
+      bytes for src/integrations/claude/) is an explicitly dated T001-T003
+      measurement snapshot, now stale relative to the milestone's final state --
+      the current tree is 20 files after T005 added auto-run.md and
+      interactive-ux.md. Per developer instruction, the snapshot is preserved as
+      historical evidence and not rewritten; this note records the discrepancy
+      in the verification result rather than editing the document."
+    recorded_by: developer
+  - check: CT008
+    status: pass
+    at: 2026-08-19T11:06:20Z
+    evidence: 'src/integrations/claude/lsp-guidance.md matches AC007
+      point-for-point: use a compatible LSP only when already available, proceed
+      with filesystem/search tools otherwise, never install or reconfigure
+      anything, treat any LSP diagnostic as advisory only alongside
+      authoritative tests/lint/typecheck, and an explicit "PitWay itself has no
+      LSP detection or integration code" statement. Grep of src/core, src/cli,
+      src/state, and src/git for "lsp"/"LSP" returns zero matches, confirming
+      the no-PitWay-code claim literally. No caveat.'
+    recorded_by: developer
+  - check: CT009
+    status: pass
+    at: 2026-08-19T11:06:26Z
+    evidence: src/integrations/claude/coordination.md cites checkWorkingTreeClean
+      and classifyDirtyPaths, both confirmed present by name in
+      src/git/safety.ts. `git log 63ac850..HEAD -- src/git/safety.ts` (63ac850
+      is M006's baseline commit) returns zero commits, confirming "unchanged by
+      this milestone" literally rather than by claim. The rule (always take a
+      fresh snapshot after dispatch completes, never before/during, never reuse
+      an earlier one) matches AC008's text and the cited M004/T003 finding
+      exactly. No caveat.
+    recorded_by: developer
+  - check: CT011
+    status: pass
+    at: 2026-08-19T11:06:31Z
+    evidence: "src/integrations/claude/interactive-ux.md covers both computed gates
+      (hash change, amendment recorded since) and all 7 live-checked gates
+      (unexpected dirty files, verification failure needing a decision incl.
+      flaky pass-after-timeout, missing manual/review evidence, ambiguity,
+      permission requirement, merge conflict, destructive action) plus the
+      bootstrap disclosure, matching AC010's text closely. Live manual
+      walkthrough performed in a synthetic temp repo (git init, pitway init
+      --no-claude, hand-authored confirmed milestone M900) using the real pitway
+      auto-run CLI reproduced 3 of 4 documented status-reason strings
+      byte-for-byte: \"never enabled\" (before enable) -> authorized (after
+      enable) -> \"hash changed since\" (after editing the approved verification
+      hash) -> authorized (reverted) -> \"explicitly disabled\" (after disable).
+      Every observed transition matched the documented behavior exactly. Caveat,
+      retained per developer instruction: the \"amendment recorded since\" gate
+      was not independently re-derived by hand in this walkthrough (would
+      require constructing a full task-amend/contract-amend flow on a throwaway
+      milestone); this specific gate relies on CT010's automated test coverage
+      (tests/integration/auto-run.test.ts:156, \"reports 'amendment recorded
+      since' after a contract_amendment/task_amendment journal entry lands\")
+      rather than fresh manual evidence."
+    recorded_by: developer
+  - check: CT001
+    status: pass
+    at: 2026-08-19T11:06:39Z
+    evidence: Tests  20 passed (20) | Start at  18:06:38 | Duration  753ms
+      (transform 122ms, setup 0ms, import 181ms, tests 593ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 1155
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-19T11:06:52Z
+    evidence: Tests  83 passed (83) | Start at  18:06:39 | Duration  12.74s
+      (transform 204ms, setup 0ms, import 347ms, tests 12.43s, environment 0ms)
+    recorded_by: command
+    duration_ms: 13064
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-19T11:06:54Z
+    evidence: Tests  12 passed (12) | Start at  18:06:53 | Duration  1.20s
+      (transform 168ms, setup 0ms, import 298ms, tests 801ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 1712
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-19T11:06:54Z
+    evidence: Tests  5 passed (5) | Start at  18:06:54 | Duration  114ms (transform
+      16ms, setup 0ms, import 23ms, tests 3ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 452
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-19T11:07:23Z
+    evidence: Tests  33 passed (33) | Start at  18:06:55 | Duration  28.58s
+      (transform 179ms, setup 0ms, import 262ms, tests 28.22s, environment 0ms)
+    recorded_by: command
+    duration_ms: 28953
+    termination_reason: exited
+  - check: CT010
+    status: pass
+    at: 2026-08-19T11:07:27Z
+    evidence: Tests  34 passed (34) | Start at  18:07:24 | Duration  3.46s
+      (transform 188ms, setup 0ms, import 305ms, tests 3.10s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3887
+    termination_reason: exited
+  - check: CT012
+    status: pass
+    at: 2026-08-19T11:08:14Z
+    evidence: Tests  533 passed (533) | Start at  18:07:27 | Duration  46.66s
+      (transform 1.86s, setup 0ms, import 6.84s, tests 218.58s, environment 7ms)
+    recorded_by: command
+    duration_ms: 46973
+    termination_reason: exited
