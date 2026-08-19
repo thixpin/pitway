@@ -218,7 +218,7 @@ tasks:
       recorded; incorporate the new-repository-managed-file- category
       contract-drafting guidance from M006/T003's incident, at
       docs/evidence/M007/tooling-defect-recovery-path.md (AC007).
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -237,7 +237,15 @@ tasks:
       strategy: manual
       detail: developer/driver review of the documented procedure against the four
         worked examples
-    result: null
+    result:
+      summary: "[truncated] ects in already-completed PitWay tooling. Demonstrated
+        against 4 worked examples: M005/T007 bootstrap repair, M006's
+        write_scope fix (81c99a2), baseline- assets fix (1e07014),
+        recursion-guard fix (81a420a). Incorporated the
+        new-repository-managed-file-category contract-drafting guidance."
+      evidence: docs/evidence/M007/tooling-defect-recovery-path.md, driver/developer
+        review per manual verification strategy.
+    attempts: 1
     usage: null
   - id: T007
     objective: "Prove, with a real integration test using only already- shipped
