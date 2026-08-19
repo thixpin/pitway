@@ -7,6 +7,7 @@ import {
   appendCheckpointMarker,
   appendJournalEntry,
   appendQuickChangeRecord,
+  appendTaskVerifyEvidenceRecord,
   JournalError,
   readJournal,
   reconcilePending,
@@ -430,6 +431,83 @@ describe('quick_change records (M007/T003)', () => {
     expect(all).toHaveLength(2);
     expect(all[0]).toMatchObject({ status: 'draft' });
     expect(all[1]).toMatchObject({ status: 'approved', approvedHash: 'sha256:' + 'a'.repeat(64) });
+  });
+});
+
+describe('task_verify_evidence records', () => {
+  const baseRecord = {
+    id: 'tve-1',
+    milestone: 'M005',
+    taskId: 'T001',
+    attempts: 1,
+    command: 'npm test',
+    exitCode: 0,
+    evidence: 'ok',
+    durationMs: 42,
+    terminationReason: 'exited' as const,
+    fingerprint: { entries: [{ path: 'src/a.ts', state: 'present' as const, hash: 'sha256:' + 'a'.repeat(64) }] },
+    at: '2026-08-19T00:00:00Z',
+  };
+
+  it('appends a task_verify_evidence record and reads it back', () => {
+    const record = appendTaskVerifyEvidenceRecord(repo, baseRecord);
+    expect(record.kind).toBe('task_verify_evidence');
+
+    const all = readJournal(repo);
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({
+      kind: 'task_verify_evidence',
+      id: 'tve-1',
+      milestone: 'M005',
+      taskId: 'T001',
+      command: 'npm test',
+      exitCode: 0,
+    });
+  });
+
+  it('is excluded from derivePending the same way quick_change/auto_run already are', () => {
+    appendTaskVerifyEvidenceRecord(repo, baseRecord);
+    appendJournalEntry(repo, {
+      milestone: 'M005',
+      type: 'usage_recording',
+      operationId: 'op-1',
+      payload: {},
+    });
+
+    const pending = derivePending(readJournal(repo));
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.operationId).toBe('op-1');
+  });
+
+  it('never appears in git status -- shares the same journal-invisibility as every other record kind', () => {
+    appendTaskVerifyEvidenceRecord(repo, baseRecord);
+    const status = git(['status', '--porcelain'], repo).trim();
+    expect(status).toBe('');
+  });
+
+  it('rejects a task_verify_evidence record missing required fields', () => {
+    expect(() =>
+      appendTaskVerifyEvidenceRecord(repo, {
+        ...baseRecord,
+        // @ts-expect-error deliberately invalid terminationReason
+        terminationReason: 'bogus',
+      }),
+    ).toThrow(JournalError);
+    expect(readJournal(repo)).toHaveLength(0);
+  });
+
+  it('supports optional passCount/failCount/typecheck fields', () => {
+    const record = appendTaskVerifyEvidenceRecord(repo, {
+      ...baseRecord,
+      passCount: 5,
+      failCount: 1,
+      typecheck: { command: 'tsc --noEmit', exitCode: 0, evidence: 'clean' },
+    });
+    expect(record).toMatchObject({
+      passCount: 5,
+      failCount: 1,
+      typecheck: { command: 'tsc --noEmit', exitCode: 0, evidence: 'clean' },
+    });
   });
 });
 

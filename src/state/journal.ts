@@ -115,11 +115,68 @@ export const journalQuickChangeSchema = z.strictObject({
   runs: z.array(journalQuickChangeRunSchema),
 });
 
+// Fifth sibling member of the discriminated union (task-verify evidence
+// engine): captures one task-scoped command/tdd verification run --
+// evidence PitWay accumulates while a task is in_progress, distinct from the
+// milestone-level, per-AC, checkpoint-gated verification-results.yaml. Like
+// auto_run/quick_change, this is never referenced by a checkpoint marker and
+// never folded into a milestone commit -- there is no target state file for
+// resolveTargetPath to map it to, and derivePending's `kind === 'entry'`
+// filter already excludes it structurally. Append-only: every verify
+// attempt appends its own full record; src/core/tasks/verify.ts is the sole
+// writer and never mutates a prior one.
+export const journalTaskVerifyFingerprintEntrySchema = z.strictObject({
+  path: z.string().min(1),
+  state: z.enum(['present', 'missing']),
+  // sha256:<64 hex> for a present file's real content; the fixed
+  // MISSING_HASH_MARKER (src/core/tasks/verify.ts) for a declared path that
+  // does not exist on disk -- never skipped, never thrown, so a rename's
+  // "old half" is representable without any dedicated pairing logic.
+  hash: z.string().min(1),
+});
+
+export const journalTaskVerifyFingerprintSchema = z.strictObject({
+  entries: z.array(journalTaskVerifyFingerprintEntrySchema),
+});
+
+const journalTerminationReasonSchema = z.enum(['exited', 'timeout', 'signal', 'spawn_error']);
+
+export const journalTaskVerifyTypecheckSchema = z.strictObject({
+  command: z.string().min(1),
+  exitCode: z.number().int().nullable(),
+  evidence: z.string().min(1),
+});
+
+// Defined locally, mirroring journalMilestoneId's own precedent above --
+// this task's write scope stays limited to journal.ts + verify.ts rather
+// than widening onto state/schemas.ts for an id-pattern already defined
+// there under a different name (taskId).
+const journalTaskId = z.string().regex(/^T\d{3}$/, 'task id must match T000');
+
+export const journalTaskVerifyEvidenceSchema = z.strictObject({
+  kind: z.literal('task_verify_evidence'),
+  id: z.string().min(1),
+  milestone: journalMilestoneId,
+  taskId: journalTaskId,
+  attempts: z.number().int().nonnegative(),
+  command: z.string().min(1),
+  exitCode: z.number().int().nullable(),
+  passCount: z.number().int().nonnegative().optional(),
+  failCount: z.number().int().nonnegative().optional(),
+  evidence: z.string().min(1),
+  durationMs: z.number().int().nonnegative(),
+  terminationReason: journalTerminationReasonSchema,
+  typecheck: journalTaskVerifyTypecheckSchema.optional(),
+  fingerprint: journalTaskVerifyFingerprintSchema,
+  at: z.string().min(1),
+});
+
 export const journalRecordSchema = z.discriminatedUnion('kind', [
   journalEntrySchema,
   journalCheckpointSchema,
   journalAutoRunSchema,
   journalQuickChangeSchema,
+  journalTaskVerifyEvidenceSchema,
 ]);
 
 export const journalFileSchema = z.strictObject({
@@ -134,6 +191,10 @@ export type JournalAutoRun = z.infer<typeof journalAutoRunSchema>;
 export type JournalQuickChangeStatus = z.infer<typeof journalQuickChangeStatusSchema>;
 export type JournalQuickChangeRun = z.infer<typeof journalQuickChangeRunSchema>;
 export type JournalQuickChange = z.infer<typeof journalQuickChangeSchema>;
+export type JournalTaskVerifyFingerprintEntry = z.infer<typeof journalTaskVerifyFingerprintEntrySchema>;
+export type JournalTaskVerifyFingerprint = z.infer<typeof journalTaskVerifyFingerprintSchema>;
+export type JournalTaskVerifyTypecheck = z.infer<typeof journalTaskVerifyTypecheckSchema>;
+export type JournalTaskVerifyEvidence = z.infer<typeof journalTaskVerifyEvidenceSchema>;
 export type JournalRecord = z.infer<typeof journalRecordSchema>;
 export type JournalFile = z.infer<typeof journalFileSchema>;
 
@@ -238,6 +299,26 @@ export function appendQuickChangeRecord(
   const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
   if (!result.success) {
     throw new JournalError(`refusing to append invalid quick_change record: ${formatIssues(result.error)}`);
+  }
+  saveJournalFile(cwd, result.data);
+  return full;
+}
+
+// Appends a task_verify_evidence record -- a full, self-contained evidence
+// snapshot for one task-verify run, never a patch. Callers
+// (src/core/tasks/verify.ts) compute the full field set (including
+// generating the evidence id) before calling this; this function only ever
+// appends what it's given, exactly like appendAutoRunRecord/
+// appendQuickChangeRecord.
+export function appendTaskVerifyEvidenceRecord(
+  cwd: string,
+  record: Omit<JournalTaskVerifyEvidence, 'kind'>,
+): JournalTaskVerifyEvidence {
+  const file = loadJournalFile(cwd);
+  const full: JournalTaskVerifyEvidence = { kind: 'task_verify_evidence', ...record };
+  const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
+  if (!result.success) {
+    throw new JournalError(`refusing to append invalid task_verify_evidence record: ${formatIssues(result.error)}`);
   }
   saveJournalFile(cwd, result.data);
   return full;
