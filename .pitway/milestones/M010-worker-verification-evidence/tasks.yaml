@@ -1,0 +1,267 @@
+schema_version: 1
+tasks:
+  - id: T001
+    objective: >-
+      Task-verify evidence engine (no CLI yet), fingerprint scoped to declared
+      paths only (post-architecture-review design). src/state/ journal.ts gains
+      a new task_verify_evidence sibling record kind (alongside
+      entry/checkpoint/auto_run/quick_change), structurally excluded from
+      checkpoint-folding the same way those already are -- an
+      appendTaskVerifyEvidenceRecord export, mirroring appendQuickChangeRecord's
+      exact pattern. New src/core/tasks/verify.ts: runTaskVerify(root, taskId,
+      inputs: {typecheckCommand?}) -- requires the task be in_progress and its
+      verification.strategy be command or tdd (refuses manual/review with a
+      clear message); executes task.verification.detail via the existing
+      executeCommand primitive from src/core/verification/process-exec.ts (never
+      reimplemented), plus the optional typecheck command. Fingerprint covers
+      exactly the task's own normalized write_scope paths (falling back to
+      relevant_files), compared as an order-independent set, never arbitrary
+      untracked files or any .pitway/ path: each declared path is hashed from
+      its own real file content when it exists, and represented by a fixed,
+      defined missing-file marker when it does not (never skipped, never
+      thrown); a rename must never silently omit either side -- both the old and
+      new paths must be declared for a rename to be correctly represented (old
+      fingerprints as missing, new fingerprints as its real content); no new
+      rename-pairing detection is built (empirically verified: git status
+      --porcelain never reports an unstaged worktree rename as a paired R entry,
+      only a separate delete and a separate untracked add), but a one-sided
+      rename is still refused, not silently passed, because the undeclared half
+      is already a dirty path outside the declared scope under the allowance
+      below -- the refusal is made precise (naming the exact undeclared path and
+      its git status, noting an incompletely-declared rename as a likely cause)
+      rather than left as a generic message; a declared path that is itself
+      git-ignored (checked via a real git check-ignore call, never inferred from
+      git status) is refused outright at verify time (an ignored output can
+      never be captured by the completion commit this evidence supports).
+
+      Dirty-path allowance (post-second-architecture-review design, distinct
+      from the fingerprint): task-verify's allowed dirty set is built exactly
+      the way completeTask's own expectedPaths already is
+      (src/core/tasks/update.ts) -- the task's declared write_scope/
+      relevant_files, plus the active milestone's own tasks.yaml path
+      (unconditionally allowed, the same way completeTask's own tasksPath is --
+      tasks.yaml is always dirty once a task is in_progress, this task's own
+      precondition, from updateTask's persistTask write), plus
+      classifyDirtyPaths(root, {journalMilestone}).expected (src/git/safety.ts
+      -- the exact primitive completeTask's own journalExpected already calls,
+      real pending-journal-backed paths only, never a broad .pitway/**
+      allowance). Any dirty path outside that exact constructed set is refused
+      -- task-unrelated source code and an unsupported .pitway/ file alike. This
+      allowance is never folded into the fingerprint itself, which stays exactly
+      write_scope/relevant_files, nothing more.
+
+      Best-effort parses pass/fail counts from the command's own output, leaving
+      them absent rather than fabricated when parsing fails; persists a full
+      evidence record (unique id, milestone id, task id, the task's current
+      attempts count, command, exit code, pass/fail counts, duration,
+      termination_reason, typecheck result, the scoped fingerprint, timestamp)
+      via the new journal function.
+
+      Test coverage (tests/unit/task-verify.test.ts) required beyond ordinary
+      pass/fail: a deleted declared path fingerprints via the missing marker,
+      not an error; a valid rename with both old and new paths declared verifies
+      correctly (old as missing, new as its real content); a one-sided rename
+      with only the new path declared refuses with a precise diagnostic naming
+      the old path and its deleted git status; a one-sided rename with only the
+      old path declared refuses with a precise diagnostic naming the new path
+      and its untracked git status; an untracked declared path is hashed by real
+      content; a git-ignored declared path is refused via a real git
+      check-ignore call; write_scope declared in a different order than
+      write_scope actually dirtied still fingerprints identically
+      (order-independent set); a legacy relevant_files-only task (no
+      write_scope) verifies correctly through the same fingerprint path; a task
+      can verify successfully while its own tasks.yaml is dirty purely from its
+      in_progress transition (the direct regression test for the second review's
+      CRITICAL finding); a real pending journal-backed workflow path (e.g. a
+      pending contract or task amendment materialized for this milestone) is
+      correctly allowed; an arbitrary edit to an unrelated .pitway/ path (not
+      backed by any pending journal entry) is refused; and an unrelated source
+      file or untracked file outside write_scope is refused (AC001).
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC001
+    context_files:
+      - src/state/journal.ts
+      - src/core/journal/operations.ts
+      - src/core/tasks/verify.ts
+      - src/core/verification/process-exec.ts
+      - src/core/verification/text-trim.ts
+      - src/core/tasks/update.ts
+      - src/core/verification/repair.ts
+      - src/core/quick-change/create.ts
+      - src/git/safety.ts
+      - src/state/schemas.ts
+      - tests/unit/journal.test.ts
+      - tests/unit/task-verify.test.ts
+    write_scope:
+      - src/state/journal.ts
+      - src/core/tasks/verify.ts
+      - tests/unit/journal.test.ts
+      - tests/unit/task-verify.test.ts
+    mapped_ac_ids:
+      - AC001
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/task-verify.test.ts tests/unit/journal.test.ts
+    result: null
+    usage: null
+  - id: T002
+    objective: "task-update's evidence integration, implicit-by-default,
+      selection-then-validate (post-architecture-review design).
+      src/core/tasks/update.ts's completed path (filtering the existing generic
+      readJournal export inline, caller-side, the same way readAllQuickChanges
+      already lives in src/core/quick-change/create.ts rather than in journal.ts
+      itself -- no new reader is commissioned in T001) selects the single newest
+      task_verify_evidence record for the current milestone id and task id
+      alone, by append order -- selection never filters by
+      attempt/command/write_scope/fingerprint. That one record is then
+      validated: attempt must match the task's current attempts, command must
+      match verification.detail exactly (verification-command identity, plain
+      string equality, no separate hash), write_scope/relevant_files must match
+      as a normalized set, and a freshly recomputed fingerprint (same corrected,
+      scoped recipe as T001) must match exactly. Any one mismatch refuses
+      completion outright, naming the specific mismatch -- never searching
+      backward to an older record that happens to match, never silently
+      accepting or silently falling through. No record at all for this task
+      falls through to the existing --result/--message path, unchanged
+      byte-for-byte -- verified by the full existing task-update test suite
+      passing unmodified, plus a new explicit test proving a task that only ever
+      went through the review-state tasks.yaml rewrite (never task-verify) still
+      completes exactly as before. An optional, explicit --evidence <id> selects
+      only the named record by id (never a milestone/task filter) and applies
+      the identical validation; an id that does not exist gets its own distinct
+      unknown-evidence-id refusal, separate from the mismatch-refusal an
+      existing-but-diverged id gets. Missing, malformed (schema-invalid),
+      timed-out, failed, or non-command-type evidence is refused outright
+      regardless of selection path. --result/--message remain required inputs
+      unchanged; the driver-authored summary is always used as given, but when
+      valid evidence is resolved, the captured evidence becomes the
+      authoritative result.evidence, unconditionally replacing whatever evidence
+      text --result's file carried -- never a conflict-detection step, a plain
+      precedence rule. src/cli/commands/task-update.ts gains the --evidence
+      option. Test coverage (tests/integration/task-update.test.ts) required
+      beyond the above: a real task-verify evidence record whose fingerprint no
+      longer matches after a source file changes correctly refuses completion; a
+      newer, diverged record present alongside an older, still-matching one
+      still refuses (never falls back to the older one); an explicit --evidence
+      naming a stale record refuses the same way; an explicit --evidence naming
+      a nonexistent id gets the distinct unknown-id message (AC001)."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - AC001
+    context_files:
+      - src/core/tasks/update.ts
+      - src/core/tasks/verify.ts
+      - src/state/journal.ts
+      - src/cli/commands/task-update.ts
+      - tests/integration/task-update.test.ts
+    write_scope:
+      - src/core/tasks/update.ts
+      - src/cli/commands/task-update.ts
+      - tests/integration/task-update.test.ts
+    mapped_ac_ids:
+      - AC001
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/task-update.test.ts
+    result: null
+    usage: null
+  - id: T003
+    objective: "task-verify CLI/docs. src/cli/commands/task-verify.ts (new)
+      registers the task-verify <task-id> [--typecheck <command>] command,
+      registered in src/cli/index.ts. Claude asset:
+      src/integrations/claude/commands/task-verify.md (new, thin-pointer style)
+      documents the three-way distinction between a verification record (the
+      full task_verify_evidence journal entry), an evidence id (the identifier
+      naming one such record), and persisted result evidence (the final, capped
+      string that lands in task.result.evidence), and states plainly that once
+      any evidence record exists for a task, plain --result/--message completion
+      can no longer bypass it -- the only way forward is a fresh, passing
+      task-verify run producing a newer valid record, never a documented escape
+      hatch. src/integrations/claude/protocol-driver.md and dispatch.md updated
+      the same way, describing the driver running task-verify to produce formal
+      evidence instead of an ad hoc independent rerun, explicitly preserving the
+      existing diff/write_scope review step (task-verify formalizes the rerun,
+      it does not replace the review). Real end-to-end integration test
+      (tests/integration/task-verify.test.ts) covering, as its primary, most
+      load-bearing case: a task taken through the real, mandatory in_progress ->
+      task-verify -> review -> completed lifecycle via the actual CLI succeeds,
+      with the review step's own tasks.yaml rewrite never invalidating the
+      recorded evidence -- this is the direct regression test for the
+      architecture-review CRITICAL finding that blocked this milestone's earlier
+      draft. Also covering: task-verify refuses on a manual/review-strategy
+      task; a passing run's evidence is accepted implicitly by task-update with
+      no --evidence flag at all; a real source-code change after verify (inside
+      write_scope) refuses completion rather than falling through silently; a
+      mismatched attempts count (task retried after verify) refuses the same
+      way; an explicit --evidence <id> correctly selects a specific record while
+      still applying the same validation; --result/--message alone still works
+      exactly as before when no task_verify_evidence record exists for the task
+      at all. Updates the three command-census arrays for task-verify (AC001)."
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - AC001
+    context_files:
+      - src/cli/commands/task-verify.ts
+      - src/cli/index.ts
+      - src/integrations/claude/commands/task-verify.md
+      - src/integrations/claude/protocol-driver.md
+      - src/integrations/claude/dispatch.md
+      - tests/integration/task-verify.test.ts
+      - tests/integration/task-update.test.ts
+      - tests/integration/cli.test.ts
+      - tests/integration/build-bin.test.ts
+      - tests/integration/npm-pack.test.ts
+      - src/core/tasks/verify.ts
+      - src/core/tasks/update.ts
+      - src/cli/commands/auto-run.ts
+    write_scope:
+      - src/cli/commands/task-verify.ts
+      - src/cli/index.ts
+      - src/integrations/claude/commands/task-verify.md
+      - src/integrations/claude/protocol-driver.md
+      - src/integrations/claude/dispatch.md
+      - tests/integration/task-verify.test.ts
+      - tests/integration/cli.test.ts
+      - tests/integration/build-bin.test.ts
+      - tests/integration/npm-pack.test.ts
+    mapped_ac_ids:
+      - AC001
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/task-verify.test.ts
+    result: null
+    usage: null
+  - id: T004
+    objective: "Roadmap-reconciliation review, mirroring M005/T009 through
+      M009/T006: confirm IMPLEMENTATION_PLAN.md accurately reflects M010's
+      actual delivery -- updated command surface/count (task-verify) and the
+      task-update --evidence flag, updated Claude-asset file count, the
+      Bootstrap delivery table gaining M009's row (M010's own row correctly
+      omitted, left for whichever milestone next runs its own reconciliation
+      task), the Revised Roadmap's M010 entry reflecting actual delivery in
+      place of its current placeholder text, and the Status line reflecting
+      M010's actual delivery (AC002)."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+      - T003
+    acceptance_criteria:
+      - AC002
+    context_files:
+      - IMPLEMENTATION_PLAN.md
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+    mapped_ac_ids:
+      - AC002
+    verification:
+      strategy: manual
+      detail: developer/driver review per CT003
+    result: null
+    usage: null
