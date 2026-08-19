@@ -213,6 +213,16 @@ function runAmend(root: string, milestoneId: string, draft: ContractFile): Miles
 
   const hash = computeVerificationHash(serializeContractFile(draft));
   const confirmedAt = draft.frontmatter.confirmed_at;
+  const desired: ContractFile = {
+    frontmatter: { ...draft.frontmatter, verification_approved_hash: hash },
+    body: draft.body,
+  };
+  // The verification hash covers only the frontmatter's verification: block
+  // (see computeVerificationHash) — it says nothing about acceptance_criteria
+  // text or the body (Change Log, prose). Two amendments can share a hash
+  // while differing there, so idempotency/ambiguity below compares the full
+  // desired serialized content, never the hash alone.
+  const desiredText = serializeContractFile(desired);
 
   // Pre-commit idempotency: at most one pending contract_amendment entry for
   // this milestone should ever exist at a time (a genuinely new amendment
@@ -229,7 +239,7 @@ function runAmend(root: string, milestoneId: string, draft: ContractFile): Miles
   }
   const pendingEntry = pending[0];
   if (pendingEntry !== undefined) {
-    if (pendingEntry.payload.hash !== hash) {
+    if (pendingEntry.payload.contractText !== desiredText) {
       throw new MilestoneConfirmError(
         `ambiguous state: a different contract amendment (hash ${String(pendingEntry.payload.hash)}) ` +
           `is already pending for ${milestoneId}; checkpoint or resolve it before amending again`,
@@ -237,17 +247,16 @@ function runAmend(root: string, milestoneId: string, draft: ContractFile): Miles
     }
     // Duplicate re-invocation of the same amendment: harmless to re-write
     // the same content again, no new journal entry needed.
-    saveContract(root, milestoneId, {
-      frontmatter: { ...draft.frontmatter, verification_approved_hash: hash },
-      body: draft.body,
-    });
+    saveContract(root, milestoneId, desired);
     return { id: milestoneId, operation: 'amend', hash, confirmedAt };
   }
 
   // Already fully materialized (and possibly already checkpointed) by a
-  // prior invocation of this exact amendment.
+  // prior invocation of this exact amendment — compared as full content,
+  // not just the hash, so a body-only (or AC-text-only) change is never
+  // silently skipped just because the verification block didn't move.
   const persisted = loadContract(root, milestoneId);
-  if (persisted.frontmatter.verification_approved_hash === hash) {
+  if (serializeContractFile(persisted) === desiredText) {
     return { id: milestoneId, operation: 'amend', hash, confirmedAt };
   }
 
@@ -255,12 +264,9 @@ function runAmend(root: string, milestoneId: string, draft: ContractFile): Miles
     milestone: milestoneId,
     type: 'contract_amendment',
     operationId: randomUUID(),
-    payload: { hash },
+    payload: { hash, contractText: desiredText },
   });
-  saveContract(root, milestoneId, {
-    frontmatter: { ...draft.frontmatter, verification_approved_hash: hash },
-    body: draft.body,
-  });
+  saveContract(root, milestoneId, desired);
   return { id: milestoneId, operation: 'amend', hash, confirmedAt };
 }
 

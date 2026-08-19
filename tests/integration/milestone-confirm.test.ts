@@ -440,6 +440,21 @@ describe('pitway milestone-confirm --amend', () => {
     expect(loadContract(root, 'M001').frontmatter.verification_approved_hash).not.toBeNull();
   });
 
+  it('materializes a body-only amendment (Change Log entry, no AC/CT change) instead of silently no-op-ing on an unchanged hash', async () => {
+    await confirmed();
+    const beforeHash = loadContract(root, 'M001').frontmatter.verification_approved_hash;
+    // No command/AC change — only the Change Log prose differs, so the
+    // verification-block hash stays identical to what's already persisted.
+    const draft = draftFromCurrent((text) =>
+      text.replace('## Change Log', '## Change Log\n\n- Body-only note, no AC/CT touched.'),
+    );
+    const { error } = await run(['milestone-confirm', 'M001', '--amend', '--file', draft], root);
+    expect(error).toBeUndefined();
+    const after = loadContract(root, 'M001');
+    expect(after.frontmatter.verification_approved_hash).toBe(beforeHash);
+    expect(after.body).toContain('Body-only note, no AC/CT touched.');
+  });
+
   it('a hook failure elsewhere does not affect amend — it never invokes git at all', async () => {
     await confirmed();
     const draft = amendDraft();
