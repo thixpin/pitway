@@ -1,5 +1,6 @@
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { saveContract, saveState, saveTasks } from '../../src/state/store.js';
@@ -36,8 +37,18 @@ function task(overrides: Partial<Task> & Pick<Task, 'id' | 'status'>): Task {
   };
 }
 
+function git(args: string[], cwd: string): void {
+  execFileSync('git', args, { cwd, stdio: 'pipe' });
+}
+
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'pitway-resume-'));
+  // buildResumeView reads the git-invisible journal (for pending
+  // quick-changes, AC003) via resolvePitwayJournalPath, which requires a
+  // real git repository -- a minimal init is enough, no commit needed.
+  git(['init', '-q'], root);
+  git(['config', 'user.email', 'test@example.com'], root);
+  git(['config', 'user.name', 'Test'], root);
   mkdirSync(join(root, '.pitway', 'milestones', 'M001'), { recursive: true });
 });
 

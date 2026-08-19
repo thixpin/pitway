@@ -27,6 +27,7 @@ const ALL_COMMAND_NAMES = [
   'milestone-confirm',
   'milestone-list',
   'milestone-status',
+  'quick-change',
   'resume',
   'task-status',
   'task-amend',

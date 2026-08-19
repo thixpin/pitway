@@ -1,8 +1,16 @@
 import type { Command } from 'commander';
 import { loadContract, loadState, loadTasks } from '../../state/store.js';
+import { deriveQuickChangeState, readAllQuickChanges } from '../../core/quick-change/create.js';
 import { renderOutput } from '../output.js';
 import { taskStatusLabel } from '../format.js';
 import type { MilestoneStatus, Task, TaskStatus } from '../../state/schemas.js';
+import type { JournalQuickChange, JournalQuickChangeStatus } from '../../state/journal.js';
+
+export interface PendingQuickChange {
+  id: string;
+  status: JournalQuickChangeStatus;
+  objective: string;
+}
 
 export interface ResumeView {
   activeMilestone: string | null;
@@ -14,16 +22,52 @@ export interface ResumeView {
   blocked: string[];
   inProgress: string[];
   nextTask: string | null;
+  pendingQuickChanges: PendingQuickChange[];
 }
 
 function idsWithStatus(tasks: Task[], status: TaskStatus): string[] {
   return tasks.filter((t) => t.status === status).map((t) => t.id);
 }
 
+// AC003: `pitway resume` is the authoritative recovery view for a pending
+// quick-change -- a fresh session must discover and be able to act on one
+// from resume's own output alone, with no separate `quick-change status`
+// call required. "Actionable" mirrors the still-open portion of
+// JournalQuickChangeStatus: draft/approved always qualify; a record with a
+// recorded run attempt but not yet committed/cancelled/promoted would also
+// qualify, though under today's lifecycle (run only ever transitions a
+// still-approved record) that case never actually arises separately from
+// the approved check above -- kept explicit anyway per AC003's own wording,
+// and so this stays correct if a future lifecycle change ever decouples
+// runs from status.
+function isActionable(record: JournalQuickChange): boolean {
+  if (record.status === 'draft' || record.status === 'approved') return true;
+  return (
+    record.runs.length > 0 &&
+    record.status !== 'committed' &&
+    record.status !== 'cancelled' &&
+    record.status !== 'promoted'
+  );
+}
+
+function derivePendingQuickChanges(root: string): PendingQuickChange[] {
+  const all = readAllQuickChanges(root);
+  const ids = Array.from(new Set(all.map((r) => r.id)));
+  const pending: PendingQuickChange[] = [];
+  for (const id of ids) {
+    const latest = deriveQuickChangeState(all, id);
+    if (latest !== undefined && isActionable(latest)) {
+      pending.push({ id: latest.id, status: latest.status, objective: latest.objective });
+    }
+  }
+  return pending;
+}
+
 // Reads only .pitway/ — no conversation or session input required. When
 // multiple tasks are ready, recommends the lowest task id (declared order),
 // deterministically, with no other prioritization in MVP.
 export function buildResumeView(root: string): ResumeView {
+  const pendingQuickChanges = derivePendingQuickChanges(root);
   const state = loadState(root);
   if (!state.active_milestone) {
     return {
@@ -36,6 +80,7 @@ export function buildResumeView(root: string): ResumeView {
       blocked: [],
       inProgress: [],
       nextTask: null,
+      pendingQuickChanges,
     };
   }
 
@@ -58,13 +103,31 @@ export function buildResumeView(root: string): ResumeView {
     blocked: idsWithStatus(tasksFile.tasks, 'blocked'),
     inProgress,
     nextTask: inProgress.length > 0 ? inProgress[0]! : ready.length > 0 ? ready[0]! : null,
+    pendingQuickChanges,
   };
 }
 
-export function renderResumeHuman(view: ResumeView): string {
-  if (!view.activeMilestone) {
-    return 'No active milestone. Run milestone-add to start one.';
+function renderPendingQuickChangesHuman(pending: PendingQuickChange[]): string[] {
+  if (pending.length === 0) return [];
+  const lines = ['🔧 Pending quick-changes'];
+  for (const qc of pending) {
+    lines.push(`  ${qc.id}  ${qc.status}  ${qc.objective}`);
   }
+  return lines;
+}
+
+// The human-readable text output alone, with zero extra commands, must show
+// a pending quick-change exists (AC003) -- so the pending-quick-change block
+// is appended in both branches below, not gated behind an active milestone.
+export function renderResumeHuman(view: ResumeView): string {
+  const quickChangeLines = renderPendingQuickChangesHuman(view.pendingQuickChanges);
+
+  if (!view.activeMilestone) {
+    const lines = ['No active milestone. Run milestone-add to start one.'];
+    if (quickChangeLines.length > 0) lines.push('', ...quickChangeLines);
+    return lines.join('\n');
+  }
+
   const lines = [
     `🏁 Resuming ${view.activeMilestone} — ${view.title}`,
     `Contract: ${view.contractStatus}`,
@@ -87,6 +150,7 @@ export function renderResumeHuman(view: ResumeView): string {
   } else {
     lines.push(view.nextTask ? `Next: ${view.nextTask}` : 'Next: (no ready task)');
   }
+  if (quickChangeLines.length > 0) lines.push('', ...quickChangeLines);
   return lines.join('\n');
 }
 

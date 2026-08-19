@@ -1,0 +1,378 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { buildCli } from '../../src/cli/index.js';
+import { registerInitCommand } from '../../src/cli/commands/init.js';
+import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
+import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
+import { registerQuickChangeCommand } from '../../src/cli/commands/quick-change.js';
+import { registerResumeCommand } from '../../src/cli/commands/resume.js';
+
+function git(args: string[], cwd: string): string {
+  return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
+}
+
+const commitCount = (cwd: string): number => Number(git(['rev-list', '--count', 'HEAD'], cwd).trim());
+const headMessage = (cwd: string): string => git(['log', '-1', '--format=%B'], cwd);
+const headFiles = (cwd: string): string[] =>
+  git(['show', '--name-only', '--format='], cwd)
+    .split('\n')
+    .filter((l) => l.trim().length > 0)
+    .sort();
+
+// A minimal, valid draft milestone -- only used by the active_milestone
+// gate smoke test below, which needs a real in_progress milestone to prove
+// `quick-change create` refuses while one is active.
+const CONTRACT_FIXTURE = `---
+schema_version: 1
+id: M999
+title: Placeholder milestone
+status: draft
+requirement: null
+confirmed_at: null
+verification_approved_hash: null
+acceptance_criteria:
+  - id: AC001
+    text: Behavior holds.
+verification:
+  - id: CT001
+    criterion: AC001
+    type: manual
+    instruction: Check the docs.
+---
+
+# Contract
+
+## Objective
+
+Example.
+
+## Change Log
+`;
+
+const TASKS_FIXTURE = `schema_version: 1
+tasks:
+  - id: T001
+    objective: First task.
+    status: planned
+    depends_on: []
+    acceptance_criteria:
+      - It works
+    relevant_files:
+      - src/a.ts
+    verification:
+      strategy: tdd
+      detail: npm test
+    result: null
+    usage: null
+`;
+
+let root: string;
+
+async function run(args: string[], cwd: string): Promise<{ lines: string[]; error?: Error }> {
+  const program = buildCli();
+  const lines: string[] = [];
+  registerInitCommand(program, { root: cwd, write: (s) => lines.push(s) });
+  registerMilestoneAddCommand(program, { root: cwd, write: (s) => lines.push(s) });
+  registerMilestoneConfirmCommand(program, { root: cwd, write: (s) => lines.push(s) });
+  registerQuickChangeCommand(program, { root: cwd, write: (s) => lines.push(s) });
+  registerResumeCommand(program, { root: cwd, write: (s) => lines.push(s) });
+  try {
+    await program.parseAsync(['node', 'pitway', ...args]);
+    return { lines };
+  } catch (error) {
+    return { lines, error: error as Error };
+  }
+}
+
+// A real, cheap, cross-platform command check whose pass/fail is controlled
+// purely by target.txt's content -- mirrors verification-repair.test.ts's
+// CT001 fixture command.
+const PASSING_VERIFY =
+  'node -e "const fs=require(\'fs\'); if(!fs.readFileSync(\'target.txt\',\'utf8\').includes(\'FIXED\')) process.exit(1)"';
+
+async function create(
+  objective = 'Fix the regression',
+  scope = ['target.txt'],
+  verify = PASSING_VERIFY,
+): Promise<{ lines: string[]; error?: Error }> {
+  const args = ['quick-change', 'create', '--objective', objective, '--verify', verify, '--json'];
+  for (const s of scope) args.push('--scope', s);
+  return run(args, root);
+}
+
+function idOf(lines: string[]): string {
+  return (JSON.parse(lines[0]!) as { id: string }).id;
+}
+
+async function approve(id: string): Promise<{ lines: string[]; error?: Error }> {
+  return run(['quick-change', 'approve', id, '--json'], root);
+}
+
+async function doRun(id: string): Promise<{ lines: string[]; error?: Error }> {
+  return run(['quick-change', 'run', id, '--json'], root);
+}
+
+async function commit(id: string): Promise<{ lines: string[]; error?: Error }> {
+  return run(['quick-change', 'commit', id, '--json'], root);
+}
+
+async function cancel(id: string): Promise<{ lines: string[]; error?: Error }> {
+  return run(['quick-change', 'cancel', id, '--json'], root);
+}
+
+async function promote(id: string): Promise<{ lines: string[]; error?: Error }> {
+  return run(['quick-change', 'promote', id, '--json'], root);
+}
+
+async function status(id?: string): Promise<{ lines: string[]; error?: Error }> {
+  return run(id === undefined ? ['quick-change', 'status', '--json'] : ['quick-change', 'status', id, '--json'], root);
+}
+
+async function resumeHuman(): Promise<string> {
+  const { lines, error } = await run(['resume'], root);
+  expect(error).toBeUndefined();
+  return lines.join('\n');
+}
+
+beforeEach(async () => {
+  root = mkdtempSync(join(tmpdir(), 'pitway-quickchange-'));
+  git(['init', '-q'], root);
+  git(['config', 'user.email', 'test@example.com'], root);
+  git(['config', 'user.name', 'Test'], root);
+  writeFileSync(join(root, 'README.md'), 'seed\n');
+  writeFileSync(join(root, 'target.txt'), 'ORIGINAL\n');
+  git(['add', 'README.md', 'target.txt'], root);
+  git(['commit', '-q', '-m', 'init'], root);
+  await run(['init'], root);
+  // `init` writes .pitway/config.yaml, state.yaml, and the installed
+  // .claude/ assets uncommitted (they only get folded into a commit at the
+  // next milestone baseline). quick-change create requires a genuinely
+  // clean tree at start, so commit them here as plain test setup, mirroring
+  // readyForRepair's own uncommitted-write fold in
+  // tests/integration/verification-repair.test.ts.
+  git(['add', '-A'], root);
+  git(['commit', '-q', '-m', 'test: seed pitway state'], root);
+});
+
+afterEach(() => {
+  rmSync(root, { recursive: true, force: true });
+});
+
+describe('quick-change create/approve/run/commit end to end', () => {
+  it('lands a real commit carrying only a PitWay-Change trailer once approved and run passes', async () => {
+    const created = await create();
+    expect(created.error).toBeUndefined();
+    const id = idOf(created.lines);
+    expect(id).toMatch(/^qc-/);
+
+    expect((await approve(id)).error).toBeUndefined();
+
+    writeFileSync(join(root, 'target.txt'), 'FIXED\n');
+    const ran = await doRun(id);
+    expect(ran.error).toBeUndefined();
+    expect((JSON.parse(ran.lines[0]!) as { status: string }).status).toBe('pass');
+
+    const before = commitCount(root);
+    const committed = await commit(id);
+    expect(committed.error).toBeUndefined();
+    const view = JSON.parse(committed.lines[0]!) as { outcome: string; commit: string };
+    expect(view.outcome).toBe('committed');
+    expect(commitCount(root)).toBe(before + 1);
+    expect(view.commit).toBe(git(['rev-parse', 'HEAD'], root).trim());
+
+    expect(headFiles(root)).toEqual(['target.txt']);
+    const message = headMessage(root);
+    expect(message).toContain(`PitWay-Change: ${id}`);
+    expect(message).not.toContain('PitWay-Milestone');
+    expect(message).not.toContain('PitWay-Task');
+    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+  });
+
+  it('blocks commit when the latest run failed, leaving no commit behind', async () => {
+    const created = await create();
+    const id = idOf(created.lines);
+    await approve(id);
+
+    // target.txt is left as ORIGINAL -- the verify command fails.
+    const ran = await doRun(id);
+    expect((JSON.parse(ran.lines[0]!) as { status: string }).status).toBe('fail');
+
+    const before = commitCount(root);
+    const committed = await commit(id);
+    expect(committed.error?.message).toMatch(/no passing run/);
+    expect(commitCount(root)).toBe(before);
+  });
+});
+
+describe('quick-change cancel', () => {
+  it('cancels a draft change with no git operation', async () => {
+    const created = await create();
+    const id = idOf(created.lines);
+    const before = commitCount(root);
+
+    const cancelled = await cancel(id);
+    expect(cancelled.error).toBeUndefined();
+    expect((JSON.parse(cancelled.lines[0]!) as { status: string }).status).toBe('cancelled');
+    expect(commitCount(root)).toBe(before);
+  });
+
+  it('cancels an approved change with no git operation', async () => {
+    const created = await create();
+    const id = idOf(created.lines);
+    await approve(id);
+    const before = commitCount(root);
+
+    const cancelled = await cancel(id);
+    expect(cancelled.error).toBeUndefined();
+    expect((JSON.parse(cancelled.lines[0]!) as { status: string }).status).toBe('cancelled');
+    expect(commitCount(root)).toBe(before);
+  });
+
+  it('refuses to cancel an already-committed change', async () => {
+    const created = await create();
+    const id = idOf(created.lines);
+    await approve(id);
+    writeFileSync(join(root, 'target.txt'), 'FIXED\n');
+    await doRun(id);
+    expect((await commit(id)).error).toBeUndefined();
+
+    const cancelled = await cancel(id);
+    expect(cancelled.error?.message).toMatch(/not draft or approved/);
+  });
+});
+
+describe('quick-change promote', () => {
+  it('promotes a draft change, is terminal, and it can never be run or committed afterward', async () => {
+    const created = await create();
+    const id = idOf(created.lines);
+    const before = commitCount(root);
+
+    const promoted = await promote(id);
+    expect(promoted.error).toBeUndefined();
+    const view = JSON.parse(promoted.lines[0]!) as {
+      id: string;
+      status: string;
+      objective: string;
+      scope: string[];
+    };
+    expect(view).toMatchObject({ id, status: 'promoted', objective: 'Fix the regression', scope: ['target.txt'] });
+    // No git operation of its own.
+    expect(commitCount(root)).toBe(before);
+
+    // Never committable/runnable as a quick-change again.
+    expect((await approve(id)).error?.message).toMatch(/not draft/);
+    expect((await doRun(id)).error?.message).toMatch(/not approved/);
+    expect((await commit(id)).error?.message).toMatch(/not approved/);
+    expect(commitCount(root)).toBe(before);
+  });
+
+  it('promotes an approved change and it can never be committed as a quick-change afterward', async () => {
+    const created = await create();
+    const id = idOf(created.lines);
+    await approve(id);
+
+    const promoted = await promote(id);
+    expect(promoted.error).toBeUndefined();
+    expect((JSON.parse(promoted.lines[0]!) as { status: string }).status).toBe('promoted');
+
+    writeFileSync(join(root, 'target.txt'), 'FIXED\n');
+    expect((await doRun(id)).error?.message).toMatch(/not approved/);
+    expect((await commit(id)).error?.message).toMatch(/not approved/);
+  });
+
+  it('refuses to promote an already-committed change', async () => {
+    const created = await create();
+    const id = idOf(created.lines);
+    await approve(id);
+    writeFileSync(join(root, 'target.txt'), 'FIXED\n');
+    await doRun(id);
+    expect((await commit(id)).error).toBeUndefined();
+
+    const promoted = await promote(id);
+    expect(promoted.error?.message).toMatch(/not draft or approved/);
+  });
+});
+
+describe('pitway resume as the authoritative recovery view for a pending quick-change', () => {
+  it('surfaces a draft change in plain human-readable output with no --json and no quick-change status call', async () => {
+    const created = await create('Fix the flaky check', ['target.txt']);
+    const id = idOf(created.lines);
+
+    const output = await resumeHuman();
+    expect(output).toContain(id);
+    expect(output).toContain('draft');
+    expect(output).toContain('Fix the flaky check');
+  });
+
+  it('surfaces an approved change and stops surfacing it once committed', async () => {
+    const created = await create();
+    const id = idOf(created.lines);
+    await approve(id);
+
+    const beforeCommit = await resumeHuman();
+    expect(beforeCommit).toContain(id);
+    expect(beforeCommit).toContain('approved');
+
+    writeFileSync(join(root, 'target.txt'), 'FIXED\n');
+    await doRun(id);
+    expect((await commit(id)).error).toBeUndefined();
+
+    const afterCommit = await resumeHuman();
+    expect(afterCommit).not.toContain(id);
+  });
+
+  it('stops surfacing a cancelled or promoted change', async () => {
+    const created = await create();
+    const id = idOf(created.lines);
+    expect((await cancel(id)).error).toBeUndefined();
+    expect(await resumeHuman()).not.toContain(id);
+
+    const created2 = await create('Another fix', ['target.txt']);
+    const id2 = idOf(created2.lines);
+    expect((await promote(id2)).error).toBeUndefined();
+    expect(await resumeHuman()).not.toContain(id2);
+  });
+
+  it('quick-change status also works standalone, but resume alone is proven sufficient without it (AC003)', async () => {
+    const created = await create();
+    const id = idOf(created.lines);
+
+    // Resume alone already proved sufficient in the tests above, with no
+    // status call anywhere in their path. This test additionally proves
+    // `quick-change status` itself works, as an independent convenience --
+    // never a replacement for the resume assertions above.
+    const single = await status(id);
+    expect(single.error).toBeUndefined();
+    expect(JSON.parse(single.lines[0]!)).toMatchObject({ id, status: 'draft' });
+
+    const listed = await status();
+    expect(listed.error).toBeUndefined();
+    const all = JSON.parse(listed.lines[0]!) as Array<{ id: string }>;
+    expect(all.map((c) => c.id)).toContain(id);
+  });
+});
+
+describe('quick-change create gates (smoke: built by a prior task, exercised here through the real CLI)', () => {
+  it('refuses while a milestone is active', async () => {
+    const contract = join(root, 'draft-contract.md');
+    const tasks = join(root, 'draft-tasks.yaml');
+    writeFileSync(contract, CONTRACT_FIXTURE);
+    writeFileSync(tasks, TASKS_FIXTURE);
+    expect((await run(['milestone-add', '--contract', contract, '--tasks', tasks], root)).error).toBeUndefined();
+    rmSync(contract);
+    rmSync(tasks);
+    expect((await run(['milestone-confirm', 'M001'], root)).error).toBeUndefined();
+
+    const { error } = await create();
+    expect(error?.message).toMatch(/active milestone/);
+  });
+
+  it('refuses on a dirty working tree', async () => {
+    writeFileSync(join(root, 'stray.txt'), 'uncommitted\n');
+    const { error } = await create();
+    expect(error?.message).toMatch(/working tree is not clean/);
+  });
+});

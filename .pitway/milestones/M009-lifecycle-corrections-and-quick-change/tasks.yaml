@@ -330,7 +330,7 @@ tasks:
       (tests/integration/quick-change.test.ts) covering create through commit,
       cancel, and promote. Updates the three command-census arrays for
       quick-change (AC003)."
-    status: ready
+    status: completed
     depends_on:
       - T004
     acceptance_criteria:
@@ -346,6 +346,7 @@ tasks:
       - tests/integration/cli.test.ts
       - tests/integration/build-bin.test.ts
       - tests/integration/npm-pack.test.ts
+      - tests/integration/resume.test.ts
       - src/core/milestones/create.ts
       - src/core/quick-change/run.ts
       - src/core/quick-change/commit.ts
@@ -361,13 +362,35 @@ tasks:
       - tests/integration/cli.test.ts
       - tests/integration/build-bin.test.ts
       - tests/integration/npm-pack.test.ts
+      - tests/integration/resume.test.ts
     mapped_ac_ids:
       - AC003
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/quick-change.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "[truncated] quick-change.md, a new \"Choosing a correction mechanism\"
+        section in protocol-driver.md). Folded in a bounded ripple fix
+        (tests/integration/resume.test.ts's fixture never ran git init, a direct
+        consequence of resume now reading the git-invisible journal) via
+        task-amend before this commit."
+      evidence: "npm test -- tests/integration/quick-change.test.ts -> 14/14 passed
+        (worker-reported, fingerprint independently recomputed and matched
+        exactly: 8c4b8d81..., files confined to write_scope; diff independently
+        reviewed for correctness, accepted without rerun per the new evidence
+        protocol). After the ripple fix: npm test --
+        tests/integration/resume.test.ts tests/integration/quick-change.test.ts
+        -> 18/18 passed (independently run). npx tsc --noEmit -> clean. Full
+        suite: one run showed 2 unrelated failures (an unrelated
+        verification-repair.test.ts assertion, mentioning a temp fixture file);
+        two immediate clean reruns showed 693/693 passing with zero stray
+        processes -- matches this project's own disclosed M006/CT012
+        environmental-flakiness pattern (transient, load-sensitive, not
+        reproducible in isolation), not a real regression from this task's
+        diff."
+    attempts: 1
+    usage:
+      total_tokens: 163289
   - id: T006
     objective: "Roadmap-reconciliation review, mirroring M005/T009, M006/T006,
       M007/T013, M008/T005: confirm IMPLEMENTATION_PLAN.md accurately reflects
@@ -406,7 +429,7 @@ tasks:
       documented and the idea deferred. No token-accounting or task-verify
       implementation, schema, or CLI code lands in this or any task of this
       milestone."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002

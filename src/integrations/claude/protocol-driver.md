@@ -23,6 +23,23 @@ twelve lifecycle commands. Each one is a short pointer to the workflow use
 case, not a restatement of its `--help` text (run `pitway <command> --help`
 for the flags).
 
+## Choosing a correction mechanism
+
+Three sizes of mechanism exist for landing a fix or new capability — pick
+the smallest one that actually fits:
+
+- **`quick-change`** — a small, bounded fix against an already-completed
+  milestone that fits in one atomic commit, with no architecture/schema/
+  API/dependency/security/migration/multi-subsystem impact. See
+  `commands/quick-change.md`.
+- **A one-task corrective milestone** — anything bigger than that single
+  bounded fix: multiple files or commits, or any of the impacts above.
+- **A full milestone** — new capability or feature work, not a correction
+  to something that already exists.
+
+A bug inside an *active* milestone's own scope never uses any of these —
+that's a task or the ripple-fix policy instead.
+
 ## Dispatch discipline
 
 Task execution is not automatically a sub-agent dispatch — you choose
