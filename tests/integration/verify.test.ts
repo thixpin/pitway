@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
@@ -15,6 +16,38 @@ function git(args: string[], cwd: string): string {
 }
 
 const commitCount = (cwd: string): number => Number(git(['rev-list', '--count', 'HEAD'], cwd).trim());
+
+// T002: recursion-guard.ts is a leaf module (zero imports, pure) so it can be
+// loaded directly by a plain `node` process via its real .ts path -- no
+// build step or TS loader required, and this is real T001 code, not a
+// reimplementation. Fixture scripts below import it by this absolute path to
+// reproduce run.ts's own guard check for real, from a genuinely separate
+// process that inherits PITWAY_VERIFY_GUARD the same way a recursively
+// spawned `pitway verify` command check would.
+const recursionGuardModulePath = fileURLToPath(
+  new URL('../../src/core/verification/recursion-guard.ts', import.meta.url),
+);
+
+// Builds a plain Node script that reproduces run.ts's exact guard-token
+// format (`<canonical-git-dir>#<milestoneId>`) for `gitDirCwd`, evaluates it
+// against the real (inherited) PITWAY_VERIFY_GUARD env var using the real
+// evaluateRecursionGuard, and reports the outcome on stdout/stderr with an
+// unambiguous marker -- exiting fast, never sleeping, so a refusal is
+// bounded-time by construction rather than by luck.
+function recursionCheckScript(gitDirCwd: string, milestoneId: string): string {
+  return `
+import { execFileSync } from 'node:child_process';
+import { evaluateRecursionGuard } from ${JSON.stringify(recursionGuardModulePath)};
+const gitDir = execFileSync('git', ['rev-parse', '--absolute-git-dir'], { cwd: ${JSON.stringify(gitDirCwd)} }).toString().trim();
+const token = gitDir + '#' + ${JSON.stringify(milestoneId)};
+const decision = evaluateRecursionGuard(process.env.PITWAY_VERIFY_GUARD, token);
+if (decision.decision === 'refuse') {
+  console.error('RECURSION_REFUSED:' + decision.token);
+  process.exit(1);
+}
+console.log('RECURSION_OK:' + decision.value);
+`;
+}
 
 let root: string;
 
@@ -141,6 +174,8 @@ const results = (): Array<{
   at: string;
   evidence: string;
   recorded_by: string;
+  duration_ms?: number;
+  termination_reason?: string;
 }> => loadVerificationResults(root, 'M001').results;
 
 interface RunView {
@@ -375,5 +410,211 @@ describe('pitway verify milestone resolution', () => {
   it('refuses when no id is given and no milestone is active', async () => {
     const { error } = await run(['verify'], root);
     expect(error?.message).toMatch(/active milestone/);
+  });
+});
+
+// T002: incremental persistence -- appendResults is called once per
+// completed check, not once after the whole loop. Proven for real: CT002's
+// own command shells out and reads verification-results.yaml off disk,
+// asserting CT001's entry is already there while CT002 itself is still
+// running (the glob tolerates the slugged milestone directory name).
+describe('pitway verify incremental persistence (T002)', () => {
+  it("persists CT001's result to disk before CT002 runs, not only after the full loop", async () => {
+    const checks = `  - id: CT001
+    criterion: AC001
+    type: command
+    command: echo first
+  - id: CT002
+    criterion: AC001
+    type: command
+    command: grep -q 'CT001' .pitway/milestones/M001*/verification-results.yaml && echo found-CT001-on-disk
+`;
+    await confirmed(checks);
+    const { error } = await run(['verify'], root);
+    expect(error).toBeUndefined();
+
+    const recorded = results();
+    expect(recorded.map((r) => [r.check, r.status])).toEqual([
+      ['CT001', 'pass'],
+      ['CT002', 'pass'],
+    ]);
+    expect(recorded[1]!.evidence).toContain('found-CT001-on-disk');
+  });
+});
+
+// T002/AC003: per-check timeout_ms, and the duration_ms/termination_reason
+// fields that report it.
+describe('pitway verify per-check timeout_ms (T002)', () => {
+  it('applies a per-check timeout_ms, killing a hung command in bounded time and recording it as a timeout', async () => {
+    const checks = `  - id: CT001
+    criterion: AC001
+    type: command
+    command: sleep 30
+    timeout_ms: 300
+`;
+    await confirmed(checks);
+    const start = Date.now();
+    const { error } = await run(['verify'], root);
+    const elapsed = Date.now() - start;
+    expect(error).toBeUndefined();
+    // Bounded well below both the 30s command and the 120s default -- proves
+    // timeout_ms, not the safe default, is what ended it.
+    expect(elapsed).toBeLessThan(5000);
+
+    const recorded = results();
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0]!.status).toBe('fail');
+    expect(recorded[0]!.termination_reason).toBe('timeout');
+    expect(typeof recorded[0]!.duration_ms).toBe('number');
+    expect(recorded[0]!.duration_ms!).toBeGreaterThanOrEqual(300);
+  });
+
+  it('records duration_ms and termination_reason "exited" for an ordinary passing command', async () => {
+    await confirmed();
+    const { error } = await run(['verify'], root);
+    expect(error).toBeUndefined();
+    for (const r of results()) {
+      expect(typeof r.duration_ms).toBe('number');
+      expect(r.termination_reason).toBe('exited');
+    }
+  });
+});
+
+// T002/AC009-AC011: isolated single-check rerun.
+describe('pitway verify --check isolated command rerun (T002)', () => {
+  it('reruns exactly one command check through the hash-gated, timeout-protected path and appends a fresh entry', async () => {
+    await confirmed();
+    const first = await run(['verify'], root);
+    expect(first.error).toBeUndefined();
+    expect(results()).toHaveLength(2);
+
+    const { lines, error } = await run(['verify', '--check', 'CT001', '--json'], root);
+    expect(error).toBeUndefined();
+    const view = JSON.parse(lines[0]!) as { id: string; mode: string; check: string; status: string };
+    expect(view).toMatchObject({ id: 'M001', mode: 'check-run', check: 'CT001', status: 'pass' });
+
+    const recorded = results();
+    expect(recorded.map((r) => r.check)).toEqual(['CT001', 'CT002', 'CT001']);
+    expect(recorded[2]!.recorded_by).toBe('command');
+  });
+
+  it('refuses an isolated rerun of a manual/review check with a clear message, recording nothing', async () => {
+    await confirmed();
+    const { error } = await run(['verify', '--check', 'CT003'], root);
+    expect(error?.message).toMatch(/manual/);
+    expect(results()).toEqual([]);
+  });
+
+  it('leaves the existing manual/review --check --pass/--fail/--evidence path unchanged', async () => {
+    await confirmed();
+    const { error } = await run(
+      ['verify', '--check', 'CT003', '--pass', '--evidence', 'reviewed by hand'],
+      root,
+    );
+    expect(error).toBeUndefined();
+    expect(results()).toMatchObject([{ check: 'CT003', status: 'pass', recorded_by: 'developer' }]);
+  });
+
+  it('never runs automatically: a timed-out attempt and a later isolated rerun are two distinct entries', async () => {
+    const checks = `  - id: CT001
+    criterion: AC001
+    type: command
+    command: sleep 30
+    timeout_ms: 300
+`;
+    await confirmed(checks);
+    await run(['verify'], root);
+    expect(results()).toHaveLength(1);
+    expect(results()[0]!.termination_reason).toBe('timeout');
+
+    const { error } = await run(['verify', '--check', 'CT001'], root);
+    expect(error).toBeUndefined();
+    const recorded = results();
+    expect(recorded).toHaveLength(2);
+    expect(recorded.every((r) => r.check === 'CT001')).toBe(true);
+    expect(recorded[1]!.termination_reason).toBe('timeout');
+  });
+});
+
+// T002/AC004-AC006: the recursion guard. Both fixture scripts below run as
+// real, separate `node` processes spawned by executeCommand -- they inherit
+// PITWAY_VERIFY_GUARD exactly as a literal recursive `pitway verify` command
+// check would, and evaluate it with the real, unmocked evaluateRecursionGuard.
+describe('pitway verify recursion guard (T002)', () => {
+  let rootB: string;
+
+  beforeEach(() => {
+    rootB = mkdtempSync(join(tmpdir(), 'pitway-verify-guard-b-'));
+    git(['init', '-q'], rootB);
+    git(['config', 'user.email', 'test@example.com'], rootB);
+    git(['config', 'user.name', 'Test'], rootB);
+    writeFileSync(join(rootB, 'README.md'), 'seed\n');
+    git(['add', 'README.md'], rootB);
+    git(['commit', '-q', '-m', 'init'], rootB);
+  });
+
+  afterEach(() => {
+    rmSync(rootB, { recursive: true, force: true });
+  });
+
+  it('two nested invocations against two different temp-repo fixtures both succeed without tripping the guard', async () => {
+    // CT001's command "nests" into a verification of rootB (a different
+    // repo, same milestone id string) -- the real guard must extend, not
+    // refuse, since the tokens differ on git-dir.
+    const checks = `  - id: CT001
+    criterion: AC001
+    type: command
+    command: node nested-check.mjs
+`;
+    await confirmed(checks);
+    // Written after milestone-confirm: the fixture script is a verify-time
+    // input, not milestone content, and must not trip the clean-tree gate.
+    writeFileSync(join(root, 'nested-check.mjs'), recursionCheckScript(rootB, 'M001'));
+
+    const start = Date.now();
+    const { error } = await run(['verify'], root);
+    const elapsed = Date.now() - start;
+    expect(error).toBeUndefined();
+    expect(elapsed).toBeLessThan(5000);
+
+    const recorded = results();
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0]!.status).toBe('pass');
+    expect(recorded[0]!.evidence).toContain('RECURSION_OK');
+  });
+
+  it('a real recursive invocation for the SAME live repo/milestone is refused in bounded time, preserving already-completed checks', async () => {
+    // CT002's command "nests" into a verification of the SAME repo+milestone
+    // that is already running -- the real guard must refuse.
+    const checks = `  - id: CT001
+    criterion: AC001
+    type: command
+    command: echo already-completed
+  - id: CT002
+    criterion: AC001
+    type: command
+    command: node nested-check.mjs
+`;
+    await confirmed(checks);
+    // Written after milestone-confirm: the fixture script is a verify-time
+    // input, not milestone content, and must not trip the clean-tree gate.
+    writeFileSync(join(root, 'nested-check.mjs'), recursionCheckScript(root, 'M001'));
+
+    const start = Date.now();
+    const { error } = await run(['verify'], root);
+    const elapsed = Date.now() - start;
+    expect(error).toBeUndefined();
+    // Bounded by the guard's immediate refusal, not by any configured
+    // timeout (the default is 120000ms) -- a hang would blow this budget.
+    expect(elapsed).toBeLessThan(5000);
+
+    const recorded = results();
+    expect(recorded).toHaveLength(2);
+    // CT001's already-completed result survives CT002's refusal untouched.
+    expect(recorded[0]).toMatchObject({ check: 'CT001', status: 'pass' });
+    expect(recorded[1]!.check).toBe('CT002');
+    expect(recorded[1]!.status).toBe('fail');
+    expect(recorded[1]!.evidence).toContain('RECURSION_REFUSED');
+    expect(recorded[1]!.termination_reason).not.toBe('timeout');
   });
 });

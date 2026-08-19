@@ -110,7 +110,7 @@ tasks:
       result persistence, duration_ms/termination_reason persisted via new
       schema fields, and CLI support for an isolated single command-check rerun.
       Core mechanism only — no automatic retry policy (AC001, AC002)."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -163,8 +163,69 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/verify.test.ts tests/unit/schemas.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "Executed by a bounded sub-agent from its task-context bundle; the
+        sub-agent's own final report was empty/non-standard (left waiting on a
+        background verification run it launched but never returned to), so the
+        driver independently inspected the full diff and re-ran verification
+        directly rather than trusting the sub-agent's account. src/git/paths.ts:
+        resolveCanonicalGitDir(cwd) via `git rev-parse --absolute-git-dir`,
+        correct across linked worktrees (shared git-dir -> shared
+        recursion-guard identity). src/state/schemas.ts:
+        verificationCheckSchema's command variant gains additive-optional
+        timeout_ms (integer, 1 to 3,600,000); verificationResultsSchema's result
+        entries gain additive-optional duration_ms and termination_reason
+        (exited/timeout/signal/spawn_error). src/core/verification/run.ts:
+        run.ts's own private trimEvidence removed entirely, replaced by T001's
+        trimTail; withRecursionGuard wraps each top-level
+        runVerification/runSingleCheck call once (not per check), building a
+        `<canonical-git-dir>#<milestoneId>` token via T001's
+        evaluateRecursionGuard, refusing loudly and restoring prior env state on
+        exit (try/finally) so sequential non-nested calls in the same process
+        never see stale guard state; appendResults now runs once per completed
+        check inside the loop, not once after it; executeCommandCheck wires
+        T001's executeCommand with per-check timeout_ms (falling back to
+        DEFAULT_TIMEOUT_MS) and records duration_ms/termination_reason. New
+        runSingleCheck(root, milestoneId, checkId): hash-gated like a full run,
+        rejects non-command checks by name, runs one check through the identical
+        guarded/timed path, appends one result -- no automatic retry anywhere.
+        src/cli/commands/verify.ts: `verify <id> --check CTnnn` with none of
+        --pass/--fail/--evidence now means isolated command-check rerun; the
+        existing manual/review --check --pass/--fail/--evidence path is
+        unchanged (verified by a dedicated regression test)."
+      evidence: "Sub-agent's own report was unusable (an incomplete 'waiting on
+        background task' message, not the required structured
+        build/RED-GREEN/scope report) -- treated as no evidence, not partial
+        evidence, per developer direction. Driver independently: (1) captured
+        process evidence before any action -- a `vitest run` + 5 forked workers
+        from the sub-agent's own background test invocation, elapsed ~2:10-2:12
+        and climbing when first observed; by the time the driver moved to
+        terminate them they had already exited on their own (zero survivors
+        confirmed, not by driver action -- recorded accurately, not overstated);
+        (2) confirmed the working diff was untouched and exactly the 7 declared
+        write_scope files (git status/diff stat); (3) read every changed file in
+        full end-to-end against all 12 acceptance criteria -- all satisfied, no
+        gaps requiring additional driver-side work; (4) ran T002's exact target
+        command in the foreground with an explicit 90s bounded timeout: 82/82
+        tests green in 54.63s, well within bound, zero stray processes after;
+        (5) ran `npm run typecheck` (bounded 60s) clean; (6) ran `npm test`
+        (bounded 180s) twice in direct succession -- both completed within bound
+        with zero hangs and zero orphan processes both times (explicitly checked
+        via ps aux after each), but each run failed a *different* small set of
+        tests unrelated to each other (run 1: 9 tests across 6 files, including
+        one false alarm inside verify.test.ts itself; run 2: 2 unrelated tests
+        in milestone-complete.test.ts, with verify.test.ts/schemas.test.ts both
+        fully clean) -- diagnosed as environmental flakiness under full-suite
+        concurrent subprocess load (T002's new tests add real git-repo and
+        process-spawn load), not a deterministic defect in T002's own code: the
+        target files pass cleanly in isolation every time, and the failure set
+        changes run to run with zero correlation to T002's specific mechanism.
+        Flagged to the developer as a finding requiring attention before further
+        auto-run, not silently accepted or silently patched by loosening any
+        test."
+    attempts: 1
+    usage:
+      total_tokens: 177449
   - id: T003
     objective: "One consolidated Claude integration task: text assets for the full
       12-command operational lifecycle (excluding init and auto-run), split at
@@ -174,7 +235,7 @@ tasks:
       reports; LSP and shared-worktree guidance. Text and small provider-neutral
       code only — no agent-spawning code anywhere (AC003, AC004, AC006, AC007,
       AC008)."
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:

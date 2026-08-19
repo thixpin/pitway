@@ -65,12 +65,19 @@ export const stateSchema = z.strictObject({
   milestones: z.array(milestoneId),
 });
 
+// AC001/T002: additive-optional per-check timeout, milliseconds, bounded to
+// one hour; omitted means the caller's safe default (120000ms) applies.
+// command-only by construction -- the strictObject discrimination on
+// manual/review variants rejects it without any extra code.
+const timeoutMsSchema = z.number().int().min(1).max(3_600_000);
+
 const verificationCheckSchema = z.discriminatedUnion('type', [
   z.strictObject({
     id: checkId,
     criterion: criterionId,
     type: z.literal('command'),
     command: z.string().min(1),
+    timeout_ms: timeoutMsSchema.optional(),
   }),
   z.strictObject({
     id: checkId,
@@ -188,6 +195,11 @@ export const verificationResultsSchema = z.strictObject({
       at: isoTimestamp,
       evidence: z.string().min(1),
       recorded_by: z.enum(['command', 'developer']),
+      // AC008/T002: additive-optional -- only command-executed entries carry
+      // these (developer-recorded manual/review results never do); every
+      // pre-existing entry without them still validates unchanged.
+      duration_ms: z.number().int().nonnegative().optional(),
+      termination_reason: z.enum(['exited', 'timeout', 'signal', 'spawn_error']).optional(),
     }),
   ),
 });

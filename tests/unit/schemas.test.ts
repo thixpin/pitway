@@ -139,6 +139,137 @@ describe('verification check variants', () => {
   });
 });
 
+// T002/AC002: timeout_ms is additive-optional and command-only.
+describe('verification check timeout_ms (T002)', () => {
+  const contract = (): { verification: Array<Record<string, unknown>> } =>
+    fixture('valid/contract-frontmatter.yaml') as {
+      verification: Array<Record<string, unknown>>;
+    };
+
+  const withCommandCheck = (overrides: Record<string, unknown>): unknown => {
+    const base = contract();
+    return {
+      ...base,
+      verification: [{ ...base.verification[0], ...overrides }, ...base.verification.slice(1)],
+    };
+  };
+
+  it('accepts a command check without timeout_ms (the omitted-default case)', () => {
+    const result = contractFrontmatterSchema.safeParse(contract());
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts timeout_ms at the minimum bound (1)', () => {
+    const result = contractFrontmatterSchema.safeParse(withCommandCheck({ timeout_ms: 1 }));
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts timeout_ms at the maximum bound (3,600,000 -- one hour)', () => {
+    const result = contractFrontmatterSchema.safeParse(withCommandCheck({ timeout_ms: 3_600_000 }));
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects timeout_ms below the minimum bound (0)', () => {
+    const result = contractFrontmatterSchema.safeParse(withCommandCheck({ timeout_ms: 0 }));
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects timeout_ms above the maximum bound (3,600,001)', () => {
+    const result = contractFrontmatterSchema.safeParse(withCommandCheck({ timeout_ms: 3_600_001 }));
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a non-integer timeout_ms', () => {
+    const result = contractFrontmatterSchema.safeParse(withCommandCheck({ timeout_ms: 1000.5 }));
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects timeout_ms on a manual check (strictObject discrimination, no new code)', () => {
+    const base = contract();
+    const broken = {
+      ...base,
+      verification: [
+        base.verification[0],
+        { ...base.verification[1], timeout_ms: 5000 },
+        base.verification[2],
+      ],
+    };
+    const result = contractFrontmatterSchema.safeParse(broken);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects timeout_ms on a review check (strictObject discrimination, no new code)', () => {
+    const base = contract();
+    const broken = {
+      ...base,
+      verification: [
+        base.verification[0],
+        base.verification[1],
+        { ...base.verification[2], timeout_ms: 5000 },
+      ],
+    };
+    const result = contractFrontmatterSchema.safeParse(broken);
+    expect(result.success).toBe(false);
+  });
+});
+
+// T002/AC008: verificationResultsSchema's duration_ms/termination_reason are
+// additive-optional; every pre-existing fixture/history entry without them
+// keeps validating unchanged (covered by the fixture-driven cases above).
+describe('verification results duration_ms/termination_reason (T002)', () => {
+  const validEntry = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    check: 'CT001',
+    status: 'pass',
+    at: '2026-08-18T09:00:00Z',
+    evidence: 'ok',
+    recorded_by: 'command',
+    ...overrides,
+  });
+
+  it('accepts a result entry without duration_ms/termination_reason (pre-existing shape)', () => {
+    const result = verificationResultsSchema.safeParse({
+      schema_version: 1,
+      results: [validEntry()],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a result entry with duration_ms and termination_reason', () => {
+    const result = verificationResultsSchema.safeParse({
+      schema_version: 1,
+      results: [validEntry({ duration_ms: 42, termination_reason: 'exited' })],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it.each(['exited', 'timeout', 'signal', 'spawn_error'])(
+    'accepts termination_reason %s',
+    (termination_reason) => {
+      const result = verificationResultsSchema.safeParse({
+        schema_version: 1,
+        results: [validEntry({ duration_ms: 1, termination_reason })],
+      });
+      expect(result.success).toBe(true);
+    },
+  );
+
+  it('rejects an unknown termination_reason value', () => {
+    const result = verificationResultsSchema.safeParse({
+      schema_version: 1,
+      results: [validEntry({ duration_ms: 1, termination_reason: 'bogus' })],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a negative duration_ms', () => {
+    const result = verificationResultsSchema.safeParse({
+      schema_version: 1,
+      results: [validEntry({ duration_ms: -1, termination_reason: 'exited' })],
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
 // M005 T003: relevant_files and the new context_files/write_scope fields are
 // both schema-optional, but every task must declare exactly one style — see
 // the five-case combination rule in the task contract.

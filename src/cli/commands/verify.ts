@@ -1,8 +1,10 @@
 import type { Command } from 'commander';
 import {
   recordCheckResult,
+  runSingleCheck,
   runVerification,
   VerifyError,
+  type VerifyCheckRunView,
   type VerifyRecordView,
   type VerifyRunView,
 } from '../../core/verification/run.js';
@@ -27,6 +29,11 @@ function renderRunHuman(view: VerifyRunView): string {
 
 function renderRecordHuman(view: VerifyRecordView): string {
   return `📝 Recorded ${view.check} as ${view.status} (recorded_by developer) in ${view.id}.`;
+}
+
+function renderCheckRunHuman(view: VerifyCheckRunView): string {
+  const icon = view.status === 'pass' ? '✅ pass' : '❌ fail';
+  return `🔍 ${view.check}  ${icon} — ${view.evidence} (${view.id})`;
 }
 
 export interface CommandDeps {
@@ -62,6 +69,16 @@ export function registerVerifyCommand(program: Command, deps: CommandDeps = {}):
         write(renderOutput(view, { json: options.json }, renderRunHuman));
         return;
       }
+
+      // T002: --check alone (no --pass/--fail/--evidence) on a command-type
+      // check is an isolated rerun of just that check -- never automatic,
+      // only ever this explicit invocation.
+      if (!options.pass && !options.fail && options.evidence === undefined) {
+        const view = runSingleCheck(root, id, options.check);
+        write(renderOutput(view, { json: options.json }, renderCheckRunHuman));
+        return;
+      }
+
       if ((options.pass ?? false) === (options.fail ?? false)) {
         throw new VerifyError('recording a check requires exactly one of --pass or --fail');
       }
