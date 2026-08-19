@@ -654,7 +654,7 @@ tasks:
       authoritative-checkpoint wording — accurately describe the repository's
       actual state as of M005's completion; correct any discovered drift in the
       plan through this task (AC009)."
-    status: ready
+    status: completed
     depends_on:
       - T004
       - T005
@@ -674,5 +674,53 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review per CT009's instruction
-    result: null
+    result:
+      summary: "Executed directly by the driver (review task, no sub-agent needed).
+        Re-read IMPLEMENTATION_PLAN.md's §7 command table, the Bootstrap
+        delivery table, §11 Verification Strategy, and the M005-M011 Revised
+        Roadmap section against the actual repository state (buildCli's
+        registered commands, M005's actually-delivered scope, the amendment
+        mechanism's real behavior). Found and corrected three points of drift:
+        (1) §7 said 'Eleven commands total as implemented through M004' —
+        corrected to thirteen, adding rows for task-amend and write-ms-artifacts
+        and noting milestone-confirm/usage-add's new
+        journal-materialize-no-commit behavior; (2) §11 described the
+        pre-M005/T004 hand-edit-then-amend flow as current — corrected to
+        describe the --file-based, journal-backed, no-commit flow, disclosing
+        the historical mechanism it replaced; (3) the document's closing 'next
+        step' line still said 'draft Milestone M005's contract' — corrected to
+        record M005's actual status (T001-T009 complete, pending
+        milestone-complete) and point to M006 as the next milestone to draft.
+        Explicitly re-verified the M005-vs-M006 authoritative-checkpoint wording
+        (commit 87eb6bb) against what M005 actually delivered: M005's own
+        task-completion commits (T001-T009) all used the unchanged M004-era
+        mechanism throughout, exactly as the wording claims — and M005 DID
+        legitimately use its own newly-built amendment mechanism
+        (milestone-confirm --amend, task-amend) on itself for later lifecycle
+        events (the T007 scope widenings) after T004/T005 landed, which the
+        contract's own Non-Bootstrap Disclosure explicitly anticipated and
+        permits (same pattern as M004 using milestone-complete on itself) — no
+        contradiction, wording confirmed accurate, left unchanged. Checked the
+        M005 roadmap scope description item-by-item against all nine completed
+        tasks: every stated item (journal, dirty classification,
+        context_files/write_scope, checkpoint-model revision, task-amend,
+        write-ms-artifacts, slugging effective M006 onward with M001-M005
+        grandfathered, roadmap-reconciliation, migration verification) matches
+        what was actually delivered — no further drift found there. The
+        Bootstrap delivery table itself was left unchanged: M005 is not yet
+        complete as of this task (milestone-complete runs after), so adding its
+        row now would be premature; that addition belongs to whichever future
+        milestone's own roadmap-reconciliation task runs after M005 actually
+        completes, or a direct correction at completion time."
+      evidence: Diff scoped to exactly IMPLEMENTATION_PLAN.md (7 insertions/5
+        deletions net, 3 distinct corrections). Full suite `npm test` 424/424
+        green (unchanged from before this doc-only edit, as expected). Command
+        count cross-checked directly against tests/integration/cli.test.ts's
+        ALL_COMMAND_NAMES (13, confirmed). M005-vs-M006 wording cross-checked
+        against this session's actual amendment usage during M005 (two
+        milestone-confirm --amend calls, two task-amend calls, all after
+        T004/T005 landed, all for M005's own later lifecycle events) and against
+        the contract's own Non-Bootstrap Disclosure section, confirmed
+        consistent.
+    attempts: 1
     usage: null
