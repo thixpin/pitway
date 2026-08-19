@@ -115,7 +115,7 @@ tasks:
       decision is advisory-only. Either
       feasible-and-deferred-to-a-later-milestone or an explicit permanent
       non-goal, evidence-based, no implementation either way (AC004)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - The decision explicitly treats worktree isolation as insufficient on its
@@ -133,7 +133,17 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review of the recorded decision and its evidence
-    result: null
+    result:
+      summary: "[truncated] -enforced permissions) require either abandoning PitWay's
+        agent-agnostic architecture or claiming unverifiable enforcement.
+        Decision: advisory-only, permanent-until-revisited. context_files stays
+        declarative-only; write_scope remains the mechanically enforced
+        boundary. No implementation."
+      evidence: docs/evidence/M008/read-boundary-enforcement-decision.md. Developer
+        adopted the conclusion via explicit mandatory-gate confirmation, with
+        the exact boundary wording to be reflected identically in README.md
+        (T004) and IMPLEMENTATION_PLAN.md (T005).
+    attempts: 1
     usage: null
   - id: T004
     objective: "Write a real, honest README.md: what PitWay is, a quickstart using
