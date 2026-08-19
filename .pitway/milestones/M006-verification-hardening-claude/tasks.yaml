@@ -338,7 +338,7 @@ tasks:
       size, full-suite invocation count) from inherited-and-not-promised ones
       (harness system/tool/skill/memory context), under comparable model/config
       conditions (AC005).
-    status: ready
+    status: completed
     depends_on:
       - T003
     acceptance_criteria:
@@ -356,7 +356,23 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review of the recorded before/after comparison
-    result: null
+    result:
+      summary: "[truncated] -vs-M006 before/after comparison in both raw-per-task
+        (M006 higher, ~150.6K vs ~111.7K) and per-AC-delivered (M006 lower,
+        ~64.5K/AC vs ~111.7K/AC) framings, with an explicit disclosed caveat
+        that the two measurements' model/config equivalence cannot be verified
+        from the available record."
+      evidence: "All figures sourced directly: bundle sizes from the actual
+        task-status --context --json output for T001-T004 (wc -c); the 89%
+        contractExcerpt proportion computed directly from T001's real bundle
+        JSON; usage totals read directly from tasks.yaml's persisted usage
+        fields (88692/177449/185575); asset count/size from find+wc against the
+        real installed src/integrations/claude/ tree; M004/M005 baseline figures
+        quoted directly from M005 report.md Sec8. Full-suite invocation count is
+        explicitly labeled approximate/reconstructed, not machine-logged, per
+        the document's own methodology section. Document committed at
+        docs/evidence/M006-context-efficiency.md as required, not a draft path."
+    attempts: 1
     usage: null
   - id: T005
     objective: Agent-agnostic auto-run authorization mechanism (a new sibling
