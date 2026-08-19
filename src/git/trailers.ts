@@ -111,3 +111,36 @@ export function resolveCommitSha(cwd: string, query: TrailerQuery): string | und
   }
   return undefined;
 }
+
+// A quick-change commit carries no PitWay-Milestone trailer at all (a
+// quick-change is explicitly milestone-less), so its identity lookup doesn't
+// fit resolveCommitSha's TrailerQuery shape (milestone: string, required)
+// without inventing a fake milestone value. Rather than shoehorning the two
+// together -- which would make `milestone` awkwardly optional for every
+// existing milestone/task/verification-repair caller -- this is a small,
+// separate, structurally independent function that reuses the same
+// git-log-and-parse technique. Because it matches on the exact
+// `PitWay-Change: <changeId>` line alone, it naturally never matches a
+// milestone/task/verification-repair commit (none of those carry a
+// PitWay-Change trailer), and resolveCommitSha naturally never matches a
+// quick-change commit (none of those carry a PitWay-Milestone trailer) --
+// no cross-contamination by construction, without needing to check the
+// absence of the other trailers explicitly.
+export function resolveChangeCommitSha(cwd: string, changeId: string): string | undefined {
+  const RECORD_SEP = '\x1e';
+  const FIELD_SEP = '\x1f';
+  const log = git(['log', `--format=%H${FIELD_SEP}%B${RECORD_SEP}`], cwd);
+  const records = log.split(RECORD_SEP).filter((r) => r.trim().length > 0);
+
+  for (const record of records) {
+    const sepIndex = record.indexOf(FIELD_SEP);
+    if (sepIndex === -1) continue;
+    const sha = record.slice(0, sepIndex).trim();
+    const body = record.slice(sepIndex + 1);
+    const lines = body.split('\n');
+
+    const hasThisChange = lines.some((l) => l.trim() === `PitWay-Change: ${changeId}`);
+    if (hasThisChange) return sha;
+  }
+  return undefined;
+}

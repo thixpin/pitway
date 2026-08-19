@@ -263,7 +263,7 @@ tasks:
       interrupted commit resumes via commitOrResume's existing identity-lookup
       pattern against this new trailer, the same as task/milestone commits
       already do (AC003)."
-    status: ready
+    status: completed
     depends_on:
       - T002
       - T003
@@ -289,8 +289,26 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/unit/quick-change-commit.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "[truncated] ates the dirty tree against the declared scope, and lands
+        one commitOrResume commit carrying only a PitWay-Change trailer,
+        self-healing on interruption via a new resolveChangeCommitSha lookup in
+        trailers.ts, structurally independent of the existing
+        milestone/task-scoped resolveCommitSha."
+      evidence: "Worker-reported evidence accepted without rerun per the new
+        evidence-acceptance protocol: npm test --
+        tests/unit/quick-change-commit.test.ts -> 16/16 passed, exit 0. npx tsc
+        --noEmit -> clean. Deterministic fingerprint
+        6c8593942c81e48fd6d46a98469f222ac2af3a5453396d6ac947c4b44a804aa3
+        (--untracked-files=all recipe) recomputed by the driver and matched
+        exactly; changed-file list (trailers.ts, run.ts, commit.ts,
+        quick-change-commit.test.ts) confined to write_scope; no background
+        process left running (confirmed by worker, all commands synchronous).
+        Driver independently reviewed the full diff (not just the report) for
+        correctness before accepting."
+    attempts: 1
+    usage:
+      total_tokens: 96935
   - id: T005
     objective: "Quick-change, part 3 of 3 -- CLI/resume/assets/integration.
       src/cli/commands/quick-change.ts (create/approve/run/commit/cancel/
@@ -312,7 +330,7 @@ tasks:
       (tests/integration/quick-change.test.ts) covering create through commit,
       cancel, and promote. Updates the three command-census arrays for
       quick-change (AC003)."
-    status: waiting
+    status: ready
     depends_on:
       - T004
     acceptance_criteria:
