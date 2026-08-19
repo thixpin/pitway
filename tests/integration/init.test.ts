@@ -1,4 +1,13 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -6,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
+import { listClaudeAssets } from '../../src/state/claude-assets.js';
 
 function git(args: string[], cwd: string): void {
   execFileSync('git', args, { cwd, stdio: 'pipe' });
@@ -13,12 +23,27 @@ function git(args: string[], cwd: string): void {
 
 let root: string;
 
-async function runInit(cwd: string): Promise<{ lines: string[]; error?: Error }> {
+// Recursively lists every file under `dir`, relative to `dir`.
+function listFilesRecursive(dir: string): string[] {
+  const entries = readdirSync(dir, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...listFilesRecursive(full).map((f) => join(entry.name, f)));
+    } else {
+      files.push(entry.name);
+    }
+  }
+  return files.sort();
+}
+
+async function runInit(cwd: string, extraArgs: string[] = []): Promise<{ lines: string[]; error?: Error }> {
   const program = buildCli();
   const lines: string[] = [];
   registerInitCommand(program, { root: cwd, write: (s) => lines.push(s) });
   try {
-    await program.parseAsync(['node', 'pitway', 'init']);
+    await program.parseAsync(['node', 'pitway', 'init', ...extraArgs]);
     return { lines };
   } catch (error) {
     return { lines, error: error as Error };
@@ -80,5 +105,82 @@ describe('pitway init', () => {
     const { error } = await runInit(root);
     expect(error?.message).toMatch(/inconsistent|invalid/i);
     expect(readFileSync(join(root, '.pitway', 'state.yaml'), 'utf8')).toBe('schema_version: 99\n');
+  });
+});
+
+// AC003: init installs every .md file under src/integrations/claude/ via a
+// glob (never a hardcoded list) into .claude/, default on, opt-out
+// --no-claude, refusing a partial/inconsistent .claude/ state the same way
+// it already refuses partial/inconsistent .pitway/ state.
+describe('pitway init Claude Code asset installation (AC003)', () => {
+  it('src/integrations/claude/ contains zero .ts files -- text assets and runtime code only', () => {
+    const sourceRoot = new URL('../../src/integrations/claude/', import.meta.url);
+    const files = listFilesRecursive(sourceRoot.pathname);
+    expect(files.some((f) => f.endsWith('.ts'))).toBe(false);
+    expect(files.every((f) => f.endsWith('.md'))).toBe(true);
+    expect(files).toEqual(listClaudeAssets());
+  });
+
+  it('installs every shipped .md asset into .claude/, mirroring the source layout exactly', async () => {
+    const { error } = await runInit(root);
+    expect(error).toBeUndefined();
+    const shipped = listClaudeAssets();
+    expect(shipped.length).toBeGreaterThan(0);
+    const installed = listFilesRecursive(join(root, '.claude'));
+    expect(installed).toEqual(shipped.slice().sort());
+    // Content is copied verbatim, not transformed.
+    for (const asset of shipped) {
+      expect(readFileSync(join(root, '.claude', asset), 'utf8')).toBe(
+        readFileSync(
+          new URL(`../../src/integrations/claude/${asset}`, import.meta.url),
+          'utf8',
+        ),
+      );
+    }
+  });
+
+  it('--no-claude skips installation entirely', async () => {
+    const { error } = await runInit(root, ['--no-claude']);
+    expect(error).toBeUndefined();
+    expect(existsSync(join(root, '.claude'))).toBe(false);
+    // .pitway/ state is unaffected by the opt-out.
+    expect(existsSync(join(root, '.pitway', 'config.yaml'))).toBe(true);
+  });
+
+  it('is a safe no-op when .claude/ is already fully installed', async () => {
+    await runInit(root);
+    const first = listFilesRecursive(join(root, '.claude'));
+    const mtimeBefore = statSync(join(root, '.claude', first[0]!)).mtimeMs;
+    const { error } = await runInit(root);
+    expect(error).toBeUndefined();
+    expect(listFilesRecursive(join(root, '.claude'))).toEqual(first);
+    expect(statSync(join(root, '.claude', first[0]!)).mtimeMs).toBe(mtimeBefore);
+  });
+
+  it('refuses a partial .claude/ state and writes nothing at all, including .pitway/', async () => {
+    await runInit(root);
+    const shipped = listClaudeAssets();
+    // Simulate an interrupted/tampered install: remove exactly one managed
+    // asset, leaving the rest present.
+    rmSync(join(root, '.claude', shipped[0]!));
+    rmSync(join(root, '.pitway'), { recursive: true, force: true });
+
+    const { error } = await runInit(root);
+    expect(error?.message).toMatch(/inconsistent|partial/i);
+    expect(error?.message).toMatch(/\.claude/);
+    // Nothing else got written either — the refusal is atomic.
+    expect(existsSync(join(root, '.pitway'))).toBe(false);
+    expect(existsSync(join(root, '.claude', shipped[0]!))).toBe(false);
+  });
+
+  it('never inspects or disturbs unrelated files already under .claude/', async () => {
+    mkdirSync(join(root, '.claude'), { recursive: true });
+    writeFileSync(join(root, '.claude', 'settings.json'), '{"unrelated": true}\n');
+    const { error } = await runInit(root);
+    expect(error).toBeUndefined();
+    expect(readFileSync(join(root, '.claude', 'settings.json'), 'utf8')).toBe(
+      '{"unrelated": true}\n',
+    );
+    expect(listFilesRecursive(join(root, '.claude'))).toContain('settings.json');
   });
 });

@@ -209,7 +209,12 @@ beforeEach(async () => {
   writeFileSync(join(root, 'README.md'), 'seed\n');
   git(['add', 'README.md'], root);
   git(['commit', '-q', '-m', 'init'], root);
-  await run(['init'], root);
+  // --no-claude: this file exercises task-update, not Claude Code asset
+  // installation (covered by tests/integration/init.test.ts) -- installing
+  // the default .claude/ assets here would leave them permanently dirty
+  // and untracked (nothing in src/git/baseline.ts's expected-baseline-path
+  // set knows about them), tripping every git-safety check below.
+  await run(['init', '--no-claude'], root);
   await confirmedMilestone();
 });
 
@@ -428,6 +433,76 @@ describe('pitway task-update honors write_scope during completion (M005 integrat
     expect(task('T001').status).toBe('review');
     expect(stagedFiles(root)).toBe('');
     expect(commitCount(root)).toBe(2);
+  });
+});
+
+// AC006: --result's summary/evidence are capped via T001's shared trimTail
+// helper (src/core/verification/text-trim.ts) rather than a second
+// truncation scheme, so an oversized worker report is bounded, not silently
+// dropped, and the historical record of an already-completed task is never
+// rewritten by a later resupplied (and possibly oversized) --result.
+describe('pitway task-update caps --result summary/evidence on completion (AC006)', () => {
+  beforeEach(async () => {
+    await inReview();
+  });
+
+  it('leaves summary/evidence within the cap byte-for-byte unchanged', async () => {
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(task('T001').result).toEqual({
+      summary: 'Implemented the thing.',
+      evidence: 'npm test passed',
+    });
+  });
+
+  it('truncates an oversized summary to a preserved, marked tail rather than dropping it', async () => {
+    const result = join(scratch, 'result-long-summary.yaml');
+    const message = join(scratch, 'message.txt');
+    const longSummary = `START-OF-SUMMARY-${'x'.repeat(5000)}-END-OF-SUMMARY`;
+    writeFileSync(
+      result,
+      JSON.stringify({ summary: longSummary, evidence: 'npm test passed' }),
+    );
+    writeFileSync(message, MESSAGE_FIXTURE);
+    touchRelevantFile();
+    const { error } = await update([
+      'T001', 'completed', '--result', result, '--message', message,
+    ]);
+    expect(error).toBeUndefined();
+    const persisted = task('T001').result;
+    expect(persisted).not.toBeNull();
+    const summary = persisted!.summary;
+    // Bounded, not silently dropped.
+    expect(summary.length).toBeLessThan(longSummary.length);
+    // Tail preserved.
+    expect(summary.endsWith('-END-OF-SUMMARY')).toBe(true);
+    // The truncated-away head is gone.
+    expect(summary).not.toContain('START-OF-SUMMARY');
+    // A visible marker distinguishes this from an ordinary short summary.
+    expect(summary).not.toBe(longSummary);
+    expect(summary.length).toBeGreaterThan(0);
+  });
+
+  it('truncates oversized evidence the same way', async () => {
+    const result = join(scratch, 'result-long-evidence.yaml');
+    const message = join(scratch, 'message.txt');
+    const longEvidence = `HEAD-OF-EVIDENCE-${'y'.repeat(5000)}-TAIL-OF-EVIDENCE`;
+    writeFileSync(
+      result,
+      JSON.stringify({ summary: 'Implemented the thing.', evidence: longEvidence }),
+    );
+    writeFileSync(message, MESSAGE_FIXTURE);
+    touchRelevantFile();
+    const { error } = await update([
+      'T001', 'completed', '--result', result, '--message', message,
+    ]);
+    expect(error).toBeUndefined();
+    const persisted = task('T001').result;
+    expect(persisted).not.toBeNull();
+    const evidence = persisted!.evidence;
+    expect(evidence.length).toBeLessThan(longEvidence.length);
+    expect(evidence.endsWith('-TAIL-OF-EVIDENCE')).toBe(true);
+    expect(evidence).not.toContain('HEAD-OF-EVIDENCE');
   });
 });
 

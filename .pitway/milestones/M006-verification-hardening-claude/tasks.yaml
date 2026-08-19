@@ -235,7 +235,7 @@ tasks:
       reports; LSP and shared-worktree guidance. Text and small provider-neutral
       code only — no agent-spawning code anywhere (AC003, AC004, AC006, AC007,
       AC008)."
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -306,8 +306,30 @@ tasks:
       detail: npm test -- tests/integration/init.test.ts
         tests/unit/write-scope-check.test.ts
         tests/integration/task-update.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "[truncated] kWriteScope(writePaths, task), write-only,
+        write_scope-then-relevant_files fallback, zero claim about
+        context_files. src/core/tasks/update.ts: --result summary/evidence now
+        capped (300/1000 chars) via T001's shared trimTail, with a visible
+        truncation marker, applied only to fresh writes."
+      evidence: "[truncated] itWay trailer, outside this task's write_scope): default
+        init's new .claude/ installation exposed a real M002/M004-era gap in
+        src/git/baseline.ts (computeExpectedBaselinePaths never knew about
+        anything outside .pitway/), causing 79 deterministic failures across 5
+        files not owned by any M006 task. Fixed by threading the exact managed
+        asset destination list (src/state/claude-assets.ts's new
+        listClaudeAssetDestinations(), the one authoritative source) through an
+        agent-agnostic extraExpectedPaths parameter on
+        computeExpectedBaselinePaths, resolved by its Core-layer caller
+        (confirm.ts) -- never a broad .claude/** allowance; an unmanaged
+        .claude/ file is still refused (regression-tested). RED-then-GREEN
+        proven explicitly for the hotfix (wiring temporarily reverted, 19 tests
+        failed with the exact diagnosed symptom, restored, 33 targeted tests
+        passed). Full suite run twice after the complete fix with an explicit
+        bounded timeout: 493/493 both times, zero orphan processes both times."
+    attempts: 1
+    usage:
+      total_tokens: 185575
   - id: T004
     objective: Compile and record a before/after context-efficiency comparison
       against the M004/M005 baseline as a committed evidence document,
@@ -316,7 +338,7 @@ tasks:
       size, full-suite invocation count) from inherited-and-not-promised ones
       (harness system/tool/skill/memory context), under comparable model/config
       conditions (AC005).
-    status: waiting
+    status: ready
     depends_on:
       - T003
     acceptance_criteria:
@@ -344,7 +366,7 @@ tasks:
       decision UX built on top of it, plus a final integration assertion that
       init installs the complete asset set once every M006 asset-creating task
       has landed (AC009, AC010).
-    status: waiting
+    status: ready
     depends_on:
       - T002
       - T003
