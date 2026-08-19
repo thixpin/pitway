@@ -10,15 +10,16 @@ import {
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
 import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js';
-import { registerResumeCommand } from '../../src/cli/commands/resume.js';
+import { buildResumeView, registerResumeCommand } from '../../src/cli/commands/resume.js';
 import { resolveCommitSha } from '../../src/git/trailers.js';
-import { loadContract, loadTasks } from '../../src/state/store.js';
+import { loadContract, loadState, loadTasks } from '../../src/state/store.js';
 
 function git(args: string[], cwd: string): string {
   return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
@@ -414,5 +415,60 @@ describe('dirty-injection refusals at the three git boundaries (AC021)', () => {
     expect(stagedFiles(root)).toBe('');
     expect(commitCount(root)).toBe(2);
     expectDirtIntact(root);
+  });
+});
+
+// M005/T008: M001-M004 historical migration. Unlike the rest of this file,
+// these tests target THIS repository's own real, live `.pitway/` state
+// directly (not a synthetic temp repo) — proving the M005 resolution/schema
+// changes still load bare, pre-slug, relevant_files-only history unmodified.
+describe('M005/T008: M001-M004 historical migration', () => {
+  const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
+  const historicalIds = ['M001', 'M002', 'M003', 'M004'];
+
+  it.each(historicalIds)(
+    "loads %s's real contract.md unchanged under the new resolution logic",
+    (id) => {
+      const contract = loadContract(repoRoot, id);
+      expect(contract.frontmatter.id).toBe(id);
+    },
+  );
+
+  it.each(historicalIds)(
+    "loads %s's real tasks.yaml unchanged under the new schema",
+    (id) => {
+      const tasksFile = loadTasks(repoRoot, id);
+      expect(tasksFile.tasks.length).toBeGreaterThan(0);
+    },
+  );
+
+  it('resume reconstructs real, mixed-vintage repo state from history alone', () => {
+    const state = loadState(repoRoot);
+    const view = buildResumeView(repoRoot);
+    expect(view.activeMilestone).toBe(state.active_milestone);
+    if (state.active_milestone) {
+      const contract = loadContract(repoRoot, state.active_milestone);
+      expect(view.contractStatus).toBe(contract.frontmatter.status);
+      expect(view.title).toBe(contract.frontmatter.title);
+      const tasksFile = loadTasks(repoRoot, state.active_milestone);
+      expect(view.tasks).toEqual(tasksFile.tasks.map((t) => ({ id: t.id, status: t.status })));
+    }
+  });
+
+  it('leaves every M001-M004 file untouched (no historical file rewritten)', () => {
+    const status = execFileSync(
+      'git',
+      [
+        'status',
+        '--porcelain',
+        '--',
+        '.pitway/milestones/M001',
+        '.pitway/milestones/M002',
+        '.pitway/milestones/M003',
+        '.pitway/milestones/M004',
+      ],
+      { cwd: repoRoot, stdio: 'pipe' },
+    ).toString();
+    expect(status).toBe('');
   });
 });

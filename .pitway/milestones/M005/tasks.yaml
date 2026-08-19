@@ -600,7 +600,7 @@ tasks:
       (bare directories, relevant_files-only tasks, pre-journal commit shapes)
       continues to load, resolve, and resume correctly unmodified under every
       change in this milestone; full suite green (AC008)."
-    status: ready
+    status: completed
     depends_on:
       - T003
       - T004
@@ -618,8 +618,35 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test
-    result: null
-    usage: null
+    result:
+      summary: "Executed by a bounded sub-agent from its task-context bundle. Added a
+        new describe block to tests/integration/self-hosting-readiness.test.ts
+        that, unlike the rest of the file's synthetic temp-repo fixtures,
+        targets THIS repository's own real, live .pitway/ state directly
+        (resolved via fileURLToPath(new URL('../../', import.meta.url)), same
+        pattern as verification-hash.test.ts's real M003 fixture reference):
+        loads M001-M004's real contract.md via loadContract and asserts
+        frontmatter.id matches the bare id (proving resolveMilestoneDirName
+        still resolves these pre-slug bare directories); loads their real
+        tasks.yaml via loadTasks and asserts a non-empty task array (proving the
+        new optional context_files/write_scope schema still accepts the old
+        relevant_files-only shape unmodified); calls buildResumeView against the
+        real repo root and cross-checks it dynamically against
+        loadState/loadContract/loadTasks (no hardcoded milestone id); asserts
+        git status --porcelain over the four historical milestone directories is
+        empty, making 'no historical file rewritten' an explicit checked
+        assertion rather than an assumption."
+      evidence: "Independently re-verified by the driver: target command (both
+        relevant_files) 22/22 green; full suite 424/424 green; typecheck clean;
+        diff confirmed scoped to exactly the 1 file that needed changes
+        (resume.test.ts read but correctly left untouched, per the sub-agent's
+        own judgment); read the new test block in full — confirmed it's
+        genuinely dynamic (derives expectations from the real repo's actual
+        state rather than hardcoding assumptions that could go stale) and
+        read-only against .pitway/."
+    attempts: 1
+    usage:
+      total_tokens: 61278
   - id: T009
     objective: "Roadmap-reconciliation review: confirm IMPLEMENTATION_PLAN.md's
       command surface (13 commands once T005/T006 land), milestone table, and
@@ -627,7 +654,7 @@ tasks:
       authoritative-checkpoint wording — accurately describe the repository's
       actual state as of M005's completion; correct any discovered drift in the
       plan through this task (AC009)."
-    status: waiting
+    status: ready
     depends_on:
       - T004
       - T005
