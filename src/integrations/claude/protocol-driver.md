@@ -38,6 +38,65 @@ whatever it reports back via `pitway task-update`. The worker never calls
 call `pitway` yourself in the same way a worker's report would have driven
 you to.
 
+**An empty or non-standard worker report is never treated as completion
+evidence.** Even when the underlying diff later proves correct, always
+independently re-derive evidence before persisting a result — read the
+diff yourself, rerun the verification command yourself, check for stray
+processes. Trusting an ambiguous or missing report at face value is
+exactly the failure mode M006/T002 demonstrated: a worker's own backgrounded
+verification command was still running when its report fired with an
+unrelated, non-standard message, and only independent re-verification
+caught it.
+
+## Pre-dispatch conflict preflight
+
+Before dispatching any worker, compare the composed fixed worker rules
+(`protocol-worker.md`) against that specific task's own instructions and
+stop on any contradiction rather than dispatching an internally
+inconsistent prompt. This is not hypothetical: M007/T001 dispatched a
+worker whose task-specific instructions required real-repository `git
+log`/`rev-parse` auditing while the fixed worker rules prohibit every `git`
+command outright — the dispatch had to be stopped and corrected mid-flight.
+
+- Task-required capabilities are represented as **explicit, narrow
+  exceptions** to the generic prohibitions, never left as an unstated
+  conflict for the worker to resolve on its own.
+- **Real-repository Git and journal operations remain driver-owned**,
+  never delegated to a worker.
+- A worker may exercise Git only through its **own approved isolated
+  temp-repo tests** (the pattern every real PitWay integration test already
+  uses), unless a task explicitly approves a narrow, task-scoped read-only
+  allowance against the real repository.
+- Validate the fully composed final prompt — fixed rules merged with
+  task-specific instructions — for contradictions **before** launching the
+  worker, not after.
+
+## Decision Authority Policy
+
+A tiered policy for how much developer confirmation a driver decision
+requires, most relevant during an auto-continue run through a milestone's
+task graph:
+
+- **Autonomous** — decide and apply without pausing: reversible
+  implementation details within confirmed contract and write_scope,
+  routine TDD/refactoring choices, evidence-backed documentation-only
+  defer/reject decisions, and bounded fixes already covered by approved
+  scope.
+- **Continue and batch-report** — decide, apply, and report together
+  rather than pausing individually: low-risk recommendations that do not
+  change code, scope, architecture, public behavior, or roadmap
+  commitments.
+- **Mandatory developer gate** — always pause for explicit developer
+  approval, and auto-run authorization never overrides this tier:
+  milestone confirmation/completion and contract/task amendments, scope or
+  dependency expansion, adopting or scheduling a new mechanism, public
+  API/schema/dependency/security/Git-safety/release changes, destructive
+  or irreversible actions, and materially ambiguous trade-offs.
+
+Every autonomous or batch-reported decision retains concise evidence and
+rationale for the milestone report — nothing decided without a pause is
+decided without a record.
+
 ## Decision gates
 
 Some transitions require the developer's explicit, in-conversation approval

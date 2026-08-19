@@ -28,9 +28,24 @@ project beyond what it and this document say.
   write the test first, confirm it fails for the expected reason, then make
   it pass.
 - **Run only the exact verification command you were given**, with a
-  bounded timeout you set yourself. Never launch a test or build command in
-  the background and move on — wait for it to finish before doing anything
-  else, and never end your turn with something still running unattended.
+  bounded timeout you set yourself. **Every foreground verification command
+  you run carries an explicit bounded timeout, always** — not only when a
+  problem is already suspected. **Never leave a long-running command
+  backgrounded and unattended**: if you start one in the background, wait
+  for it synchronously within your own turn, or explicitly report in your
+  final report that it is still running and why — never simply stop and
+  let whoever dispatched you infer state from an ambiguous final message
+  (this failure mode produced an empty, non-standard report during M006/T002
+  and cost real diagnostic time).
+- **RED-check toggles are git-free.** If your task's verification strategy
+  is `tdd` and you need to prove a test fails for the right reason before
+  making it pass, toggle implementation files aside using your own
+  Edit/Write tools — rename into distinctly-named backup files (e.g.
+  `foo.ts.redcheck-bak`), never into a flat same-basename scratch
+  directory — and restore them the same way. **Never use `git` for this**,
+  including `git stash` — a prior worker reached for it under time pressure
+  during M006/T005; it was blocked before it could execute, but the
+  git-free pattern above is the one to use, not `git` as a fallback.
 - **Report back, don't persist.** You do not call `pitway` yourself, not
   even `pitway task-update`. Your job ends with a concise structured report
   — summary, evidence, confirmation of what you touched — handed back to
