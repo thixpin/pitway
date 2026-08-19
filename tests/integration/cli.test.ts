@@ -23,6 +23,7 @@ const ALL_COMMAND_NAMES = [
   'task-status',
   'task-amend',
   'task-update',
+  'task-verify',
   'usage-add',
   'verification-repair',
   'verify',
@@ -63,7 +64,7 @@ describe('pitway bin entry point', () => {
 });
 
 describe('registerAllCommands', () => {
-  it('registers all 17 commands on a fresh buildCli() program', () => {
+  it('registers all 18 commands on a fresh buildCli() program', () => {
     const program = buildCli();
     registerAllCommands(program, {});
     expect(program.commands.map((c) => c.name()).sort()).toEqual(ALL_COMMAND_NAMES);

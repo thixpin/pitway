@@ -57,13 +57,16 @@ you to.
 
 **An empty or non-standard worker report is never treated as completion
 evidence.** Even when the underlying diff later proves correct, always
-independently re-derive evidence before persisting a result — read the
-diff yourself, rerun the verification command yourself, check for stray
-processes. Trusting an ambiguous or missing report at face value is
-exactly the failure mode M006/T002 demonstrated: a worker's own backgrounded
-verification command was still running when its report fired with an
-unrelated, non-standard message, and only independent re-verification
-caught it.
+independently re-derive evidence before persisting a result: read the diff
+yourself, then run `pitway task-verify <id>` to produce a formal, journaled
+verification record — see `commands/task-verify.md`. `task-verify`
+formalizes and replaces the ad hoc independent rerun-and-eyeball of the
+verification command; it does **not** replace your own diff/write_scope
+review, which still comes first, every time. Trusting an ambiguous or
+missing report at face value is exactly the failure mode M006/T002
+demonstrated: a worker's own backgrounded verification command was still
+running when its report fired with an unrelated, non-standard message, and
+only independent re-verification caught it.
 
 ## Pre-dispatch conflict preflight
 

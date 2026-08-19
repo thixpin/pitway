@@ -231,7 +231,7 @@ tasks:
       still applying the same validation; --result/--message alone still works
       exactly as before when no task_verify_evidence record exists for the task
       at all. Updates the three command-census arrays for task-verify (AC001)."
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -265,8 +265,23 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/task-verify.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "[truncated]  task, post-verify write_scope edit, post-verify retry,
+        unknown --evidence id) and the additive-only regression (no task-verify
+        record at all still completes via --result/--message unchanged). Command
+        census updated in cli.test.ts, build-bin.test.ts, npm-pack.test.ts (17
+        -> 18 commands)."
+      evidence: "npm test -- tests/integration/task-verify.test.ts
+        tests/integration/task-update.test.ts tests/integration/cli.test.ts
+        tests/integration/build-bin.test.ts tests/integration/npm-pack.test.ts
+        -> 5 files, 126/126 passed (independently rerun by the driver, not just
+        worker-reported). npx tsc --noEmit -> clean (independently rerun). Full
+        diff independently reviewed file-by-file; worktree fingerprint
+        independently recomputed and matched exactly: 94917cec...; changed files
+        confined exactly to write_scope."
+    attempts: 1
+    usage:
+      total_tokens: 131362
   - id: T004
     objective: "Roadmap-reconciliation review, mirroring M005/T009 through
       M009/T006: confirm IMPLEMENTATION_PLAN.md accurately reflects M010's
@@ -277,7 +292,7 @@ tasks:
       task), the Revised Roadmap's M010 entry reflecting actual delivery in
       place of its current placeholder text, and the Status line reflecting
       M010's actual delivery (AC002)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002

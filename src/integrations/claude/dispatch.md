@@ -46,10 +46,19 @@ unless the choice is materially ambiguous.
    fixed text in `protocol-worker.md`, and the bundle from step 3. Nothing
    else.
 5. Take a fresh git snapshot only *after* the worker completes — never
-   trust one taken before or during dispatch. See `coordination.md`.
-6. Persist what the worker reported: `pitway task-update <id> completed
+   trust one taken before or during dispatch. See `coordination.md`. Review
+   the diff and write_scope yourself against the worker's report before
+   doing anything else.
+6. While the task is still `in_progress`, run `pitway task-verify <id>` to
+   produce a formal, journaled verification record — see
+   `commands/task-verify.md`. This replaces an ad hoc independent
+   rerun-and-eyeball of the verification command; it does not replace the
+   diff review in step 5, which still happens first.
+7. Move the task to review: `pitway task-update <id> review`.
+8. Persist what the worker reported: `pitway task-update <id> completed
    --result <file> --message <file>` (or `blocked` / `failed`, as the
-   report warrants). You run this, not the worker.
+   report warrants). You run this, not the worker. No `--evidence` flag is
+   needed — the task-verify record from step 6 is picked up automatically.
 
 ## What "bounded" actually means
 

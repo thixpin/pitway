@@ -56,6 +56,7 @@ const ALL_COMMAND_NAMES = [
   'task-status',
   'task-amend',
   'task-update',
+  'task-verify',
   'usage-add',
   'verification-repair',
   'verify',

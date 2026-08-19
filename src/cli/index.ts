@@ -16,6 +16,7 @@ import { registerResumeCommand } from './commands/resume.js';
 import { registerTaskStatusCommand } from './commands/task-status.js';
 import { registerTaskAmendCommand } from './commands/task-amend.js';
 import { registerTaskUpdateCommand } from './commands/task-update.js';
+import { registerTaskVerifyCommand } from './commands/task-verify.js';
 import { registerUsageAddCommand } from './commands/usage-add.js';
 import { registerVerificationRepairCommand } from './commands/verification-repair.js';
 import { registerVerifyCommand } from './commands/verify.js';
@@ -54,6 +55,7 @@ export function registerAllCommands(program: Command, deps: CommandDeps = {}): v
   registerTaskStatusCommand(program, deps);
   registerTaskAmendCommand(program, deps);
   registerTaskUpdateCommand(program, deps);
+  registerTaskVerifyCommand(program, deps);
   registerUsageAddCommand(program, deps);
   registerVerificationRepairCommand(program, deps);
   registerVerifyCommand(program, deps);
