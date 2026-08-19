@@ -2,7 +2,7 @@
 schema_version: 1
 id: M008
 title: README, Packaging, and Release Readiness
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-19T14:37:51Z
 verification_approved_hash: sha256:07eb19bd66ff464c3b47437d39db93af3e402f47aed6a0adb7fa98f00181d143

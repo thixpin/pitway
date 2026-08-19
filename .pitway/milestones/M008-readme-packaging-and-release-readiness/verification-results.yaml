@@ -1,2 +1,162 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-19T15:08:07Z
+    evidence: Tests  21 passed (21) | Start at  22:08:05 | Duration  2.52s
+      (transform 15ms, setup 0ms, import 22ms, tests 2.40s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2911
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-19T15:08:11Z
+    evidence: Tests  20 passed (20) | Start at  22:08:07 | Duration  3.49s
+      (transform 16ms, setup 0ms, import 23ms, tests 3.38s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3791
+    termination_reason: exited
+  - check: CT008
+    status: fail
+    at: 2026-08-19T15:08:53Z
+    evidence: 121|     expect((await run(['init'], root)).error).toBeUndefined(); |
+      122| | ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+    recorded_by: command
+    duration_ms: 42227
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-19T15:12:27Z
+    evidence: Tests  586 passed (586) | Start at  22:11:45 | Duration  41.97s
+      (transform 1.70s, setup 0ms, import 5.73s, tests 205.82s, environment 4ms)
+    recorded_by: command
+    duration_ms: 42435
+    termination_reason: exited
+  - check: CT001
+    status: pass
+    at: 2026-08-19T15:22:39Z
+    evidence: Tests  21 passed (21) | Start at  22:22:37 | Duration  2.40s
+      (transform 15ms, setup 0ms, import 22ms, tests 2.29s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2824
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-19T15:22:43Z
+    evidence: Tests  20 passed (20) | Start at  22:22:40 | Duration  3.24s
+      (transform 16ms, setup 0ms, import 23ms, tests 3.13s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3579
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-19T15:23:26Z
+    evidence: Tests  586 passed (586) | Start at  22:22:43 | Duration  42.99s
+      (transform 1.78s, setup 0ms, import 6.80s, tests 213.67s, environment 4ms)
+    recorded_by: command
+    duration_ms: 43298
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-19T15:29:30Z
+    evidence: "tsc (existing devDependency) is the build tool, no new bundler added.
+      tsconfig.build.json extends tsconfig.json, overrides only
+      noEmit:false/outDir:dist/rootDir:src/include:[src]; tsconfig.json
+      (noEmit:true, typecheck/test config) untouched.
+      scripts/copy-claude-assets.mjs recursively copies src/integrations/claude/
+      -> dist/integrations/claude/ with no hardcoded file list (verified:
+      dist/integrations/claude/ populated, e.g. commands/, coordination.md,
+      dispatch.md present). package.json build script runs both steps; prepack
+      runs build. tests/integration/build-bin.test.ts individually spawns
+      dist/cli/index.js and confirms all 14 commands + 3 auto-run subcommands +
+      --version, plus a real init round trip in an isolated temp repo confirming
+      Claude assets installed by default."
+    recorded_by: developer
+  - check: CT004
+    status: pass
+    at: 2026-08-19T15:29:39Z
+    evidence: "All packaging fields are explicit, non-default decisions: name=pitway
+      (unscoped), version=0.1.0, license=MIT (LICENSE file added, copyright
+      thixpin 2026), author={name:thixpin,url:github.com/thixpin} with no email
+      added, repository/bugs/homepage set exactly to the contract's recommended
+      values, files=[dist,LICENSE,README.md] (no src/tests), no main/exports
+      keys present (bin-only CLI). package-lock.json updated alongside the
+      metadata changes. No npm publish or other registry-write command ran
+      anywhere in this task or its tests -- confirmed by direct inspection of
+      npm-pack.test.ts and the T002 task record; only npm pack
+      (--pack-destination to a temp dir), npm install <tarball> (dependency
+      resolution), and the earlier real-registry name-availability check
+      occurred. tests/integration/npm-pack.test.ts asserts the packed
+      package.json's author/repository/bugs/homepage verbatim and the tarball's
+      file allowlist directly via tar -tzf."
+    recorded_by: developer
+  - check: CT005
+    status: pass
+    at: 2026-08-19T15:29:49Z
+    evidence: README.md exists at repo root. Its Quickstart section uses the real
+      npx pitway init flow against the built/packed artifact AC001/AC002 produce
+      (not a placeholder). Commands section points to 'pitway --help' as the
+      source of truth and explicitly states this README does not duplicate it.
+      Every claim traces to clone-durable evidence (committed history, .pitway/
+      state, tests, docs/evidence/**); reports/*.md is not cited as support
+      anywhere in README.md. The 'Worker read-boundary enforcement' section
+      states the advisory-only/write_scope-is-the-real-boundary position
+      matching AC004/T003's decision verbatim, per the developer-specified
+      wording.
+    recorded_by: developer
+  - check: CT006
+    status: pass
+    at: 2026-08-19T15:29:49Z
+    evidence: "docs/evidence/M008/read-boundary-enforcement-decision.md correctly
+      treats worktree isolation alone as insufficient (shell/tool reads and
+      escape paths are named as the unaddressed gap). The decision resolves to
+      (b): advisory-only, permanent-until-revisited non-goal -- PitWay claims
+      and mechanically enforces only write_scope; context_files controls
+      task-context supply, not what a worker may independently read. This is
+      evidence-based, citing this repository's own real dispatch/worktree-free
+      architecture rather than speculation. No read-enforcement implementation
+      code exists anywhere in this milestone's diff (git diff 8389ba2..HEAD
+      contains no sandboxing/permission-allowlist code)."
+    recorded_by: developer
+  - check: CT007
+    status: pass
+    at: 2026-08-19T15:30:00Z
+    evidence: IMPLEMENTATION_PLAN.md confirms the command surface stayed at fourteen
+      through M008 (the compiled dist/-built binary is new delivery, not new
+      surface). The Bootstrap delivery table gains M007's own row; M008's own
+      row is correctly omitted, left for M009's reconciliation task, per the
+      same self-referential discipline already established at M005/T009,
+      M006/T006, M007/T013. AC002 (npm name re-verified, packaging decisions)
+      and AC004 (read-boundary resolved advisory-only) are reflected wherever
+      previously stated as open (the M008 roadmap entry, §8's read-enforcement
+      paragraph). The Status line is structurally fixed -- it now points to
+      pitway resume/.pitway/state.yaml as the authoritative live source and is
+      explicitly labeled a point-in-time narrative snapshot as of M008/T005's
+      own commit -- closing the staleness pattern repeated across
+      M005/M006/M007's own equivalent Status lines, verified by direct read of
+      the current file text.
+    recorded_by: developer
+  - check: CT001
+    status: pass
+    at: 2026-08-19T15:30:09Z
+    evidence: Tests  21 passed (21) | Start at  22:30:06 | Duration  2.83s
+      (transform 14ms, setup 0ms, import 21ms, tests 2.71s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3303
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-19T15:30:13Z
+    evidence: Tests  20 passed (20) | Start at  22:30:10 | Duration  3.47s
+      (transform 18ms, setup 0ms, import 27ms, tests 3.36s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3857
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-19T15:30:55Z
+    evidence: Tests  586 passed (586) | Start at  22:30:13 | Duration  41.80s
+      (transform 2.48s, setup 0ms, import 7.42s, tests 202.18s, environment 4ms)
+    recorded_by: command
+    duration_ms: 42139
+    termination_reason: exited
