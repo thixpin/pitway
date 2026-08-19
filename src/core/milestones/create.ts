@@ -150,3 +150,58 @@ export function createMilestone(root: string, inputs: MilestoneAddInputs): Miles
 
   return { id, title: contract.frontmatter.title, requirement: requirementId };
 }
+
+// AC001: draft-only, same-id, no-git-operation in-place correction. Reuses
+// the same validation as createMilestone; overwrites contract.md/tasks.yaml/
+// verification-results.yaml/usage.yaml under the SAME id -- no new id is
+// minted and state.milestones is unchanged. Requirement handling: an omitted
+// --requirement preserves the draft's currently materialized requirement id
+// (never cleared); a supplied one creates a fresh requirement file, leaving
+// the prior one on disk (requirements are append-only, never deleted).
+export function replaceMilestoneDraft(
+  root: string,
+  id: string,
+  inputs: MilestoneAddInputs,
+): MilestoneAddView {
+  const existing = loadContract(root, id);
+  if (existing.frontmatter.status !== 'draft') {
+    throw new MilestoneAddError(
+      `cannot replace ${id}: status is "${existing.frontmatter.status}", not draft; ` +
+        `use milestone-confirm --amend to change a confirmed milestone instead`,
+    );
+  }
+
+  const { contract, tasksInput } = validateDraftInputs(inputs.contractPath, inputs.tasksPath);
+
+  let requirementId: string | null = existing.frontmatter.requirement;
+  if (inputs.requirementPath !== undefined) {
+    const requirementText = readInput(inputs.requirementPath, 'requirement');
+    requirementId = nextRequirementId(root);
+    saveRequirement(root, requirementId, requirementText);
+  }
+
+  saveContract(root, id, {
+    frontmatter: {
+      ...contract.frontmatter,
+      id,
+      status: 'draft',
+      requirement: requirementId,
+      confirmed_at: null,
+      verification_approved_hash: null,
+    },
+    body: contract.body,
+  });
+  saveTasks(root, id, {
+    schema_version: tasksInput.schema_version,
+    tasks: tasksInput.tasks.map((t) => ({ ...t, status: 'planned', result: null, usage: null })),
+  });
+  saveVerificationResults(root, id, { schema_version: 1, results: [] });
+  saveUsage(root, id, { schema_version: 1, planning: null, qa: null });
+
+  const state = loadState(root);
+  if (state.active_milestone !== id) {
+    saveState(root, { ...state, active_milestone: id });
+  }
+
+  return { id, title: contract.frontmatter.title, requirement: requirementId };
+}

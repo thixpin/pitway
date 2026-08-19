@@ -46,6 +46,7 @@ const ALL_COMMAND_NAMES = [
   'auto-run',
   'init',
   'milestone-add',
+  'milestone-cancel',
   'milestone-complete',
   'milestone-confirm',
   'milestone-list',

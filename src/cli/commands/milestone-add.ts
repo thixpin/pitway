@@ -1,10 +1,20 @@
 import type { Command } from 'commander';
-import { createMilestone, type MilestoneAddView } from '../../core/milestones/create.js';
+import {
+  createMilestone,
+  replaceMilestoneDraft,
+  type MilestoneAddInputs,
+  type MilestoneAddView,
+} from '../../core/milestones/create.js';
 import { renderOutput } from '../output.js';
 
 function renderMilestoneAddHuman(view: MilestoneAddView): string {
   const requirement = view.requirement === null ? '' : ` (requirement ${view.requirement})`;
   return `🏁 Created milestone ${view.id} "${view.title}" as draft${requirement}.`;
+}
+
+function renderMilestoneReplaceHuman(view: MilestoneAddView): string {
+  const requirement = view.requirement === null ? '' : ` (requirement ${view.requirement})`;
+  return `🏁 Replaced draft milestone ${view.id} "${view.title}" in place${requirement}.`;
 }
 
 export interface CommandDeps {
@@ -20,14 +30,32 @@ export function registerMilestoneAddCommand(program: Command, deps: CommandDeps 
     .requiredOption('--contract <path>', 'path to the drafted contract markdown file')
     .requiredOption('--tasks <path>', 'path to the drafted tasks YAML file')
     .option('--requirement <path>', 'path to the originating requirement document')
+    .option(
+      '--replace <id>',
+      'in-place correct an existing draft milestone (same id) instead of creating a new one',
+    )
     .option('--json', 'output machine-readable JSON')
-    .action((options: { contract: string; tasks: string; requirement?: string; json?: boolean }) => {
-      const root = deps.root ?? process.cwd();
-      const view = createMilestone(root, {
-        contractPath: options.contract,
-        tasksPath: options.tasks,
-        requirementPath: options.requirement,
-      });
-      write(renderOutput(view, { json: options.json }, renderMilestoneAddHuman));
-    });
+    .action(
+      (options: {
+        contract: string;
+        tasks: string;
+        requirement?: string;
+        replace?: string;
+        json?: boolean;
+      }) => {
+        const root = deps.root ?? process.cwd();
+        const inputs: MilestoneAddInputs = {
+          contractPath: options.contract,
+          tasksPath: options.tasks,
+          requirementPath: options.requirement,
+        };
+        if (options.replace !== undefined) {
+          const view = replaceMilestoneDraft(root, options.replace, inputs);
+          write(renderOutput(view, { json: options.json }, renderMilestoneReplaceHuman));
+          return;
+        }
+        const view = createMilestone(root, inputs);
+        write(renderOutput(view, { json: options.json }, renderMilestoneAddHuman));
+      },
+    );
 }

@@ -10,4 +10,10 @@ comes next, at `milestone-confirm`, which requires the developer to have
 actually seen and approved the contract you just registered. See
 `../protocol-driver.md` for the full lifecycle and the decision-gate rule.
 
+`--replace <id>` corrects an existing draft in place under the same id
+(mistakes in a not-yet-confirmed draft) — it never mints a new id and never
+touches git. It only works while `<id>` is still `draft`; once confirmed,
+use `milestone-confirm --amend` instead. To abandon a draft permanently
+instead of correcting it, use `milestone-cancel`.
+
 Run `pitway milestone-add --help` for flags.

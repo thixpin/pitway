@@ -17,7 +17,7 @@ tasks:
       src/integrations/claude/commands/milestone-cancel.md (new). Updates the
       three hardcoded command-census arrays (tests/integration/cli.test.ts,
       build-bin.test.ts, npm-pack.test.ts) for milestone-cancel (AC001)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - AC001
@@ -59,7 +59,23 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-add.test.ts
         tests/integration/milestone-cancel.test.ts
-    result: null
+    result:
+      summary: "[truncated] ace correction, preserving the requirement id when
+        --requirement is omitted) and a new milestone-cancel <id> command
+        (draft-only, no-git-operation, preserve-and-retire, id never reused).
+        Both wired into the CLI and Claude command assets, and added to the
+        three command-census test arrays."
+      evidence: "npm test -- tests/integration/milestone-add.test.ts
+        tests/integration/milestone-cancel.test.ts -> 2 files passed, 16/16
+        tests passed. npx tsc --noEmit -> clean. Diff independently reviewed:
+        confined to write_scope (create.ts, cancel.ts new, milestone-add.ts,
+        milestone-cancel.ts new, cli/index.ts, milestone-add.md,
+        milestone-cancel.md new, and the 5 declared test files). TDD RED
+        independently confirmed via the worker's documented toggle: cancel path
+        failed with Cannot find module before restoring; --replace path's 4
+        tests failed against a stubbed throw before restoring the real
+        implementation."
+    attempts: 1
     usage: null
   - id: T002
     objective: "Implement verification-repair as a real two-phase,
@@ -100,7 +116,7 @@ tasks:
       subcommands), registered in src/cli/index.ts. Claude asset:
       src/integrations/claude/commands/verification-repair.md. Updates the three
       command-census arrays for verification-repair (AC002)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:

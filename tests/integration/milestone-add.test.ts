@@ -14,11 +14,24 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
-import { loadContract, loadState, loadTasks } from '../../src/state/store.js';
+import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
+import {
+  loadContract,
+  loadState,
+  loadTasks,
+  loadUsage,
+  loadVerificationResults,
+} from '../../src/state/store.js';
 
 function git(args: string[], cwd: string): void {
   execFileSync('git', args, { cwd, stdio: 'pipe' });
 }
+
+function gitOutput(args: string[], cwd: string): string {
+  return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
+}
+
+const commitCount = (cwd: string): number => Number(gitOutput(['rev-list', '--count', 'HEAD'], cwd).trim());
 
 let root: string;
 
@@ -49,6 +62,33 @@ Example.
 ## Change Log
 `;
 
+const REPLACEMENT_CONTRACT_FIXTURE = `---
+schema_version: 1
+id: M999
+title: Replaced milestone
+status: confirmed
+requirement: null
+confirmed_at: 2026-01-01T00:00:00Z
+verification_approved_hash: null
+acceptance_criteria:
+  - id: AC002
+    text: Replaced behavior holds.
+verification:
+  - id: CT002
+    criterion: AC002
+    type: command
+    command: npm run replaced
+---
+
+# Contract
+
+## Objective
+
+Replaced example.
+
+## Change Log
+`;
+
 const TASKS_FIXTURE = `schema_version: 1
 tasks:
   - id: T001
@@ -66,11 +106,29 @@ tasks:
     usage: null
 `;
 
+const REPLACEMENT_TASKS_FIXTURE = `schema_version: 1
+tasks:
+  - id: T002
+    objective: Do the replaced work.
+    status: in_progress
+    depends_on: []
+    acceptance_criteria:
+      - It still works
+    relevant_files:
+      - src/y.ts
+    verification:
+      strategy: tdd
+      detail: npm test
+    result: null
+    usage: null
+`;
+
 async function run(args: string[], cwd: string): Promise<{ lines: string[]; error?: Error }> {
   const program = buildCli();
   const lines: string[] = [];
   registerInitCommand(program, { root: cwd, write: (s) => lines.push(s) });
   registerMilestoneAddCommand(program, { root: cwd, write: (s) => lines.push(s) });
+  registerMilestoneConfirmCommand(program, { root: cwd, write: (s) => lines.push(s) });
   try {
     await program.parseAsync(['node', 'pitway', ...args]);
     return { lines };
@@ -94,9 +152,22 @@ function writeInputs(dir: string): { contract: string; tasks: string } {
   return { contract, tasks };
 }
 
+function writeReplacementInputs(dir: string): { contract: string; tasks: string } {
+  const contract = join(dir, 'replacement-contract.md');
+  const tasks = join(dir, 'replacement-tasks.yaml');
+  writeFileSync(contract, REPLACEMENT_CONTRACT_FIXTURE);
+  writeFileSync(tasks, REPLACEMENT_TASKS_FIXTURE);
+  return { contract, tasks };
+}
+
 beforeEach(async () => {
   root = mkdtempSync(join(tmpdir(), 'pitway-madd-'));
   git(['init', '-q'], root);
+  git(['config', 'user.email', 'test@example.com'], root);
+  git(['config', 'user.name', 'Test'], root);
+  writeFileSync(join(root, 'README.md'), 'seed\n');
+  git(['add', 'README.md'], root);
+  git(['commit', '-q', '-m', 'init'], root);
   await run(['init'], root);
 });
 
@@ -219,5 +290,115 @@ describe('pitway milestone-add', () => {
       'schema_version: 1\ntasks: []\n',
     );
     expect(loadTasks(root, 'M001')).toEqual({ schema_version: 1, tasks: [] });
+  });
+});
+
+describe('pitway milestone-add --replace (AC001)', () => {
+  it('refuses once the draft has been confirmed, pointing at milestone-confirm --amend', async () => {
+    const { contract, tasks } = writeInputs(root);
+    const added = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
+    expect(added.error).toBeUndefined();
+    rmSync(contract);
+    rmSync(tasks);
+    const confirmed = await run(['milestone-confirm', 'M001'], root);
+    expect(confirmed.error).toBeUndefined();
+
+    const repl = writeReplacementInputs(root);
+    const { error } = await run(
+      ['milestone-add', '--replace', 'M001', '--contract', repl.contract, '--tasks', repl.tasks],
+      root,
+    );
+    expect(error?.message).toMatch(/--amend/);
+    expect(loadContract(root, 'M001').frontmatter.title).toBe('Example milestone');
+  });
+
+  it('overwrites the draft in place under the same id, with no git operation, resetting tasks/results/usage', async () => {
+    const { contract, tasks } = writeInputs(root);
+    const added = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
+    expect(added.error).toBeUndefined();
+    const before = commitCount(root);
+
+    const repl = writeReplacementInputs(root);
+    const { error } = await run(
+      ['milestone-add', '--replace', 'M001', '--contract', repl.contract, '--tasks', repl.tasks],
+      root,
+    );
+    expect(error).toBeUndefined();
+    expect(commitCount(root)).toBe(before);
+
+    const state = loadState(root);
+    expect(state.milestones).toEqual(['M001']);
+    expect(state.active_milestone).toBe('M001');
+
+    const replaced = loadContract(root, 'M001');
+    expect(replaced.frontmatter.id).toBe('M001');
+    expect(replaced.frontmatter.title).toBe('Replaced milestone');
+    expect(replaced.frontmatter.status).toBe('draft');
+    expect(replaced.frontmatter.confirmed_at).toBeNull();
+    expect(replaced.frontmatter.verification_approved_hash).toBeNull();
+    expect(replaced.frontmatter.acceptance_criteria.map((c) => c.id)).toEqual(['AC002']);
+
+    const replacedTasks = loadTasks(root, 'M001');
+    expect(replacedTasks.tasks).toHaveLength(1);
+    expect(replacedTasks.tasks[0]!.id).toBe('T002');
+    expect(replacedTasks.tasks[0]!.status).toBe('planned');
+    expect(replacedTasks.tasks[0]!.result).toBeNull();
+
+    expect(loadVerificationResults(root, 'M001')).toEqual({ schema_version: 1, results: [] });
+    expect(loadUsage(root, 'M001')).toEqual({ schema_version: 1, planning: null, qa: null });
+  });
+
+  it('preserves the currently materialized requirement id when --requirement is omitted', async () => {
+    const { contract, tasks } = writeInputs(root);
+    const requirement = join(root, 'req.md');
+    writeFileSync(requirement, '# Requirement\n\nOriginal.\n');
+    const added = await run(
+      ['milestone-add', '--contract', contract, '--tasks', tasks, '--requirement', requirement],
+      root,
+    );
+    expect(added.error).toBeUndefined();
+    expect(loadContract(root, 'M001').frontmatter.requirement).toBe('R001');
+
+    const repl = writeReplacementInputs(root);
+    const { error } = await run(
+      ['milestone-add', '--replace', 'M001', '--contract', repl.contract, '--tasks', repl.tasks],
+      root,
+    );
+    expect(error).toBeUndefined();
+    expect(loadContract(root, 'M001').frontmatter.requirement).toBe('R001');
+    expect(readFileSync(join(root, '.pitway', 'requirements', 'R001.md'), 'utf8')).toContain('Original.');
+  });
+
+  it('creates a fresh requirement when --requirement is supplied, leaving the prior one on disk', async () => {
+    const { contract, tasks } = writeInputs(root);
+    const requirement = join(root, 'req.md');
+    writeFileSync(requirement, '# Requirement\n\nOriginal.\n');
+    const added = await run(
+      ['milestone-add', '--contract', contract, '--tasks', tasks, '--requirement', requirement],
+      root,
+    );
+    expect(added.error).toBeUndefined();
+
+    const repl = writeReplacementInputs(root);
+    const newRequirement = join(root, 'req2.md');
+    writeFileSync(newRequirement, '# Requirement\n\nUpdated.\n');
+    const { error } = await run(
+      [
+        'milestone-add',
+        '--replace',
+        'M001',
+        '--contract',
+        repl.contract,
+        '--tasks',
+        repl.tasks,
+        '--requirement',
+        newRequirement,
+      ],
+      root,
+    );
+    expect(error).toBeUndefined();
+    expect(loadContract(root, 'M001').frontmatter.requirement).toBe('R002');
+    expect(readFileSync(join(root, '.pitway', 'requirements', 'R001.md'), 'utf8')).toContain('Original.');
+    expect(readFileSync(join(root, '.pitway', 'requirements', 'R002.md'), 'utf8')).toContain('Updated.');
   });
 });

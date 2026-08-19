@@ -13,6 +13,7 @@ const ALL_COMMAND_NAMES = [
   'auto-run',
   'init',
   'milestone-add',
+  'milestone-cancel',
   'milestone-complete',
   'milestone-confirm',
   'milestone-list',
@@ -60,7 +61,7 @@ describe('pitway bin entry point', () => {
 });
 
 describe('registerAllCommands', () => {
-  it('registers all 14 commands on a fresh buildCli() program', () => {
+  it('registers all 15 commands on a fresh buildCli() program', () => {
     const program = buildCli();
     registerAllCommands(program, {});
     expect(program.commands.map((c) => c.name()).sort()).toEqual(ALL_COMMAND_NAMES);
