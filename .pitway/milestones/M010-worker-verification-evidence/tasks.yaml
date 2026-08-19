@@ -162,7 +162,7 @@ tasks:
       still refuses (never falls back to the older one); an explicit --evidence
       naming a stale record refuses the same way; an explicit --evidence naming
       a nonexistent id gets the distinct unknown-id message (AC001)."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -182,8 +182,23 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/task-update.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "[truncated] r-check diagnostic on any mismatch, never falling back to
+        search for an older matching record. When resolved, evidence
+        unconditionally overwrites result.evidence; --result's summary is always
+        used as given. No record at all falls through unchanged to the existing
+        --result/--message path."
+      evidence: "npm test -- tests/integration/task-update.test.ts -> 43/43 passed
+        (worker-reported, fingerprint independently recomputed and matched
+        exactly: cbe1ed4d..., files confined to write_scope; full diff
+        independently reviewed line-by-line for correctness, accepted without
+        rerun per the evidence protocol). npx tsc --noEmit -> clean. TDD
+        independently described: 9 new tests written first, evidence resolution
+        stubbed out, all 9 failed for the expected reasons while the 34
+        pre-existing tests still passed; restored to green."
+    attempts: 1
+    usage:
+      total_tokens: 107513
   - id: T003
     objective: "task-verify CLI/docs. src/cli/commands/task-verify.ts (new)
       registers the task-verify <task-id> [--typecheck <command>] command,
@@ -216,7 +231,7 @@ tasks:
       still applying the same validation; --result/--message alone still works
       exactly as before when no task_verify_evidence record exists for the task
       at all. Updates the three command-census arrays for task-verify (AC001)."
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:

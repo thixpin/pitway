@@ -25,18 +25,23 @@ export function registerTaskUpdateCommand(program: Command, deps: CommandDeps = 
     .option('--result <path>', 'path to a YAML/JSON file with the completion result {summary, evidence}')
     .option('--message <path>', 'path to a file containing the completion commit message')
     .option('--usage <json>', 'measured token usage JSON to accumulate onto the task')
+    .option(
+      '--evidence <id>',
+      'use a specific task-verify evidence record by id, instead of implicit selection',
+    )
     .option('--json', 'output machine-readable JSON')
     .action(
       (
         id: string,
         status: string,
-        options: { result?: string; message?: string; usage?: string; json?: boolean },
+        options: { result?: string; message?: string; usage?: string; evidence?: string; json?: boolean },
       ) => {
         const root = deps.root ?? process.cwd();
         const view = updateTask(root, id, status, {
           resultPath: options.result,
           messagePath: options.message,
           usage: options.usage,
+          evidenceId: options.evidence,
         });
         write(renderOutput(view, { json: options.json }, renderTaskUpdateHuman));
       },

@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -22,7 +23,12 @@ import { loadTasks, saveTasks } from '../../src/state/store.js';
 import type { Task } from '../../src/state/schemas.js';
 import { recordUsage } from '../../src/core/metrics/aggregate.js';
 import { derivePending } from '../../src/core/journal/operations.js';
-import { appendJournalEntry, readJournal } from '../../src/state/journal.js';
+import {
+  appendJournalEntry,
+  appendTaskVerifyEvidenceRecord,
+  readJournal,
+  type JournalTaskVerifyFingerprint,
+} from '../../src/state/journal.js';
 
 function git(args: string[], cwd: string): string {
   return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
@@ -743,5 +749,137 @@ describe('pitway task-update start tolerates pending journal entries materialize
     const { error } = await update(['T001', 'in_progress']);
     expect(error?.message).toMatch(/M002.*usage\.yaml/);
     expect(task('T001').status).toBe('ready');
+  });
+});
+
+// T002/AC001: task-update's evidence integration. Implicit-by-default,
+// selection-then-validate: the newest task_verify_evidence record for this
+// milestone+task is selected (never filtered by attempt/command/
+// write_scope/fingerprint), then validated once; any mismatch refuses
+// completion outright, naming exactly what differs, never searching backward
+// to an older record that happens to match. No record at all falls through
+// to the existing --result/--message path, unchanged.
+describe('pitway task-update integrates task-verify evidence (T002/AC001)', () => {
+  beforeEach(async () => {
+    await inReview();
+  });
+
+  function currentFingerprint(): JournalTaskVerifyFingerprint {
+    const hash = `sha256:${createHash('sha256')
+      .update(readFileSync(join(root, 'src', 'a.ts')))
+      .digest('hex')}`;
+    return { entries: [{ path: 'src/a.ts', state: 'present', hash }] };
+  }
+
+  // Writes src/a.ts's known fixture content, then records a task-verify
+  // evidence record whose fingerprint matches it exactly (unless overridden)
+  // -- a "real" evidence record in the same shape src/core/tasks/verify.ts's
+  // runTaskVerify would have produced.
+  function appendEvidence(overrides: {
+    id?: string;
+    taskId?: string;
+    attempts?: number;
+    command?: string;
+    exitCode?: number | null;
+    terminationReason?: 'exited' | 'timeout' | 'signal' | 'spawn_error';
+    fingerprint?: JournalTaskVerifyFingerprint;
+  } = {}): string {
+    touchRelevantFile();
+    const id = overrides.id ?? `tve-${Math.random().toString(36).slice(2, 10)}`;
+    appendTaskVerifyEvidenceRecord(root, {
+      id,
+      milestone: 'M001',
+      taskId: overrides.taskId ?? 'T001',
+      attempts: overrides.attempts ?? 1,
+      command: overrides.command ?? 'npm test',
+      exitCode: overrides.exitCode ?? 0,
+      evidence: 'captured evidence from a real verify run',
+      durationMs: 500,
+      terminationReason: overrides.terminationReason ?? 'exited',
+      fingerprint: overrides.fingerprint ?? currentFingerprint(),
+      at: new Date().toISOString(),
+    });
+    return id;
+  }
+
+  it('falls through unchanged when the task only ever went through the review-state rewrite, never task-verify', async () => {
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(task('T001').result).toEqual({
+      summary: 'Implemented the thing.',
+      evidence: 'npm test passed',
+    });
+  });
+
+  it('applies matching evidence, unconditionally replacing result.evidence with the captured evidence', async () => {
+    appendEvidence();
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(task('T001').result).toEqual({
+      summary: 'Implemented the thing.',
+      evidence: 'captured evidence from a real verify run',
+    });
+  });
+
+  it('refuses when the fingerprint no longer matches after the source file changes', async () => {
+    appendEvidence();
+    writeFileSync(join(root, 'src', 'a.ts'), 'export const a = 2; // changed after verify\n');
+    const { error } = await update(['T001', 'completed', ...completionFlags()]);
+    expect(error?.message).toMatch(/fingerprint mismatch/);
+    expect(error?.message).toMatch(/src\/a\.ts/);
+    expect(task('T001').status).toBe('review');
+    expect(task('T001').result).toBeNull();
+  });
+
+  it('refuses citing the newer diverged record, never falling back to an older matching one', async () => {
+    appendEvidence();
+    appendEvidence({ command: 'npm run lint' });
+    const { error } = await completeT001();
+    expect(error?.message).toMatch(/command mismatch/);
+    expect(task('T001').status).toBe('review');
+  });
+
+  it('an explicit --evidence naming a stale record refuses the same way', async () => {
+    const staleId = appendEvidence({ attempts: 99 });
+    const { error } = await completeT001(['--evidence', staleId]);
+    expect(error?.message).toMatch(/attempt mismatch/);
+    expect(task('T001').status).toBe('review');
+  });
+
+  it('an explicit --evidence naming a nonexistent id gets a distinct unknown-id refusal', async () => {
+    const { error } = await completeT001(['--evidence', 'tve-does-not-exist']);
+    expect(error?.message).toMatch(/unknown evidence id/i);
+    expect(task('T001').status).toBe('review');
+  });
+
+  it('an explicit --evidence applies the identical validation and succeeds on a matching record', async () => {
+    const id = appendEvidence();
+    const { error } = await completeT001(['--evidence', id]);
+    expect(error).toBeUndefined();
+    expect(task('T001').result).toEqual({
+      summary: 'Implemented the thing.',
+      evidence: 'captured evidence from a real verify run',
+    });
+  });
+
+  it('refuses a non-exited/failed evidence run', async () => {
+    appendEvidence({ exitCode: 1 });
+    const { error } = await completeT001();
+    expect(error?.message).toMatch(/failing run/i);
+    expect(task('T001').status).toBe('review');
+  });
+
+  it('refuses when write_scope/relevant_files no longer matches what the evidence covers', async () => {
+    appendEvidence({ fingerprint: { entries: [{ path: 'src/other.ts', state: 'missing', hash: 'MISSING' }] } });
+    const { error } = await completeT001();
+    expect(error?.message).toMatch(/write_scope mismatch/);
+    expect(task('T001').status).toBe('review');
+  });
+
+  it('refuses an explicit --evidence id recorded for a different task entirely', async () => {
+    const id = appendEvidence({ taskId: 'T002' });
+    const { error } = await completeT001(['--evidence', id]);
+    expect(error?.message).toMatch(/task mismatch/);
+    expect(task('T001').status).toBe('review');
   });
 });

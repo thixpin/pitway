@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import { relative, resolve, sep } from 'node:path';
 import { parse } from 'yaml';
 import { z } from 'zod';
 import { commitOrResume } from '../../git/commit-or-resume.js';
@@ -7,7 +9,12 @@ import { checkWorkingTreeClean, classifyDirtyPaths } from '../../git/safety.js';
 import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
 import { trimTail } from '../verification/text-trim.js';
 import { formatIssues } from '../../state/contract-file.js';
-import { reconcilePending } from '../../state/journal.js';
+import {
+  readJournal,
+  reconcilePending,
+  type JournalTaskVerifyEvidence,
+  type JournalTaskVerifyFingerprintEntry,
+} from '../../state/journal.js';
 import {
   taskStatusSchema,
   taskUsageSchema,
@@ -19,6 +26,7 @@ import {
 import { loadState, loadTasks, resolveMilestoneDirName, saveTasks } from '../../state/store.js';
 import { resolveReadyTasks } from './dependencies.js';
 import { transitionTask } from './state-machine.js';
+import { MISSING_HASH_MARKER } from './verify.js';
 
 export class TaskUpdateError extends Error {}
 
@@ -27,6 +35,10 @@ export interface TaskUpdateInputs {
   messagePath?: string;
   // Measured token usage as a JSON string: {input_tokens?, output_tokens?, total_tokens}.
   usage?: string;
+  // Explicit task-verify evidence record id (T002/AC001). Absent means
+  // implicit selection (the newest matching record for this milestone+task)
+  // still runs -- absence is not "skip evidence entirely".
+  evidenceId?: string;
 }
 
 export interface TaskUpdateView {
@@ -146,6 +158,128 @@ function assertDirtySubset(root: string, expectedPaths: string[]): void {
       `cannot safely proceed: unrelated dirty changes present: ${unexpected.join(', ')}`,
     );
   }
+}
+
+// Mirrors src/core/tasks/verify.ts's own normalizeRepoRelativePath (itself a
+// local copy of src/core/verification/repair.ts's convention) -- written
+// locally rather than imported, matching this codebase's established
+// per-task duplication of small helpers rather than a cross-task dependency
+// on a sibling module for a five-line function.
+function normalizeRepoRelativePath(root: string, inputPath: string): string {
+  const resolvedRoot = resolve(root);
+  const resolvedPath = resolve(root, inputPath);
+  if (resolvedPath !== resolvedRoot && !resolvedPath.startsWith(resolvedRoot + sep)) {
+    throw new TaskUpdateError(`declared path resolves outside the repository: ${inputPath}`);
+  }
+  return relative(resolvedRoot, resolvedPath).split(sep).join('/');
+}
+
+// Mirrors verify.ts's buildFingerprint exactly (same declared-path sort,
+// same present/missing marker logic, same MISSING_HASH_MARKER import) so a
+// freshly recomputed fingerprint is directly comparable, entry-for-entry,
+// against a record's persisted one.
+function buildFingerprint(root: string, declaredPaths: string[]): JournalTaskVerifyFingerprintEntry[] {
+  return [...declaredPaths].sort().map((relPath) => {
+    const abs = resolve(root, relPath);
+    if (!existsSync(abs)) {
+      return { path: relPath, state: 'missing', hash: MISSING_HASH_MARKER };
+    }
+    const content = readFileSync(abs);
+    return {
+      path: relPath,
+      state: 'present',
+      hash: `sha256:${createHash('sha256').update(content).digest('hex')}`,
+    };
+  });
+}
+
+// Selection-then-validate (T002/AC001): validates a single already-selected
+// candidate record, naming exactly what differs on any mismatch -- never
+// falling back to search for an older record that happens to match.
+function validateTaskVerifyEvidence(root: string, task: Task, record: JournalTaskVerifyEvidence): void {
+  if (record.taskId !== task.id) {
+    throw new TaskUpdateError(
+      `evidence record ${record.id} is stale: task mismatch (recorded for ${record.taskId}, current task ${task.id})`,
+    );
+  }
+  const typecheckFailed = record.typecheck !== undefined && record.typecheck.exitCode !== 0;
+  if (record.terminationReason !== 'exited' || record.exitCode !== 0 || typecheckFailed) {
+    throw new TaskUpdateError(
+      `evidence record ${record.id} represents a failing run (terminationReason=${record.terminationReason}, ` +
+        `exitCode=${record.exitCode}${typecheckFailed ? `, typecheck.exitCode=${record.typecheck?.exitCode}` : ''})`,
+    );
+  }
+  const currentAttempts = task.attempts ?? 0;
+  if (record.attempts !== currentAttempts) {
+    throw new TaskUpdateError(
+      `evidence record ${record.id} is stale: attempt mismatch (recorded ${record.attempts}, current ${currentAttempts})`,
+    );
+  }
+  if (record.command !== task.verification.detail) {
+    throw new TaskUpdateError(
+      `evidence record ${record.id} is stale: command mismatch (recorded "${record.command}", ` +
+        `current "${task.verification.detail}")`,
+    );
+  }
+  const declared = new Set(
+    (task.write_scope ?? task.relevant_files ?? []).map((p) => normalizeRepoRelativePath(root, p)),
+  );
+  const recordPaths = new Set(record.fingerprint.entries.map((e) => e.path));
+  const declaredList = [...declared].sort();
+  const recordList = [...recordPaths].sort();
+  if (declared.size !== recordPaths.size || declaredList.some((p, i) => p !== recordList[i])) {
+    throw new TaskUpdateError(
+      `evidence record ${record.id} is stale: write_scope mismatch (declared ${declaredList.join(', ')}, ` +
+        `evidence covers ${recordList.join(', ')})`,
+    );
+  }
+  const fresh = buildFingerprint(root, declaredList);
+  const freshByPath = new Map(fresh.map((e) => [e.path, e]));
+  for (const entry of record.fingerprint.entries) {
+    const current = freshByPath.get(entry.path);
+    if (current === undefined || current.hash !== entry.hash || current.state !== entry.state) {
+      throw new TaskUpdateError(
+        `evidence record ${record.id} is stale: fingerprint mismatch for ${entry.path} ` +
+          `(recorded ${entry.state}/${entry.hash}, current ${current?.state ?? 'absent'}/${current?.hash ?? 'absent'})`,
+      );
+    }
+  }
+}
+
+// Implicit: newest record for this milestone+task, by append order --
+// selection never filters by attempt/command/write_scope/fingerprint, only
+// milestone+task identity. Explicit (--evidence <id>): the id alone is the
+// lookup key, never a milestone/task filter -- an unknown id is its own
+// distinct refusal, separate from a found-but-diverged record's mismatch
+// refusal. No record at all (implicit, nothing matches; explicit, never
+// supplied) falls through to the existing --result/--message path unchanged.
+function resolveTaskVerifyEvidence(
+  root: string,
+  milestoneId: string,
+  task: Task,
+  evidenceId: string | undefined,
+): JournalTaskVerifyEvidence | undefined {
+  const records = readJournal(root);
+  const isEvidence = (r: (typeof records)[number]): r is JournalTaskVerifyEvidence =>
+    r.kind === 'task_verify_evidence';
+
+  if (evidenceId !== undefined) {
+    const matches = records.filter((r) => isEvidence(r) && r.id === evidenceId) as JournalTaskVerifyEvidence[];
+    const record = matches.length > 0 ? matches[matches.length - 1] : undefined;
+    if (record === undefined) {
+      throw new TaskUpdateError(`unknown evidence id: ${evidenceId}`);
+    }
+    validateTaskVerifyEvidence(root, task, record);
+    return record;
+  }
+
+  const matches = records.filter(
+    (r) => isEvidence(r) && r.milestone === milestoneId && r.taskId === task.id,
+  ) as JournalTaskVerifyEvidence[];
+  const record = matches.length > 0 ? matches[matches.length - 1] : undefined;
+  if (record === undefined) return undefined;
+  validateTaskVerifyEvidence(root, task, record);
+  return record;
 }
 
 function persistTask(root: string, milestoneId: string, tasksFile: TasksFile, updated: Task): void {
@@ -273,10 +407,18 @@ function completeTask(
   // AC015: any violation refuses the entire operation before tasks.yaml is written.
   assertDirtySubset(root, expectedPaths);
 
+  // T002/AC001: when a valid task-verify evidence record is resolved (implicit
+  // or explicit --evidence), its captured evidence unconditionally replaces
+  // whatever evidence text --result's file carried -- a plain precedence
+  // rule, never a conflict check. --result's summary is always used as given.
+  const evidenceRecord = resolveTaskVerifyEvidence(root, milestoneId, task, inputs.evidenceId);
+  const finalResult: TaskResult =
+    evidenceRecord === undefined ? result : { summary: result.summary, evidence: evidenceRecord.evidence };
+
   const completed: Task = {
     ...task,
     status: 'completed',
-    result,
+    result: finalResult,
     usage: accumulateUsage(task.usage, usageDelta),
   };
   // AC010: promote any waiting dependent whose dependencies are now all
@@ -288,7 +430,7 @@ function completeTask(
   saveTasks(root, milestoneId, { schema_version: tasksFile.schema_version, tasks: resolvedTasks });
   const committed = commitOrResume(root, {
     expectedPaths,
-    findExistingCommit: () => findCompletionCommit(root, milestoneId, task.id, result),
+    findExistingCommit: () => findCompletionCommit(root, milestoneId, task.id, finalResult),
     localStateAdvanced: true,
     message: composeMessage(message, trailers),
   });
