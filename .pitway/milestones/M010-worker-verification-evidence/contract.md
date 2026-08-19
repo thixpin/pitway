@@ -2,7 +2,7 @@
 schema_version: 1
 id: M010
 title: Worker Verification Evidence
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-19T19:25:00Z
 verification_approved_hash: sha256:12dc04cf652e98c36c47e0bad99a35f8db34b823a953fd3210f049ee386ca8c1

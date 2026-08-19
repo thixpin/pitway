@@ -1,2 +1,63 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-19T20:05:29Z
+    evidence: Tests  70 passed (70) | Start at  03:04:56 | Duration  32.63s
+      (transform 510ms, setup 0ms, import 783ms, tests 44.99s, environment 0ms)
+    recorded_by: command
+    duration_ms: 33079
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-19T20:06:24Z
+    evidence: Tests  743 passed (743) | Start at  03:05:33 | Duration  50.21s
+      (transform 2.02s, setup 0ms, import 6.68s, tests 295.17s, environment 3ms)
+    recorded_by: command
+    duration_ms: 50594
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-19T20:07:13Z
+    evidence: "Independently confirmed every clause against the delivered code and
+      tests: manual/review strategy refusal (verify.ts:refuses, tested),
+      executeCommand reuse (import confirmed), fingerprint scoped to normalized
+      write_scope/relevant_files only (buildFingerprint), live
+      in_progress->review->completed test proving review's tasks.yaml rewrite
+      never invalidates evidence (task-verify.test.ts primary case),
+      missing-marker for deleted paths + both-declared and each one-sided rename
+      case with precise diagnostics
+      (tests/unit/task-verify.test.ts:184,201,223), git-ignored refusal via real
+      git check-ignore (line 244 test), order-independent fingerprinting (line
+      259 test), dirty-path allowance mirrors completeTask's expectedPaths
+      exactly (verify.ts:202) with tests for tasks.yaml-dirty-from-in_progress,
+      an allowed journal-backed path, a refused unrelated .pitway/ edit, and a
+      refused unrelated source/untracked file (lines 286,300,319,332),
+      fingerprint itself never includes workflow-owned paths (buildFingerprint
+      only covers declaredPaths), plain string verification-command identity (no
+      hash field in schema), implicit newest-by-append-order selection with
+      4-way validation and precise mismatch refusal, no backward search,
+      fall-through only when absent (task-update.ts:resolveTaskVerifyEvidence +
+      9 tests in task-update.test.ts), explicit --evidence with distinct
+      unknown-id vs diverged-id refusals (tested), --result/--message unchanged
+      and evidence unconditionally authoritative (tested), zero usage-attachment
+      code anywhere (grep confirmed), evidence capped via existing truncation
+      path (unchanged from pre-M010), protocol-driver.md/dispatch.md updated
+      describing task-verify replacing the ad hoc rerun while preserving the
+      diff review, and the three-way terminology documented in task-verify.md."
+    recorded_by: developer
+  - check: CT003
+    status: pass
+    at: 2026-08-19T20:07:19Z
+    evidence: "Independently reviewed IMPLEMENTATION_PLAN.md diff (13 insertions, 10
+      deletions): Bootstrap delivery table gains M009's row, M010's own row
+      correctly omitted; S7 command surface/table updated for task-verify and
+      task-update's --evidence flag (17->18 commands); S9 Claude-asset count
+      updated 23->24 with task-verify.md added to the installed-assets list and
+      a new M010-additions bullet; Revised Roadmap's M010 entry replaces its
+      not-yet-drafted placeholder with actual-delivery prose; Status line and
+      top-of-file revision history both updated to reflect M010's completion.
+      grep confirmed no stale
+      seventeen/23-files/as-of-M009/M010-onward/Not-yet-drafted references
+      remain."
+    recorded_by: developer
