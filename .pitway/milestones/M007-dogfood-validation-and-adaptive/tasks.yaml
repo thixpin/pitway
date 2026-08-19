@@ -255,7 +255,7 @@ tasks:
       milestone that references the original milestone/task id, never reopening
       completed state or rewriting a completion commit. Document the convention
       at docs/evidence/M007/ completed-task-revision-path.md (AC008)."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -279,7 +279,16 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/completed-task-revision-path.test.ts
-    result: null
+    result:
+      summary: "[truncated] ete A, THEN milestone B -> confirm -> corrective task
+        referencing A -> complete. A's commit/task remain unchanged and a real
+        ancestor of final HEAD. Found and fixed a real bug in the test's own
+        fixture (milestone ids are auto-assigned sequentially by milestone-add,
+        not developer-chosen)."
+      evidence: tests/integration/completed-task-revision-path.test.ts 1/1 pass,
+        typecheck clean. docs/evidence/M007/completed-task-revision-path.md
+        documents the convention matching what the test proves.
+    attempts: 1
     usage: null
   - id: T008
     objective: Evaluate explicit, task-specific Claude Code skills adapted from
