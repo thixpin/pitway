@@ -1,0 +1,189 @@
+schema_version: 1
+tasks:
+  - id: T001
+    objective: "Build a real, npm-installable, real-subprocess-invokable pitway
+      binary using tsc (the existing devDependency): a separate
+      tsconfig.build.json (extending the existing noEmit tsconfig.json,
+      overriding noEmit:false and outDir:dist) compiles src/ to dist/; a
+      cross-platform Node script (scripts/copy-claude-assets.mjs) copies every
+      file under src/integrations/claude/ to dist/integrations/claude/, since
+      tsc does not copy non-.ts files; package.json gains build (tsc emit +
+      asset copy) and prepack (runs build) scripts, and bin points at
+      dist/cli/index.js. Proven by a real subprocess spawn of the built artifact
+      confirming all 14 commands individually registered/reachable plus a real
+      init round trip confirming default Claude-asset installation. Closes the
+      M004/T007 finding (AC001)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - tsc is the build tool; no new bundler dependency is added
+      - tsconfig.build.json is separate from and does not modify the existing
+        noEmit:true tsconfig.json
+      - scripts/copy-claude-assets.mjs is cross-platform (no shell cp -r),
+        discovers files recursively at run time rather than hard-coding the
+        current 20-file count or an enumerated list, and places assets at
+        exactly dist/integrations/claude/
+      - package.json's build script runs both the tsc emit and the asset copy;
+        prepack runs build
+      - package.json's bin field points at dist/cli/index.js
+      - A real subprocess spawn of the built dist/ artifact (never npx tsx,
+        never node --experimental-* flags) individually confirms all 14 commands
+        are registered and reachable, not inferred from --help alone
+      - The same real-subprocess test proves a real init round trip in a
+        throwaway temp repo installs the Claude assets by default
+    write_scope:
+      - package.json
+      - tsconfig.build.json
+      - scripts/copy-claude-assets.mjs
+      - tests/integration/build-bin.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/build-bin.test.ts
+    result: null
+    usage: null
+  - id: T002
+    objective: "Complete npm packaging metadata as explicit decisions
+      (name/version/files/main-exports/license/author/repository/bugs/ homepage,
+      recommended public-identity values applied unless the developer chooses
+      otherwise, no email without explicit approval), add a real LICENSE file,
+      update package-lock.json, and prove all of it with a real automated
+      packaging check: clean-state build, npm pack, tarball allowlist
+      inspection, install into a fresh temp project, invoke that project's real
+      installed pitway binary confirming --help, all 14 commands, representative
+      JSON/exit-code behavior, default init with Claude assets, and the exact
+      approved metadata in the packed package.json. No npm publish runs anywhere
+      in this task (AC002)."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - name/version/files/main-exports/license/author/repository/bugs/ homepage
+        are each a stated, justified decision, not a silent default
+      - The recommended author/repository/bugs/homepage metadata is applied
+        verbatim unless the developer explicitly chooses different wording
+        during execution; no email is added without explicit developer approval
+      - The npm registry name-availability check is freshly re-verified at
+        execution time; if the name is claimed or ambiguous, this task stops for
+        an explicit developer decision rather than auto-renaming
+      - A real LICENSE file exists at the repository root matching
+        package.json's license field; package-lock.json is updated consistently
+        with any name/version change
+      - tests/integration/npm-pack.test.ts builds from a clean state (no
+        pre-existing dist/), runs npm pack with --pack-destination pointed at a
+        throwaway temp directory (never the repository root or any tracked path,
+        so the repository's own working tree is never touched), inspects the
+        tarball's actual file list, installs that tarball into a fresh temp
+        project, and invokes the installed project's real binary confirming
+        --help, all 14 commands, representative JSON/exit-code behavior, default
+        init with Claude assets, and the exact approved metadata fields in the
+        packed package.json
+      - The test creates and cleans up every tarball and temp project directory
+        it uses, leaving the repository working tree unchanged before and after
+        the run
+      - No npm publish or other registry-write command runs anywhere in this
+        task or its tests; only read-only registry access for the
+        name-availability check and fresh-install dependency resolution is
+        permitted, and no test claims to run fully offline
+    write_scope:
+      - package.json
+      - package-lock.json
+      - LICENSE
+      - tests/integration/npm-pack.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/npm-pack.test.ts
+    result: null
+    usage: null
+  - id: T003
+    objective: "Resolve the worker read-boundary enforcement question M007 left
+      undecided and assigned to M008, held to a real technical bar: worktree
+      isolation alone is not enforcement (it doesn't stop a worker's own
+      shell/tool reads or escape paths). A feasible candidate must name a real
+      permission/sandbox mechanism addressing both; absent that, the honest
+      decision is advisory-only. Either
+      feasible-and-deferred-to-a-later-milestone or an explicit permanent
+      non-goal, evidence-based, no implementation either way (AC004)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - The decision explicitly treats worktree isolation as insufficient on its
+        own for a feasible claim
+      - If feasible-and-deferred, a real mechanism addressing both shell/tool
+        reads and escape paths is named, with rough cost/risk
+      - If no such mechanism can be justified, the decision is an explicit,
+        evidence-based non-goal, not a weak feasible claim
+      - The decision cites this repository's own real dispatch history as
+        evidence, not speculation
+      - No read-enforcement implementation code exists anywhere in this task's
+        diff, regardless of the decision
+    write_scope:
+      - docs/evidence/M008/read-boundary-enforcement-decision.md
+    verification:
+      strategy: manual
+      detail: developer/driver review of the recorded decision and its evidence
+    result: null
+    usage: null
+  - id: T004
+    objective: "Write a real, honest README.md: what PitWay is, a quickstart using
+      the actual packed-and-installed bin T001/T002 produce and prove (never a
+      placeholder), an accurate workflow summary, a pointer to --help rather
+      than a duplicated command reference, and a read-boundary-enforcement claim
+      matching T003's decision exactly. Every claim bounded only by
+      clone-durable evidence (committed Git history, .pitway/ state, tests,
+      docs/evidence/**) -- never reports/ *.md, which may inform drafting but
+      supports no public claim (AC003)."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+      - T003
+    acceptance_criteria:
+      - README.md exists at the repository root
+      - The quickstart genuinely works against the packed-and-installed artifact
+        T002's automated check proves, not a placeholder command
+      - The command surface is referenced via --help, never duplicated inline
+      - The read-boundary-enforcement claim matches T003's decision exactly
+      - Every claim traces only to clone-durable evidence; no claim cites
+        reports/*.md as its support
+    write_scope:
+      - README.md
+    verification:
+      strategy: manual
+      detail: developer/driver review of the README against T001/T002/T003's actual
+        delivery
+    result: null
+    usage: null
+  - id: T005
+    objective: "Roadmap-reconciliation review (mirroring M005/T009, M006/T006,
+      M007/T013, including their identical self-referential timing discipline):
+      confirm IMPLEMENTATION_PLAN.md accurately reflects M008's actual delivery
+      -- command surface, Bootstrap delivery table gaining M007's row (M008's
+      own row correctly omitted, left for a future M009 task), the Status line
+      structurally fixed (points to live pitway resume/.pitway/ state, or is
+      explicitly snapshot-labeled) rather than merely re-stated with facts that
+      will go stale the same way a fourth time, and AC002/AC004's decisions
+      reflected wherever the document currently states them as open (AC005)."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+    acceptance_criteria:
+      - IMPLEMENTATION_PLAN.md's command surface and Bootstrap delivery table
+        are checked against M008's actual delivery
+      - M007's row is added to the Bootstrap delivery table; M008's own row is
+        correctly omitted, not added by this task about itself
+      - The Status line is structurally fixed (points to live state or is
+        explicitly labeled a task-time snapshot), not merely re-stated with new
+        facts that will go stale the same way again
+      - AC002's and AC004's decisions are reflected wherever
+        IMPLEMENTATION_PLAN.md currently states them as open
+      - Any other discovered drift is corrected in this task, not left stale
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+    verification:
+      strategy: manual
+      detail: developer/driver review per CT-review instruction
+    result: null
+    usage: null
