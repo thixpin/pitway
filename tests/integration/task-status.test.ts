@@ -21,6 +21,24 @@ const frontmatter: ContractFrontmatter = {
   verification: [{ id: 'CT001', criterion: 'AC001', type: 'command', command: 'npm test' }],
 };
 
+// AC011/T010: a second, multi-AC contract fixture used only by the
+// mapped_ac_ids filtering tests below -- kept separate from `frontmatter`
+// so the existing unfiltered-bundle test above stays byte-for-byte as it
+// was before this task.
+const multiAcFrontmatter: ContractFrontmatter = {
+  ...frontmatter,
+  acceptance_criteria: [
+    { id: 'AC001', text: 'First criterion text' },
+    { id: 'AC002', text: 'Second criterion text' },
+    { id: 'AC003', text: 'Third criterion text' },
+  ],
+  verification: [
+    { id: 'CT001', criterion: 'AC001', type: 'command', command: 'npm test' },
+    { id: 'CT002', criterion: 'AC002', type: 'command', command: 'npm test' },
+    { id: 'CT003', criterion: 'AC003', type: 'command', command: 'npm test' },
+  ],
+};
+
 function task(overrides: Partial<Task> & Pick<Task, 'id' | 'status'>): Task {
   return {
     objective: 'x',
@@ -116,5 +134,63 @@ describe('pitway task-status', () => {
 
     // The unrelated sibling task's content must not appear anywhere.
     expect(output).not.toContain('UNRELATED_SIBLING_MARKER');
+  });
+
+  // AC011/T010: mapped_ac_ids filtering, exercised end-to-end through the
+  // task-status --context --json command against a synthetic multi-AC
+  // contract, separate from the fixtures above.
+  describe('mapped_ac_ids filtering (T010)', () => {
+    it('filters contractExcerpt.acceptanceCriteria to exactly the mapped ids when present', async () => {
+      saveContract(root, 'M001', { frontmatter: multiAcFrontmatter, body: '\n# Contract\n' });
+      saveTasks(root, 'M001', {
+        schema_version: 1,
+        tasks: [
+          task({
+            id: 'T002',
+            status: 'in_progress',
+            objective: 'Target task',
+            acceptance_criteria: ['Target AC'],
+            relevant_files: ['src/target.ts'],
+            mapped_ac_ids: ['AC002'],
+            verification: { strategy: 'tdd', detail: 'npm test -- target.test.ts' },
+          }),
+        ],
+      });
+
+      const program = buildCli();
+      const lines: string[] = [];
+      registerTaskStatusCommand(program, { root, write: (s) => lines.push(s) });
+      await program.parseAsync(['node', 'pitway', 'task-status', 'T002', '--context', '--json']);
+
+      const bundle = JSON.parse(lines.join('\n'));
+      expect(bundle.contractExcerpt.acceptanceCriteria).toEqual([
+        { id: 'AC002', text: 'Second criterion text' },
+      ]);
+    });
+
+    it('leaves contractExcerpt.acceptanceCriteria as the full, unfiltered array when mapped_ac_ids is absent', async () => {
+      saveContract(root, 'M001', { frontmatter: multiAcFrontmatter, body: '\n# Contract\n' });
+      saveTasks(root, 'M001', {
+        schema_version: 1,
+        tasks: [
+          task({
+            id: 'T002',
+            status: 'in_progress',
+            objective: 'Target task',
+            acceptance_criteria: ['Target AC'],
+            relevant_files: ['src/target.ts'],
+            verification: { strategy: 'tdd', detail: 'npm test -- target.test.ts' },
+          }),
+        ],
+      });
+
+      const program = buildCli();
+      const lines: string[] = [];
+      registerTaskStatusCommand(program, { root, write: (s) => lines.push(s) });
+      await program.parseAsync(['node', 'pitway', 'task-status', 'T002', '--context', '--json']);
+
+      const bundle = JSON.parse(lines.join('\n'));
+      expect(bundle.contractExcerpt.acceptanceCriteria).toEqual(multiAcFrontmatter.acceptance_criteria);
+    });
   });
 });

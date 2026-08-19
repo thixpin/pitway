@@ -121,6 +121,11 @@ export const taskSchema = z
     relevant_files: z.array(z.string().min(1)).optional(),
     context_files: z.array(z.string().min(1)).optional(),
     write_scope: z.array(z.string().min(1)).optional(),
+    // AC011/T010: additive-optional -- when present, narrows the context
+    // bundle's contractExcerpt.acceptanceCriteria to exactly these AC ids;
+    // absent on every M001-M006 historical task, so omitting it leaves
+    // bundle generation byte-for-byte unchanged (see context-bundle.ts).
+    mapped_ac_ids: z.array(z.string().min(1)).optional(),
     verification: z.strictObject({
       strategy: z.enum(['tdd', 'command', 'manual', 'review']),
       detail: z.string().min(1),

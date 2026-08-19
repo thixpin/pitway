@@ -34,12 +34,22 @@ export function buildTaskContextBundle(
     throw new Error(`task ${taskId} not found`);
   }
 
+  // AC011/T010: when mapped_ac_ids is present and non-empty, narrow the
+  // contract excerpt to exactly those ACs. When absent, this is a no-op --
+  // the full contract.acceptance_criteria array passes through unchanged,
+  // matching every pre-existing task's behavior.
+  const mappedAcIds = task.mapped_ac_ids;
+  const acceptanceCriteria =
+    mappedAcIds && mappedAcIds.length > 0
+      ? contract.acceptance_criteria.filter((ac) => mappedAcIds.includes(ac.id))
+      : contract.acceptance_criteria;
+
   return {
     task: { id: task.id, objective: task.objective },
     acceptanceCriteria: task.acceptance_criteria,
     contractExcerpt: {
       title: contract.title,
-      acceptanceCriteria: contract.acceptance_criteria,
+      acceptanceCriteria,
     },
     dependencyResults: task.depends_on.map((depId) => ({
       id: depId,

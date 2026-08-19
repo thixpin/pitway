@@ -382,6 +382,50 @@ describe('task relevant_files / context_files / write_scope combinations', () =>
   });
 });
 
+// AC011/T010: mapped_ac_ids is a new, additive-optional string array field,
+// absent from every M001-M006 historical task.
+describe('task schema mapped_ac_ids (T010)', () => {
+  const baseTask = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    id: 'T001',
+    objective: 'Do a thing.',
+    status: 'waiting',
+    depends_on: [],
+    acceptance_criteria: ['It works'],
+    write_scope: ['src/a.ts'],
+    verification: { strategy: 'tdd', detail: 'npm test' },
+    result: null,
+    usage: null,
+    ...overrides,
+  });
+
+  it('accepts mapped_ac_ids as an optional string array', () => {
+    const task = baseTask({ mapped_ac_ids: ['AC001', 'AC002'] });
+    const result = taskSchema.safeParse(task);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a task without mapped_ac_ids exactly as before (still valid)', () => {
+    const task = baseTask();
+    expect('mapped_ac_ids' in task).toBe(false);
+    const result = taskSchema.safeParse(task);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a mapped_ac_ids entry that is an empty string', () => {
+    const task = baseTask({ mapped_ac_ids: [''] });
+    const result = taskSchema.safeParse(task);
+    expect(result.success).toBe(false);
+  });
+
+  it('every M001-M004-shaped historical task (no mapped_ac_ids) still parses fine', () => {
+    const file = fixture('valid/tasks.yaml') as { tasks: Record<string, unknown>[] };
+    for (const task of file.tasks) {
+      expect('mapped_ac_ids' in task).toBe(false);
+      expect(taskSchema.safeParse(task).success).toBe(true);
+    }
+  });
+});
+
 describe('buildTaskContextBundle context_files/write_scope surfacing', () => {
   const contract = fixture('valid/contract-frontmatter.yaml') as Parameters<
     typeof buildTaskContextBundle

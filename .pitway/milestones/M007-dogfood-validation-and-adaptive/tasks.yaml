@@ -386,7 +386,7 @@ tasks:
       regression tests against synthetic task definitions, not by M007
       dogfooding it on itself; real use starts with M008's own contract-drafting
       (AC011)."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -410,7 +410,17 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/unit/schemas.test.ts
         tests/integration/task-status.test.ts
-    result: null
+    result:
+      summary: "[truncated]  and filtered buildTaskContextBundle's
+        contractExcerpt.acceptanceCriteria to exactly those ids when present,
+        byte-for-byte unchanged when absent. Fixes the 89%-duplication defect
+        M006/AC005 measured. Zero migration needed, zero self-application
+        claimed (Non-Bootstrap Disclosure honored)."
+      evidence: 67/67 target tests pass (schemas.test.ts, task-status.test.ts),
+        typecheck clean, full suite 545/545 pass with zero regressions, zero
+        stray processes. Diff independently reviewed file-by-file by the driver,
+        matches the specified design exactly.
+    attempts: 1
     usage: null
   - id: T011
     objective: Evaluate structured failure-evidence extraction ahead of the
