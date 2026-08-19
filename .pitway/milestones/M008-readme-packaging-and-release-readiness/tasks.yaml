@@ -168,7 +168,7 @@ tasks:
       clone-durable evidence (committed Git history, .pitway/ state, tests,
       docs/evidence/**) -- never reports/ *.md, which may inform drafting but
       supports no public claim (AC003)."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -187,7 +187,16 @@ tasks:
       strategy: manual
       detail: developer/driver review of the README against T001/T002/T003's actual
         delivery
-    result: null
+    result:
+      summary: "[truncated] ack/install/invoke test, points to --help and installed
+        Claude assets rather than duplicating command docs, and the
+        read-boundary-enforcement claim matching T003's decision exactly
+        (verbatim boundary language). Every claim bounded by clone-durable
+        evidence only; no reports/*.md citation."
+      evidence: README.md exists at repo root. npm-pack.test.ts and build-bin.test.ts
+        re-confirmed 41/41 pass now that README.md is real (was previously
+        silently skipped by npm pack as a missing files entry). Typecheck clean.
+    attempts: 1
     usage: null
   - id: T005
     objective: "Roadmap-reconciliation review (mirroring M005/T009, M006/T006,
@@ -199,7 +208,7 @@ tasks:
       explicitly snapshot-labeled) rather than merely re-stated with facts that
       will go stale the same way a fourth time, and AC002/AC004's decisions
       reflected wherever the document currently states them as open (AC005)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002
