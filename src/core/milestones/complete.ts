@@ -8,6 +8,7 @@ import {
   loadContract,
   loadState,
   loadTasks,
+  loadVerificationRepairs,
   loadVerificationResults,
   resolveMilestoneDirName,
   saveContract,
@@ -30,14 +31,20 @@ export interface MilestoneCompleteView {
 const contractRepoPath = (root: string, milestoneId: string): string =>
   `.pitway/milestones/${resolveMilestoneDirName(root, milestoneId)}/contract.md`;
 
-// AC006 completion set: the milestone's own four files plus state.yaml
-// (subset check — clean entries are fine; anything else dirty refuses).
+// AC006 completion set: the milestone's own files plus state.yaml (subset
+// check — clean entries are fine; anything else dirty refuses).
+// verification-repairs.yaml is listed unconditionally the same way
+// usage.yaml already is: it only actually rides along in the commit when it
+// is genuinely dirty (e.g. a cancelled repair's uncommitted status write,
+// which has no dedicated commit of its own — see verification-repair
+// cancel), never forced.
 const completionPaths = (root: string, milestoneId: string): string[] => {
   const dir = resolveMilestoneDirName(root, milestoneId);
   return [
     `.pitway/milestones/${dir}/contract.md`,
     `.pitway/milestones/${dir}/tasks.yaml`,
     `.pitway/milestones/${dir}/verification-results.yaml`,
+    `.pitway/milestones/${dir}/verification-repairs.yaml`,
     `.pitway/milestones/${dir}/usage.yaml`,
     '.pitway/state.yaml',
   ];
@@ -86,6 +93,22 @@ function assertGatesSatisfied(root: string, milestoneId: string, contract: Contr
   }
   if (problems.length > 0) {
     throw new MilestoneCompleteError(`cannot complete ${milestoneId}: ${problems.join('; ')}`);
+  }
+}
+
+// AC002: a milestone with a still-pending verification repair is not yet
+// eligible for completion — approve/commit/cancel own that lifecycle
+// exclusively; milestone-complete only ever reads verification-repairs.yaml
+// here, never writes it.
+function assertNoPendingVerificationRepair(root: string, milestoneId: string): void {
+  const pending = loadVerificationRepairs(root, milestoneId).records.filter(
+    (r) => r.status === 'pending',
+  );
+  if (pending.length > 0) {
+    throw new MilestoneCompleteError(
+      `cannot complete ${milestoneId}: verification repair(s) still pending: ` +
+        `${pending.map((r) => r.id).join(', ')}; commit or cancel them first`,
+    );
   }
 }
 
@@ -145,6 +168,7 @@ export function completeMilestone(root: string, milestoneId: string): MilestoneC
       );
     }
     assertGatesSatisfied(root, milestoneId, contract);
+    assertNoPendingVerificationRepair(root, milestoneId);
     assertNoUnexpectedDirtyPaths(root, expectedPaths);
 
     // One persisted status write: in_progress -> review -> completed collapsed.

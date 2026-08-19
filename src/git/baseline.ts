@@ -39,6 +39,7 @@ export function computeExpectedBaselinePaths(
     `.pitway/milestones/${milestoneDir}/contract.md`,
     `.pitway/milestones/${milestoneDir}/tasks.yaml`,
     `.pitway/milestones/${milestoneDir}/verification-results.yaml`,
+    `.pitway/milestones/${milestoneDir}/verification-repairs.yaml`,
     `.pitway/milestones/${milestoneDir}/usage.yaml`,
     ...extraExpectedPaths,
   ];

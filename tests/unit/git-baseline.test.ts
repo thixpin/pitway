@@ -41,6 +41,7 @@ describe('computeExpectedBaselinePaths', () => {
       '.pitway/milestones/M002/contract.md',
       '.pitway/milestones/M002/tasks.yaml',
       '.pitway/milestones/M002/verification-results.yaml',
+      '.pitway/milestones/M002/verification-repairs.yaml',
       '.pitway/milestones/M002/usage.yaml',
     ]);
   });

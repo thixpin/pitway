@@ -32,6 +32,7 @@ const ALL_COMMAND_NAMES = [
   'task-amend',
   'task-update',
   'usage-add',
+  'verification-repair',
   'verify',
   'write-ms-artifacts',
 ].sort();

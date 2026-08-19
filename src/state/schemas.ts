@@ -215,6 +215,24 @@ export const usageFileSchema = z.strictObject({
   qa: usageSchema,
 });
 
+const verificationRepairId = z.string().regex(/^VR\d{3}$/, 'verification repair id must match VR000');
+
+export const verificationRepairStatusSchema = z.enum(['pending', 'committed', 'cancelled']);
+
+export const verificationRepairRecordSchema = z.strictObject({
+  id: verificationRepairId,
+  files: z.array(z.string().min(1)).min(1),
+  checks: z.array(checkId).min(1),
+  change_log: z.string().min(1),
+  approved_at: isoTimestamp,
+  status: verificationRepairStatusSchema,
+});
+
+export const verificationRepairsFileSchema = z.strictObject({
+  schema_version: schemaVersion,
+  records: z.array(verificationRepairRecordSchema),
+});
+
 export type PitwayConfig = z.infer<typeof configSchema>;
 export type PitwayState = z.infer<typeof stateSchema>;
 export type ContractFrontmatter = z.infer<typeof contractFrontmatterSchema>;
@@ -227,3 +245,6 @@ export type VerificationResults = z.infer<typeof verificationResultsSchema>;
 export type UsageFile = z.infer<typeof usageFileSchema>;
 export type Usage = z.infer<typeof usageSchema>;
 export type TaskUsage = z.infer<typeof taskUsageSchema>;
+export type VerificationRepairStatus = z.infer<typeof verificationRepairStatusSchema>;
+export type VerificationRepairRecord = z.infer<typeof verificationRepairRecordSchema>;
+export type VerificationRepairsFile = z.infer<typeof verificationRepairsFileSchema>;

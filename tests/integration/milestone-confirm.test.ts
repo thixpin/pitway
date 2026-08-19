@@ -103,6 +103,7 @@ const expectedBaselineFiles = (): string[] => {
     `.pitway/milestones/${dir}/contract.md`,
     `.pitway/milestones/${dir}/tasks.yaml`,
     `.pitway/milestones/${dir}/usage.yaml`,
+    `.pitway/milestones/${dir}/verification-repairs.yaml`,
     `.pitway/milestones/${dir}/verification-results.yaml`,
     '.pitway/state.yaml',
     ...listClaudeAssetDestinations(),

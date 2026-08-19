@@ -7,11 +7,13 @@ import {
   stateSchema,
   tasksFileSchema,
   usageFileSchema,
+  verificationRepairsFileSchema,
   verificationResultsSchema,
   type PitwayConfig,
   type PitwayState,
   type TasksFile,
   type UsageFile,
+  type VerificationRepairsFile,
   type VerificationResults,
 } from './schemas.js';
 import {
@@ -169,6 +171,25 @@ export function saveVerificationResults(
     milestonePath(root, milestoneId, 'verification-results.yaml'),
     verificationResultsSchema,
     results,
+  );
+}
+
+export function loadVerificationRepairs(root: string, milestoneId: string): VerificationRepairsFile {
+  return loadYaml(
+    milestonePath(root, milestoneId, 'verification-repairs.yaml'),
+    verificationRepairsFileSchema,
+  );
+}
+
+export function saveVerificationRepairs(
+  root: string,
+  milestoneId: string,
+  repairs: VerificationRepairsFile,
+): void {
+  saveYaml(
+    milestonePath(root, milestoneId, 'verification-repairs.yaml'),
+    verificationRepairsFileSchema,
+    repairs,
   );
 }
 

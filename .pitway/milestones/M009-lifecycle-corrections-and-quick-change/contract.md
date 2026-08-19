@@ -5,7 +5,7 @@ title: Lifecycle Corrections and Quick Change
 status: in_progress
 requirement: null
 confirmed_at: 2026-08-19T16:38:03Z
-verification_approved_hash: sha256:cbd7ba731e56f4003aa19a66690008a3d829dd7a9c2ef166b09adad00e362aa5
+verification_approved_hash: sha256:5c8eb28bff2d3ab9e07b4169121fad06341acf98f57cfb5c0463d0b7d6de77a3
 acceptance_criteria:
   - id: AC001
     text: "A supported, git-safe way exists to correct an unconfirmed draft
@@ -140,7 +140,49 @@ acceptance_criteria:
       validation) are renumbered M011, M012, and M013 respectively, consistently
       across every cross-reference (S10's trailer-lookup note, S15's
       design-sketch note, the Revised Roadmap bullets and their gating
-      language), not just the summary table."
+      language), not just the summary table. Separately, this task also
+      incorporates an independently reviewed token-accounting feasibility
+      conclusion, recorded durably at docs/evidence/M009/
+      token-accounting-feasibility.md (never only in a gitignored reports/*.md
+      file) and preserved accurately, never paraphrased away: verdict is
+      feasible only partially; PitWay's exact supported data is four token
+      dimensions, named precisely as the review states them, never approximated
+      to a different count or set; the real session partition is main + subagent
+      + auxiliary, not main + subagent; inline-main-task and
+      orchestration-overhead values are PitWay-derived and conditional, not
+      directly measured, and must be labeled as such; stable
+      per-subagent-instance attribution requires beta traces; multi-session
+      totals are partial segment accumulation, never exact; OpenTelemetry-based
+      tracing is opt-in and operationally expensive, not a free enhancement;
+      transcript parsing, TUI scraping, snapshot accumulation, and an Agent SDK
+      architectural inversion (which would itself violate this project's own
+      'Core must never import AI-provider code' constraint) are each evaluated
+      and rejected; and any value that is unknown or incomplete stays null/N/A,
+      never estimated, unchanged from decision 8's existing discipline. The
+      Revised Roadmap gains exactly one new, unnumbered, time-boxed 'Token
+      Telemetry Spike' candidate, positioned after M010 -- Claude Skills --
+      never consuming a milestone number itself and never shifting the
+      M011/M012/M013 renumbering -- scoped as exactly seven experiments E0-E6,
+      each targeting one load-bearing join the feasibility conclusion
+      identifies: E0 confirms the four supported dimensions against real
+      captured data; E1 validates the three-way main/subagent/auxiliary session
+      partition; E2 validates that inline-main-task/orchestration-overhead
+      values are correctly labeled derived-and-conditional rather than measured;
+      E3 probes whether stable per-subagent-instance attribution is achievable
+      without beta traces and quantifies the gap if not; E4 measures how far
+      multi-session partial accumulation drifts from ground truth; E5 measures
+      OpenTelemetry's real opt-in operational cost against its accuracy gain; E6
+      re-confirms, rather than assumes, that transcript parsing, TUI scraping,
+      snapshot accumulation, and Agent SDK architectural inversion each still
+      fail to meet the bar. A full 'Usage Accounting' milestone becomes a real
+      candidate for scheduling only if the spike validates every one of those
+      seven joins exactly; if any fails to validate exactly, the limitation is
+      documented permanently in the same evidence file and the Usage Accounting
+      idea is deferred indefinitely, not retried on a fixed schedule -- the same
+      evidence-before-adoption discipline already governing quick-change's and
+      Claude Skills' own threshold overrides elsewhere in this contract. No
+      token-accounting implementation code, schema, or CLI surface of any kind
+      lands in this milestone -- this is a roadmap-recording requirement only."
 verification:
   - id: CT001
     criterion: AC001
@@ -210,7 +252,22 @@ verification:
       added, the new M010 -- Claude Skills bullet carries the full
       vendoring/attribution/routing/evidence requirement in its own committed
       text, and every cross-reference to the old M009/M010/M011 numbering is
-      consistently renumbered to M011/M012/M013.
+      consistently renumbered to M011/M012/M013. Separately confirm
+      docs/evidence/M009/token-accounting-feasibility.md exists and states,
+      accurately and without softening, the partial-feasibility verdict, the
+      four supported token dimensions named precisely, the three-way session
+      partition, the derived-and-conditional labeling of the inline-main-task
+      and orchestration-overhead values, the beta-trace requirement for stable
+      per-subagent-instance attribution, the never-exact partial accumulation of
+      multi-session totals, the opt-in operational cost of OpenTelemetry, and
+      the four rejected alternative approaches (transcript parsing, TUI
+      scraping, snapshot accumulation, Agent SDK inversion); confirm the new
+      unnumbered, post-M010, time-boxed Token Telemetry Spike roadmap bullet
+      names all seven E0-E6 experiments and states plainly that a full Usage
+      Accounting milestone is scheduled only if every load-bearing join
+      validates exactly, otherwise the limitation is documented and the idea
+      deferred; confirm no token-accounting implementation, schema, or CLI code
+      exists anywhere in this milestone's diff.
   - id: CT008
     criterion: AC001
     type: command
@@ -408,3 +465,15 @@ the branch/worktree roadmap entries around it.
   path, and only then atomically commits the VR record, the corrected
   files, and the fresh verification-results.yaml entries together); added
   the `milestone-complete`-refuses-on-pending-VR gate.
+- 2026-08-19: post-confirmation amendment (T001 already completed) -- AC004
+  and CT007 extended to require T006 to record an independently reviewed
+  token-accounting feasibility conclusion at
+  `docs/evidence/M009/token-accounting-feasibility.md` and add exactly one
+  new, unnumbered, time-boxed 'Token Telemetry Spike' roadmap candidate
+  (seven experiments, E0-E6) positioned after M010 -- Claude Skills, with a
+  full 'Usage Accounting' milestone scheduled only if every load-bearing
+  join validates exactly. `docs/evidence/M009/
+  token-accounting-feasibility.md` added to T006's `context_files`/
+  `write_scope` via a matching `task-amend`. No implementation, schema, or
+  CLI change of any kind is introduced by this amendment -- roadmap
+  recording only.

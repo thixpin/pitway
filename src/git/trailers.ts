@@ -50,6 +50,11 @@ export function composeMessage(message: string, trailers: Record<string, string>
 export interface TrailerQuery {
   milestone: string;
   task?: string;
+  // Matches a PitWay-Verification-Repair: <id> trailer the same way `task`
+  // matches PitWay-Task — independently composed with it (a query could in
+  // principle set both, even though in practice a commit carries at most
+  // one of the two), never assumed mutually exclusive by the matching logic.
+  verificationRepair?: string;
   // When set, the commit's subject line (first message line) must start
   // with this prefix — used to distinguish e.g. baseline from amendment
   // commits that carry the same trailers.
@@ -76,13 +81,33 @@ export function resolveCommitSha(cwd: string, query: TrailerQuery): string | und
     const hasMilestone = lines.some((l) => l.trim() === `PitWay-Milestone: ${query.milestone}`);
     if (!hasMilestone) continue;
 
+    // Each trailer field is matched independently: set means "require an
+    // exact matching line", unset means "require no line of that key at
+    // all" (so a plain milestone-level query never accidentally matches a
+    // task or verification-repair commit, and vice versa). Composes
+    // correctly regardless of how many of these optional fields a query
+    // sets at once.
     const hasTaskLine = lines.some((l) => /^PitWay-Task:\s?/.test(l.trim()));
     if (query.task) {
       const hasThisTask = lines.some((l) => l.trim() === `PitWay-Task: ${query.task}`);
-      if (hasThisTask) return sha;
-    } else if (!hasTaskLine) {
-      return sha;
+      if (!hasThisTask) continue;
+    } else if (hasTaskLine) {
+      continue;
     }
+
+    const hasVerificationRepairLine = lines.some((l) =>
+      /^PitWay-Verification-Repair:\s?/.test(l.trim()),
+    );
+    if (query.verificationRepair) {
+      const hasThisVerificationRepair = lines.some(
+        (l) => l.trim() === `PitWay-Verification-Repair: ${query.verificationRepair}`,
+      );
+      if (!hasThisVerificationRepair) continue;
+    } else if (hasVerificationRepairLine) {
+      continue;
+    }
+
+    return sha;
   }
   return undefined;
 }

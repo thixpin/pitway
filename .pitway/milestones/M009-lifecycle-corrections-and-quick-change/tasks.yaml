@@ -116,7 +116,7 @@ tasks:
       subcommands), registered in src/cli/index.ts. Claude asset:
       src/integrations/claude/commands/verification-repair.md. Updates the three
       command-census arrays for verification-repair (AC002)."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -132,14 +132,19 @@ tasks:
       - src/cli/index.ts
       - src/integrations/claude/commands/verification-repair.md
       - tests/integration/verification-repair.test.ts
-      - tests/unit/git-trailers.test.ts
+      - tests/integration/git-trailers.test.ts
       - tests/integration/cli.test.ts
       - tests/integration/build-bin.test.ts
       - tests/integration/npm-pack.test.ts
+      - tests/integration/milestone-confirm.test.ts
+      - tests/integration/self-hosting-readiness.test.ts
+      - tests/unit/git-baseline.test.ts
       - src/core/tasks/update.ts
       - src/git/commit-or-resume.ts
       - src/git/safety.ts
       - src/state/journal.ts
+      - src/state/schemas.ts
+      - src/state/store.ts
       - docs/evidence/M008/verification-repair-6f8b5e6.md
     write_scope:
       - src/core/verification/repair.ts
@@ -151,17 +156,35 @@ tasks:
       - src/cli/index.ts
       - src/integrations/claude/commands/verification-repair.md
       - tests/integration/verification-repair.test.ts
-      - tests/unit/git-trailers.test.ts
+      - tests/integration/git-trailers.test.ts
       - tests/integration/cli.test.ts
       - tests/integration/build-bin.test.ts
       - tests/integration/npm-pack.test.ts
+      - tests/integration/milestone-confirm.test.ts
+      - tests/integration/self-hosting-readiness.test.ts
+      - tests/unit/git-baseline.test.ts
+      - src/state/schemas.ts
+      - src/state/store.ts
     mapped_ac_ids:
       - AC002
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/verification-repair.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "[truncated] files' hardcoded expected-baseline arrays, one line each)
+        caused directly by this task's own approved baseline.ts change, plus a
+        write_scope path correction (tests/unit/git-trailers.test.ts ->
+        tests/integration/git-trailers.test.ts, the real file), both via
+        task-amend before this commit."
+      evidence: npm test -- tests/integration/verification-repair.test.ts -> 29/29
+        passed (independently rerun). npm test (full suite, after the ripple
+        fix) -> 633/633 passed, 42/42 files (independently rerun; the pre-fix
+        run showed exactly the 6 predicted failures, all in the 3 ripple-fixed
+        files). npx tsc --noEmit -> clean. Diff confined to the amended
+        write_scope (15 files); nothing outside it touched.
+    attempts: 1
+    usage:
+      total_tokens: 212289
   - id: T003
     objective: "Quick-change, part 1 of 3 -- state/schema/lifecycle. A new
       quick_change journal record kind, sibling to entry/checkpoint/ auto_run
@@ -317,7 +340,23 @@ tasks:
       document's own committed text, and the consistent renumbering of the
       milestones this document previously called M009 (branch isolation), M010
       (parallel worktrees), and M011 (extended dogfood) to M011, M012, and M013
-      across every cross-reference, not just the summary table (AC004)."
+      across every cross-reference, not just the summary table (AC004).
+      Separately: record an independently reviewed token-accounting feasibility
+      conclusion at docs/evidence/M009/token-accounting-feasibility.md,
+      preserving it accurately -- partial-feasibility verdict; the four
+      precisely-named supported token dimensions; the three-way
+      main/subagent/auxiliary session partition; the derived-and-conditional
+      labeling of inline-main-task/orchestration-overhead values; the beta-trace
+      requirement for stable per-subagent-instance attribution; the never-exact
+      partial accumulation of multi-session totals; OpenTelemetry's opt-in
+      operational cost; and the four rejected alternatives (transcript parsing,
+      TUI scraping, snapshot accumulation, Agent SDK architectural inversion) --
+      and add exactly one new, unnumbered, post-M010, time-boxed 'Token
+      Telemetry Spike' roadmap bullet naming all seven E0-E6 experiments,
+      stating that a full 'Usage Accounting' milestone is scheduled only if
+      every load-bearing join validates exactly, otherwise the limitation is
+      documented and the idea deferred. No token-accounting implementation,
+      schema, or CLI code lands in this or any task of this milestone."
     status: waiting
     depends_on:
       - T001
@@ -330,8 +369,10 @@ tasks:
     context_files:
       - IMPLEMENTATION_PLAN.md
       - docs/evidence/M007/claude-skills-decision.md
+      - docs/evidence/M009/token-accounting-feasibility.md
     write_scope:
       - IMPLEMENTATION_PLAN.md
+      - docs/evidence/M009/token-accounting-feasibility.md
     mapped_ac_ids:
       - AC004
     verification:

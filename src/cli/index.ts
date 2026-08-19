@@ -16,6 +16,7 @@ import { registerTaskStatusCommand } from './commands/task-status.js';
 import { registerTaskAmendCommand } from './commands/task-amend.js';
 import { registerTaskUpdateCommand } from './commands/task-update.js';
 import { registerUsageAddCommand } from './commands/usage-add.js';
+import { registerVerificationRepairCommand } from './commands/verification-repair.js';
 import { registerVerifyCommand } from './commands/verify.js';
 import { registerWriteMsArtifactsCommand } from './commands/write-ms-artifacts.js';
 
@@ -52,6 +53,7 @@ export function registerAllCommands(program: Command, deps: CommandDeps = {}): v
   registerTaskAmendCommand(program, deps);
   registerTaskUpdateCommand(program, deps);
   registerUsageAddCommand(program, deps);
+  registerVerificationRepairCommand(program, deps);
   registerVerifyCommand(program, deps);
   registerWriteMsArtifactsCommand(program, deps);
 }

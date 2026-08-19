@@ -11,6 +11,7 @@ import {
   saveState,
   saveTasks,
   saveUsage,
+  saveVerificationRepairs,
   saveVerificationResults,
 } from '../../state/store.js';
 import { tasksFileSchema, type PitwayState, type TasksFile } from '../../state/schemas.js';
@@ -145,6 +146,7 @@ export function createMilestone(root: string, inputs: MilestoneAddInputs): Miles
     tasks: tasksInput.tasks.map((t) => ({ ...t, status: 'planned', result: null, usage: null })),
   });
   saveVerificationResults(root, id, { schema_version: 1, results: [] });
+  saveVerificationRepairs(root, id, { schema_version: 1, records: [] });
   saveUsage(root, id, { schema_version: 1, planning: null, qa: null });
   saveState(root, { ...state, active_milestone: id, milestones: [...state.milestones, id] });
 
@@ -196,6 +198,7 @@ export function replaceMilestoneDraft(
     tasks: tasksInput.tasks.map((t) => ({ ...t, status: 'planned', result: null, usage: null })),
   });
   saveVerificationResults(root, id, { schema_version: 1, results: [] });
+  saveVerificationRepairs(root, id, { schema_version: 1, records: [] });
   saveUsage(root, id, { schema_version: 1, planning: null, qa: null });
 
   const state = loadState(root);
