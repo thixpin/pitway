@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
@@ -34,6 +34,16 @@ const recursionGuardModulePath = fileURLToPath(
 // evaluateRecursionGuard, and reports the outcome on stdout/stderr with an
 // unambiguous marker -- exiting fast, never sleeping, so a refusal is
 // bounded-time by construction rather than by luck.
+//
+// Test-isolation hotfix: the marker is printed LAST, after the (potentially
+// long, unbounded-length) token data, not as a prefix. run.ts's evidence
+// capping keeps the TAIL of a command's output (trimTail, 200 chars,
+// tail-preserved) -- a prefix marker is not guaranteed to survive that cap
+// once an ambient PITWAY_VERIFY_GUARD token is already present (as it
+// genuinely is when this test suite runs as a child of a live outer
+// `pitway verify` on this repository itself), which grows the accumulated
+// token list past what a leading marker could survive truncation to. A
+// trailing marker survives regardless of how long the preceding data is.
 function recursionCheckScript(gitDirCwd: string, milestoneId: string): string {
   return `
 import { execFileSync } from 'node:child_process';
@@ -42,10 +52,12 @@ const gitDir = execFileSync('git', ['rev-parse', '--absolute-git-dir'], { cwd: $
 const token = gitDir + '#' + ${JSON.stringify(milestoneId)};
 const decision = evaluateRecursionGuard(process.env.PITWAY_VERIFY_GUARD, token);
 if (decision.decision === 'refuse') {
-  console.error('RECURSION_REFUSED:' + decision.token);
+  console.error(decision.token);
+  console.error('RECURSION_REFUSED');
   process.exit(1);
 }
-console.log('RECURSION_OK:' + decision.value);
+console.log(decision.value);
+console.log('RECURSION_OK');
 `;
 }
 
@@ -540,6 +552,27 @@ describe('pitway verify --check isolated command rerun (T002)', () => {
 // real, separate `node` processes spawned by executeCommand -- they inherit
 // PITWAY_VERIFY_GUARD exactly as a literal recursive `pitway verify` command
 // check would, and evaluate it with the real, unmocked evaluateRecursionGuard.
+//
+// Test-isolation hotfix: every test below sets its own PITWAY_VERIFY_GUARD
+// starting condition EXPLICITLY via `vi.stubEnv`, rather than assuming the
+// ambient environment starts clean. That assumption held as long as this
+// suite only ever ran standalone; it stopped holding the first time M006
+// dogfooded `pitway verify` on its own live milestone, whose own outer
+// invocation sets a real PITWAY_VERIFY_GUARD token before spawning this
+// exact test file as CT002's child process -- these tests then inherited
+// that ambient token and failed. `vi.stubEnv`/`vi.unstubAllEnvs` (restored
+// in this describe block's own afterEach, so it runs even on failure) is
+// vitest's own sanctioned mechanism for this: the underlying call chain
+// (runVerification -> withRecursionGuard's synchronous callback -> the
+// spawnSync-based executeCommand loop) is entirely synchronous with no
+// `await` inside it, so the stub-set-run-restore sequence for any one test
+// cannot be interleaved with another test's own env access -- it does not
+// rely on real OS-process isolation, but on there being no yield point for
+// anything else to run during it. Production code (run.ts,
+// recursion-guard.ts, process-exec.ts, text-trim.ts) and the evidence cap
+// are unchanged by this fix -- the guard's own extend/refuse behavior in
+// both tests below was already correct; only the tests' unstated
+// environmental assumption was wrong.
 describe('pitway verify recursion guard (T002)', () => {
   let rootB: string;
 
@@ -555,6 +588,10 @@ describe('pitway verify recursion guard (T002)', () => {
 
   afterEach(() => {
     rmSync(rootB, { recursive: true, force: true });
+    // Restores PITWAY_VERIFY_GUARD (and any other stubbed var) to whatever
+    // it was before this test's own vi.stubEnv call -- runs even if the
+    // test itself failed, so one test's stub can never leak into the next.
+    vi.unstubAllEnvs();
   });
 
   it('two nested invocations against two different temp-repo fixtures both succeed without tripping the guard', async () => {
@@ -571,6 +608,9 @@ describe('pitway verify recursion guard (T002)', () => {
     // input, not milestone content, and must not trip the clean-tree gate.
     writeFileSync(join(root, 'nested-check.mjs'), recursionCheckScript(rootB, 'M001'));
 
+    // Explicit clean-start condition: no ambient auto-run/verify guard token
+    // when this test's own outer `pitway verify` begins.
+    vi.stubEnv('PITWAY_VERIFY_GUARD', undefined);
     const start = Date.now();
     const { error } = await run(['verify'], root);
     const elapsed = Date.now() - start;
@@ -600,6 +640,8 @@ describe('pitway verify recursion guard (T002)', () => {
     // input, not milestone content, and must not trip the clean-tree gate.
     writeFileSync(join(root, 'nested-check.mjs'), recursionCheckScript(root, 'M001'));
 
+    // Explicit clean-start condition -- see the describe block's own comment.
+    vi.stubEnv('PITWAY_VERIFY_GUARD', undefined);
     const start = Date.now();
     const { error } = await run(['verify'], root);
     const elapsed = Date.now() - start;
@@ -616,5 +658,44 @@ describe('pitway verify recursion guard (T002)', () => {
     expect(recorded[1]!.status).toBe('fail');
     expect(recorded[1]!.evidence).toContain('RECURSION_REFUSED');
     expect(recorded[1]!.termination_reason).not.toBe('timeout');
+  });
+
+  // Regression scenario (test-isolation hotfix): reproduces the exact
+  // condition that caused this describe block's first test to fail the
+  // first time M006 dogfooded `pitway verify` on its own live milestone --
+  // a pre-existing, unrelated PITWAY_VERIFY_GUARD token (a genuinely
+  // different repo AND a genuinely different milestone id, standing in for
+  // a live outer verify invocation already in progress) is present in the
+  // environment BEFORE this test's own outer verify call begins. The real
+  // guard must still extend, not refuse -- nesting into an unrelated
+  // repo/milestone is always legitimate, however many unrelated tokens are
+  // already accumulated ahead of it.
+  it('a pre-existing unrelated PITWAY_VERIFY_GUARD token does not block nesting into a different repo/milestone', async () => {
+    const checks = `  - id: CT001
+    criterion: AC001
+    type: command
+    command: node nested-check.mjs
+`;
+    await confirmed(checks);
+    writeFileSync(join(root, 'nested-check.mjs'), recursionCheckScript(rootB, 'M001'));
+
+    // The unrelated ambient token: a different repo entirely (rootB's own
+    // git-dir) and a different milestone id (M999, never used by `root` or
+    // `rootB` in this test) -- reproduces "some other live verify is
+    // already in progress elsewhere" without depending on any real outer
+    // process actually running.
+    const rootBGitDir = git(['rev-parse', '--absolute-git-dir'], rootB).trim();
+    vi.stubEnv('PITWAY_VERIFY_GUARD', `${rootBGitDir}#M999`);
+
+    const start = Date.now();
+    const { error } = await run(['verify'], root);
+    const elapsed = Date.now() - start;
+    expect(error).toBeUndefined();
+    expect(elapsed).toBeLessThan(5000);
+
+    const recorded = results();
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0]!.status).toBe('pass');
+    expect(recorded[0]!.evidence).toContain('RECURSION_OK');
   });
 });
