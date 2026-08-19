@@ -432,7 +432,7 @@ tasks:
       a later milestone if adopted. Depends on T001 so this decision uses T001's
       compiled live failure-evidence findings (the CT002/CT012 recursion-guard
       incident) rather than re-deriving them independently (AC012).
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -448,7 +448,17 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review of the recorded decision
-    result: null
+    result:
+      summary: "[truncated] ure direction, implementation deferred to T013's roadmap
+        reconciliation. Binding design constraints added by developer:
+        best-effort/tool-agnostic, preserve raw tail, prepend only
+        confidently-matched lines, never alter real exit
+        status/termination_reason, clean fallback when unrecognized."
+      evidence: docs/evidence/M007/structured-failure-extraction-decision.md.
+        Adopt-with-constraints decided via explicit decision-gate confirmation
+        (mandatory gate, per the tiered Decision Authority Policy - adopting a
+        new mechanism is never autonomous).
+    attempts: 1
     usage: null
   - id: T012
     objective: "Harden the dispatch/worker protocol against M006's own live
