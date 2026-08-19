@@ -11,13 +11,17 @@ tasks:
       before/after comparison against M006's measurements, an investigation and
       decision on M006's disclosed CT012 full-suite flakiness, and one fresh,
       matched inline-vs-sub-agent dispatch pair as evidence for AC010 (AC001)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Fresh-session resume is covered by a regression test, not only a
         historical note
-      - Both M004/T007 sub-agent interruption outcomes are recorded with their
-        actual resolution, including the hard session-limit stop
+      - Both M004/T007 sub-agent interruption outcomes have their actual
+        resolution recorded only when supported by a durable primary source (Git
+        history, .pitway/ state, or a committed report); if no such source
+        exists for a specific claimed outcome, that outcome is recorded
+        explicitly as unverifiable from this repository's own record, naming
+        which sources were searched, never inferred or fabricated
       - Every M005 amendment (2 contract amends, 2 task-amend calls, the T007
         bootstrap repair) is audited against its journal entry and checkpoint
         marker
@@ -45,7 +49,23 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/integration/fresh-session-resume.test.ts
         tests/integration/git-traceability-audit.test.ts
-    result: null
+    result:
+      summary: "[truncated] l driver-supplied data (7 hotfixes, 85fa243 separated,
+        backup/pre-rewrite-main zero-ancestor finding). CT012: developer chose
+        defer over driver's adopt-pool:forks recommendation. Matched pair: real
+        sub-agent (31,890 tokens/1 tool/6,901ms) vs inline (unmeasurable in
+        isolation, disclosed)."
+      evidence: "5/5 target tests pass (fresh-session-resume 1/1,
+        git-traceability-audit 4/4), typecheck clean. Redispatch corrected
+        mid-flight: original worker stopped (fixed no-git rule contradicted task
+        instructions requiring real-repo git auditing); driver took over
+        real-repo git/journal inspection, rewrote git-traceability-audit.test.ts
+        to synthetic history (no hardcoded real SHAs), executed a real matched
+        inline/sub-agent pair. Two amendments applied with developer approval:
+        AC013/CT015 conflict-preflight (hash
+        sha256:44822b19df58ab3b1d775015ba80d3fa94b06943d5d6eb753bd0d6ecfa8d40bf)
+        and T001's own AC#2 interruption-honesty wording."
+    attempts: 1
     usage: null
   - id: T002
     objective: Evaluate the M005 report's contract-fixed, task-adaptive execution
@@ -54,7 +74,7 @@ tasks:
       needs new Core mechanism or is achievable through disciplined task-amend
       use, at docs/evidence/M007/ contract-fixed-task-adaptive-decision.md
       (AC002).
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
@@ -75,7 +95,7 @@ tasks:
       glob/directory-scoped write_scope plus an explicit protected-path
       denylist; record an explicit adopt, defer, or reject decision at
       docs/evidence/M007/write-scope-boundary-decision.md (AC003).
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
@@ -99,7 +119,7 @@ tasks:
       M006's (81c99a2, 1e07014, 81a420a) standalone hotfixes as evidence; record
       an explicit adopt, defer, or reject decision and, if adopted, the
       mechanism, at docs/evidence/M007/ ripple-fix-policy-decision.md (AC004).
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
@@ -126,7 +146,7 @@ tasks:
       PitWay-attributed lightweight path) as a worked example; record an
       explicit adopt, defer, or reject decision, with implementation deferred to
       a later milestone regardless of outcome (AC005)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
@@ -161,7 +181,7 @@ tasks:
       recorded; incorporate the new-repository-managed-file- category
       contract-drafting guidance from M006/T003's incident, at
       docs/evidence/M007/tooling-defect-recovery-path.md (AC007).
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
@@ -190,7 +210,7 @@ tasks:
       milestone that references the original milestone/task id, never reopening
       completed state or rewriting a completion commit. Document the convention
       at docs/evidence/M007/ completed-task-revision-path.md (AC008)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
@@ -227,7 +247,7 @@ tasks:
       claude-skills-decision.md. Strictly decision-only — no skills
       implementation lands in this task regardless of the decision or how early
       it resolves (AC009).
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
@@ -259,7 +279,7 @@ tasks:
       with a concrete task-metadata-driven rule at docs/evidence/
       M007/dispatch-mode-decision.md; if adopted, formalize the rule directly
       into protocol-driver.md and dispatch.md within this same task (AC010).
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
@@ -294,7 +314,7 @@ tasks:
       regression tests against synthetic task definitions, not by M007
       dogfooding it on itself; real use starts with M008's own contract-drafting
       (AC011)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
@@ -330,7 +350,7 @@ tasks:
       a later milestone if adopted. Depends on T001 so this decision uses T001's
       compiled live failure-evidence findings (the CT002/CT012 recursion-guard
       incident) rather than re-deriving them independently (AC012).
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
@@ -373,6 +393,15 @@ tasks:
         and protocol-driver.md build on T009's committed text rather than
         reverting or overwriting it
       - No Core/CLI production code changes anywhere in this task's diff
+      - protocol-driver.md states the pre-dispatch conflict-preflight rule
+        (M007/T001's incident) — compare the composed fixed worker rules against
+        task-specific instructions and stop on any contradiction, represent
+        task-required capabilities as explicit narrow exceptions rather than an
+        unstated conflict, keep real-repository Git/journal operations
+        driver-owned, permit worker Git only through isolated temp-repo tests
+        unless a task explicitly approves a narrow read-only real-repository
+        allowance, and validate the fully composed final prompt before launching
+        the worker
     write_scope:
       - src/integrations/claude/protocol-worker.md
       - src/integrations/claude/dispatch.md

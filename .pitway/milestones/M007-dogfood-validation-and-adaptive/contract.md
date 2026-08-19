@@ -5,7 +5,7 @@ title: Dogfood Validation and Adaptive Workflow Intensity Decision
 status: in_progress
 requirement: null
 confirmed_at: 2026-08-19T11:56:41Z
-verification_approved_hash: sha256:812fc4fbe22e87e5e46afd63d6b4d796abe9de8ce4b6eda3f3decd1e2d48b100
+verification_approved_hash: sha256:44822b19df58ab3b1d775015ba80d3fa94b06943d5d6eb753bd0d6ecfa8d40bf
 acceptance_criteria:
   - id: AC001
     text: "Core sequential-MVP dogfood validation, using real evidence gathered from
@@ -343,10 +343,27 @@ acceptance_criteria:
       pattern a sub-agent reached for during M006/T005 (an unprompted,
       disclosed, blocked-before-execution `git stash` attempt plus a near-miss
       same- basename file collision in a flat scratch directory, both self-
-      disclosed and caught before any harm). Because this AC and AC010 both edit
-      dispatch.md and protocol-driver.md, this AC's task depends on AC010's task
-      and applies its four additions on top of whatever AC010 already committed
-      to those two files — never reverting or overwriting AC010's dispatch-mode
+      disclosed and caught before any harm); and (5) before dispatching any
+      worker, the driver compares the composed fixed worker rules against that
+      task's specific instructions and stops on any contradiction rather than
+      dispatching an internally inconsistent prompt (M007/T001's incident: the
+      fixed rules' blanket 'never run git' prohibited every git command, while
+      T001's own task-specific instructions required real-repository git
+      log/rev-parse auditing and a genuinely executed, measured
+      inline-vs-sub-agent comparison, not a design-only stand-in — a
+      contradiction not caught before dispatch). Task-required capabilities are
+      represented as explicit, narrow exceptions to the generic prohibitions,
+      never left as an unstated conflict for the worker to resolve on its own;
+      real-repository Git and journal operations remain driver-owned, never
+      delegated to a worker; a worker may exercise Git only through its own
+      approved isolated temp-repo tests, unless a task explicitly approves a
+      narrow, task-scoped read-only allowance against the real repository; and
+      the driver validates the fully composed final prompt — fixed rules merged
+      with task-specific instructions — for contradictions before launching the
+      worker, not after. Because this AC and AC010 both edit dispatch.md and
+      protocol-driver.md, this AC's task depends on AC010's task and applies its
+      five additions on top of whatever AC010 already committed to those two
+      files — never reverting or overwriting AC010's dispatch-mode
       formalization."
 verification:
   - id: CT001
@@ -438,9 +455,9 @@ verification:
   - id: CT015
     criterion: AC013
     type: manual
-    instruction: Review the four protocol-hardening additions against
+    instruction: Review the five protocol-hardening additions against
       protocol-worker.md, dispatch.md, and protocol-driver.md for accuracy
-      against the M006/T002 and M006/T005 incidents they codify.
+      against the M006/T002, M006/T005, and M007/T001 incidents they codify.
 ---
 
 # Contract — M007: Dogfood Validation and Adaptive Workflow Intensity Decision
@@ -582,4 +599,13 @@ never taking a local report's prose as evidence on its own.
 
 ## Change Log
 
-- (none yet — draft, not confirmed.)
+- 2026-08-19 — AC013/CT015 amended to add a fifth protocol-hardening
+  requirement: pre-dispatch conflict-preflight between fixed worker rules
+  and task-specific instructions, discovered live during T001's own
+  execution (a real dispatch was stopped and redone because the fixed
+  no-git rule directly contradicted T001's own approved task instructions,
+  which required real-repository git auditing and a genuinely measured
+  matched-pair comparison). Bounded amendment: AC013's text and CT015's
+  instruction only; T012's write_scope and its dependency on T009 are
+  unchanged. T012's task-level acceptance_criteria gains one corresponding
+  bullet via a separate `task-amend T012` call.
