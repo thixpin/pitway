@@ -301,7 +301,7 @@ tasks:
       claude-skills-decision.md. Strictly decision-only — no skills
       implementation lands in this task regardless of the decision or how early
       it resolves (AC009).
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -324,7 +324,16 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review of the recorded decision and its evidence
-    result: null
+    result:
+      summary: "[truncated]  zero real skill usage exists in this repo,
+        schema/installer/behavioral-comparison questions remain genuinely open,
+        building plumbing now would be speculative. Decided autonomously
+        (evidence-backed, documentation-only, no mechanism scheduled) per the
+        new tiered Decision Authority Policy."
+      evidence: docs/evidence/M007/claude-skills-decision.md.
+        src/state/claude-assets.ts read in full to verify the glob-pickup claim
+        directly, not assumed.
+    attempts: 1
     usage: null
   - id: T009
     objective: Evaluate right-sized task dispatch (inline driver execution vs.
@@ -456,6 +465,12 @@ tasks:
         unless a task explicitly approves a narrow read-only real-repository
         allowance, and validate the fully composed final prompt before launching
         the worker
+      - protocol-driver.md states the tiered Decision Authority Policy
+        (Autonomous / Continue-and-batch-report / Mandatory developer gate)
+        exactly as specified in AC013, including that auto-run authorization
+        never overrides the mandatory-gate tier and that every autonomous or
+        batch-reported decision retains concise evidence and rationale for the
+        milestone report
     write_scope:
       - src/integrations/claude/protocol-worker.md
       - src/integrations/claude/dispatch.md

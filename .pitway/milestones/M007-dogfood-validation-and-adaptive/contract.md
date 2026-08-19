@@ -5,7 +5,7 @@ title: Dogfood Validation and Adaptive Workflow Intensity Decision
 status: in_progress
 requirement: null
 confirmed_at: 2026-08-19T11:56:41Z
-verification_approved_hash: sha256:44822b19df58ab3b1d775015ba80d3fa94b06943d5d6eb753bd0d6ecfa8d40bf
+verification_approved_hash: sha256:3e32a96c6f88dc981bec7bc569347db0b26b9c3c844d7d49354da52230602282
 acceptance_criteria:
   - id: AC001
     text: "Core sequential-MVP dogfood validation, using real evidence gathered from
@@ -362,11 +362,29 @@ acceptance_criteria:
       narrow, task-scoped read-only allowance against the real repository; and
       the driver validates the fully composed final prompt — fixed rules merged
       with task-specific instructions — for contradictions before launching the
-      worker, not after. Because this AC and AC010 both edit dispatch.md and
-      protocol-driver.md, this AC's task depends on AC010's task and applies its
-      five additions on top of whatever AC010 already committed to those two
-      files — never reverting or overwriting AC010's dispatch-mode
-      formalization."
+      worker, not after; and (6) a tiered Decision Authority Policy governs how
+      much developer confirmation a driver decision requires, adopted as
+      permanent driver/dispatch protocol guidance in M007 (no new Core
+      mechanism): **Autonomous** — reversible implementation details within
+      confirmed contract and write_scope, routine TDD/refactoring choices,
+      evidence-backed documentation-only defer/reject decisions, and bounded
+      fixes already covered by approved scope — decided and applied without
+      pausing; **Continue and batch-report** — low-risk recommendations that do
+      not change code, scope, architecture, public behavior, or roadmap
+      commitments — decided, applied, and reported together rather than
+      individually paused on; **Mandatory developer gate** — milestone
+      confirmation/completion and contract/task amendments, scope or dependency
+      expansion, adopting or scheduling a new mechanism, public API/schema/
+      dependency/security/Git-safety/release changes, destructive or
+      irreversible actions, and materially ambiguous trade-offs — always pause
+      for explicit developer approval, and auto-run authorization never
+      overrides this tier. Every autonomous or batch-reported decision retains
+      concise evidence and rationale for the milestone report — nothing decided
+      without a pause is decided without a record. Because this AC and AC010
+      both edit dispatch.md and protocol-driver.md, this AC's task depends on
+      AC010's task and applies its six additions on top of whatever AC010
+      already committed to those two files — never reverting or overwriting
+      AC010's dispatch-mode formalization."
 verification:
   - id: CT001
     criterion: AC001
@@ -457,9 +475,11 @@ verification:
   - id: CT015
     criterion: AC013
     type: manual
-    instruction: Review the five protocol-hardening additions against
+    instruction: Review the six protocol-hardening additions against
       protocol-worker.md, dispatch.md, and protocol-driver.md for accuracy
-      against the M006/T002, M006/T005, and M007/T001 incidents they codify.
+      against the M006/T002, M006/T005, and M007/T001 incidents they codify,
+      including that the tiered Decision Authority Policy correctly states
+      auto-run never overrides the mandatory-gate tier.
 ---
 
 # Contract — M007: Dogfood Validation and Adaptive Workflow Intensity Decision
@@ -622,3 +642,14 @@ never taking a local report's prose as evidence on its own.
   which sources were searched, never inferred or fabricated. Bounded
   amendment: this one clause only. T001's task-level acceptance_criteria
   gains the same wording via a separate `task-amend T001` call.
+- 2026-08-19 — AC013/CT015 amended to add a sixth protocol-hardening
+  requirement: a tiered Decision Authority Policy (Autonomous / Continue-and-
+  batch-report / Mandatory developer gate) governing how much developer
+  confirmation a driver decision requires during auto-run, adopted as
+  permanent driver/dispatch protocol guidance — no new Core mechanism.
+  Auto-run authorization never overrides the mandatory-gate tier; every
+  autonomous or batch-reported decision retains concise evidence and
+  rationale for the milestone report. Bounded amendment: AC013's text and
+  CT015's instruction only; T012's write_scope and its dependency on T009
+  remain unchanged. T012's task-level acceptance_criteria gains one
+  corresponding bullet via a separate `task-amend T012` call.
