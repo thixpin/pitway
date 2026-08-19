@@ -2,7 +2,7 @@
 schema_version: 1
 id: M007
 title: Dogfood Validation and Adaptive Workflow Intensity Decision
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-19T11:56:41Z
 verification_approved_hash: sha256:3e32a96c6f88dc981bec7bc569347db0b26b9c3c844d7d49354da52230602282

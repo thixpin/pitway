@@ -1,2 +1,199 @@
 schema_version: 1
-results: []
+results:
+  - check: CT002
+    status: pass
+    at: 2026-08-19T13:50:35Z
+    evidence: Tests  545 passed (545) | Start at  20:49:59 | Duration  36.48s
+      (transform 1.36s, setup 0ms, import 4.86s, tests 168.37s, environment 4ms)
+    recorded_by: command
+    duration_ms: 36872
+    termination_reason: exited
+  - check: CT009
+    status: pass
+    at: 2026-08-19T13:50:38Z
+    evidence: Tests  1 passed (1) | Start at  20:50:36 | Duration  2.55s (transform
+      149ms, setup 0ms, import 246ms, tests 2.21s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2951
+    termination_reason: exited
+  - check: CT013
+    status: pass
+    at: 2026-08-19T13:50:39Z
+    evidence: Tests  67 passed (67) | Start at  20:50:39 | Duration  348ms
+      (transform 171ms, setup 0ms, import 304ms, tests 62ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 662
+    termination_reason: exited
+  - check: CT001
+    status: pass
+    at: 2026-08-19T13:51:41Z
+    evidence: "docs/evidence/M007/dogfood-evidence.md compiled and reviewed:
+      fresh-session resume covered by
+      tests/integration/fresh-session-resume.test.ts (1/1 pass); M004/T007
+      interruption outcomes searched against reports/M005.md,
+      .git/pitway/*-report-notes.md, and M004's own T007 result -- no primary
+      source found, recorded explicitly as unverifiable (AC amended to require
+      this honesty); M005 amendment audit against the real journal found a
+      genuine discrepancy (1 contract_amendment, not the claimed 2; 2
+      task_amendment both T007, matches) -- disclosed, not silently reconciled;
+      Git traceability audit (tests/integration/git-traceability-audit.test.ts,
+      4/4 pass, synthetic history only) plus real driver-supplied data confirms
+      7 standalone hotfix commits (M005: bc1a0bf/90bd7ca/69e16ca/0b0438b, M006:
+      81c99a2/1e07014/81a420a) and 85fa243 correctly classified separately as
+      one between-milestone maintenance commit, never merged into that count;
+      new finding: backup/pre-rewrite-main has zero common ancestor with main, a
+      real early-history rewrite; context-efficiency cited from M006's doc, not
+      re-derived; CT012 flakiness recommendation (adopt pool:forks) vs developer
+      decision (defer, revisit after reproducible failures or a deliberate
+      comparison) both recorded; matched inline/sub-agent pair executed for real
+      (sub-agent 31,890 tokens/1 tool/6,901ms; inline unmeasurable in isolation,
+      disclosed)."
+    recorded_by: developer
+  - check: CT003
+    status: pass
+    at: 2026-08-19T13:51:50Z
+    evidence: "docs/evidence/M007/contract-fixed-task-adaptive-decision.md cites
+      M005's T001/T003/T004/T007 incidents plus fresh M007/T001 evidence (two
+      contract amendments this milestone, both developer-approved before
+      landing). Explicit decision: Adopt as documented practice only --
+      filtering criteria guide task-amend-vs-contract-amendment tool choice; no
+      automatic-approval Core mechanism; approval gate unchanged for every
+      invocation. Reached via explicit decision-gate confirmation, not left
+      open-ended."
+    recorded_by: developer
+  - check: CT004
+    status: pass
+    at: 2026-08-19T13:51:51Z
+    evidence: "docs/evidence/M007/write-scope-boundary-decision.md measures real
+      amendment frequency (1/24 tasks across M005+M006, 4.2%) as baseline,
+      compares against a glob/directory+denylist alternative with named
+      tradeoffs (auditability loss, drift, second mechanism). Explicit decision:
+      Reject the alternative, keep exact-file write_scope, revisit only on
+      materially higher future friction. Named reason given, not merely an
+      observation."
+    recorded_by: developer
+  - check: CT005
+    status: pass
+    at: 2026-08-19T13:51:52Z
+    evidence: "docs/evidence/M007/ripple-fix-policy-decision.md cites all 7
+      M005+M006 standalone hotfix commits (M005:
+      bc1a0bf/90bd7ca/69e16ca/0b0438b; M006: 81c99a2/1e07014/81a420a) as
+      baseline evidence. Explicit decision: Adopt, modified -- approved fixes
+      fold into the discovering task's own commit when directly
+      causal/bounded/tested and added to write_scope via an explicitly approved
+      task-amend first (developer-added refinement closing a real
+      checkWriteScope enforcement gap); independent/broad defects still become
+      separate corrective work. Mechanism specified."
+    recorded_by: developer
+  - check: CT006
+    status: pass
+    at: 2026-08-19T13:52:01Z
+    evidence: "docs/evidence/M007/quick-change-design.md covers lifecycle
+      (draft/approved/committed/cancelled/promoted), approved-verification
+      hash-gating, quick_change journal storage (sibling to auto_run), crash
+      recovery, PitWay-Change trailer identity/lookup, cancellation,
+      promotion-to-milestone, and an exact-file census (8 files named, no
+      directory/glob). Explicit decision: Defer implementation, design preserved
+      complete, revisit after 3+ real cases or a measurable traceability
+      problem. No quick-change code exists anywhere in this milestone's diff."
+    recorded_by: developer
+  - check: CT007
+    status: pass
+    at: 2026-08-19T13:52:01Z
+    evidence: "docs/evidence/M007/adaptive-workflow-intensity-decision.md cites
+      AC001-AC005 and AC009-AC010's evidence and decisions directly in a summary
+      table, states the tier/routing model, and names the interim
+      one-task-corrective-milestone policy now in effect. IMPLEMENTATION_PLAN.md
+      reconciled against M007's actual delivery (§7 command count, §8
+      context-bundle fix + read-enforcement disposition, §9 protocol additions,
+      Bootstrap table gains M006, roadmap/status rewritten). Corrected per
+      developer review before approval: the 7-hotfix/1-maintenance-commit
+      classification is preserved exactly (never collapsed into \"8\" or one
+      pattern); the worker read-boundary gap is given an explicit disposition,
+      assigned to M008's release contract, with an explicit interim
+      no-implied-enforcement constraint on README/release claims."
+    recorded_by: developer
+  - check: CT008
+    status: pass
+    at: 2026-08-19T13:52:02Z
+    evidence: "docs/evidence/M007/tooling-defect-recovery-path.md documents a
+      repeatable 4-step procedure (diagnose, route in-scope-vs-deferred,
+      fix+verify RED-then-GREEN, record) demonstrated against all four worked
+      examples: M005/T007's task-amend bootstrap repair, M006/T001's write_scope
+      fix (81c99a2), M006/T003's baseline-assets fix (1e07014), and M006's
+      recursion-guard test-isolation fix (81a420a) -- the last explicitly
+      established as the same already-completed-deliverable-defect shape even
+      though found within the same milestone that produced it. The
+      new-repository-managed-file-category contract-drafting guidance from
+      M006/T003's incident is included."
+    recorded_by: developer
+  - check: CT010
+    status: pass
+    at: 2026-08-19T13:52:09Z
+    evidence: "docs/evidence/M007/completed-task-revision-path.md accurately
+      documents the convention (corrective work as a new task in a subsequent
+      milestone, real lifecycle order, never reopening the original) matching
+      exactly what tests/integration/completed-task-revision-path.test.ts proves
+      (1/1 pass): A's commit/task unchanged and a real ancestor of final HEAD
+      via git merge-base --is-ancestor, B's work separately verified/committed.
+      Zero new Core/CLI production code added -- confirmed by diff review (only
+      the doc and the test file changed)."
+    recorded_by: developer
+  - check: CT011
+    status: pass
+    at: 2026-08-19T13:52:10Z
+    evidence: "docs/evidence/M007/claude-skills-decision.md resolves the glob-pickup
+      question explicitly by direct inspection of src/state/claude-assets.ts
+      (yes -- listMarkdownAssets recursively picks up any nested .md file with
+      zero installer changes, verified not assumed). The schema-field,
+      installation-strategy, and behavioral-comparison questions are explicitly
+      left open with reasons (zero real skill usage exists to measure against).
+      Explicit decision: Defer -- no implementation, schema field, or installer
+      change lands in any scheduled milestone. Post-completion developer
+      clarification (claude-config is first-party/MIT) assessed and found to
+      have no impact on this decision, since it never relied on
+      license/ownership status."
+    recorded_by: developer
+  - check: CT012
+    status: pass
+    at: 2026-08-19T13:52:10Z
+    evidence: "docs/evidence/M007/dispatch-mode-decision.md states a concrete rule
+      (inline default for docs/review/localized/small-scope; tdd alone never
+      forces dispatch; sub-agent only for material isolation/concurrency benefit
+      weighed against ~32K-token measured overhead) and explicitly preserves
+      contract-mandated dispatch as never overridden. Adopted with developer
+      refinements; protocol-driver.md and dispatch.md were actually updated
+      within T009's own task (confirmed by diff: dispatch.md gained the
+      \"Choosing inline vs. sub-agent dispatch\" section, protocol-driver.md's
+      Dispatch discipline section rewritten to reference it)."
+    recorded_by: developer
+  - check: CT014
+    status: pass
+    at: 2026-08-19T13:52:17Z
+    evidence: "docs/evidence/M007/structured-failure-extraction-decision.md
+      addresses generality across arbitrary command output explicitly (a small
+      set of common failure-summary patterns, never a single universal parser;
+      falls back to today's tail-only behavior when unmatched) and reaches an
+      explicit decision: Adopt as a future direction, implementation deferred to
+      T013's roadmap reconciliation (no milestone number assigned).
+      Developer-added binding constraints recorded: best-effort/tool-agnostic,
+      preserve the raw tail, prepend only confidently-matched lines, never alter
+      real exit status/termination_reason, clean fallback when unrecognized. No
+      extraction implementation code exists anywhere in this milestone's diff."
+    recorded_by: developer
+  - check: CT015
+    status: pass
+    at: 2026-08-19T13:52:18Z
+    evidence: "Reviewed all six protocol-hardening additions against
+      protocol-worker.md, dispatch.md, and protocol-driver.md for accuracy
+      against the M006/T002, M006/T005, and M007/T001 incidents they codify:
+      (1-2) always-bounded-timeout and no-unattended-backgrounded-command rules
+      in protocol-worker.md; (3) non-standard-report-not-evidence reinforcement
+      in protocol-driver.md; (4) git-free RED-check toggle pattern in
+      protocol-worker.md; (5) pre-dispatch conflict-preflight rule in
+      protocol-driver.md, citing the real M007/T001 incident; (6) the tiered
+      Decision Authority Policy in protocol-driver.md, correctly stating
+      auto-run never overrides the mandatory-gate tier. Verified by direct diff
+      review, tests/unit + tests/integration 67/67 pass (CT013), typecheck
+      clean, zero Core/CLI production code touched."
+    recorded_by: developer
