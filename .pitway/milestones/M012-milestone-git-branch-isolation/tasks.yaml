@@ -391,7 +391,7 @@ tasks:
       `branch_strategy: main`, none of this applies and `milestone-complete`'s
       behavior stays completely unchanged -- add a regression test proving that
       explicitly."
-    status: ready
+    status: completed
     depends_on:
       - T003
     acceptance_criteria:
@@ -409,7 +409,16 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-complete.test.ts
-    result: null
+    result:
+      summary: "[truncated] tone commit (nothing merged); every commit since
+        base_revision has exactly one parent (no merge commit); base branch tip
+        SHA unchanged before vs after; still checked out on the milestone
+        branch. A dedicated regression test confirms base_branch/base_revision
+        stay null under main strategy."
+      evidence: Tests  20 passed (20) | Start at  16:04:33 | Duration  17.50s
+        (transform 364ms, setup 0ms, import 470ms, tests 16.94s, environment
+        0ms)
+    attempts: 1
     usage: null
   - id: T007
     objective: "A new, real end-to-end integration test file,
@@ -438,7 +447,7 @@ tasks:
       test` suite itself -- that full-suite run is exclusively CT008's own
       milestone-level gate (see this contract's verification block), not part of
       any individual task's declared verification."
-    status: waiting
+    status: ready
     depends_on:
       - T003
       - T004

@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -8,6 +8,7 @@ import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneCompleteCommand } from '../../src/cli/commands/milestone-complete.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
+import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js';
 import { registerVerifyCommand } from '../../src/cli/commands/verify.js';
 import { loadContract, loadState } from '../../src/state/store.js';
 import { deterministicBranchName } from '../../src/core/milestones/confirm.js';
@@ -125,6 +126,7 @@ async function run(args: string[], cwd: string): Promise<{ lines: string[]; erro
   registerMilestoneConfirmCommand(program, { root: cwd, write: (s) => lines.push(s) });
   registerMilestoneCompleteCommand(program, { root: cwd, write: (s) => lines.push(s) });
   registerVerifyCommand(program, { root: cwd, write: (s) => lines.push(s) });
+  registerTaskUpdateCommand(program, { root: cwd, write: (s) => lines.push(s) });
   try {
     await program.parseAsync(['node', 'pitway', ...args]);
     return { lines };
@@ -507,5 +509,123 @@ describe('pitway milestone-complete branch guard (M012/T003)', () => {
     expect(commitCount(root)).toBe(before);
     expect(git(['diff', '--cached', '--name-only'], root).trim()).toBe('');
     expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe('somewhere-else');
+  });
+});
+
+// M012/T006 (AC006): merge-ready/PR-ready completion state, proven by
+// concrete git-plumbing assertions against a real lifecycle with real task
+// commits (writeTaskStatuses is a direct tasks.yaml write with no commit of
+// its own, so it can't exercise "exactly baseline + task + completion
+// commits" -- this block drives T001/T002 through the real task-update
+// completion flow instead).
+describe('pitway milestone-complete merge-ready state (M012/T006)', () => {
+  const RESULT_FIXTURE = 'summary: Done.\nevidence: tests pass\n';
+  const MESSAGE_FIXTURE = 'task: complete\n\nReal work.\n';
+
+  async function confirmedOnBranch(): Promise<string> {
+    writeFileSync(
+      join(root, '.pitway', 'config.yaml'),
+      'schema_version: 1\ngit:\n  branch_strategy: milestone\n',
+    );
+    const startBranch = git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim();
+    await confirmed();
+    return startBranch;
+  }
+
+  async function completeTaskForReal(id: string, file: string): Promise<string> {
+    // Outside root -- flag input files must never show up as unexpected
+    // dirty paths during the in_progress/completion dirty-tree checks.
+    const scratch = mkdtempSync(join(tmpdir(), 'pitway-mcomp-t006-'));
+    const result = join(scratch, `${id}-result.yaml`);
+    const message = join(scratch, `${id}-message.txt`);
+    writeFileSync(result, RESULT_FIXTURE);
+    writeFileSync(message, MESSAGE_FIXTURE);
+    expect((await run(['task-update', id, 'in_progress'], root)).error).toBeUndefined();
+    expect((await run(['task-update', id, 'review'], root)).error).toBeUndefined();
+    mkdirSync(join(root, 'src'), { recursive: true });
+    writeFileSync(join(root, file), 'export const x = 1;\n');
+    const { error } = await run(
+      ['task-update', id, 'completed', '--result', result, '--message', message],
+      root,
+    );
+    expect(error).toBeUndefined();
+    rmSync(scratch, { recursive: true, force: true });
+    return git(['rev-parse', 'HEAD'], root).trim();
+  }
+
+  async function fullLifecycleOnBranch(): Promise<{
+    baseBranch: string;
+    baseRevision: string;
+    baselineSha: string;
+    taskShas: string[];
+    milestoneBranch: string;
+  }> {
+    const baseBranch = await confirmedOnBranch();
+    const contract = loadContract(root, 'M001');
+    const baseRevision = contract.frontmatter.base_revision!;
+    const baselineSha = git(['rev-parse', 'HEAD'], root).trim();
+    const milestoneBranch = deterministicBranchName('M001', contract.frontmatter.title);
+
+    const t1 = await completeTaskForReal('T001', 'src/a.ts');
+    const t2 = await completeTaskForReal('T002', 'src/b.ts');
+    await recordAllChecks();
+
+    return { baseBranch, baseRevision, baselineSha, taskShas: [t1, t2], milestoneBranch };
+  }
+
+  it('reaches a merge-ready state: exactly baseline+task+completion commits, base branch untouched, no merge commit, clean tree', async () => {
+    const { baseBranch, baseRevision, baselineSha, taskShas, milestoneBranch } =
+      await fullLifecycleOnBranch();
+    const baseBranchTipBefore = git(['rev-parse', baseBranch], root).trim();
+
+    const { error } = await run(['milestone-complete', 'M001'], root);
+    expect(error).toBeUndefined();
+    const completionSha = git(['rev-parse', 'HEAD'], root).trim();
+
+    // Exactly baseline + 2 task commits + completion commit, no more, no fewer.
+    const commitsSinceBase = git(
+      ['log', '--format=%H', `${baseRevision}..${milestoneBranch}`],
+      root,
+    )
+      .trim()
+      .split('\n')
+      .filter((l) => l.length > 0);
+    expect(commitsSinceBase.sort()).toEqual([baselineSha, ...taskShas, completionSha].sort());
+
+    // Working tree clean.
+    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+
+    // The base branch's tip does not contain any milestone commit (nothing merged).
+    for (const sha of [baselineSha, ...taskShas, completionSha]) {
+      expect(() =>
+        git(['merge-base', '--is-ancestor', sha, baseBranch], root),
+      ).toThrow();
+    }
+
+    // No merge commit anywhere in the milestone branch's history since base_revision.
+    const parentCounts = git(
+      ['log', '--format=%P', `${baseRevision}..${milestoneBranch}`],
+      root,
+    )
+      .trim()
+      .split('\n')
+      .map((line) => line.trim().split(/\s+/).filter((p) => p.length > 0).length);
+    expect(parentCounts.every((count) => count === 1)).toBe(true);
+
+    // The base branch itself was never touched.
+    expect(git(['rev-parse', baseBranch], root).trim()).toBe(baseBranchTipBefore);
+
+    // Still checked out on the milestone branch -- completion never switches.
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe(milestoneBranch);
+  });
+
+  it('does not affect main-strategy completion behavior at all (regression)', async () => {
+    // Every test above this describe block already exercises main strategy
+    // (the shared confirmed()/completed() helpers never set branch_strategy);
+    // this is one more explicit assertion that no branch bookkeeping leaks in.
+    await completed();
+    const contract = loadContract(root, 'M001');
+    expect(contract.frontmatter.base_branch ?? null).toBeNull();
+    expect(contract.frontmatter.base_revision ?? null).toBeNull();
   });
 });
