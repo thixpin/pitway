@@ -10,6 +10,7 @@ import { registerMilestoneCancelCommand } from './commands/milestone-cancel.js';
 import { registerMilestoneCompleteCommand } from './commands/milestone-complete.js';
 import { registerMilestoneConfirmCommand } from './commands/milestone-confirm.js';
 import { registerMilestoneListCommand } from './commands/milestone-list.js';
+import { registerMilestoneReviewCommand } from './commands/milestone-review.js';
 import { registerMilestoneStatusCommand } from './commands/milestone-status.js';
 import { registerQuickChangeCommand } from './commands/quick-change.js';
 import { registerResumeCommand } from './commands/resume.js';
@@ -56,6 +57,7 @@ export function registerAllCommands(program: Command, deps: CommandDeps = {}): v
   registerMilestoneCompleteCommand(program, deps);
   registerMilestoneConfirmCommand(program, deps);
   registerMilestoneListCommand(program, deps);
+  registerMilestoneReviewCommand(program, deps);
   registerMilestoneStatusCommand(program, deps);
   registerQuickChangeCommand(program, deps);
   registerResumeCommand(program, deps);
@@ -85,5 +87,9 @@ const isMainModule =
 if (isMainModule) {
   const program = buildCli();
   registerAllCommands(program);
-  program.parse(process.argv);
+  // M015/T002: async, not program.parse -- this milestone introduces the
+  // first async command action (T003's interactive role-selection prompt),
+  // and a sync parse would turn its refusal path into an unhandled
+  // rejection in the real binary.
+  await program.parseAsync(process.argv);
 }

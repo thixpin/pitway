@@ -79,7 +79,7 @@ tasks:
       correct roles/hash on a draft and on a confirmed milestone;
       unknown/duplicate/empty role refusals naming offenders;
       completed-milestone refusal; second-open-session refusal."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -107,7 +107,15 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-review-start.test.ts
         tests/integration/cli.test.ts
-    result: null
+    result:
+      summary: "[truncated] l-backed review_recording append) and the top-level
+        milestone-review CLI command with the start subcommand, registered in
+        cli/index.ts. Switched the bin entry to await program.parseAsync for
+        T003's async prompt. Updated cli.test.ts's registered-command-list
+        assertion (name + list) to 22."
+      evidence: Tests  38 passed (38) | Start at  23:52:52 | Duration  2.71s
+        (transform 479ms, setup 0ms, import 698ms, tests 2.27s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T003
     name: Interactive role selection
@@ -125,7 +133,7 @@ tasks:
       prompt through injected streams: valid selection opens the session;
       invalid-then-valid re-prompt; invalid-twice refusal; non-TTY refusal;
       --roles bypass."
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:
@@ -158,7 +166,7 @@ tasks:
       tests (`tests/integration/milestone-review-brief.test.ts`): happy path
       content, all three refusals (hash mismatch driven by a real `milestone-add
       --replace` revision)."
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:
@@ -195,7 +203,7 @@ tasks:
       happy path snapshot shape; re-record appends and wins derivation without
       mutating the prior snapshot; empty-findings validity; malformed file
       refusal naming issues; all session/hash refusals."
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:
