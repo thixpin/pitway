@@ -188,6 +188,21 @@ export const journalWorktreeDispatchSchema = z.strictObject({
   at: z.string().min(1),
 });
 
+// AC006/T006 (M014): closes a worktree_dispatch (referenced by dispatchId)
+// after its diff landed in the main tree. workerSha is the scaffolding
+// branch's HEAD -- evidence-only transport metadata, never persisted into
+// tasks.yaml (decision 4 unchanged; it becomes dangling after cleanup by
+// design).
+export const journalWorktreeIntegrateSchema = z.strictObject({
+  kind: z.literal('worktree_integrate'),
+  id: z.string().min(1),
+  dispatchId: z.string().min(1),
+  milestone: journalMilestoneId,
+  taskId: journalTaskId,
+  workerSha: z.string().min(1),
+  at: z.string().min(1),
+});
+
 export const journalRecordSchema = z.discriminatedUnion('kind', [
   journalEntrySchema,
   journalCheckpointSchema,
@@ -195,6 +210,7 @@ export const journalRecordSchema = z.discriminatedUnion('kind', [
   journalQuickChangeSchema,
   journalTaskVerifyEvidenceSchema,
   journalWorktreeDispatchSchema,
+  journalWorktreeIntegrateSchema,
 ]);
 
 export const journalFileSchema = z.strictObject({
@@ -214,6 +230,7 @@ export type JournalTaskVerifyFingerprint = z.infer<typeof journalTaskVerifyFinge
 export type JournalTaskVerifyTypecheck = z.infer<typeof journalTaskVerifyTypecheckSchema>;
 export type JournalTaskVerifyEvidence = z.infer<typeof journalTaskVerifyEvidenceSchema>;
 export type JournalWorktreeDispatch = z.infer<typeof journalWorktreeDispatchSchema>;
+export type JournalWorktreeIntegrate = z.infer<typeof journalWorktreeIntegrateSchema>;
 export type JournalRecord = z.infer<typeof journalRecordSchema>;
 export type JournalFile = z.infer<typeof journalFileSchema>;
 
@@ -357,6 +374,22 @@ export function appendWorktreeDispatchRecord(
   const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
   if (!result.success) {
     throw new JournalError(`refusing to append invalid worktree_dispatch record: ${formatIssues(result.error)}`);
+  }
+  saveJournalFile(cwd, result.data);
+  return full;
+}
+
+// Appends a worktree_integrate record -- a full, self-contained snapshot,
+// never a patch; same discipline as every sibling appender above.
+export function appendWorktreeIntegrateRecord(
+  cwd: string,
+  record: Omit<JournalWorktreeIntegrate, 'kind'>,
+): JournalWorktreeIntegrate {
+  const file = loadJournalFile(cwd);
+  const full: JournalWorktreeIntegrate = { kind: 'worktree_integrate', ...record };
+  const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
+  if (!result.success) {
+    throw new JournalError(`refusing to append invalid worktree_integrate record: ${formatIssues(result.error)}`);
   }
   saveJournalFile(cwd, result.data);
   return full;

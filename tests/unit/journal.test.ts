@@ -9,6 +9,7 @@ import {
   appendQuickChangeRecord,
   appendTaskVerifyEvidenceRecord,
   appendWorktreeDispatchRecord,
+  appendWorktreeIntegrateRecord,
   JournalError,
   readJournal,
   reconcilePending,
@@ -577,6 +578,46 @@ describe('worktree_dispatch records (M014/T004)', () => {
         ...baseDispatch,
         // @ts-expect-error deliberately invalid milestone id
         milestone: 'X1',
+      }),
+    ).toThrow(JournalError);
+    expect(readJournal(repo)).toHaveLength(0);
+  });
+});
+
+// AC006/T006 (M014): worktree_integrate -- closes a dispatch by dispatchId;
+// same sibling-record discipline.
+describe('worktree_integrate records (M014/T006)', () => {
+  const baseIntegrate = {
+    id: 'wti-1',
+    dispatchId: 'wtd-1',
+    milestone: 'M014',
+    taskId: 'T001',
+    workerSha: 'b'.repeat(40),
+    at: '2026-08-20T00:00:00Z',
+  };
+
+  it('appends a worktree_integrate record and reads it back', () => {
+    const record = appendWorktreeIntegrateRecord(repo, baseIntegrate);
+    expect(record.kind).toBe('worktree_integrate');
+    expect(readJournal(repo)[0]).toMatchObject({
+      kind: 'worktree_integrate',
+      dispatchId: 'wtd-1',
+      taskId: 'T001',
+    });
+  });
+
+  it('is excluded from derivePending and invisible to git status', () => {
+    appendWorktreeIntegrateRecord(repo, baseIntegrate);
+    expect(derivePending(readJournal(repo))).toHaveLength(0);
+    expect(git(['status', '--porcelain'], repo).trim()).toBe('');
+  });
+
+  it('rejects a record missing required fields, appending nothing', () => {
+    expect(() =>
+      appendWorktreeIntegrateRecord(repo, {
+        ...baseIntegrate,
+        // @ts-expect-error deliberately missing workerSha
+        workerSha: undefined,
       }),
     ).toThrow(JournalError);
     expect(readJournal(repo)).toHaveLength(0);

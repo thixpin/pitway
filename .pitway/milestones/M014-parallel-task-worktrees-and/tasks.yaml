@@ -288,7 +288,7 @@ tasks:
       tree; empty diff and uncommitted worktree refused; sibling-dispatch rider
       disclosure case (completion commit carrying the other task's in_progress
       state) proven against `findCompletionCommit`."
-    status: ready
+    status: completed
     depends_on:
       - T003
       - T004
@@ -320,7 +320,16 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/integration/task-integrate.test.ts
         tests/unit/journal.test.ts
-    result: null
+    result:
+      summary: "[truncated] up, record), multi-commit combined diff, binary file,
+        in-scope deletion, out-of-scope refusal byte-identical, .pitway/ tamper
+        refusal, no-commit and no-record refusals, dirty-tree refusal, and the
+        sibling-rider proof (completion commit with a concurrently dispatched
+        sibling in_progress)."
+      evidence: Tests  42 passed (42) | Start at  19:40:52 | Duration  10.00s
+        (transform 277ms, setup 0ms, import 427ms, tests 15.81s, environment
+        0ms)
+    attempts: 1
     usage: null
   - id: T007
     name: task-integrate command and crash recovery
@@ -340,7 +349,7 @@ tasks:
       windows (simulated by killing between steps / staging equivalent on-disk
       states), double-integrate idempotency, missing-worktree refusal pointing
       at task-discard, and the AC007 evidence-parity case."
-    status: waiting
+    status: ready
     depends_on:
       - T005
       - T006
