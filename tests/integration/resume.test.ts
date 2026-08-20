@@ -327,3 +327,42 @@ describe('pitway resume racing footer (M013/T005)', () => {
     expect(lines[lines.length - 1]).toBe('🏎️ 48% · ✅ 1/2 · Next: T002');
   });
 });
+
+// Developer directive (2026-08-20, during M014): the racing footer is a
+// separate, permanent, single-line status element -- only progress/status
+// information, never concatenated with narration, task-lifecycle messages,
+// or anything else. Task-name gates render as their own ` · ` segment.
+describe('pitway resume footer output separation (M014 driver-output directive)', () => {
+  it('renders the footer blank-line-separated, exactly once, single-line, with the name segment', async () => {
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    saveContract(root, 'M001', { frontmatter: frontmatter('in_progress'), body: '\n' });
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [
+        task({ id: 'T001', status: 'completed' }),
+        task({ id: 'T002', status: 'ready', name: 'fail-closed worktree state guard' }),
+      ],
+    });
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume']);
+    const output = lines.join('\n');
+    const outputLines = output.split('\n');
+    const last = outputLines[outputLines.length - 1]!;
+
+    // Single concise line: icon, workload %, exact count, gate (+ name).
+    expect(last).toBe('🏎️ 48% · ✅ 1/2 · Next: T002 · fail-closed worktree state guard');
+    // A separate element: blank line before it, nothing after it.
+    expect(outputLines[outputLines.length - 2]).toBe('');
+    // Exactly one footer-shaped line in the whole output -- the footer is
+    // never concatenated into or duplicated by any narration line.
+    const footerShaped = outputLines.filter((l) => /\d+% · ✅ \d+\/\d+/.test(l));
+    expect(footerShaped).toEqual([last]);
+    // Strict shape: nothing but progress/status segments.
+    expect(last).toMatch(
+      /^(🏎️|🏁|🔧) \d+% · ✅ \d+\/\d+ · (Complete|Next: (T\d{3}( · .+)?|verification|developer approval))$/,
+    );
+  });
+});

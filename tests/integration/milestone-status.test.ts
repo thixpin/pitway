@@ -273,3 +273,46 @@ describe('pitway milestone-status --report (M013/T006)', () => {
     expect(view.tasks[0]!.label).toBe(`${'x'.repeat(60)}…`);
   });
 });
+
+// Developer directive (2026-08-20, during M014): footer output separation --
+// a permanent single-line status element, never concatenated with body
+// output; completed variant stays `🏁 100% · ✅ <t>/<t> · Complete`.
+describe('pitway milestone-status footer output separation (M014 driver-output directive)', () => {
+  it('renders the running footer blank-line-separated with the name segment, exactly once', async () => {
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [
+        task({ id: 'T001', status: 'completed' }),
+        task({ id: 'T002', status: 'ready', name: 'task-dispatch command' }),
+      ],
+    });
+
+    const output = await runStatus();
+    const lines = output.split('\n');
+    const last = lines[lines.length - 1]!;
+    expect(last).toBe('🏎️ 48% · ✅ 1/2 · Next: T002 · task-dispatch command');
+    expect(lines[lines.length - 2]).toBe('');
+    expect(lines.filter((l) => /\d+% · ✅ \d+\/\d+/.test(l))).toEqual([last]);
+  });
+
+  it('renders the completed footer as its own final line with no task-name segment', async () => {
+    saveContract(root, 'M001', {
+      frontmatter: { ...frontmatter, status: 'completed' },
+      body: '\n# Contract\n',
+    });
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [
+        task({ id: 'T001', status: 'completed', name: 'config gate' }),
+        task({ id: 'T002', status: 'completed', name: 'worktree module' }),
+      ],
+    });
+
+    const output = await runStatus();
+    const lines = output.split('\n');
+    const last = lines[lines.length - 1]!;
+    expect(last).toBe('🏁 100% · ✅ 2/2 · Complete');
+    expect(lines[lines.length - 2]).toBe('');
+    expect(lines.filter((l) => /\d+% · ✅ \d+\/\d+/.test(l))).toEqual([last]);
+  });
+});
