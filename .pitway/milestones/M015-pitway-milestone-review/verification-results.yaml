@@ -1,2 +1,156 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-20T18:09:38Z
+    evidence: Tests  28 passed (28) | Start at  01:09:38 | Duration  257ms
+      (transform 47ms, setup 0ms, import 101ms, tests 47ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 823
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-20T18:09:43Z
+    evidence: Tests  38 passed (38) | Start at  01:09:39 | Duration  3.64s
+      (transform 748ms, setup 0ms, import 1.06s, tests 2.99s, environment 0ms)
+    recorded_by: command
+    duration_ms: 4209
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-20T18:09:45Z
+    evidence: Tests  6 passed (6) | Start at  01:09:43 | Duration  2.05s (transform
+      222ms, setup 0ms, import 325ms, tests 1.64s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2381
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-20T18:09:47Z
+    evidence: Tests  6 passed (6) | Start at  01:09:45 | Duration  1.91s (transform
+      240ms, setup 0ms, import 340ms, tests 1.48s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2282
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-20T18:09:50Z
+    evidence: Tests  8 passed (8) | Start at  01:09:48 | Duration  2.66s (transform
+      247ms, setup 0ms, import 364ms, tests 2.21s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2964
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-20T18:09:54Z
+    evidence: Tests  9 passed (9) | Start at  01:09:51 | Duration  3.11s (transform
+      218ms, setup 0ms, import 312ms, tests 2.71s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3415
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-20T18:09:58Z
+    evidence: Tests  10 passed (10) | Start at  01:09:54 | Duration  3.47s
+      (transform 228ms, setup 0ms, import 324ms, tests 3.07s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3769
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-20T18:10:01Z
+    evidence: Tests  2 passed (2) | Start at  01:09:58 | Duration  3.19s (transform
+      226ms, setup 0ms, import 322ms, tests 2.77s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3500
+    termination_reason: exited
+  - check: CT009
+    status: pass
+    at: 2026-08-20T18:10:07Z
+    evidence: Tests  8 passed (8) | Start at  01:10:01 | Duration  5.57s (transform
+      222ms, setup 0ms, import 317ms, tests 5.17s, environment 0ms)
+    recorded_by: command
+    duration_ms: 5868
+    termination_reason: exited
+  - check: CT010
+    status: pass
+    at: 2026-08-20T18:10:10Z
+    evidence: Tests  4 passed (4) | Start at  01:10:07 | Duration  2.68s (transform
+      229ms, setup 0ms, import 325ms, tests 2.28s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2978
+    termination_reason: exited
+  - check: CT011
+    status: pass
+    at: 2026-08-20T18:10:12Z
+    evidence: Tests  36 passed (36) | Start at  01:10:10 | Duration  1.83s
+      (transform 238ms, setup 0ms, import 349ms, tests 1.45s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2117
+    termination_reason: exited
+  - check: CT012
+    status: pass
+    at: 2026-08-20T18:11:39Z
+    evidence: Tests  1090 passed (1090) | Start at  01:10:12 | Duration  86.90s
+      (transform 3.10s, setup 0ms, import 14.53s, tests 579.17s, environment
+      8ms)
+    recorded_by: command
+    duration_ms: 87201
+    termination_reason: exited
+  - check: CT013
+    status: pass
+    at: 2026-08-20T18:11:40Z
+    evidence: (no output; exit 0)
+    recorded_by: command
+    duration_ms: 746
+    termination_reason: exited
+  - check: CT014
+    status: pass
+    at: 2026-08-20T18:12:01Z
+    evidence: "Read commands/milestone-review.md and protocol-driver.md's Milestone
+      review section against AC011: driver flow (role selection with developer,
+      one bounded brief --json envelope per reviewer subagent, verbatim
+      recording, report presentation, developer decision) present in both docs;
+      three example role combinations quoted as examples-not-presets; every
+      disclosure present (no review command mutates state -- proven by AC007's
+      byte-check test; detection-not-prevention via the hash gate; PitWay never
+      runs reviews/cannot verify independence or concurrency; findings are
+      opinion-evidence; decide-before-complete). Matches tested behavior across
+      CT001-CT010's passing suites."
+    recorded_by: developer
+  - check: CT015
+    status: pass
+    at: 2026-08-20T18:12:23Z
+    evidence: "Reconciled IMPLEMENTATION_PLAN.md against AC012: M015 -- PitWay
+      Milestone Review inserted as a real roadmap entry; the previously-planned
+      Extended dogfood milestone renumbered to M016 throughout -- grep confirms
+      zero remaining 'M015 -- Extended' text; the three known-stale lines fixed
+      (renumbered-M014-M015 sequencing sentence, Token-Telemetry never-shifts
+      note, M014 entry's validation-pass pointer, all now referencing M016);
+      command surface 22 (tests/integration/cli.test.ts's
+      registered-command-list assertion passes, the authoritative count) and
+      asset count 35 (find confirms 35 .md files under src/integrations/claude/,
+      21 under commands/) both match delivered code; Bootstrap table gained
+      M014's row; the roadmap entry names every disclosed deviation/decision
+      plus the bootstrap-review disclosure and both gate-caught fixes; Status
+      paragraph updated; no M001-M014 history rewritten beyond the sanctioned
+      reconciliation points (revision header line preserved verbatim, only
+      appended to)."
+    recorded_by: developer
+  - check: CT016
+    status: pass
+    at: 2026-08-20T18:12:33Z
+    evidence: "Read README.md against AC014's checklist: the milestone-review stage
+      appears in both the How-It-Works mermaid diagram (Contract -> Milestone
+      Review, with a dashed loop-back to Contract) and the lifecycle prose line;
+      the new Opt-in Policies section documents git.branch_strategy (M012) and
+      execution.strategy (M014) with correct byte-identical defaults and a
+      one-paragraph parallel-worktrees shape; a one-line mention of the progress
+      footer and milestone-status --report (M013) is present; the Engineering
+      Boundaries table gained exactly the review-honesty row (findings only,
+      PitWay never runs reviews or verifies reviewer independence) while the
+      existing context_files row's statement is untouched; the README's existing
+      register (high-level, count-free, defers command surface to pitway --help,
+      claims bounded by fresh-clone evidence) is preserved throughout -- no
+      feature invented, no count hardcoded."
+    recorded_by: developer

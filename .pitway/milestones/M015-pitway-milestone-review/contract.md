@@ -2,7 +2,7 @@
 schema_version: 1
 id: M015
 title: PitWay Milestone Review
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-20T16:37:15Z
 verification_approved_hash: sha256:9f7bb19d9ff518cef6aaeb02942f1275abd9b56eb438dc682f49a4e11de261e0
