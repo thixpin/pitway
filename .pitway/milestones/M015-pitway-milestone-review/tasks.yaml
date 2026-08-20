@@ -601,7 +601,7 @@ tasks:
       readline-not-arrow-keys, confirm/review uncoupling, the bootstrap-review
       disclosure); Status paragraph updated. Then run the milestone-level gates
       exactly once: full `npm test` and `npx tsc --noEmit` (AC013)."
-    status: ready
+    status: completed
     depends_on:
       - T009
       - T010
@@ -622,5 +622,14 @@ tasks:
     verification:
       strategy: command
       detail: npm test && npx tsc --noEmit
-    result: null
+    result:
+      summary: "[truncated] s standalone every time) -- confirmed via the established
+        protocol (standalone rerun passed, waited for 1-min load to drop from 15
+        to under 4, isolated task-verify rerun passed clean). Third consecutive
+        milestone this flake has recurred; still a real backlog candidate for
+        M016 to harden."
+      evidence: Tests  1090 passed (1090) | Start at  01:07:48 | Duration  75.04s
+        (transform 3.26s, setup 0ms, import 12.64s, tests 500.08s, environment
+        15ms)
+    attempts: 1
     usage: null
