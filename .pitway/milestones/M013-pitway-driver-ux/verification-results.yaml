@@ -1,2 +1,129 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-20T10:46:53Z
+    evidence: Tests  82 passed (82) | Start at  17:46:53 | Duration  214ms
+      (transform 43ms, setup 0ms, import 91ms, tests 33ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 604
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-20T10:46:55Z
+    evidence: Tests  21 passed (21) | Start at  17:46:53 | Duration  2.22s
+      (transform 373ms, setup 0ms, import 550ms, tests 1.91s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2525
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-20T10:46:56Z
+    evidence: Tests  8 passed (8) | Start at  17:46:56 | Duration  100ms (transform
+      15ms, setup 0ms, import 21ms, tests 2ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 440
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-20T10:47:14Z
+    evidence: Tests  53 passed (53) | Start at  17:46:56 | Duration  17.83s
+      (transform 463ms, setup 0ms, import 717ms, tests 31.15s, environment 0ms)
+    recorded_by: command
+    duration_ms: 18149
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-20T10:47:14Z
+    evidence: Tests  6 passed (6) | Start at  17:47:14 | Duration  110ms (transform
+      15ms, setup 0ms, import 22ms, tests 2ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 503
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-20T10:47:17Z
+    evidence: Tests  31 passed (31) | Start at  17:47:15 | Duration  2.27s
+      (transform 420ms, setup 0ms, import 657ms, tests 3.55s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2581
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-20T10:47:19Z
+    evidence: Tests  10 passed (10) | Start at  17:47:17 | Duration  2.03s
+      (transform 191ms, setup 0ms, import 278ms, tests 1.67s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2341
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-20T10:47:22Z
+    evidence: Tests  10 passed (10) | Start at  17:47:20 | Duration  2.33s
+      (transform 361ms, setup 0ms, import 496ms, tests 1.73s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2628
+    termination_reason: exited
+  - check: CT009
+    status: fail
+    at: 2026-08-20T10:48:38Z
+    evidence: 121|     expect((await run(['init'], root)).error).toBeUndefined(); |
+      122| | ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+    recorded_by: command
+    duration_ms: 75823
+    termination_reason: exited
+  - check: CT010
+    status: pass
+    at: 2026-08-20T10:48:38Z
+    evidence: (no output; exit 0)
+    recorded_by: command
+    duration_ms: 670
+    termination_reason: exited
+  - check: CT009
+    status: pass
+    at: 2026-08-20T10:52:46Z
+    evidence: Tests  907 passed (907) | Start at  17:51:42 | Duration  64.15s
+      (transform 2.58s, setup 0ms, import 9.09s, tests 396.90s, environment 6ms)
+    recorded_by: command
+    duration_ms: 64564
+    termination_reason: exited
+  - check: CT011
+    status: pass
+    at: 2026-08-20T10:53:13Z
+    evidence: grep -c '^## Progress reporting' protocol-driver.md -> 1; section
+      documents ADD-style 5-field routine-update shape,
+      footer-after-confirmation-only rule with no footer/explanation before
+      confirm, both verify --status/milestone-status --report flags, and
+      explicit PitWay-cannot-verify-the-habit disclosure (mirrors
+      required_skills). Commit d703a61 touched exactly protocol-driver.md, +33
+      lines.
+    recorded_by: developer
+  - check: CT012
+    status: pass
+    at: 2026-08-20T10:53:25Z
+    evidence: Revision header line 4 gains M013/T008 entry. Line 268 M013 roadmap
+      entry rewritten to 'delivered' with full scope + disclosed deviation. Line
+      281 Backlog task-name-field entry marked DELIVERED by M013/T002
+      (strikethrough). Status paragraph (line 289) reflects M013
+      in-progress-executing state and lists all M013 deliverables. Bootstrap
+      table gained M012's row. §7 command table/surface sentence updated to
+      eighteen through M013.
+    recorded_by: developer
+  - check: CT013
+    status: pass
+    at: 2026-08-20T10:53:35Z
+    evidence: "tests/unit/footer.test.ts's computeRacingFooter describe block:
+      'returns null...when status is draft' proves no placeholder string; 4
+      tests assert exact icon precedence order
+      (completed>blocked>verification-remains>running), including 'icon
+      precedence: completed wins over blocked'. All 10 tests pass."
+    recorded_by: developer
+  - check: CT014
+    status: pass
+    at: 2026-08-20T10:53:36Z
+    evidence: tests/integration/milestone-status.test.ts's --report describe block
+      asserts view.tokenBreakdown deep-equals exactly
+      {task,planning,qa,total,missing} with expect('driver_overhead' in
+      view.tokenBreakdown).toBe(false), and the human-render
+      output.not.toContain('driver_overhead'). Both assertions pass.
+    recorded_by: developer

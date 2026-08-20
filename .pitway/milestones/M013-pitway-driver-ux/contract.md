@@ -2,7 +2,7 @@
 schema_version: 1
 id: M013
 title: PitWay Driver UX
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-20T09:57:27Z
 verification_approved_hash: sha256:730af41bb249e728b30a8fe96bc7340ac07d085e18a8183238a951385866307c
