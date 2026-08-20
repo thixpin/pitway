@@ -349,7 +349,7 @@ tasks:
       windows (simulated by killing between steps / staging equivalent on-disk
       states), double-integrate idempotency, missing-worktree refusal pointing
       at task-discard, and the AC007 evidence-parity case."
-    status: ready
+    status: completed
     depends_on:
       - T005
       - T006
@@ -376,7 +376,15 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/task-integrate-recovery.test.ts
-    result: null
+    result:
+      summary: "[truncated] rify -> review -> completed). AC007 proven end-to-end:
+        post-integration main-tree task-verify records evidence exactly as a
+        sequential task's would (attempts-bound, single record), and the
+        unchanged completion path produces the standard atomic trailer commit
+        carrying the integrated file."
+      evidence: Tests  5 passed (5) | Start at  19:45:27 | Duration  5.93s (transform
+        186ms, setup 0ms, import 268ms, tests 5.58s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T008
     name: task-discard and residue surfacing
