@@ -482,7 +482,7 @@ tasks:
       base branch untouched). Test-only task: no src/ changes; any product
       defect it finds stops work and is raised per the contract-conflict rule,
       never silently patched here."
-    status: ready
+    status: completed
     depends_on:
       - T007
       - T008
@@ -505,7 +505,15 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/parallel-worktrees-lifecycle.test.ts
-    result: null
+    result:
+      summary: "[truncated] grate with byte-identical main tree and preserved
+        worktree. branch_strategy milestone interaction: worktree branches from
+        the milestone branch (merge-base proof), completion lands on it with
+        trailers, base branch SHA untouched. Test-only task: no src/ changes; no
+        product defect surfaced."
+      evidence: Tests  3 passed (3) | Start at  19:53:48 | Duration  8.94s (transform
+        199ms, setup 0ms, import 283ms, tests 8.56s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T010
     name: Protocol-doc parallel guidance
