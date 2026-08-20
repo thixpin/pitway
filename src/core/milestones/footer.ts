@@ -48,17 +48,28 @@ export function computeRacingFooter(
     .sort();
   const allRequiredDone = progress.total > 0 && progress.completed === progress.total;
 
+  // A task-id gate carries the task's short name as one further ` · `
+  // segment when present (`Next: T003 · git worktree module`) -- the footer
+  // stays a single concise line; anything longer than the name (narration,
+  // status prose) never belongs in it. Named gates (verification, developer
+  // approval) and name-less tasks render byte-identically to before.
+  const taskGate = (id: string): string => {
+    const name = tasks.find((t) => t.id === id)?.name;
+    return name ? `${id} · ${name}` : id;
+  };
+
   let icon: string;
   let gate: string;
   if (blocked.length > 0) {
     icon = '🔧';
-    gate = blocked[0]!;
+    gate = taskGate(blocked[0]!);
   } else if (allRequiredDone) {
     icon = '🏁';
     gate = verificationPassed ? 'developer approval' : 'verification';
   } else {
     icon = '🏎️';
-    gate = resolveNextTask(tasks) ?? 'verification';
+    const next = resolveNextTask(tasks);
+    gate = next === null ? 'verification' : taskGate(next);
   }
 
   return `${icon} ${workload}% · ${countSegment} · Next: ${gate}`;

@@ -76,3 +76,57 @@ describe('computeRacingFooter (M013/T005/AC004)', () => {
     expect(footer).toContain('Complete');
   });
 });
+
+// Developer directive (2026-08-20, during M014): the footer stays one
+// concise line; a task-id gate carries the task's short name as one further
+// ` · ` segment when present. Name-less tasks and named gates render
+// byte-identically to before; no narration ever joins the footer line.
+describe('computeRacingFooter task-name segment', () => {
+  const named = (id: string, status: TaskStatus, name: string): Task => ({
+    ...task(id, status),
+    name,
+  });
+
+  it('running case appends the next task name as its own segment', () => {
+    const tasks = [
+      task('T001', 'completed'),
+      named('T002', 'ready', 'git worktree module'),
+    ];
+    const footer = computeRacingFooter('in_progress', { completed: 1, total: 8 }, false, tasks);
+    expect(footer).toBe('🏎️ 19% · ✅ 1/8 · Next: T002 · git worktree module');
+  });
+
+  it('blocked case appends the blocked task name as its own segment', () => {
+    const tasks = [task('T001', 'ready'), named('T002', 'blocked', 'task-dispatch command')];
+    const footer = computeRacingFooter('in_progress', { completed: 0, total: 8 }, false, tasks);
+    expect(footer).toBe('🔧 10% · ✅ 0/8 · Next: T002 · task-dispatch command');
+  });
+
+  it('a name-less next task renders byte-identically to before (no empty segment)', () => {
+    const tasks = [task('T001', 'completed'), task('T002', 'ready')];
+    const footer = computeRacingFooter('in_progress', { completed: 1, total: 8 }, false, tasks);
+    expect(footer).toBe('🏎️ 19% · ✅ 1/8 · Next: T002');
+  });
+
+  it('completed and gate variants carry no task-name segment', () => {
+    const tasks = [
+      named('T001', 'completed', 'config gate'),
+      named('T002', 'completed', 'worktree module'),
+    ];
+    expect(computeRacingFooter('completed', { completed: 2, total: 2 }, false, tasks)).toBe(
+      '🏁 100% · ✅ 2/2 · Complete',
+    );
+    expect(computeRacingFooter('in_progress', { completed: 2, total: 2 }, false, tasks)).toBe(
+      '🏁 85% · ✅ 2/2 · Next: verification',
+    );
+  });
+
+  it('every variant stays a single line', () => {
+    const tasks = [
+      task('T001', 'completed'),
+      named('T002', 'ready', 'a name with spaces and punctuation, kept verbatim'),
+    ];
+    const footer = computeRacingFooter('in_progress', { completed: 1, total: 8 }, false, tasks);
+    expect(footer).not.toContain('\n');
+  });
+});
