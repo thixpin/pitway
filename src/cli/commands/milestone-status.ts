@@ -20,12 +20,15 @@ export interface MilestoneStatusView {
 export function buildMilestoneStatusView(root: string, milestoneId: string): MilestoneStatusView {
   const contract = loadContract(root, milestoneId);
   const tasksFile = loadTasks(root, milestoneId);
+  // AC005/T005 (M012): bounds the search when this milestone tracks a
+  // branch (base_revision non-null); unbounded (today's behavior) otherwise.
+  const since = contract.frontmatter.base_revision ?? undefined;
   return {
     id: contract.frontmatter.id,
     title: contract.frontmatter.title,
     status: contract.frontmatter.status,
     progress: computeMilestoneProgress(tasksFile.tasks),
-    baselineSha: resolveCommitSha(root, { milestone: milestoneId }) ?? null,
+    baselineSha: resolveCommitSha(root, { milestone: milestoneId, ...(since !== undefined ? { since } : {}) }) ?? null,
     aggregate: aggregateUsage(tasksFile.tasks, loadUsage(root, milestoneId)),
     tasks: tasksFile.tasks.map((t) => ({ id: t.id, status: t.status })),
   };

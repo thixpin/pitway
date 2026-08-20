@@ -41,6 +41,13 @@ function expectedMilestoneBranch(root: string, milestoneId: string): string | nu
   return baseBranch != null ? deterministicBranchName(milestoneId, title) : null;
 }
 
+// AC005/T005 (M012): the milestone's own base_revision, when tracked, to
+// bound trailer lookups -- undefined (unbounded, today's exact behavior)
+// under main strategy or when no base_revision is recorded.
+function milestoneSince(root: string, milestoneId: string): string | undefined {
+  return loadContract(root, milestoneId).frontmatter.base_revision ?? undefined;
+}
+
 export class TaskUpdateError extends Error {}
 
 export interface TaskUpdateInputs {
@@ -318,7 +325,12 @@ function findCompletionCommit(
   taskId: string,
   persisted: TaskResult,
 ): string | undefined {
-  const sha = resolveCommitSha(root, { milestone: milestoneId, task: taskId });
+  const since = milestoneSince(root, milestoneId);
+  const sha = resolveCommitSha(root, {
+    milestone: milestoneId,
+    task: taskId,
+    ...(since !== undefined ? { since } : {}),
+  });
   if (sha === undefined) return undefined;
   let record: CommittedTaskRecord | undefined;
   try {
@@ -405,7 +417,12 @@ function completeTask(
 
   // AC013: the pure state machine gates completion before anything else.
   transitionTask(task.status, 'completed');
-  const candidate = resolveCommitSha(root, { milestone: milestoneId, task: task.id });
+  const candidateSince = milestoneSince(root, milestoneId);
+  const candidate = resolveCommitSha(root, {
+    milestone: milestoneId,
+    task: task.id,
+    ...(candidateSince !== undefined ? { since: candidateSince } : {}),
+  });
   if (candidate !== undefined) {
     throw new TaskUpdateError(
       `ambiguous state: commit ${candidate} already carries the ${task.id} completion trailers ` +

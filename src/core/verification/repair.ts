@@ -215,13 +215,21 @@ interface CommittedRepairRecord {
   change_log?: unknown;
 }
 
+// AC005/T005 (M012): bounds the search to since..HEAD when this milestone
+// tracks a branch (base_revision non-null); unbounded (today's behavior)
+// otherwise.
 function findRepairCommit(
   root: string,
   milestoneId: string,
   vrId: string,
   persisted: VerificationRepairRecord,
 ): string | undefined {
-  const sha = resolveCommitSha(root, { milestone: milestoneId, verificationRepair: vrId });
+  const since = loadContract(root, milestoneId).frontmatter.base_revision ?? undefined;
+  const sha = resolveCommitSha(root, {
+    milestone: milestoneId,
+    verificationRepair: vrId,
+    ...(since !== undefined ? { since } : {}),
+  });
   if (sha === undefined) return undefined;
   let record: CommittedRepairRecord | undefined;
   try {

@@ -425,4 +425,15 @@ milestone.
 
 ## Change Log
 
-(none yet)
+- 2026-08-20 (T005 execution): AC005's own text names "task/verification-repair commit
+  lookups" as call sites that must pass `base_revision` when present, but T005's drafted
+  `write_scope` only listed `src/git/trailers.ts`/`src/git/baseline.ts` -- a drafting
+  oversight discovered mid-execution via a grep for every real `resolveCommitSha` call
+  site. Developer approved widening T005's `write_scope`/`context_files` (via a
+  corresponding `task-amend`) to cover the full real call-site list:
+  `src/core/tasks/update.ts` (two call sites), `src/core/milestones/complete.ts`,
+  `src/core/milestones/confirm.ts` (its own `findBaselineCommit`),
+  `src/core/verification/repair.ts`, and `src/cli/commands/milestone-status.ts` --
+  delivering AC005 in full as confirmed, rather than silently narrowing it. No AC/CT
+  text changes; only T005's declared scope is corrected to match what AC005 already
+  promised.

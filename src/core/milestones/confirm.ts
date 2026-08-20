@@ -62,10 +62,13 @@ const nowSeconds = (): string => new Date().toISOString().replace(/\.\d{3}Z$/, '
 
 // AC012 baseline identity: milestone trailer + "workflow: add milestone"
 // subject + no task trailer (resolveCommitSha without a task enforces that).
-const findBaselineCommit = (root: string, milestoneId: string): string | undefined =>
+// AC005/T005 (M012): since, when passed (a milestone-strategy milestone's
+// own already-recorded base_revision), bounds the search to since..HEAD.
+const findBaselineCommit = (root: string, milestoneId: string, since?: string): string | undefined =>
   resolveCommitSha(root, {
     milestone: milestoneId,
     messagePrefix: `workflow: add milestone ${milestoneId}`,
+    ...(since !== undefined ? { since } : {}),
   });
 
 // AC009: refuses before anything is written or staged.
@@ -90,7 +93,7 @@ function promoteTasks(root: string, milestoneId: string): string[] {
 
 function runConfirm(root: string, milestoneId: string, contract: ContractFile): MilestoneConfirmView {
   const { status, requirement } = contract.frontmatter;
-  const baselineSha = findBaselineCommit(root, milestoneId);
+  const baselineSha = findBaselineCommit(root, milestoneId, contract.frontmatter.base_revision ?? undefined);
   // Resolved here (Core layer, already depends on the State layer) and
   // passed into the Git-layer function — baseline.ts itself stays free of
   // any State import.
@@ -164,7 +167,11 @@ function runConfirm(root: string, milestoneId: string, contract: ContractFile): 
     saveContract(root, milestoneId, updated);
     const readyTasks = promoteTasks(root, milestoneId);
 
-    const sha = createBaselineCommit(root, { milestoneId, paths: expectedPaths });
+    const sha = createBaselineCommit(root, {
+      milestoneId,
+      paths: expectedPaths,
+      ...(baseRevision !== null ? { since: baseRevision } : {}),
+    });
     return {
       id: milestoneId,
       operation: 'confirm',
@@ -219,7 +226,11 @@ function runConfirm(root: string, milestoneId: string, contract: ContractFile): 
     assertNoUnexpectedDirtyPaths(root, expectedPaths);
     // Re-run the (idempotent) promotion in case the write was interrupted.
     const readyTasks = promoteTasks(root, milestoneId);
-    const sha = createBaselineCommit(root, { milestoneId, paths: expectedPaths });
+    const sha = createBaselineCommit(root, {
+      milestoneId,
+      paths: expectedPaths,
+      ...(contract.frontmatter.base_revision != null ? { since: contract.frontmatter.base_revision } : {}),
+    });
     return {
       id: milestoneId,
       operation: 'confirm',
@@ -282,7 +293,7 @@ function runAmend(root: string, milestoneId: string, draft: ContractFile): Miles
       `cannot amend ${milestoneId} while it is draft; confirm the milestone first`,
     );
   }
-  if (findBaselineCommit(root, milestoneId) === undefined) {
+  if (findBaselineCommit(root, milestoneId, draft.frontmatter.base_revision ?? undefined) === undefined) {
     throw new MilestoneConfirmError(
       `cannot amend ${milestoneId}: no baseline commit found — a confirm is mid-resume; ` +
         `complete the pending baseline first`,

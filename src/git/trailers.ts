@@ -1,4 +1,4 @@
-import { git } from './exec.js';
+import { git, GitError } from './exec.js';
 
 // Closed, explicit set — never extended by pattern-matching. A human trailer
 // (including a Co-Authored-By naming someone called "Claude") must never be
@@ -59,6 +59,16 @@ export interface TrailerQuery {
   // with this prefix — used to distinguish e.g. baseline from amendment
   // commits that carry the same trailers.
   messagePrefix?: string;
+  // AC005/T005 (M012): when set (a milestone-strategy milestone's own
+  // base_revision), bounds the search to `since..HEAD` instead of the full
+  // unbounded history scan. An unreachable/invalid `since` throws GitError
+  // naming it explicitly, rather than silently falling back to an unbounded
+  // scan -- a silent fallback would undermine the branch-isolation guarantee
+  // base_revision exists to provide (see AC005's own reasoning). A *valid*
+  // range that legitimately contains no matching commit is unaffected and
+  // still returns undefined, exactly as an unbounded search's "not found"
+  // already does.
+  since?: string;
 }
 
 // Resolves a commit SHA by searching commit message trailers in git
@@ -66,7 +76,20 @@ export interface TrailerQuery {
 export function resolveCommitSha(cwd: string, query: TrailerQuery): string | undefined {
   const RECORD_SEP = '\x1e';
   const FIELD_SEP = '\x1f';
-  const log = git(['log', `--format=%H${FIELD_SEP}%B${RECORD_SEP}`], cwd);
+  const formatArg = `--format=%H${FIELD_SEP}%B${RECORD_SEP}`;
+  const args = query.since !== undefined ? ['log', `${query.since}..HEAD`, formatArg] : ['log', formatArg];
+  let log: string;
+  try {
+    log = git(args, cwd);
+  } catch (error) {
+    if (query.since !== undefined) {
+      throw new GitError(
+        `cannot resolve commit range: base_revision ${query.since} is unreachable ` +
+          `(${(error as Error).message})`,
+      );
+    }
+    throw error;
+  }
   const records = log.split(RECORD_SEP).filter((r) => r.trim().length > 0);
 
   for (const record of records) {

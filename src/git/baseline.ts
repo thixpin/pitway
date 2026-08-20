@@ -7,6 +7,11 @@ export interface BaselineCommitOptions {
   // Files (or directory prefixes, expanded against the current dirty set)
   // this baseline is allowed to stage.
   paths: string[];
+  // AC005/T005 (M012): the milestone's own base_revision, when tracked
+  // (branch_strategy: milestone) -- bounds the baseline-commit lookup to
+  // `since..HEAD`. Omitted (main strategy, or no base_revision recorded)
+  // preserves today's unbounded scan exactly.
+  since?: string;
 }
 
 // The exact file set a milestone baseline commit may contain. Confirmation
@@ -77,6 +82,7 @@ export function createBaselineCommit(cwd: string, options: BaselineCommitOptions
       resolveCommitSha(cwd, {
         milestone: options.milestoneId,
         messagePrefix: `workflow: add milestone ${options.milestoneId}`,
+        ...(options.since !== undefined ? { since: options.since } : {}),
       }),
     localStateAdvanced: true,
     message,

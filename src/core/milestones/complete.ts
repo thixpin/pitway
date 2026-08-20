@@ -53,11 +53,13 @@ const completionPaths = (root: string, milestoneId: string): string[] => {
 };
 
 // AC007 completion identity: a completion-subject candidate whose committed
-// contract.md shows status completed.
-function findCompletionCommit(root: string, milestoneId: string): string | undefined {
+// contract.md shows status completed. AC005/T005 (M012): since, when passed
+// (the milestone's own already-recorded base_revision), bounds the search.
+function findCompletionCommit(root: string, milestoneId: string, since?: string): string | undefined {
   const sha = resolveCommitSha(root, {
     milestone: milestoneId,
     messagePrefix: `workflow: complete milestone ${milestoneId}`,
+    ...(since !== undefined ? { since } : {}),
   });
   if (sha === undefined) return undefined;
   const committed = parseContractFile(
@@ -147,10 +149,11 @@ function createCompletionCommit(
   root: string,
   milestoneId: string,
   expectedPaths: string[],
+  since?: string,
 ): MilestoneCompleteView {
   const result = commitOrResume(root, {
     expectedPaths,
-    findExistingCommit: () => findCompletionCommit(root, milestoneId),
+    findExistingCommit: () => findCompletionCommit(root, milestoneId, since),
     localStateAdvanced: true,
     message: composeMessage(`workflow: complete milestone ${milestoneId}`, {
       'PitWay-Milestone': milestoneId,
@@ -170,9 +173,11 @@ export function completeMilestone(root: string, milestoneId: string): MilestoneC
   const journalExpected = classifyDirtyPaths(root, { journalMilestone: milestoneId }).expected;
   const expectedPaths = [...new Set([...completionPaths(root, milestoneId), ...journalExpected])];
   const expectedBranch = expectedMilestoneBranch(contract);
+  // AC005/T005 (M012): bounds every lookup below to since..HEAD when tracked.
+  const since = contract.frontmatter.base_revision ?? undefined;
 
   if (status === 'in_progress') {
-    const existing = findCompletionCommit(root, milestoneId);
+    const existing = findCompletionCommit(root, milestoneId, since);
     if (existing !== undefined) {
       throw new MilestoneCompleteError(
         `ambiguous state: completion commit ${existing} already exists but ${milestoneId} is ` +
@@ -193,7 +198,7 @@ export function completeMilestone(root: string, milestoneId: string): MilestoneC
       body: contract.body,
     });
     clearActiveMilestone(root, milestoneId);
-    const result = createCompletionCommit(root, milestoneId, expectedPaths);
+    const result = createCompletionCommit(root, milestoneId, expectedPaths, since);
     // Safe/idempotent regardless of whether this commit was the one that
     // actually captured a pending journal entry — reconcilePending derives
     // that from HEAD's content itself.
@@ -203,7 +208,7 @@ export function completeMilestone(root: string, milestoneId: string): MilestoneC
 
   if (status === 'completed') {
     // AC007 resume path: local state already advanced past the completion write.
-    const existing = findCompletionCommit(root, milestoneId);
+    const existing = findCompletionCommit(root, milestoneId, since);
     if (existing !== undefined) {
       reconcilePending(root, milestoneId);
       return { id: milestoneId, outcome: 'already-committed', commit: existing };
@@ -212,7 +217,7 @@ export function completeMilestone(root: string, milestoneId: string): MilestoneC
     assertOnMilestoneBranch(root, expectedBranch);
     // Re-apply the (idempotent) state clear in case the write was interrupted.
     clearActiveMilestone(root, milestoneId);
-    const result = createCompletionCommit(root, milestoneId, expectedPaths);
+    const result = createCompletionCommit(root, milestoneId, expectedPaths, since);
     reconcilePending(root, milestoneId);
     return result;
   }
