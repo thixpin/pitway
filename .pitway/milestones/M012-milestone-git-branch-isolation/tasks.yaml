@@ -447,7 +447,7 @@ tasks:
       test` suite itself -- that full-suite run is exclusively CT008's own
       milestone-level gate (see this contract's verification block), not part of
       any individual task's declared verification."
-    status: ready
+    status: completed
     depends_on:
       - T003
       - T004
@@ -468,7 +468,15 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/branch-isolation-lifecycle.test.ts
-    result: null
+    result:
+      summary: "[truncated] AC007's own text): M012 itself was developed under
+        branch_strategy: main throughout. Per AC008/T008's own
+        verification-discipline rule, this task's own declared verification runs
+        only this targeted test file -- the full npm test suite is exclusively
+        CT008's separate milestone-level gate."
+      evidence: Tests  3 passed (3) | Start at  16:08:25 | Duration  4.23s (transform
+        180ms, setup 0ms, import 258ms, tests 3.88s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T008
     objective: "Add a new \"Verification discipline\" section to
@@ -571,7 +579,7 @@ tasks:
       (single-file documentation reconciliation, no code -- the same
       right-sizing precedent M010/T004 and M011/T008 both already established
       for this exact kind of closing task).
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002
