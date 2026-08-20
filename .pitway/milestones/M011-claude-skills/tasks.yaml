@@ -752,7 +752,7 @@ tasks:
       required_skills/task-status --context's own pre-dispatch context gate
       (AC003's own tests are the sole coverage for that) -- the document states
       this distinction plainly rather than implying otherwise.
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T003
@@ -769,7 +769,16 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review per CT011
-    result: null
+    result:
+      summary: "[truncated] f four rubric items; the skill-loaded run did use
+        meaningfully fewer tokens/tool calls (46889 vs 53081; 12 vs 18).
+        Document explicitly separates artifact-verified facts from
+        driver-attested facts (dispatch ordering, mutual isolation) and
+        discloses the same non-bootstrap gap as M007/M008."
+      evidence: Manual/driver review per CT011 -- no automated command for this
+        manual-strategy task; the evidence document itself, and the two
+        sub-agent transcripts it cites, are the record.
+    attempts: 1
     usage: null
   - id: T008
     objective: "Roadmap-reconciliation review, mirroring M005/T009 through
@@ -791,7 +800,7 @@ tasks:
       pre-dispatch context gate, the dogfood evidence finding and its disclosed
       non-bootstrap gap) in place of the current not-yet-drafted placeholder;
       the Status line reflects M011's actual delivery."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002
