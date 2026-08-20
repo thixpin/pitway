@@ -272,7 +272,7 @@ tasks:
       (`tests/integration/milestone-review-report.test.ts`): ordering, overlap
       listing, declared-conflict listing, pending-role listing, honesty text
       presence, empty-session report."
-    status: ready
+    status: completed
     depends_on:
       - T005
     acceptance_criteria:
@@ -303,7 +303,15 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-review-report.test.ts
         tests/integration/resume.test.ts
-    result: null
+    result:
+      summary: "[truncated] onesty text as view data). CLI's renderReportHuman lives
+        in milestone-review.ts per the zero-rendering-in-Core convention. Wired
+        `milestone-review report <id>`. Added the additive `openReview`
+        discovery key to `pitway resume` (present only with an open session;
+        byte-identical otherwise)."
+      evidence: Tests  21 passed (21) | Start at  00:03:28 | Duration  3.15s
+        (transform 441ms, setup 0ms, import 639ms, tests 4.58s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T007
     name: milestone-review decide

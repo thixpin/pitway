@@ -4,9 +4,10 @@ import { deterministicBranchName } from '../../core/milestones/confirm.js';
 import { computeMilestoneProgress } from '../../core/milestones/progress.js';
 import { computeRacingFooter, resolveNextTask } from '../../core/milestones/footer.js';
 import { allChecksPassed, computeLatestCheckResults } from '../../core/verification/status.js';
-import { loadConfig, loadContract, loadState, loadTasks } from '../../state/store.js';
+import { loadConfig, loadContract, loadReviews, loadState, loadTasks } from '../../state/store.js';
 import { deriveQuickChangeState, readAllQuickChanges } from '../../core/quick-change/create.js';
 import { deriveLiveDispatches } from '../../core/tasks/dispatch.js';
+import { deriveLatestFindingsByRole } from '../../core/reviews/roles.js';
 import { listTaskWorktrees } from '../../git/worktree.js';
 import { renderOutput } from '../output.js';
 import { taskStatusLabel } from '../format.js';
@@ -68,6 +69,19 @@ export interface ResumeView {
   // AC004 (M013): null before milestone-confirm has run -- silence is the
   // signal, never a placeholder string.
   footer: string | null;
+  // AC006/T006 (M015): present only when the active milestone has an OPEN
+  // review session -- the same authoritative-recovery-view discipline as
+  // pendingQuickChanges. Additive --json key; absent (never null) keeps the
+  // no-session JSON output byte-identical to before this milestone.
+  openReview?: OpenReviewView;
+}
+
+export interface OpenReviewView {
+  milestone: string;
+  sessionId: string;
+  roles: string[];
+  recordedCount: number;
+  pendingCount: number;
 }
 
 function idsWithStatus(tasks: Task[], status: TaskStatus): string[] {
@@ -231,6 +245,21 @@ export function buildResumeView(root: string): ResumeView {
       ? buildParallelView(root, state.active_milestone, tasksFile.tasks)
       : null;
 
+  const openSession = loadReviews(root, state.active_milestone).sessions.find((s) => s.status === 'open');
+  const openReview: OpenReviewView | undefined =
+    openSession === undefined
+      ? undefined
+      : (() => {
+          const recorded = deriveLatestFindingsByRole(openSession.findings).size;
+          return {
+            milestone: state.active_milestone!,
+            sessionId: openSession.id,
+            roles: openSession.roles,
+            recordedCount: recorded,
+            pendingCount: openSession.roles.length - recorded,
+          };
+        })();
+
   return {
     activeMilestone: state.active_milestone,
     contractStatus: contract.frontmatter.status,
@@ -245,6 +274,7 @@ export function buildResumeView(root: string): ResumeView {
     ...(branch ? { branch } : {}),
     parallel,
     footer,
+    ...(openReview ? { openReview } : {}),
   };
 }
 
@@ -312,6 +342,14 @@ export function renderResumeHuman(view: ResumeView): string {
     }
   }
   if (quickChangeLines.length > 0) lines.push('', ...quickChangeLines);
+  if (view.openReview !== undefined) {
+    lines.push(
+      '',
+      `📜 Open review ${view.openReview.sessionId} (${view.openReview.milestone}) — ` +
+        `roles: ${view.openReview.roles.join(', ')} — ` +
+        `recorded ${view.openReview.recordedCount}/${view.openReview.roles.length}`,
+    );
+  }
   if (view.footer !== null) lines.push('', view.footer);
   return lines.join('\n');
 }

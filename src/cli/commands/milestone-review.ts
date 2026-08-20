@@ -2,6 +2,7 @@ import type { Command } from 'commander';
 import { startReviewSession, type ReviewSessionView } from '../../core/reviews/session.js';
 import { buildReviewBrief, type ReviewBriefView } from '../../core/reviews/brief.js';
 import { recordReviewFindings, type RecordReviewView } from '../../core/reviews/record.js';
+import { buildReviewReport, type ReviewReportView } from '../../core/reviews/report.js';
 import { promptForRoles, type PromptStreams } from '../review-prompt.js';
 import { renderOutput } from '../output.js';
 
@@ -43,6 +44,59 @@ function renderBriefHuman(view: ReviewBriefView): string {
 
 function renderRecordHuman(view: RecordReviewView): string {
   return `📜 Recorded ${view.findingsCount} finding(s) for role "${view.role}" on session ${view.sessionId} (${view.milestone}).`;
+}
+
+// Human rendering lives here, per the codebase's zero-rendering-in-Core
+// convention -- report.ts builds the view only.
+function renderReportHuman(view: ReviewReportView): string {
+  const lines = [
+    `📜 Review report — ${view.milestone} (session ${view.sessionId}, ${view.status})`,
+    '',
+  ];
+
+  for (const role of view.roles) {
+    if (!role.recorded) {
+      lines.push(`## ${role.role} — pending (not yet recorded)`);
+      lines.push('');
+      continue;
+    }
+    const superseded = role.supersededCount > 0 ? ` (${role.supersededCount} superseded snapshot(s))` : '';
+    lines.push(`## ${role.role} — recorded ${role.recordedAt}${superseded}`);
+    if (role.findings.length === 0) {
+      lines.push('  (no findings -- a clean review)');
+    }
+    for (const f of role.findings) {
+      const targets = f.targets.length > 0 ? ` [${f.targets.join(', ')}${f.unknownTargets.length > 0 ? ` — unknown: ${f.unknownTargets.join(', ')}` : ''}]` : '';
+      lines.push(`  [${f.severity}] ${f.finding}${targets}`);
+      lines.push(`    → ${f.recommendation}`);
+      if (f.conflictsWith.length > 0) lines.push(`    ⚠ conflicts with: ${f.conflictsWith.join(', ')}`);
+    }
+    lines.push('');
+  }
+
+  if (view.pendingRoles.length > 0) {
+    lines.push(`Pending roles: ${view.pendingRoles.join(', ')}`, '');
+  }
+
+  if (view.sharedTargetConflicts.length > 0) {
+    lines.push('⚠ Shared-target disagreements:');
+    for (const c of view.sharedTargetConflicts) {
+      lines.push(`  ${c.target}:`);
+      for (const e of c.entries) lines.push(`    - ${e.role} [${e.severity}]: ${e.finding}`);
+    }
+    lines.push('');
+  }
+
+  if (view.declaredConflicts.length > 0) {
+    lines.push('⚠ Declared role disagreements:');
+    for (const c of view.declaredConflicts) {
+      lines.push(`  ${c.role} vs ${c.conflictsWith.join(', ')}: ${c.finding}`);
+    }
+    lines.push('');
+  }
+
+  lines.push(...view.honesty);
+  return lines.join('\n');
 }
 
 export function registerMilestoneReviewCommand(program: Command, deps: CommandDeps = {}): void {
@@ -108,5 +162,18 @@ export function registerMilestoneReviewCommand(program: Command, deps: CommandDe
       const root = deps.root ?? process.cwd();
       const view = recordReviewFindings(root, id, { role: options.role, filePath: options.file });
       write(renderOutput(view, { json: options.json }, renderRecordHuman));
+    });
+
+  milestoneReview
+    .command('report <id>')
+    .description(
+      'Read-only: render the most recently created session\'s collected findings -- severity-ordered, ' +
+        'grouped conflicts, pending roles, and the honesty text.',
+    )
+    .option('--json', 'output machine-readable JSON')
+    .action((id: string, options: { json?: boolean }) => {
+      const root = deps.root ?? process.cwd();
+      const view = buildReviewReport(root, id);
+      write(renderOutput(view, { json: options.json }, renderReportHuman));
     });
 }
