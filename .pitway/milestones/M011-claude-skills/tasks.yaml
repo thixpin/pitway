@@ -800,7 +800,7 @@ tasks:
       pre-dispatch context gate, the dogfood evidence finding and its disclosed
       non-bootstrap gap) in place of the current not-yet-drafted placeholder;
       the Status line reflects M011's actual delivery."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -820,5 +820,14 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review per CT012
-    result: null
+    result:
+      summary: "[truncated] tegration, while confirming the command surface stayed at
+        eighteen; the Revised Roadmap's M011 entry reflects actual delivery
+        including the honestly-reported negative/null dogfood finding, replacing
+        its earlier not-yet-drafted placeholder; the Status line reflects M011's
+        actual delivery."
+      evidence: Manual/driver review per CT012 -- self-reviewed against every listed
+        requirement (revision header, Bootstrap table, section 7/9, Revised
+        Roadmap entry, Status line); diff reviewed for consistency.
+    attempts: 1
     usage: null
