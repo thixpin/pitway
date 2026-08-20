@@ -37,7 +37,7 @@ tasks:
       src/state/claude-assets.ts or src/cli/commands/init.ts at all -- it only
       adds new source assets for the existing glob-based installer to discover;
       T002 is where init's own installation mechanism itself changes.
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - AC001
@@ -65,7 +65,14 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/init.test.ts
-    result: null
+    result:
+      summary: "[truncated] pinned commit's own LICENSE (Copyright (c) 2026 Soe
+        Thura). Added a dedicated test in tests/integration/init.test.ts proving
+        all six skills and NOTICE.md install to .claude/skills/... via a real
+        pitway init in a fresh temp repo, and that infra-design/terraform-review
+        are never installed."
+      evidence: "npm test -- tests/integration/init.test.ts: 13/13 passed"
+    attempts: 1
     usage: null
   - id: T002
     objective: >-
@@ -141,7 +148,7 @@ tasks:
       semantics: a partial-but-non-conflicting state (some assets absent, none
       differing) is no longer refused -- it installs the missing assets cleanly;
       only an actual content conflict refuses.
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:

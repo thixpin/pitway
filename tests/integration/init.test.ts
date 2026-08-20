@@ -200,6 +200,31 @@ describe('pitway init Claude Code asset installation (AC003)', () => {
     }
   });
 
+  // T001: proves the six vendored skills and NOTICE.md install to exactly
+  // .claude/skills/<name>/SKILL.md and .claude/skills/NOTICE.md -- named
+  // explicitly here rather than assumed from the generic glob coverage
+  // above, since a glob mismatch elsewhere could otherwise mask a missing
+  // skill.
+  it('installs all six vendored skills and NOTICE.md under .claude/skills/ (T001)', async () => {
+    const { error } = await runInit(root);
+    expect(error).toBeUndefined();
+    const vendoredSkills = [
+      'debugging',
+      'bug-fix',
+      'testing',
+      'code-quality-review',
+      'architecture-review',
+      'security-audit',
+    ];
+    for (const name of vendoredSkills) {
+      expect(existsSync(join(root, '.claude', 'skills', name, 'SKILL.md'))).toBe(true);
+    }
+    expect(existsSync(join(root, '.claude', 'skills', 'NOTICE.md'))).toBe(true);
+    // infra-design/terraform-review are explicitly rejected, never vendored.
+    expect(existsSync(join(root, '.claude', 'skills', 'infra-design'))).toBe(false);
+    expect(existsSync(join(root, '.claude', 'skills', 'terraform-review'))).toBe(false);
+  });
+
   it('never inspects or disturbs unrelated files already under .claude/', async () => {
     mkdirSync(join(root, '.claude'), { recursive: true });
     writeFileSync(join(root, '.claude', 'settings.json'), '{"unrelated": true}\n');
