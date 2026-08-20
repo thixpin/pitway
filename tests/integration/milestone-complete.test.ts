@@ -10,6 +10,7 @@ import { registerMilestoneCompleteCommand } from '../../src/cli/commands/milesto
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
 import { registerVerifyCommand } from '../../src/cli/commands/verify.js';
 import { loadContract, loadState } from '../../src/state/store.js';
+import { deterministicBranchName } from '../../src/core/milestones/confirm.js';
 import { recordUsage } from '../../src/core/metrics/aggregate.js';
 import { derivePending } from '../../src/core/journal/operations.js';
 import { readJournal } from '../../src/state/journal.js';
@@ -459,5 +460,52 @@ describe('pitway milestone-complete folds in pending journal entries (M005 T004)
     // commit, so reconcilePending correctly leaves it pending rather than
     // guessing it was captured.
     expect(derivePending(readJournal(root)).filter((e) => e.type === 'usage_recording')).toHaveLength(1);
+  });
+});
+
+// M012/T003 (AC003): the shared commit-branch guard, wired into
+// milestone-complete's own commit call. Every test above uses branch_
+// strategy: main (the default) -- that is itself the main-strategy
+// regression coverage for this AC. T006 adds the merge-ready assertions
+// separately; this block only covers the guard.
+describe('pitway milestone-complete branch guard (M012/T003)', () => {
+  async function confirmedOnBranch(): Promise<void> {
+    writeFileSync(
+      join(root, '.pitway', 'config.yaml'),
+      'schema_version: 1\ngit:\n  branch_strategy: milestone\n',
+    );
+    await confirmed();
+  }
+
+  async function readyToCompleteOnBranch(): Promise<void> {
+    await confirmedOnBranch();
+    writeTaskStatuses('completed', 'completed');
+    await recordAllChecks();
+  }
+
+  it('completes while correctly on the milestone branch, unchanged from main-strategy behavior', async () => {
+    await readyToCompleteOnBranch();
+    const expectedBranch = deterministicBranchName('M001', loadContract(root, 'M001').frontmatter.title);
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe(expectedBranch);
+
+    const { error } = await run(['milestone-complete', 'M001'], root);
+    expect(error).toBeUndefined();
+    expect(loadContract(root, 'M001').frontmatter.status).toBe('completed');
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe(expectedBranch);
+  });
+
+  it('refuses completion after a manual checkout away from the milestone branch, staging and committing nothing', async () => {
+    await readyToCompleteOnBranch();
+    const startBranch = git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim();
+    const before = commitCount(root);
+    git(['checkout', '-b', 'somewhere-else'], root);
+
+    const { error } = await run(['milestone-complete', 'M001'], root);
+    expect(error?.message).toMatch(new RegExp(`expected branch ${startBranch}`));
+    expect(error?.message).toMatch(/found somewhere-else/);
+    expect(loadContract(root, 'M001').frontmatter.status).toBe('in_progress');
+    expect(commitCount(root)).toBe(before);
+    expect(git(['diff', '--cached', '--name-only'], root).trim()).toBe('');
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe('somewhere-else');
   });
 });

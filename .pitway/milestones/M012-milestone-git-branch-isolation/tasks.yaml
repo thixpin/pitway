@@ -190,7 +190,7 @@ tasks:
       same two cases for `milestone-complete`; and a full `main`-strategy
       regression pass proving neither commit path's behavior changed at all when
       no branch is tracked.
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -219,7 +219,16 @@ tasks:
       detail: npm test -- tests/unit/git-branch.test.ts
         tests/integration/task-update.test.ts
         tests/integration/milestone-complete.test.ts
-    result: null
+    result:
+      summary: "[truncated] /complete.ts, checked before the status write in both the
+        in_progress and completed- resume paths). A mismatch refuses cleanly,
+        naming both branches, staging and committing nothing; the guard never
+        checks anything out itself. Under main strategy (or no branch tracked)
+        it is a true no-op."
+      evidence: Tests  71 passed (71) | Start at  15:48:23 | Duration  37.73s
+        (transform 451ms, setup 0ms, import 697ms, tests 55.27s, environment
+        0ms)
+    attempts: 1
     usage: null
   - id: T004
     objective: >-
@@ -357,7 +366,7 @@ tasks:
       `branch_strategy: main`, none of this applies and `milestone-complete`'s
       behavior stays completely unchanged -- add a regression test proving that
       explicitly."
-    status: waiting
+    status: ready
     depends_on:
       - T003
     acceptance_criteria:

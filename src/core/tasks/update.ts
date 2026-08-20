@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { relative, resolve, sep } from 'node:path';
 import { parse } from 'yaml';
 import { z } from 'zod';
+import { assertOnMilestoneBranch } from '../../git/branch.js';
 import { commitOrResume } from '../../git/commit-or-resume.js';
 import { git } from '../../git/exec.js';
 import { checkWorkingTreeClean, classifyDirtyPaths } from '../../git/safety.js';
@@ -23,10 +24,22 @@ import {
   type TaskUsage,
   type TasksFile,
 } from '../../state/schemas.js';
-import { loadState, loadTasks, resolveMilestoneDirName, saveTasks } from '../../state/store.js';
+import { loadContract, loadState, loadTasks, resolveMilestoneDirName, saveTasks } from '../../state/store.js';
+import { deterministicBranchName } from '../milestones/confirm.js';
 import { resolveReadyTasks } from './dependencies.js';
 import { transitionTask } from './state-machine.js';
 import { MISSING_HASH_MARKER } from './verify.js';
+
+// AC003/T003 (M012): resolves the branch this milestone's commits must land
+// on, or null when no branch is tracked (main strategy, or an untracked
+// milestone) -- a thin Core-layer composition of the persisted contract
+// state and the same deterministic naming confirm.ts itself uses, so the
+// Git-layer guard never has to know how that name is derived.
+function expectedMilestoneBranch(root: string, milestoneId: string): string | null {
+  const contract = loadContract(root, milestoneId);
+  const { base_branch: baseBranch, title } = contract.frontmatter;
+  return baseBranch != null ? deterministicBranchName(milestoneId, title) : null;
+}
 
 export class TaskUpdateError extends Error {}
 
@@ -379,6 +392,7 @@ function completeTask(
         `completion commit for ${task.id} is pending; resupply --message to resume`,
       );
     }
+    assertOnMilestoneBranch(root, expectedMilestoneBranch(root, milestoneId));
     const committed = commitOrResume(root, {
       expectedPaths,
       findExistingCommit: () => findCompletionCommit(root, milestoneId, task.id, persisted),
@@ -406,6 +420,9 @@ function completeTask(
   const usageDelta = inputs.usage === undefined ? null : parseUsageInput(inputs.usage);
   // AC015: any violation refuses the entire operation before tasks.yaml is written.
   assertDirtySubset(root, expectedPaths);
+  // AC003/T003 (M012): checked before tasks.yaml is written too -- a
+  // wrong-branch attempt leaves nothing dirty, not even the state write.
+  assertOnMilestoneBranch(root, expectedMilestoneBranch(root, milestoneId));
 
   // T002/AC001: when a valid task-verify evidence record is resolved (implicit
   // or explicit --evidence), its captured evidence unconditionally replaces

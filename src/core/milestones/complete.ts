@@ -1,3 +1,4 @@
+import { assertOnMilestoneBranch } from '../../git/branch.js';
 import { commitOrResume } from '../../git/commit-or-resume.js';
 import { git } from '../../git/exec.js';
 import { checkWorkingTreeClean, classifyDirtyPaths } from '../../git/safety.js';
@@ -15,6 +16,7 @@ import {
   saveState,
 } from '../../state/store.js';
 import type { ContractFile } from '../../state/contract-file.js';
+import { deterministicBranchName } from './confirm.js';
 import { transitionMilestone } from './state-machine.js';
 
 export class MilestoneCompleteError extends Error {}
@@ -132,6 +134,15 @@ function clearActiveMilestone(root: string, milestoneId: string): void {
   }
 }
 
+// AC003/T003 (M012): resolves the branch this milestone's completion commit
+// must land on, or null when no branch is tracked -- reuses the same
+// deterministic naming confirm.ts itself derives from, never a separately
+// duplicated computation.
+function expectedMilestoneBranch(contract: ContractFile): string | null {
+  const { base_branch: baseBranch, id, title } = contract.frontmatter;
+  return baseBranch != null ? deterministicBranchName(id, title) : null;
+}
+
 function createCompletionCommit(
   root: string,
   milestoneId: string,
@@ -158,6 +169,7 @@ export function completeMilestone(root: string, milestoneId: string): MilestoneC
   // commit rather than being refused as unrelated dirt.
   const journalExpected = classifyDirtyPaths(root, { journalMilestone: milestoneId }).expected;
   const expectedPaths = [...new Set([...completionPaths(root, milestoneId), ...journalExpected])];
+  const expectedBranch = expectedMilestoneBranch(contract);
 
   if (status === 'in_progress') {
     const existing = findCompletionCommit(root, milestoneId);
@@ -170,6 +182,9 @@ export function completeMilestone(root: string, milestoneId: string): MilestoneC
     assertGatesSatisfied(root, milestoneId, contract);
     assertNoPendingVerificationRepair(root, milestoneId);
     assertNoUnexpectedDirtyPaths(root, expectedPaths);
+    // AC003/T003 (M012): checked before any state write below -- a
+    // wrong-branch attempt leaves nothing dirty, not even the status write.
+    assertOnMilestoneBranch(root, expectedBranch);
 
     // One persisted status write: in_progress -> review -> completed collapsed.
     const finalStatus = transitionMilestone(transitionMilestone(status, 'review'), 'completed');
@@ -194,6 +209,7 @@ export function completeMilestone(root: string, milestoneId: string): MilestoneC
       return { id: milestoneId, outcome: 'already-committed', commit: existing };
     }
     assertNoUnexpectedDirtyPaths(root, expectedPaths);
+    assertOnMilestoneBranch(root, expectedBranch);
     // Re-apply the (idempotent) state clear in case the write was interrupted.
     clearActiveMilestone(root, milestoneId);
     const result = createCompletionCommit(root, milestoneId, expectedPaths);

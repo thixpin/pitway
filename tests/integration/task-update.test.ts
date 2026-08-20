@@ -19,7 +19,8 @@ import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
 import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js';
-import { loadTasks, saveTasks } from '../../src/state/store.js';
+import { loadContract, loadTasks, saveTasks } from '../../src/state/store.js';
+import { deterministicBranchName } from '../../src/core/milestones/confirm.js';
 import type { Task } from '../../src/state/schemas.js';
 import { recordUsage } from '../../src/core/metrics/aggregate.js';
 import { derivePending } from '../../src/core/journal/operations.js';
@@ -881,5 +882,74 @@ describe('pitway task-update integrates task-verify evidence (T002/AC001)', () =
     const { error } = await completeT001(['--evidence', id]);
     expect(error?.message).toMatch(/task mismatch/);
     expect(task('T001').status).toBe('review');
+  });
+});
+
+// M012/T003 (AC003): the shared commit-branch guard, wired into task
+// completion. confirmedMilestone() above always uses branch_strategy: main
+// (the default) -- every test in this file down to here is itself the
+// main-strategy regression coverage. This block covers milestone strategy
+// specifically.
+describe('pitway task-update completion branch guard (M012/T003)', () => {
+  async function confirmedMilestoneOnBranch(): Promise<void> {
+    writeFileSync(
+      join(root, '.pitway', 'config.yaml'),
+      'schema_version: 1\ngit:\n  branch_strategy: milestone\n',
+    );
+    const contract = join(root, 'draft-contract.md');
+    const tasks = join(root, 'draft-tasks.yaml');
+    writeFileSync(contract, CONTRACT_FIXTURE);
+    writeFileSync(tasks, TASKS_FIXTURE);
+    const added = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
+    expect(added.error).toBeUndefined();
+    rmSync(contract);
+    rmSync(tasks);
+    const confirmed = await run(['milestone-confirm', 'M001'], root);
+    expect(confirmed.error).toBeUndefined();
+  }
+
+  beforeEach(async () => {
+    root = mkdtempSync(join(tmpdir(), 'pitway-tupd-branch-'));
+    scratch = mkdtempSync(join(tmpdir(), 'pitway-tupd-branch-in-'));
+    git(['init', '-q'], root);
+    git(['config', 'user.email', 'test@example.com'], root);
+    git(['config', 'user.name', 'Test'], root);
+    writeFileSync(join(root, 'README.md'), 'seed\n');
+    git(['add', 'README.md'], root);
+    git(['commit', '-q', '-m', 'init'], root);
+    await run(['init', '--no-claude'], root);
+    await confirmedMilestoneOnBranch();
+  });
+
+  it('completes a task while correctly on the milestone branch, unchanged from main-strategy behavior', async () => {
+    const expectedBranch = deterministicBranchName('M001', loadContract(root, 'M001').frontmatter.title);
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe(expectedBranch);
+    expect((await update(['T001', 'in_progress'])).error).toBeUndefined();
+    expect((await update(['T001', 'review'])).error).toBeUndefined();
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(task('T001').status).toBe('completed');
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe(expectedBranch);
+  });
+
+  it('refuses completion after a manual checkout away from the milestone branch, staging and committing nothing', async () => {
+    const startBranch = git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim();
+    await inReview();
+    const before = commitCount(root);
+
+    git(['checkout', '-b', 'somewhere-else'], root);
+    touchRelevantFile();
+    const result = join(scratch, 'result.yaml');
+    const message = join(scratch, 'message.txt');
+    writeFileSync(result, RESULT_FIXTURE);
+    writeFileSync(message, MESSAGE_FIXTURE);
+    const { error } = await update(['T001', 'completed', '--result', result, '--message', message]);
+
+    expect(error?.message).toMatch(new RegExp(`expected branch ${startBranch.replace(/\//g, '\\/')}`));
+    expect(error?.message).toMatch(/found somewhere-else/);
+    expect(task('T001').status).toBe('review');
+    expect(commitCount(root)).toBe(before);
+    expect(stagedFiles(root)).toBe('');
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe('somewhere-else');
   });
 });
