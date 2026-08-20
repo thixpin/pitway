@@ -171,12 +171,30 @@ export const journalTaskVerifyEvidenceSchema = z.strictObject({
   at: z.string().min(1),
 });
 
+// AC004/T004 (M014): one record per task-dispatch into a temporary worktree.
+// Like auto_run/quick_change/task_verify_evidence, a sibling record kind --
+// never checkpoint-eligible, no target state file, structurally excluded
+// from derivePending. A dispatch is "live" until a later worktree_integrate
+// or worktree_discard record references its id (derivation lives in
+// src/core/tasks/dispatch.ts, pure over already-read records).
+export const journalWorktreeDispatchSchema = z.strictObject({
+  kind: z.literal('worktree_dispatch'),
+  id: z.string().min(1),
+  milestone: journalMilestoneId,
+  taskId: journalTaskId,
+  branch: z.string().min(1),
+  worktreePath: z.string().min(1),
+  createdFrom: z.string().min(1),
+  at: z.string().min(1),
+});
+
 export const journalRecordSchema = z.discriminatedUnion('kind', [
   journalEntrySchema,
   journalCheckpointSchema,
   journalAutoRunSchema,
   journalQuickChangeSchema,
   journalTaskVerifyEvidenceSchema,
+  journalWorktreeDispatchSchema,
 ]);
 
 export const journalFileSchema = z.strictObject({
@@ -195,6 +213,7 @@ export type JournalTaskVerifyFingerprintEntry = z.infer<typeof journalTaskVerify
 export type JournalTaskVerifyFingerprint = z.infer<typeof journalTaskVerifyFingerprintSchema>;
 export type JournalTaskVerifyTypecheck = z.infer<typeof journalTaskVerifyTypecheckSchema>;
 export type JournalTaskVerifyEvidence = z.infer<typeof journalTaskVerifyEvidenceSchema>;
+export type JournalWorktreeDispatch = z.infer<typeof journalWorktreeDispatchSchema>;
 export type JournalRecord = z.infer<typeof journalRecordSchema>;
 export type JournalFile = z.infer<typeof journalFileSchema>;
 
@@ -319,6 +338,25 @@ export function appendTaskVerifyEvidenceRecord(
   const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
   if (!result.success) {
     throw new JournalError(`refusing to append invalid task_verify_evidence record: ${formatIssues(result.error)}`);
+  }
+  saveJournalFile(cwd, result.data);
+  return full;
+}
+
+// Appends a worktree_dispatch record -- a full, self-contained snapshot of
+// one task dispatch, never a patch. Callers (src/core/tasks/dispatch.ts)
+// compute the full field set (including the dispatch id) before calling
+// this; this function only ever appends what it's given, exactly like its
+// sibling appenders above.
+export function appendWorktreeDispatchRecord(
+  cwd: string,
+  record: Omit<JournalWorktreeDispatch, 'kind'>,
+): JournalWorktreeDispatch {
+  const file = loadJournalFile(cwd);
+  const full: JournalWorktreeDispatch = { kind: 'worktree_dispatch', ...record };
+  const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
+  if (!result.success) {
+    throw new JournalError(`refusing to append invalid worktree_dispatch record: ${formatIssues(result.error)}`);
   }
   saveJournalFile(cwd, result.data);
   return full;

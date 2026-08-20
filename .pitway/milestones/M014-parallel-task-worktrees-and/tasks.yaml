@@ -170,7 +170,7 @@ tasks:
       conflict; overlap with an INLINE in_progress task refused;
       sequential-strategy, dirty-tree, pending-amendment, and ineligible-status
       refusals; journal record shape."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -207,7 +207,16 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/integration/task-dispatch.test.ts
         tests/unit/journal.test.ts
-    result: null
+    result:
+      summary: "[truncated] spatchId string reference. --json is the handoff envelope
+        only, no embedded bundle. 10 integration tests cover both happy paths
+        and the full refusal matrix; test fixtures commit the parallel config
+        before confirmation so the baseline folds it in, matching the real
+        repository-policy flow."
+      evidence: Tests  39 passed (39) | Start at  19:34:23 | Duration  6.04s
+        (transform 258ms, setup 0ms, import 405ms, tests 11.45s, environment
+        0ms)
+    attempts: 1
     usage: null
   - id: T005
     name: Fail-closed worktree state guard
@@ -271,7 +280,7 @@ tasks:
       tree; empty diff and uncommitted worktree refused; sibling-dispatch rider
       disclosure case (completion commit carrying the other task's in_progress
       state) proven against `findCompletionCommit`."
-    status: waiting
+    status: ready
     depends_on:
       - T003
       - T004

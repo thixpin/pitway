@@ -8,6 +8,7 @@ import {
   appendJournalEntry,
   appendQuickChangeRecord,
   appendTaskVerifyEvidenceRecord,
+  appendWorktreeDispatchRecord,
   JournalError,
   readJournal,
   reconcilePending,
@@ -521,5 +522,63 @@ describe('layering: src/core/journal/ must not import node:fs or node:path', () 
       expect(text).not.toMatch(/from\s+['"]node:fs['"]/);
       expect(text).not.toMatch(/from\s+['"]node:path['"]/);
     }
+  });
+});
+
+// AC004/T004 (M014): worktree_dispatch -- sixth sibling record kind, same
+// discipline as its siblings: append-only, derivePending-excluded,
+// git-invisible.
+describe('worktree_dispatch records (M014/T004)', () => {
+  const baseDispatch = {
+    id: 'wtd-1',
+    milestone: 'M014',
+    taskId: 'T001',
+    branch: 'pitway/task/M014-T001',
+    worktreePath: '/tmp/repo/.pitway-worktrees/M014-T001',
+    createdFrom: 'a'.repeat(40),
+    at: '2026-08-20T00:00:00Z',
+  };
+
+  it('appends a worktree_dispatch record and reads it back', () => {
+    const record = appendWorktreeDispatchRecord(repo, baseDispatch);
+    expect(record.kind).toBe('worktree_dispatch');
+    const all = readJournal(repo);
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({
+      kind: 'worktree_dispatch',
+      id: 'wtd-1',
+      milestone: 'M014',
+      taskId: 'T001',
+      branch: 'pitway/task/M014-T001',
+    });
+  });
+
+  it('is excluded from derivePending like every sibling record kind', () => {
+    appendWorktreeDispatchRecord(repo, baseDispatch);
+    appendJournalEntry(repo, {
+      milestone: 'M014',
+      type: 'usage_recording',
+      operationId: 'op-1',
+      payload: {},
+    });
+    const pending = derivePending(readJournal(repo));
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.operationId).toBe('op-1');
+  });
+
+  it('never appears in git status', () => {
+    appendWorktreeDispatchRecord(repo, baseDispatch);
+    expect(git(['status', '--porcelain'], repo).trim()).toBe('');
+  });
+
+  it('rejects a record missing required fields, appending nothing', () => {
+    expect(() =>
+      appendWorktreeDispatchRecord(repo, {
+        ...baseDispatch,
+        // @ts-expect-error deliberately invalid milestone id
+        milestone: 'X1',
+      }),
+    ).toThrow(JournalError);
+    expect(readJournal(repo)).toHaveLength(0);
   });
 });
