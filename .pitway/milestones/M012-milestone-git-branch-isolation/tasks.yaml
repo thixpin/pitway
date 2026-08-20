@@ -1,0 +1,531 @@
+schema_version: 1
+tasks:
+  - id: T001
+    objective: "Add an additive-optional nested `git` field to `configSchema`
+      (`src/state/schemas.ts`): `git: z.strictObject({ branch_strategy:
+      z.enum(['main', 'milestone']) }).optional()`. Export the resolved strategy
+      as a small pure helper, e.g. `resolveBranchStrategy(config: PitwayConfig):
+      'main' | 'milestone'`, returning `'main'` when `git` is absent -- every
+      later task that needs to know the active strategy calls this one helper
+      rather than re-deriving the absent-means-main fallback independently.
+      `loadConfig`/`saveConfig` keep their existing signatures and behavior;
+      only the schema shape changes. Add a focused unit test proving a bare,
+      pre-existing `{schema_version: 1}` config.yaml (no `git` key at all -- the
+      exact shape every one of PitWay's own eleven completed milestones'
+      config.yaml already has) still loads successfully and
+      `resolveBranchStrategy` returns `'main'` for it, and a second test proving
+      `git: {branch_strategy: milestone}` round-trips through save/load
+      correctly. This task does not touch `pitway init` -- `init` is not changed
+      to ever write a `git` field; opting into `milestone` strategy is a manual
+      `config.yaml` edit for now (no CLI flag is added by this milestone)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC001
+    context_files:
+      - src/state/schemas.ts
+      - src/state/store.ts
+      - tests/unit/schemas.test.ts
+    write_scope:
+      - src/state/schemas.ts
+      - tests/unit/schemas.test.ts
+    mapped_ac_ids:
+      - AC001
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/schemas.test.ts
+    result: null
+    usage: null
+  - id: T002
+    objective: >-
+      Add a new small Git-layer module, `src/git/branch.ts`, alongside the
+      existing `src/git/safety.ts`/`exec.ts`/`commit.ts`: `currentBranch(cwd):
+      string` (`git rev-parse --abbrev-ref HEAD`), `branchExists(cwd, name):
+      boolean` (`git show-ref --verify --quiet refs/heads/<name>`, checked via
+      exit code, never string-matching output), and
+      `createAndCheckoutBranch(cwd, name): void` (`git checkout -b <name>`) --
+      each a thin, single-purpose wrapper in the same style as this project's
+      existing Git-layer functions, zero State-layer imports.
+
+      Wire branch creation into `milestone-confirm`'s `runConfirm`
+      (`src/core/milestones/confirm.ts`) as exactly two cases, mirroring AC002's
+      own two-case split -- confirm performs at most one branch mutation total,
+      and only in the first case:
+
+      **Case 1 (fresh confirm, `status === 'draft'`)**: when
+      `resolveBranchStrategy` (T001) resolves to `milestone`, after
+      `assertNoUnexpectedDirtyPaths` has already passed and before the
+      hash/frontmatter write, compute the deterministic branch name
+      `pitway/<milestoneId>-<slugifyTitle(title)>` (reusing the existing
+      `slugifyTitle` export from `src/state/store.ts` -- do not write a second
+      slug implementation) and check `branchExists(root, name)` first. If it
+      already exists -- for any reason, a genuine unrelated collision or a
+      leftover branch from an earlier crashed confirm attempt alike, with no
+      attempt made to distinguish the two -- refuse immediately with a
+      diagnostic naming the branch, before any other mutation; never delete,
+      reset, or force-create over it. Otherwise: read `currentBranch(root)` as
+      the `base_branch` value and its current SHA (`git rev-parse HEAD`, or add
+      a small exported helper if none already exists at the right layer) as
+      `base_revision`, call `createAndCheckoutBranch`, then persist
+      `base_branch`/`base_revision` in the same frontmatter object the existing
+      code already builds (`updated.frontmatter`) before `saveContract` -- both
+      fields added to `contractFrontmatterSchema` (`src/state/schemas.ts`) as
+      additive-optional nullable strings, null on every historical contract.
+      Under `main` strategy this whole block is skipped entirely: no branch call
+      of any kind, `base_branch`/`base_revision` stay `null`, byte-identical
+      existing behavior. (Disclosed, narrow, non-bootstrap gap: a crash between
+      `createAndCheckoutBranch` and `saveContract` leaves `status` still `draft`
+      with an orphaned branch and no recorded owner -- the next confirm attempt
+      re-enters this same Case 1 and correctly refuses on the now-existing
+      branch name, requiring manual developer cleanup before retrying; this is
+      intentional, not a bug to route around.)
+
+      **Case 2 (resumed confirm, `status === 'in_progress'`, `base_branch`/
+      `base_revision` already recorded, no baseline commit found yet -- the
+      existing AC012 resume shape)**: under `milestone` strategy, perform no
+      branch mutation of any kind. Compute the same deterministic expected
+      branch name and compare it against `currentBranch(root)`. If they match,
+      proceed directly to the existing (unchanged) baseline-commit-recreation
+      call. If they do not match -- including the case where the expected branch
+      does not exist at all (`branchExists` returns false) -- refuse with a
+      diagnostic naming both the expected and the actually-checked-out branch;
+      never check out anything to fix the mismatch. Under `main` strategy this
+      whole block is skipped entirely, unchanged from today.
+
+      Add unit tests for the three new `src/git/branch.ts` functions against a
+      real temp git repo (not mocked), and integration tests (extending
+      `tests/integration/milestone-confirm.test.ts`) covering: fresh confirm
+      under `milestone` strategy creates the expected branch name and records
+      correct `base_branch`/`base_revision`; a `main`-strategy confirm leaves
+      both null and creates no branch (regression); a fresh confirm refuses when
+      the deterministic branch name already exists (both a genuine pre-existing
+      unrelated branch and a simulated orphaned-from-crash branch, proving both
+      refuse identically); a resumed confirm on the correct milestone branch
+      completes the baseline commit; a resumed confirm on the wrong branch
+      refuses without checking out; and a resumed confirm whose expected branch
+      was deleted between attempts refuses rather than recreating it.
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - AC002
+    context_files:
+      - src/git/safety.ts
+      - src/git/exec.ts
+      - src/git/baseline.ts
+      - src/git/commit-or-resume.ts
+      - src/core/milestones/confirm.ts
+      - src/state/schemas.ts
+      - src/state/store.ts
+      - src/git/branch.ts
+      - tests/unit/git-branch.test.ts
+      - tests/integration/milestone-confirm.test.ts
+    write_scope:
+      - src/git/branch.ts
+      - src/core/milestones/confirm.ts
+      - src/state/schemas.ts
+      - tests/unit/git-branch.test.ts
+      - tests/integration/milestone-confirm.test.ts
+    mapped_ac_ids:
+      - AC002
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/git-branch.test.ts
+        tests/integration/milestone-confirm.test.ts tests/unit/schemas.test.ts
+    result: null
+    usage: null
+  - id: T003
+    objective: >-
+      Add one shared guard function, e.g. `assertOnMilestoneBranch(cwd,
+      contract: ContractFrontmatter): void` (place it in `src/git/branch.ts`
+      alongside T002's other new branch primitives -- Core-layer callers already
+      pass frontmatter-shaped data to Git-layer functions elsewhere in this
+      codebase, e.g. `createBaselineCommit`'s `milestoneId`, so this keeps the
+      same layering). It computes the milestone's own deterministic expected
+      branch name from `contract.id`/`contract.title` exactly the way T002's
+      confirm code does (reuse the same `slugifyTitle`-based construction -- do
+      not duplicate the naming logic; factor it into one small shared helper
+      both T002's confirm code and this guard call, if it is not already
+      effectively shared) and compares it against `currentBranch(cwd)`. When
+      `contract.base_branch`/`base_revision` are null (main strategy, or no
+      branch tracked), the guard is a no-op and returns immediately. On a
+      mismatch it throws `GitError` naming both the expected and the
+      actually-checked-out branch.
+
+      This task is the sole owner of wiring this guard into both
+      commit-producing paths for an in-progress milestone -- neither T006 nor
+      any later task performs any wiring; T006 (merge-ready verification) only
+      verifies the milestone-complete wiring this task lands and adds
+      assertions/tests on top of it. Wire the guard into: task completion's own
+      commit call, in `src/core/tasks/update.ts` (confirm the exact call site by
+      reading the file -- it calls `commitOrResume`/`createCommit` for a
+      completed task); and `milestone-complete`'s own commit call, in
+      `src/core/milestones/complete.ts`. Call the guard immediately before the
+      existing commit call in each case, passing the already-loaded contract.
+      This is a pure addition in both files -- neither commit path's existing
+      logic, staging, or message composition changes.
+
+      Add unit tests for `assertOnMilestoneBranch` directly (real temp repo,
+      both the no-op and mismatch cases), and integration tests proving: a task
+      completed while correctly on the milestone branch succeeds unchanged; a
+      task completion attempted after a manual `git checkout` away from the
+      milestone branch refuses cleanly, with nothing staged or committed; the
+      same two cases for `milestone-complete`; and a full `main`-strategy
+      regression pass proving neither commit path's behavior changed at all when
+      no branch is tracked.
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - AC003
+    context_files:
+      - src/git/branch.ts
+      - src/git/commit-or-resume.ts
+      - src/core/milestones/confirm.ts
+      - src/core/tasks/update.ts
+      - src/core/milestones/complete.ts
+      - src/state/schemas.ts
+      - tests/unit/git-branch.test.ts
+      - tests/integration/task-update.test.ts
+      - tests/integration/milestone-complete.test.ts
+    write_scope:
+      - src/git/branch.ts
+      - src/core/tasks/update.ts
+      - src/core/milestones/complete.ts
+      - tests/unit/git-branch.test.ts
+      - tests/integration/task-update.test.ts
+      - tests/integration/milestone-complete.test.ts
+    mapped_ac_ids:
+      - AC003
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/git-branch.test.ts
+        tests/integration/task-update.test.ts
+        tests/integration/milestone-complete.test.ts
+    result: null
+    usage: null
+  - id: T004
+    objective: >-
+      Extend `ResumeView` (`src/cli/commands/resume.ts`) with two
+      additive-optional fields surfaced only when the active milestone tracks a
+      branch (`base_branch`/`base_revision` non-null in its contract
+      frontmatter): the milestone's expected branch name and a boolean (or
+      equivalent) indicating whether the currently checked-out branch
+      (`currentBranch`, from T002/T003's `src/git/branch.ts`) matches it.
+      `buildResumeView` computes this read-only -- it must never call any
+      branch-mutating function. `renderResumeHuman` adds a short, clearly worded
+      line only in the milestone-tracked-branch case: when matched, a brief
+      confirmation; when mismatched, plainly naming both the expected and actual
+      branch and stating that the developer must switch manually (no PitWay
+      command does this automatically). For `main`-strategy milestones, or when
+      no branch is tracked, this section is entirely absent from both the JSON
+      shape and the human text -- not present-but-empty.
+
+      Add tests (extend or create `tests/integration/resume.test.ts` if one does
+      not already exist -- check first) covering: a `milestone`- strategy active
+      milestone with the correct branch checked out (no mismatch reported); the
+      same after a manual checkout elsewhere (mismatch reported, both branch
+      names named correctly); a `main`- strategy active milestone (branch
+      section entirely absent, proving no regression to existing resume output);
+      and the no-active-milestone case (unaffected, already covered by existing
+      tests -- confirm rather than assume).
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - AC004
+    context_files:
+      - src/cli/commands/resume.ts
+      - src/git/branch.ts
+      - src/state/schemas.ts
+      - tests/integration/resume.test.ts
+    write_scope:
+      - src/cli/commands/resume.ts
+      - tests/integration/resume.test.ts
+    mapped_ac_ids:
+      - AC004
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/resume.test.ts
+    result: null
+    usage: null
+  - id: T005
+    objective: >-
+      Add an additive-optional range-scoping parameter to `resolveCommitSha`
+      (`src/git/trailers.ts`), e.g. a `since?: string` field on `TrailerQuery`,
+      or a separate optional argument -- read the existing function signature
+      and its one implementation of the underlying `git log` call first and
+      choose whichever shape fits with the least disruption to existing call
+      sites. When provided, the underlying `git log` invocation is scoped to
+      `<since>..HEAD` instead of the current full-history scan. If the bounded
+      call fails at git's own level (an unresolvable/unreachable revision --
+      verified with a real test that first hard-deletes the reachability of a
+      commit, e.g. via a repo state where the recorded SHA no longer exists in
+      history, not merely a made-up string), do NOT fall back to an unbounded
+      scan -- throw a `GitError` naming the unreachable `since` value
+      explicitly, so an invalid range surfaces as a loud, actionable diagnostic
+      rather than silently and possibly incorrectly widening the search (a
+      silent unbounded fallback would defeat the branch-isolation guarantee the
+      range exists to provide -- see AC005's own reasoning). This is distinct
+      from, and must not be confused with, a *valid* range that legitimately
+      contains no matching commit -- that case is unchanged and still returns
+      `undefined`, exactly as `resolveCommitSha` already does today for "no
+      match found." Update every call site that has a milestone's contract in
+      scope (the baseline-commit lookup in `src/git/baseline.ts`'s
+      `createBaselineCommit`, and any task/ verification-repair commit lookup
+      that already calls `resolveCommitSha` with a milestone in scope -- find
+      each real call site via a grep, do not assume the list) to pass the
+      milestone's `base_revision` when it is non-null, and to omit it otherwise
+      -- preserving today's unbounded scan exactly for every `main`-strategy
+      milestone and every milestone confirmed before this ships.
+      `resolveChangeCommitSha` in the same file is explicitly NOT touched --
+      quick-change stays milestone-less and unbounded, by design, since it has
+      no milestone contract to source a `base_revision` from.
+
+      Add unit tests: a bounded lookup finds the right commit when the range
+      genuinely contains it; a bounded lookup correctly returns `undefined` when
+      the target commit exists but falls outside the given range (proving the
+      bound is real, not a no-op); the graceful-fallback case for an unreachable
+      `since` value; and a regression test proving every call site with no
+      `base_revision` available still performs today's unbounded scan unchanged.
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - AC005
+    context_files:
+      - src/git/trailers.ts
+      - src/git/baseline.ts
+      - src/core/milestones/confirm.ts
+      - tests/unit/trailers.test.ts
+    write_scope:
+      - src/git/trailers.ts
+      - src/git/baseline.ts
+      - tests/unit/trailers.test.ts
+    mapped_ac_ids:
+      - AC005
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/trailers.test.ts
+    result: null
+    usage: null
+  - id: T006
+    objective: "This task does not wire anything -- T003 is the sole owner of wiring
+      `assertOnMilestoneBranch` into `milestone-complete`'s own commit call (in
+      `src/core/milestones/complete.ts`); do not touch that file or duplicate
+      that work. This task's only job is (1) verify, by reading the real current
+      `src/core/milestones/complete.ts`, that T003's guard call is genuinely
+      present immediately before the existing commit call there, and (2) add the
+      merge-ready/PR-ready verification this AC requires as real, falsifiable
+      assertions -- either as part of `milestone-complete`'s own return/behavior
+      or as a dedicated test helper exercised directly by this task's own tests
+      (whichever fits the existing code's shape better; this task does not need
+      to surface a new CLI flag or output field unless one is genuinely needed
+      to make the guarantee independently checkable, and if one is genuinely
+      needed, flag it rather than adding it silently within this task's declared
+      write_scope). If the guard is missing or misplaced, this task fails/blocks
+      and reports it rather than adding the wiring itself -- that remains T003's
+      declared write_scope, not this task's. The assertions: the milestone
+      branch, from `base_revision` forward, contains exactly the baseline
+      commit, every task's completion commit, and the completion commit itself
+      -- no more, no fewer (`git log --oneline <base_revision>..<branch>` or
+      equivalent, compared against the expected commit count/identities, not
+      just a count); the working tree is clean after completion; `git merge-base
+      --is-ancestor <any milestone commit> <base_branch>` fails for every
+      milestone commit (proving the base branch's tip does not already contain
+      them -- i.e., nothing was merged); no commit in the milestone branch's own
+      history since `base_revision` has more than one parent (proving no merge
+      commit was created); and the base branch's own tip SHA is identical before
+      and after `milestone-complete` runs (proving it was never touched). Under
+      `branch_strategy: main`, none of this applies and `milestone-complete`'s
+      behavior stays completely unchanged -- add a regression test proving that
+      explicitly."
+    status: waiting
+    depends_on:
+      - T003
+    acceptance_criteria:
+      - AC006
+    context_files:
+      - src/git/branch.ts
+      - src/git/commit-or-resume.ts
+      - src/core/milestones/complete.ts
+      - src/state/schemas.ts
+      - tests/integration/milestone-complete.test.ts
+    write_scope:
+      - tests/integration/milestone-complete.test.ts
+    mapped_ac_ids:
+      - AC006
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-complete.test.ts
+    result: null
+    usage: null
+  - id: T007
+    objective: "A new, real end-to-end integration test file,
+      `tests/integration/branch-isolation-lifecycle.test.ts`, exercising the
+      full `milestone`-strategy lifecycle against one real temporary git
+      repository from start to finish: configure `branch_strategy: milestone` ->
+      `milestone-add` a small synthetic milestone (1-2 tasks is enough; this
+      test proves the lifecycle wiring, not task-execution breadth already
+      covered elsewhere) -> `milestone-confirm` (assert the deterministic branch
+      exists, is checked out, and `base_branch`/`base_revision` are recorded
+      correctly against the repo's real pre-confirm state) -> drive at least one
+      task through `in_progress -> review -> completed` (assert its commit
+      landed on the milestone branch, not the base branch) -> manually `git
+      checkout` back to the base branch, run `pitway resume` (or call
+      `buildResumeView` directly), and assert the mismatch is surfaced exactly
+      as T004 implemented, with no branch-mutating call made by resume itself ->
+      checkout back onto the milestone branch -> `milestone-complete` -> assert
+      every one of T006's merge-ready assertions holds against this real repo's
+      actual git state. A second describe block in the same file runs the
+      equivalent lifecycle under `branch_strategy: main` (and once more with
+      `git` entirely absent from config.yaml) and asserts no branch is ever
+      created, `base_branch`/`base_revision` stay null throughout, and the
+      milestone completes exactly as it does today. This task's own declared
+      verification command runs only this new targeted lifecycle test file, per
+      AC008's own verification- discipline rule: T007 does not run the full `npm
+      test` suite itself -- that full-suite run is exclusively CT008's own
+      milestone-level gate (see this contract's verification block), not part of
+      any individual task's declared verification."
+    status: waiting
+    depends_on:
+      - T003
+      - T004
+      - T005
+      - T006
+    acceptance_criteria:
+      - AC007
+    context_files:
+      - src/git/branch.ts
+      - src/core/milestones/confirm.ts
+      - src/cli/commands/resume.ts
+      - src/git/trailers.ts
+      - tests/integration/branch-isolation-lifecycle.test.ts
+    write_scope:
+      - tests/integration/branch-isolation-lifecycle.test.ts
+    mapped_ac_ids:
+      - AC007
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/branch-isolation-lifecycle.test.ts
+    result: null
+    usage: null
+  - id: T008
+    objective: "Add a new \"Verification discipline\" section to
+      `src/integrations/claude/protocol-driver.md`, placed alongside this
+      document's other existing driver-rule sections (read the file first to
+      place it consistently with its own structure -- e.g. near \"Choosing a
+      correction mechanism\" or wherever verification-related guidance already
+      lives). State plainly, as a driver rule: task execution runs only that
+      task's own declared verification command (directly, or via `task-verify`);
+      full-suite (`npm test`) or typecheck (`tsc --noEmit`) runs are reserved
+      for a milestone's own explicit `command`-type verification check, or a
+      genuinely cross-cutting investigation where a task's own narrow declared
+      scope cannot rule out a wider regression -- never a routine per-task
+      sanity habit. State that once a manual/review check is recorded via
+      `pitway verify <id> --check <ct-id> --pass|--fail`, that record is
+      authoritative in `verification-results.yaml`; re-invoking bare `pitway
+      verify <id>` a second time reruns every command-type check fresh and
+      always displays non-command checks as pending regardless of what is
+      already recorded, so a driver session should trust its own prior `--check`
+      write (or read `verification-results.yaml` directly) rather than
+      re-invoking bare `verify` expecting it to reflect already-recorded manual
+      results. Keep the section concise, in the same style as this document's
+      other rule sections -- do not restate content that belongs in
+      `task-verify.md` or `verify.md`'s own command docs. This task touches only
+      `protocol-driver.md`; no other Claude asset, and no code, changes for this
+      task."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC008
+    context_files:
+      - src/integrations/claude/protocol-driver.md
+    write_scope:
+      - src/integrations/claude/protocol-driver.md
+    mapped_ac_ids:
+      - AC008
+    verification:
+      strategy: manual
+      detail: Read protocol-driver.md's new "Verification discipline" section; confirm
+        it states the task-execution-only-runs-its-own-command rule, the
+        full-suite/typecheck-is-milestone-level-only rule, and the
+        recorded-manual-results-are-authoritative rule; confirm no other file
+        was touched.
+    result: null
+    usage: null
+  - id: T009
+    objective: >-
+      Roadmap-reconciliation review, mirroring M005/T009 through M011/T008:
+      confirm `IMPLEMENTATION_PLAN.md` accurately reflects this milestone's
+      actual delivery. Add a new dated entry to the revision header describing
+      what changed. Update §7 if the command surface changed (expected:
+      unchanged -- no new CLI command is added by this milestone; state that
+      explicitly rather than silently). Update §9's Claude-asset inventory only
+      if the file count changed (expected: unchanged -- AC008 is an insertion
+      into an existing file). Rewrite §10's Git Strategy section to describe the
+      real, delivered `branch_strategy: main | milestone` behavior (branch
+      naming, base branch/revision persistence, the commit-branch guard,
+      range-bounded trailer lookup with its graceful fallback, merge-ready
+      completion) in place of today's "deliberately deferred -- see §15" text,
+      and update its own range-bounded-trailer-lookup sentence to reflect actual
+      delivery instead of "scheduled with... M012." Update §15's "Deferred:
+      milestone-level Git branch strategy" subsection to state the feature
+      shipped in M012 (point at §10 for the real behavior, do not leave the full
+      design-sketch prose duplicated and now-stale). Add M011's row to the
+      Bootstrap section's delivery table (M012's own row correctly omitted, left
+      for whichever milestone next runs its own reconciliation task, per the
+      established precedent). Rewrite the Revised Roadmap's M012 entry from its
+      current not-yet-drafted placeholder to reflect actual delivery. Update the
+      Status paragraph/snapshot.
+
+      Separately, and in the same commit (this is still one atomic task):
+      resolve the roadmap-numbering collision the developer explicitly flagged
+      when directing this milestone's own drafting (2026-08-20, recorded in this
+      session's own memory as the "m012-driver-ux-candidate" note) -- insert
+      "PitWay Driver UX" as a real Revised Roadmap entry, numbered **M013**,
+      immediately following this M012's own entry, giving it a short description
+      (ADD-style concise driver output, a permanent one-line racing footer shown
+      only after milestone confirmation, and an on-demand structured Progress
+      Report -- the full required scope is recorded in this session's own
+      memory, not repeated here since this task only reserves the roadmap slot,
+      it does not draft M013 itself). Renumber the existing M013 (parallel task
+      worktrees) to **M014** and the existing M014 (extended dogfood validation)
+      to **M015**, updating every cross-reference to the old numbers anywhere in
+      the document -- not just the Revised Roadmap section's own headings, but
+      also §10's and §15's own closing-paragraph references to
+      "M012/M013"/"M013" -- the same renumbering mechanic M009/T006 already
+      applied twice for an analogous insertion.
+
+      This task is executed directly, not dispatched as a sub-agent task
+      (single-file documentation reconciliation, no code -- the same
+      right-sizing precedent M010/T004 and M011/T008 both already established
+      for this exact kind of closing task).
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+      - T005
+      - T006
+      - T007
+      - T008
+    acceptance_criteria:
+      - AC009
+    context_files:
+      - IMPLEMENTATION_PLAN.md
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+    mapped_ac_ids:
+      - AC009
+    verification:
+      strategy: manual
+      detail: Read IMPLEMENTATION_PLAN.md's revision header, §7, §10, §15, the
+        Bootstrap delivery table, the Revised Roadmap section (including the new
+        M013 entry and the M013->M014/M014->M015 renumbering), and the Status
+        paragraph; confirm each reflects this milestone's actual delivery and
+        that no stale reference to the old numbering remains anywhere in the
+        document.
+    result: null
+    usage: null
