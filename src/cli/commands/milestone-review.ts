@@ -1,10 +1,16 @@
 import type { Command } from 'commander';
 import { startReviewSession, type ReviewSessionView } from '../../core/reviews/session.js';
+import { promptForRoles, type PromptStreams } from '../review-prompt.js';
 import { renderOutput } from '../output.js';
 
 export interface CommandDeps {
   root?: string;
   write?: (line: string) => void;
+  // Injectable prompt streams (AC003) -- default to the real process
+  // stdin/stdout, overridden by tests to drive both the interactive and
+  // non-interactive branches without a real terminal.
+  input?: PromptStreams['input'];
+  output?: PromptStreams['output'];
 }
 
 function parseRolesCsv(raw: string): string[] {
@@ -35,12 +41,22 @@ export function registerMilestoneReviewCommand(program: Command, deps: CommandDe
     )
     .option('--roles <csv>', 'comma-separated list of registered review role ids')
     .option('--json', 'output machine-readable JSON')
-    .action((id: string, options: { roles?: string; json?: boolean }) => {
-      if (options.roles === undefined) {
-        throw new Error('milestone-review start requires --roles <csv>');
-      }
+    .action(async (id: string, options: { roles?: string; json?: boolean }) => {
       const root = deps.root ?? process.cwd();
-      const view = startReviewSession(root, id, { roles: parseRolesCsv(options.roles) });
+      let roles: string[];
+      if (options.roles !== undefined) {
+        roles = parseRolesCsv(options.roles);
+      } else {
+        const input = deps.input ?? process.stdin;
+        const output = deps.output ?? process.stdout;
+        if (!input.isTTY) {
+          throw new Error(
+            'milestone-review start requires --roles <csv> when input is not a TTY (no interactive prompt available)',
+          );
+        }
+        roles = await promptForRoles({ input, output });
+      }
+      const view = startReviewSession(root, id, { roles });
       write(renderOutput(view, { json: options.json }, renderStartHuman));
     });
 }

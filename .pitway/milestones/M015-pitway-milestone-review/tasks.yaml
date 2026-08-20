@@ -133,7 +133,7 @@ tasks:
       prompt through injected streams: valid selection opens the session;
       invalid-then-valid re-prompt; invalid-twice refusal; non-TTY refusal;
       --roles bypass."
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -152,7 +152,15 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-review-interactive.test.ts
-    result: null
+    result:
+      summary: "[truncated] lain node:readline numbered multi-select against
+        injectable streams, one re-prompt on invalid input then refuse) and
+        wired it into milestone-review start: prompts on omitted --roles when
+        the injected input stream is a TTY, refuses naming --roles otherwise;
+        --roles supplied never prompts."
+      evidence: Tests  6 passed (6) | Start at  23:55:25 | Duration  1.85s (transform
+        237ms, setup 0ms, import 330ms, tests 1.43s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T004
     name: milestone-review brief
