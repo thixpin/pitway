@@ -365,19 +365,32 @@ tasks:
       entry point). This task also runs this milestone's own
       full-suite/typecheck regression gate exactly once: `npm test && npx tsc
       --noEmit`."
-    status: ready
+    status: completed
     depends_on:
       - T007
     acceptance_criteria:
       - AC010
     context_files:
       - IMPLEMENTATION_PLAN.md
+      - tests/integration/fresh-session-resume.test.ts
+      - tests/integration/self-hosting-readiness.test.ts
     write_scope:
       - IMPLEMENTATION_PLAN.md
+      - tests/integration/fresh-session-resume.test.ts
+      - tests/integration/self-hosting-readiness.test.ts
     mapped_ac_ids:
       - AC010
     verification:
       strategy: command
       detail: npm test && npx tsc --noEmit
-    result: null
+    result:
+      summary: "[truncated]  contention from running the full suite nested inside
+        task-verify's own synchronous spawn under system load (load averages 10+
+        on an 8-core machine) -- confirmed by two independent standalone `npm
+        test` runs both passing 907/907 clean, and a final clean task-verify run
+        once load settled."
+      evidence: Tests  907 passed (907) | Start at  17:43:11 | Duration  67.24s
+        (transform 2.95s, setup 0ms, import 9.35s, tests 417.79s, environment
+        6ms)
+    attempts: 1
     usage: null

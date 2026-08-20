@@ -348,7 +348,7 @@ describe('self-hosting readiness scenario (AC021)', () => {
       activeMilestone: string;
       contractStatus: string;
       title: string;
-      tasks: Array<{ id: string; status: string }>;
+      tasks: Array<{ id: string; name: string | null; status: string }>;
       ready: string[];
       waiting: string[];
       nextTask: string | null;
@@ -356,12 +356,14 @@ describe('self-hosting readiness scenario (AC021)', () => {
     expect(view.activeMilestone).toBe('M001');
     expect(view.contractStatus).toBe('in_progress');
     expect(view.title).toBe('Self-hosting readiness');
+    // M013/AC002: resume's task list also carries an additive-optional name
+    // field, null (id-fallback) for every task in this fixture.
     expect(view.tasks).toEqual([
-      { id: 'T001', status: 'completed' },
+      { id: 'T001', name: null, status: 'completed' },
       // AC010: completion auto-promotes dependents whose dependencies are
       // now all completed, within the same completion commit; resume then
       // reports T002 ready with no task in_progress.
-      { id: 'T002', status: 'ready' },
+      { id: 'T002', name: null, status: 'ready' },
     ]);
     expect(view.ready).toEqual(['T002']);
     expect(view.waiting).toEqual([]);
@@ -520,7 +522,11 @@ describe('M005/T008: M001-M004 historical migration', () => {
       expect(view.contractStatus).toBe(contract.frontmatter.status);
       expect(view.title).toBe(contract.frontmatter.title);
       const tasksFile = loadTasks(repoRoot, state.active_milestone);
-      expect(view.tasks).toEqual(tasksFile.tasks.map((t) => ({ id: t.id, status: t.status })));
+      // M013/AC002: resume's task list also carries an additive-optional
+      // name field, id-fallback (null) for every real historical task here.
+      expect(view.tasks).toEqual(
+        tasksFile.tasks.map((t) => ({ id: t.id, name: t.name ?? null, status: t.status })),
+      );
     }
   });
 

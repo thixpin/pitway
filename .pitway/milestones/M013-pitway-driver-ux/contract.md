@@ -390,4 +390,17 @@ additive `name` field.
 
 ## Change Log
 
-(none yet)
+- 2026-08-20 (T008 execution): T008's own milestone-level full-suite gate
+  (`npm test && npx tsc --noEmit`) surfaced a real regression: two
+  pre-existing tests -- `tests/integration/fresh-session-resume.test.ts` and
+  `tests/integration/self-hosting-readiness.test.ts` -- assert `resume`'s
+  task list as exactly `{id, status}`, predating AC002's own `name: null`
+  addition to every entry. T008's drafted `write_scope` only covered
+  `IMPLEMENTATION_PLAN.md`, not these two files, so fixing the stale
+  assertions is a discovered scope conflict, not something to route around
+  silently. Developer approved widening T008's `write_scope`/`context_files`
+  (via a corresponding `task-amend`) to cover both test files -- delivering
+  a genuinely green full-suite gate as AC010 already implicitly requires,
+  rather than silently narrowing the gate's own meaning. No AC/CT text
+  changes; only T008's declared scope is corrected to match what running
+  its own gate to completion actually requires.

@@ -187,15 +187,17 @@ describe('fresh-session resume (M007/T001/AC001)', () => {
     const resumeView = JSON.parse(resumed.lines[0]!) as {
       activeMilestone: string;
       contractStatus: string;
-      tasks: Array<{ id: string; status: string }>;
+      tasks: Array<{ id: string; name: string | null; status: string }>;
       ready: string[];
       nextTask: string | null;
     };
     expect(resumeView.activeMilestone).toBe('M001');
     expect(resumeView.contractStatus).toBe('in_progress');
+    // M013/AC002: resume's task list also carries an additive-optional
+    // name field, null (id-fallback) for every task in this fixture.
     expect(resumeView.tasks).toEqual([
-      { id: 'T001', status: 'completed' },
-      { id: 'T002', status: 'ready' },
+      { id: 'T001', name: null, status: 'completed' },
+      { id: 'T002', name: null, status: 'ready' },
     ]);
     expect(resumeView.ready).toEqual(['T002']);
     expect(resumeView.nextTask).toBe('T002');
