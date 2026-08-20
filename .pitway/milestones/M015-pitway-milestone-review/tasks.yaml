@@ -22,7 +22,7 @@ tasks:
       (`tests/unit/review-state.test.ts`): schema round-trips, absent-file
       default, unknown-role rejection, duplicate handling, newest-per-role
       derivation, decision shape."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - AC001
@@ -48,7 +48,15 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/unit/review-state.test.ts tests/unit/journal.test.ts
-    result: null
+    result:
+      summary: "[truncated] ication-repairs' absent-file tolerance; review_recording
+        journal operation type + resolveTargetPath reviews.yaml case; Core role
+        registry (nine built-in roles), newest-per-role derivation, and the
+        contract-bytes+task-definition-projection content-hash helper in
+        src/core/reviews/roles.ts."
+      evidence: Tests  66 passed (66) | Start at  23:47:05 | Duration  7.62s
+        (transform 103ms, setup 0ms, import 224ms, tests 7.44s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T002
     name: milestone-review start and CLI registration
@@ -71,7 +79,7 @@ tasks:
       correct roles/hash on a draft and on a confirmed milestone;
       unknown/duplicate/empty role refusals naming offenders;
       completed-milestone refusal; second-open-session refusal."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:

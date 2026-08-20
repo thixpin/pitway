@@ -514,6 +514,82 @@ describe('task_verify_evidence records', () => {
   });
 });
 
+// AC001/AC008 (M015/T001): review_recording -- fourth entry-kind operation
+// type, sharing the exact usage_recording/amendment mechanics (checkpoint-
+// eligible via derivePending/resolveTargetPath), unlike the sibling record
+// kinds (auto_run, quick_change, task_verify_evidence, worktree_*) which are
+// structurally excluded from checkpointing.
+describe('review_recording journal entries (M015/T001)', () => {
+  it('appends a review_recording entry and reads it back', () => {
+    const entry = appendJournalEntry(repo, {
+      milestone: 'M015',
+      type: 'review_recording',
+      operationId: 'rr-1',
+      target: 'rev-abc123',
+      payload: { role: 'developer' },
+    });
+    expect(entry.kind).toBe('entry');
+
+    const all = readJournal(repo);
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({
+      kind: 'entry',
+      milestone: 'M015',
+      type: 'review_recording',
+      operationId: 'rr-1',
+      target: 'rev-abc123',
+    });
+  });
+
+  it('resolveTargetPath maps review_recording to the milestone reviews.yaml', () => {
+    expect(resolveTargetPath({ type: 'review_recording' }, 'M015')).toBe(
+      '.pitway/milestones/M015/reviews.yaml',
+    );
+  });
+
+  it('is checkpoint-eligible exactly like usage_recording/amendments -- derivePending excludes it once checkpointed', () => {
+    appendJournalEntry(repo, {
+      milestone: 'M015',
+      type: 'review_recording',
+      operationId: 'rr-2',
+      payload: {},
+    });
+    expect(derivePending(readJournal(repo)).map((e) => e.operationId)).toEqual(['rr-2']);
+
+    appendCheckpointMarker(repo, 'M015', 'rr-2', 'deadbeef');
+    expect(derivePending(readJournal(repo))).toHaveLength(0);
+  });
+
+  it('reconcilePending self-heals a review_recording entry the same way it does usage_recording/amendments', () => {
+    const milestoneDir = join(repo, '.pitway', 'milestones', 'M015');
+    mkdirSync(milestoneDir, { recursive: true });
+    const reviewsPath = join(milestoneDir, 'reviews.yaml');
+    writeFileSync(reviewsPath, 'schema_version: 1\nsessions: []\n');
+
+    appendJournalEntry(repo, {
+      milestone: 'M015',
+      type: 'review_recording',
+      operationId: 'rr-3',
+      payload: {},
+    });
+
+    const relTarget = resolveTargetPath({ type: 'review_recording' }, 'M015');
+    expect(relTarget).toBe('.pitway/milestones/M015/reviews.yaml');
+    git(['add', '--', relTarget], repo);
+    const message = composeMessage('workflow: complete T001', {
+      'PitWay-Milestone': 'M015',
+      'PitWay-Task': 'T001',
+    });
+    git(['commit', '-m', message], repo);
+    const sha = git(['rev-parse', 'HEAD'], repo).trim();
+
+    const created = reconcilePending(repo, 'M015');
+    expect(created).toHaveLength(1);
+    expect(created[0]).toMatchObject({ entryOperationId: 'rr-3', commitSha: sha });
+    expect(derivePending(readJournal(repo))).toHaveLength(0);
+  });
+});
+
 describe('layering: src/core/journal/ must not import node:fs or node:path', () => {
   it('contains zero direct fs/path imports across every file in src/core/journal/', () => {
     const dir = join(process.cwd(), 'src', 'core', 'journal');

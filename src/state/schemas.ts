@@ -320,3 +320,70 @@ export type TaskUsage = z.infer<typeof taskUsageSchema>;
 export type VerificationRepairStatus = z.infer<typeof verificationRepairStatusSchema>;
 export type VerificationRepairRecord = z.infer<typeof verificationRepairRecordSchema>;
 export type VerificationRepairsFile = z.infer<typeof verificationRepairsFileSchema>;
+
+// M015/T001 (AC001): milestone-review state — schema v1, committed
+// reviews.yaml. Role ids are kebab-case strings by schema only (extensible
+// by later registry additions with no schema change); MVP command-layer
+// validation against the known-roles registry lives in
+// src/core/reviews/roles.ts, never here.
+const reviewSessionId = z.string().regex(/^rev-[0-9a-f]+$/, 'review session id must match rev-<hex>');
+export const reviewRoleIdSchema = z
+  .string()
+  .min(1)
+  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'review role id must be non-empty kebab-case');
+const reviewSeveritySchema = z.enum(['blocker', 'major', 'minor']);
+
+// Finding-entry shape owned here (AC001) — reused as-is by T005's record
+// input-file wrapper, never re-declared as a second schema.
+export const reviewFindingEntrySchema = z.strictObject({
+  severity: reviewSeveritySchema,
+  finding: z.string().min(1).max(1000),
+  targets: z.array(z.string().min(1)).optional(),
+  recommendation: z.string().min(1).max(300),
+  conflicts_with: z.array(reviewRoleIdSchema).optional(),
+});
+
+// One role's full findings recording at a point in time — append-only
+// snapshots accumulate in a session's `findings[]`; a later snapshot for the
+// same role supersedes the prior one only in DERIVATION (see
+// deriveLatestFindingsByRole), never by mutating or removing it.
+export const reviewFindingsSnapshotSchema = z.strictObject({
+  role: reviewRoleIdSchema,
+  recorded_at: isoTimestamp,
+  findings: z.array(reviewFindingEntrySchema),
+});
+
+export const reviewDecisionSchema = z.strictObject({
+  outcome: z.enum(['accepted', 'revision_requested', 'rejected']),
+  note: z.string().min(1).max(300).optional(),
+  decided_at: isoTimestamp,
+});
+
+export const reviewSessionStatusSchema = z.enum(['open', 'decided']);
+
+export const reviewSessionSchema = z.strictObject({
+  id: reviewSessionId,
+  status: reviewSessionStatusSchema,
+  created_at: isoTimestamp,
+  roles: z.array(reviewRoleIdSchema).min(1),
+  // Canonicalize-then-hash discipline (contractFrontmatterSchema.verification_approved_hash's
+  // precedent): contract.md bytes + a canonical task-definition projection,
+  // execution fields excluded. See computeReviewContentHash in
+  // src/core/reviews/roles.ts.
+  content_hash: sha256Hash,
+  findings: z.array(reviewFindingsSnapshotSchema),
+  decision: reviewDecisionSchema.nullable(),
+});
+
+export const reviewsFileSchema = z.strictObject({
+  schema_version: schemaVersion,
+  sessions: z.array(reviewSessionSchema),
+});
+
+export type ReviewSeverity = z.infer<typeof reviewSeveritySchema>;
+export type ReviewFindingEntry = z.infer<typeof reviewFindingEntrySchema>;
+export type ReviewFindingsSnapshot = z.infer<typeof reviewFindingsSnapshotSchema>;
+export type ReviewDecision = z.infer<typeof reviewDecisionSchema>;
+export type ReviewSessionStatus = z.infer<typeof reviewSessionStatusSchema>;
+export type ReviewSession = z.infer<typeof reviewSessionSchema>;
+export type ReviewsFile = z.infer<typeof reviewsFileSchema>;

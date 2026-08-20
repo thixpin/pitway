@@ -4,6 +4,7 @@ import { parse, stringify } from 'yaml';
 import type { ZodType } from 'zod';
 import {
   configSchema,
+  reviewsFileSchema,
   stateSchema,
   tasksFileSchema,
   usageFileSchema,
@@ -11,6 +12,7 @@ import {
   verificationResultsSchema,
   type PitwayConfig,
   type PitwayState,
+  type ReviewsFile,
   type TasksFile,
   type UsageFile,
   type VerificationRepairsFile,
@@ -204,6 +206,23 @@ export function saveVerificationRepairs(
     verificationRepairsFileSchema,
     repairs,
   );
+}
+
+// Same absent-file tolerance as loadVerificationRepairs (AC001/T001,
+// M015): a milestone materialized before reviews.yaml existed as a concept
+// has no such file at all -- ENOENT specifically, checked via existsSync
+// before ever attempting a read. Never created by milestone-add; created
+// only on first write (milestone-review start).
+export function loadReviews(root: string, milestoneId: string): ReviewsFile {
+  const path = milestonePath(root, milestoneId, 'reviews.yaml');
+  if (!existsSync(path)) {
+    return { schema_version: 1, sessions: [] };
+  }
+  return loadYaml(path, reviewsFileSchema);
+}
+
+export function saveReviews(root: string, milestoneId: string, reviews: ReviewsFile): void {
+  saveYaml(milestonePath(root, milestoneId, 'reviews.yaml'), reviewsFileSchema, reviews);
 }
 
 export function loadUsage(root: string, milestoneId: string): UsageFile {

@@ -63,5 +63,7 @@ export function resolveTargetPath(
       return `.pitway/milestones/${milestoneDir}/contract.md`;
     case 'task_amendment':
       return `.pitway/milestones/${milestoneDir}/tasks.yaml`;
+    case 'review_recording':
+      return `.pitway/milestones/${milestoneDir}/reviews.yaml`;
   }
 }

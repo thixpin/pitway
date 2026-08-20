@@ -24,6 +24,11 @@ export const journalOperationTypeSchema = z.enum([
   'usage_recording',
   'contract_amendment',
   'task_amendment',
+  // M015/T001 (AC001/AC008): every milestone-review mutation
+  // (start/record/decide) is journal-backed exactly like a usage recording
+  // or amendment -- materialized immediately, checkpointed on the next
+  // qualifying commit via resolveTargetPath's reviews.yaml case below.
+  'review_recording',
 ]);
 
 export const journalEntrySchema = z.strictObject({
