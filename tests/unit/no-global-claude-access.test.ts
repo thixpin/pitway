@@ -7,7 +7,12 @@ import { describe, expect, it } from 'vitest';
 // call in this milestone must take an explicit repository root and operate
 // only under <root>/.claude/, never the developer's own home directory.
 // Later tasks extend FILES for their own new modules once they exist.
-const FILES = ['src/state/claude-assets.ts', 'src/cli/commands/init.ts'];
+// T004 extends this to src/state/root-instructions.ts.
+const FILES = [
+  'src/state/claude-assets.ts',
+  'src/cli/commands/init.ts',
+  'src/state/root-instructions.ts',
+];
 
 const FORBIDDEN_PATTERN = /os\.homedir\s*\(|process\.env\.HOME\b|process\.env\.USERPROFILE\b/;
 

@@ -16,6 +16,7 @@ import { parse } from 'yaml';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { listClaudeAssets } from '../../src/state/claude-assets.js';
+import { AGENTS_MD_CONTENT, CLAUDE_MD_CONTENT } from '../../src/state/root-instructions.js';
 
 function git(args: string[], cwd: string): void {
   execFileSync('git', args, { cwd, stdio: 'pipe' });
@@ -302,5 +303,65 @@ describe('pitway init Claude Code asset installation (AC003)', () => {
       '{"unrelated": true}\n',
     );
     expect(listFilesRecursive(join(root, '.claude'))).toContain('settings.json');
+  });
+});
+
+// AC004/T004: root agent-discovery files, entirely separate from .claude/
+// asset installation above.
+describe('pitway init root agent-discovery files (AC004)', () => {
+  it('creates both AGENTS.md and CLAUDE.md when absent, with the fixed content', async () => {
+    const { error } = await runInit(root);
+    expect(error).toBeUndefined();
+    expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toBe(AGENTS_MD_CONTENT);
+    expect(readFileSync(join(root, 'CLAUDE.md'), 'utf8')).toBe(CLAUDE_MD_CONTENT);
+  });
+
+  it('an identical rerun performs zero writes to either root file', async () => {
+    await runInit(root);
+    const agentsMtimeBefore = statSync(join(root, 'AGENTS.md')).mtimeMs;
+    const claudeMtimeBefore = statSync(join(root, 'CLAUDE.md')).mtimeMs;
+    const { error } = await runInit(root);
+    expect(error).toBeUndefined();
+    expect(statSync(join(root, 'AGENTS.md')).mtimeMs).toBe(agentsMtimeBefore);
+    expect(statSync(join(root, 'CLAUDE.md')).mtimeMs).toBe(claudeMtimeBefore);
+  });
+
+  it('preserves an existing, user-authored AGENTS.md byte-for-byte, warning with the exact fixed content', async () => {
+    const custom = '# My own AGENTS.md, hand-authored\n';
+    writeFileSync(join(root, 'AGENTS.md'), custom);
+    const { error, lines } = await runInit(root);
+    expect(error).toBeUndefined();
+    expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toBe(custom);
+    expect(lines.join('\n')).toContain(AGENTS_MD_CONTENT);
+  });
+
+  it('preserves an existing, user-authored CLAUDE.md the same way', async () => {
+    const custom = '# My own CLAUDE.md, hand-authored\n';
+    writeFileSync(join(root, 'CLAUDE.md'), custom);
+    const { error, lines } = await runInit(root);
+    expect(error).toBeUndefined();
+    expect(readFileSync(join(root, 'CLAUDE.md'), 'utf8')).toBe(custom);
+    expect(lines.join('\n')).toContain(CLAUDE_MD_CONTENT);
+  });
+
+  it('a simulated .claude/ conflict refuses the whole init with neither root file created (preflight ordering)', async () => {
+    await runInit(root);
+    const shipped = listClaudeAssets();
+    writeFileSync(join(root, '.claude', shipped[0]!), 'tampered\n');
+    rmSync(join(root, 'AGENTS.md'));
+    rmSync(join(root, 'CLAUDE.md'));
+
+    const { error } = await runInit(root);
+    expect(error).toBeDefined();
+    expect(existsSync(join(root, 'AGENTS.md'))).toBe(false);
+    expect(existsSync(join(root, 'CLAUDE.md'))).toBe(false);
+  });
+
+  it('--no-claude creates/preserves AGENTS.md only, never touching CLAUDE.md or .claude/', async () => {
+    const { error } = await runInit(root, ['--no-claude']);
+    expect(error).toBeUndefined();
+    expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toBe(AGENTS_MD_CONTENT);
+    expect(existsSync(join(root, 'CLAUDE.md'))).toBe(false);
+    expect(existsSync(join(root, '.claude'))).toBe(false);
   });
 });

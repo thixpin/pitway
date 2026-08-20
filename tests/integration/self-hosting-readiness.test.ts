@@ -120,7 +120,8 @@ const tasksPath = (root: string): string =>
 // M006 hotfix: this describe block's `root` runs default `init` (Claude
 // assets on) below, so the real baseline commit also covers every installed
 // .claude/ asset -- resolved from the one authoritative list, never
-// hardcoded here.
+// hardcoded here. T004: default `init` also creates AGENTS.md/CLAUDE.md,
+// content-identical, so they too ride into this same baseline commit.
 const expectedBaselineFiles = (root: string): string[] => {
   const dir = milestoneDirName(root, 'M001');
   return [
@@ -133,6 +134,8 @@ const expectedBaselineFiles = (root: string): string[] => {
     '.pitway/requirements/R001.md',
     '.pitway/state.yaml',
     ...listClaudeAssetDestinations(),
+    'AGENTS.md',
+    'CLAUDE.md',
   ].sort();
 };
 
@@ -363,6 +366,65 @@ describe('self-hosting readiness scenario (AC021)', () => {
     expect(view.ready).toEqual(['T002']);
     expect(view.waiting).toEqual([]);
     expect(view.nextTask).toBe('T002');
+  });
+});
+
+// T004: full-lifecycle regression proof that root instruction files'
+// baseline git-safety integration is real, not merely asserted from
+// confirm.ts's own source.
+describe('root instruction files through a real init -> milestone-add -> milestone-confirm lifecycle (T004)', () => {
+  it('both root files are untracked after init, confirm succeeds, and both land in the baseline commit leaving a clean tree', async () => {
+    const freshRoot = makeRepo('pitway-shr-rootfiles-');
+    try {
+      await run(['init'], freshRoot);
+      expect(git(['status', '--porcelain', 'AGENTS.md'], freshRoot).trim()).toMatch(/^\?\?/);
+      expect(git(['status', '--porcelain', 'CLAUDE.md'], freshRoot).trim()).toMatch(/^\?\?/);
+
+      await addDraftMilestone(freshRoot, false);
+      const { error } = await run(['milestone-confirm', 'M001'], freshRoot);
+      expect(error).toBeUndefined();
+
+      const committedFiles = execFileSync('git', ['show', '--stat', '--name-only', '--format=', 'HEAD'], {
+        cwd: freshRoot,
+      })
+        .toString()
+        .trim()
+        .split('\n');
+      expect(committedFiles).toContain('AGENTS.md');
+      expect(committedFiles).toContain('CLAUDE.md');
+      expect(git(['status', '--porcelain'], freshRoot).trim()).toBe('');
+    } finally {
+      rmSync(freshRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('a pre-existing, already-committed AGENTS.md with different content is never touched, never staged into the baseline', async () => {
+    const freshRoot = makeRepo('pitway-shr-rootfiles-preserved-');
+    try {
+      const custom = '# My own AGENTS.md, hand-authored before pitway init\n';
+      writeFileSync(join(freshRoot, 'AGENTS.md'), custom);
+      git(['add', 'AGENTS.md'], freshRoot);
+      git(['commit', '-q', '-m', 'add custom AGENTS.md'], freshRoot);
+
+      await run(['init'], freshRoot);
+      expect(readFileSync(join(freshRoot, 'AGENTS.md'), 'utf8')).toBe(custom);
+
+      await addDraftMilestone(freshRoot, false);
+      const { error } = await run(['milestone-confirm', 'M001'], freshRoot);
+      expect(error).toBeUndefined();
+      expect(readFileSync(join(freshRoot, 'AGENTS.md'), 'utf8')).toBe(custom);
+
+      const committedFiles = execFileSync('git', ['show', '--stat', '--name-only', '--format=', 'HEAD'], {
+        cwd: freshRoot,
+      })
+        .toString()
+        .trim()
+        .split('\n');
+      expect(committedFiles).not.toContain('AGENTS.md');
+      expect(git(['status', '--porcelain'], freshRoot).trim()).toBe('');
+    } finally {
+      rmSync(freshRoot, { recursive: true, force: true });
+    }
   });
 });
 

@@ -1,6 +1,12 @@
 import type { Command } from 'commander';
 import { assertGitWorkTree } from '../../git/exec.js';
 import { classifyClaudeAssets, installClaudeAssets } from '../../state/claude-assets.js';
+import {
+  AGENTS_MD_CONTENT,
+  CLAUDE_MD_CONTENT,
+  applyRootInstructionFiles,
+  type ApplyRootInstructionFilesResult,
+} from '../../state/root-instructions.js';
 import { StateStoreError, loadConfig, loadState, saveConfig, saveState } from '../../state/store.js';
 import { renderOutput } from '../output.js';
 
@@ -22,6 +28,7 @@ export interface InitView {
   created: boolean;
   message: string;
   claudeInstalled: boolean;
+  rootInstructions: ApplyRootInstructionFilesResult;
 }
 
 export function runInit(root: string, options: { claude?: boolean } = {}): InitView {
@@ -59,7 +66,13 @@ export function runInit(root: string, options: { claude?: boolean } = {}): InitV
         claudeInstalled = true;
       }
     }
-    return { created, message, claudeInstalled };
+    // AC004/T004: strictly after the .claude/ conflict preflight above has
+    // already passed (or been skipped via --no-claude) -- a refused
+    // Claude-asset install must never leave a partial instruction setup.
+    // --no-claude still creates/preserves AGENTS.md, since it is the
+    // generic agent-discovery file, not a Claude-specific asset.
+    const rootInstructions = applyRootInstructionFiles(root, { includeClaudeMd: installClaude });
+    return { created, message, claudeInstalled, rootInstructions };
   }
 
   if (config === 'missing' && state === 'missing') {
@@ -92,5 +105,19 @@ export function registerInitCommand(program: Command, deps: CommandDeps = {}): v
       const root = deps.root ?? process.cwd();
       const view = runInit(root, { claude: options.claude });
       write(renderOutput(view, { json: options.json }, (v) => `🏁 ${v.message}`));
+      if (!options.json) {
+        if (view.rootInstructions.agentsMd === 'preserved') {
+          write(
+            `⚠️  AGENTS.md already exists with different content; left untouched. ` +
+              `PitWay's own AGENTS.md would contain:\n${AGENTS_MD_CONTENT}`,
+          );
+        }
+        if (view.rootInstructions.claudeMd === 'preserved') {
+          write(
+            `⚠️  CLAUDE.md already exists with different content; left untouched. ` +
+              `PitWay's own CLAUDE.md would contain:\n${CLAUDE_MD_CONTENT}`,
+          );
+        }
+      }
     });
 }

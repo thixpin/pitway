@@ -4,6 +4,7 @@ import { commitOrResume } from '../../git/commit-or-resume.js';
 import { checkWorkingTreeClean } from '../../git/safety.js';
 import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
 import { listClaudeAssetDestinations } from '../../state/claude-assets.js';
+import { classifyRootInstructionFiles } from '../../state/root-instructions.js';
 import { parseContractFile, serializeContractFile } from '../../state/contract-file.js';
 import { appendJournalEntry, readJournal } from '../../state/journal.js';
 import {
@@ -86,11 +87,18 @@ function runConfirm(root: string, milestoneId: string, contract: ContractFile): 
   // expected too, the same way .pitway/config.yaml/state.yaml already are --
   // resolved from the one authoritative asset list, never a broad .claude/**
   // acceptance, so an unmanaged file under .claude/ still refuses.
-  const expectedPaths = computeExpectedBaselinePaths(
-    milestoneDir,
-    requirement,
-    listClaudeAssetDestinations(),
-  );
+  //
+  // AC004/T004: root instruction files are content-aware, not merely
+  // path-known -- a 'conflict'-classified AGENTS.md/CLAUDE.md is excluded
+  // from the expected set entirely, so it is never silently staged into the
+  // baseline commit merely because its path is a recognized one.
+  const rootInstructionPaths = classifyRootInstructionFiles(root)
+    .filter((c) => c.status !== 'conflict')
+    .map((c) => c.file);
+  const expectedPaths = computeExpectedBaselinePaths(milestoneDir, requirement, [
+    ...listClaudeAssetDestinations(),
+    ...rootInstructionPaths,
+  ]);
 
   if (status === 'draft') {
     if (baselineSha !== undefined) {

@@ -95,7 +95,9 @@ function milestoneDirName(id: string): string {
 // assets on), so the real baseline commit also covers every installed
 // .claude/ asset -- resolved from the one authoritative list
 // (listClaudeAssetDestinations), never hardcoded here, so this helper never
-// drifts from what the installer actually ships.
+// drifts from what the installer actually ships. T004: default `init` also
+// creates AGENTS.md/CLAUDE.md, content-identical, riding into the same
+// baseline commit.
 const expectedBaselineFiles = (): string[] => {
   const dir = milestoneDirName('M001');
   return [
@@ -107,6 +109,8 @@ const expectedBaselineFiles = (): string[] => {
     `.pitway/milestones/${dir}/verification-results.yaml`,
     '.pitway/state.yaml',
     ...listClaudeAssetDestinations(),
+    'AGENTS.md',
+    'CLAUDE.md',
   ].sort();
 };
 
@@ -358,6 +362,18 @@ describe('pitway milestone-confirm', () => {
     for (const asset of listClaudeAssetDestinations()) {
       expect(git(['status', '--porcelain', asset], root).trim()).toBe('');
     }
+  });
+
+  // T004: dedicated regression test for root instruction files specifically
+  // -- confirm succeeds cleanly with both present and untracked, and both
+  // land in the baseline commit.
+  it('confirms cleanly with both root instruction files present and untracked', async () => {
+    expect(git(['status', '--porcelain', 'AGENTS.md'], root).trim()).toMatch(/^\?\?/);
+    expect(git(['status', '--porcelain', 'CLAUDE.md'], root).trim()).toMatch(/^\?\?/);
+    await confirmed();
+    expect(headFiles(root)).toContain('AGENTS.md');
+    expect(headFiles(root)).toContain('CLAUDE.md');
+    expect(git(['status', '--porcelain'], root).trim()).toBe('');
   });
 
   it('still refuses an unmanaged file under .claude/ as unrelated dirty, naming it exactly', async () => {

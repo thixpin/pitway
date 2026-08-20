@@ -409,7 +409,7 @@ tasks:
       listClaudeAssetDestinations()) to also include the currently-identical/
       absent root paths, and adds one new test confirming milestone-confirm
       succeeds cleanly with both root instruction files present and untracked.
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -444,7 +444,16 @@ tasks:
         tests/unit/no-global-claude-access.test.ts
         tests/integration/self-hosting-readiness.test.ts
         tests/integration/milestone-confirm.test.ts
-    result: null
+    result:
+      summary: "[truncated] - delivered for real, not disclosed as a gap. Updated
+        self-hosting-readiness.test.ts and milestone-confirm.test.ts's baseline
+        fixtures accordingly and added two real full-lifecycle regression tests
+        (fresh root files land in baseline; a preserved pre-existing AGENTS.md
+        never gets staged)."
+      evidence: Tests  83 passed (83) | Start at  13:48:23 | Duration  15.19s
+        (transform 624ms, setup 0ms, import 948ms, tests 20.69s, environment
+        0ms)
+    attempts: 1
     usage: null
   - id: T005
     objective: >-
@@ -549,7 +558,7 @@ tasks:
       included, the two .pitway/* paths are always present regardless of
       classifier state, and the result is stable and idempotent across repeat
       calls with no filesystem side effects of its own.
-    status: waiting
+    status: ready
     depends_on:
       - T002
       - T004
