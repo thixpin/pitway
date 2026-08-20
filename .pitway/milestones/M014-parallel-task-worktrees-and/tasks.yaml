@@ -1,0 +1,547 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Execution-strategy config gate
+    objective: "Add the additive-optional `execution` block to `configSchema`
+      (`src/state/schemas.ts`) with `strategy: z.enum(['sequential',
+      'parallel_worktrees'])`, plus a `resolveExecutionStrategy(config)` helper
+      returning `'sequential'` when the block is absent — mirroring M012's
+      `git.branch_strategy`/`resolveBranchStrategy` pattern exactly, including
+      its comment conventions. Unit tests: absent block resolves sequential;
+      explicit sequential resolves sequential; parallel_worktrees resolves
+      parallel_worktrees; unknown strategy value rejected; every pre-existing
+      config fixture still parses unchanged. Integration test (new file
+      `tests/integration/execution-strategy.test.ts`): a full task lifecycle
+      (in_progress → review → completed with atomic commit) under an absent
+      `execution` block and under an explicit `sequential` block produces
+      identical outcomes — the provably-unaffected baseline. Per-command
+      sequential-refusal tests are owned by T004/T007/T008, not here."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC001
+    context_files:
+      - src/state/schemas.ts
+      - src/state/store.ts
+      - tests/unit/schemas.test.ts
+      - tests/integration/execution-strategy.test.ts
+      - tests/integration/task-update.test.ts
+    write_scope:
+      - src/state/schemas.ts
+      - tests/unit/schemas.test.ts
+      - tests/integration/execution-strategy.test.ts
+    mapped_ac_ids:
+      - AC001
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/schemas.test.ts
+        tests/integration/execution-strategy.test.ts
+    result: null
+    usage: null
+  - id: T002
+    name: Parallel-eligibility Core function
+    objective: "Implement the pure eligibility check
+      (`src/core/tasks/parallel-eligibility.ts`):
+      `checkParallelEligibility(candidate, concurrent, allTasks)` where
+      `concurrent` is ALL currently in_progress tasks — dispatch-backed and
+      inline alike (an inline overlap is the same two-writers hazard). Returns a
+      structured result that either approves or names the specific failing rule
+      and conflicting task/paths. Rules per AC002: candidate `ready`; no
+      transitive dependency in either direction between candidate and any
+      concurrent task (reuse `src/core/tasks/dependencies.ts` — never
+      re-implement graph traversal; extract/export a reachability helper there
+      if needed; rule is redundant-by-construction given rule 1 and kept as
+      defense-in-depth with a comment saying so); pairwise-disjoint
+      `write_scope` by exact path comparison; both sides must declare
+      `write_scope` (legacy `relevant_files` tasks are never eligible). Unit
+      tests cover the eight AC002 cases at minimum, including
+      overlap-with-inline-in_progress."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC002
+    context_files:
+      - src/core/tasks/parallel-eligibility.ts
+      - src/core/tasks/dependencies.ts
+      - src/state/schemas.ts
+      - tests/unit/parallel-eligibility.test.ts
+    write_scope:
+      - src/core/tasks/parallel-eligibility.ts
+      - src/core/tasks/dependencies.ts
+      - tests/unit/parallel-eligibility.test.ts
+    mapped_ac_ids:
+      - AC002
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/parallel-eligibility.test.ts
+    result: null
+    usage: null
+  - id: T003
+    name: Git worktree module
+    objective: "Implement `src/git/worktree.ts` per AC003: `createTaskWorktree`
+      (worktree at `.pitway-worktrees/<milestoneId>-<taskId>/` on fresh branch
+      `pitway/task/<milestoneId>-<taskId>` from current HEAD; refuse on existing
+      path or branch, never reuse/reset; idempotent one-time `.git/info/exclude`
+      entries for BOTH `.pitway-worktrees/` and the anchored
+      `/.pitway-worktree.yaml` marker — the second is what lets `git worktree
+      remove` succeed without --force and keeps the marker out of worker `git
+      add -A`; --force is never used on the normal path and the marker is never
+      deleted separately before removal; write the uncommitted
+      `.pitway-worktree.yaml` runtime marker with milestone id, task id,
+      created-from revision), `listTaskWorktrees` (parse `git worktree list
+      --porcelain`, filter to the managed prefix, read markers),
+      `removeTaskWorktree` (remove worktree + delete scaffolding branch; refuse
+      on paths outside the managed prefix), and `detectTaskWorktree` (resolve
+      top-level via `git rev-parse --show-toplevel`, never trusting cwd, then
+      read the marker). Reuse `src/git/exec.ts` for all git invocations and
+      respect `src/git/paths.ts`'s linked-worktree git-dir handling. Integration
+      tests against real temp repos prove each primitive plus: main tree, index,
+      and checked-out branch untouched by create/remove; removal succeeds
+      without --force with the marker present; exclude entries written exactly
+      once across repeated creates; refusal cases; marker contents; subdirectory
+      detection."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC003
+    context_files:
+      - src/git/worktree.ts
+      - src/git/exec.ts
+      - src/git/paths.ts
+      - src/git/safety.ts
+      - tests/integration/git-worktree.test.ts
+    write_scope:
+      - src/git/worktree.ts
+      - tests/integration/git-worktree.test.ts
+    mapped_ac_ids:
+      - AC003
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/git-worktree.test.ts
+    result: null
+    usage: null
+  - id: T004
+    name: task-dispatch command
+    objective: "Implement `pitway task-dispatch <taskId>` per AC004: Core
+      orchestration in `src/core/tasks/dispatch.ts` — strategy gate via T001's
+      resolver; eligibility via T002 against ALL in_progress tasks (concurrent
+      set = dispatch-record-backed and inline); dirty-tree refusal via existing
+      git-safety classification; NEW refusal when any journal-pending
+      contract/task amendment exists for the milestone (derivePending non-empty
+      → diagnostic says to complete a checkpoint commit first, because a
+      worktree would otherwise serve the stale pre-amendment contract); then the
+      normative order: (1) `ready → in_progress` through the existing
+      state-machine/journal path with attempts increment, (2) append the new
+      `worktree_dispatch` journal record (milestone id, task id, branch,
+      worktree path, created-from revision — add the journal kind to
+      `src/state/schemas.ts`/`src/state/journal.ts` following the existing kind
+      pattern, with unit tests in `tests/unit/journal.test.ts` like every prior
+      kind), (3) create the worktree via T003. CLI registration in
+      `src/cli/commands/task-dispatch.ts` + `src/cli/index.ts`. `--json` is the
+      worker handoff envelope only (task id, absolute worktree path, branch,
+      created-from revision) — it never embeds the context bundle; the driver
+      obtains the bundle at the main root via `task-status <id> --context` and
+      passes it to the worker (documented in T010). Integration tests: two
+      eligible tasks dispatch side by side; overlapping third refused naming the
+      conflict; overlap with an INLINE in_progress task refused;
+      sequential-strategy, dirty-tree, pending-amendment, and ineligible-status
+      refusals; journal record shape."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+      - T003
+    acceptance_criteria:
+      - AC004
+    context_files:
+      - src/core/tasks/dispatch.ts
+      - src/core/tasks/parallel-eligibility.ts
+      - src/core/tasks/update.ts
+      - src/core/tasks/state-machine.ts
+      - src/core/journal/operations.ts
+      - src/git/worktree.ts
+      - src/git/safety.ts
+      - src/state/schemas.ts
+      - src/state/journal.ts
+      - src/state/store.ts
+      - src/cli/commands/task-dispatch.ts
+      - src/cli/commands/task-update.ts
+      - src/cli/index.ts
+      - tests/unit/journal.test.ts
+      - tests/integration/task-dispatch.test.ts
+    write_scope:
+      - src/core/tasks/dispatch.ts
+      - src/state/schemas.ts
+      - src/state/journal.ts
+      - src/cli/commands/task-dispatch.ts
+      - src/cli/index.ts
+      - tests/unit/journal.test.ts
+      - tests/integration/task-dispatch.test.ts
+    mapped_ac_ids:
+      - AC004
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/task-dispatch.test.ts
+        tests/unit/journal.test.ts
+    result: null
+    usage: null
+  - id: T005
+    name: Fail-closed worktree state guard
+    objective: "Enforce AC005 with default-deny polarity: EVERY pitway command
+      refuses when the invocation resolves to inside a PitWay task worktree
+      (T003's `detectTaskWorktree`), with a diagnostic naming the worktree's
+      task and the authoritative root — except the enumerated read-only
+      allowlist (resume; task-status incl. --context; milestone-status incl.
+      --report; milestone-list; verify ONLY with --status — the guard is
+      flag-aware for verify). Implement as a shared guard module
+      (`src/cli/worktree-guard.ts`) wired once in `src/cli/index.ts` (e.g.
+      commander preAction hook) so commands not individually considered — init,
+      write-ms-artifacts, and this milestone's own later commands — are covered
+      structurally as they register, never by per-command enumeration.
+      Integration tests: inside a real created worktree, task-update,
+      task-verify, milestone-complete, and one never-enumerated command (init)
+      all refuse; task-status --context, resume, and verify --status still run;
+      bare verify refuses; everything unchanged in a normal repo root."
+    status: waiting
+    depends_on:
+      - T003
+    acceptance_criteria:
+      - AC005
+    context_files:
+      - src/cli/index.ts
+      - src/cli/worktree-guard.ts
+      - src/git/worktree.ts
+      - src/git/paths.ts
+      - tests/integration/worktree-state-guard.test.ts
+    write_scope:
+      - src/cli/index.ts
+      - src/cli/worktree-guard.ts
+      - tests/integration/worktree-state-guard.test.ts
+    mapped_ac_ids:
+      - AC005
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/worktree-state-guard.test.ts
+    result: null
+    usage: null
+  - id: T006
+    name: Integration engine
+    objective: "Build the integrate engine per AC006's validation/diff/apply core:
+      `src/git/apply.ts` — pinned range diff (`git diff --binary --no-renames
+      <created-from>..<branch HEAD>`), changed-path listing (including
+      deletions), `git apply --check` pre-validation, apply, and reverse-apply
+      detection (for the already-applied crash window);
+      `src/core/tasks/integrate.ts` — orchestration: strategy gate;
+      live-dispatch-record requirement; clean-main-tree requirement (expected
+      pending state writes allowed); no-commits and empty-diff refusals
+      ('nothing to integrate'); scope validation of every changed path (incl.
+      deletions) against `write_scope` with `.pitway/` and the marker always
+      refused, naming every offender; normative success order apply → append
+      `worktree_integrate` journal record (worker HEAD SHA as evidence-only
+      metadata; add the kind to `src/state/schemas.ts`/`src/state/journal.ts` +
+      unit tests) → remove worktree/branch via T003. Integration tests
+      (`tests/integration/task-integrate.test.ts`, driving the Core function
+      directly): happy path leaves exactly the diff applied, uncommitted;
+      multi-commit worker branch integrates as one combined diff; binary file;
+      in-scope deletion; out-of-scope path refused with byte-identical main
+      tree; empty diff and uncommitted worktree refused; sibling-dispatch rider
+      disclosure case (completion commit carrying the other task's in_progress
+      state) proven against `findCompletionCommit`."
+    status: waiting
+    depends_on:
+      - T003
+      - T004
+    acceptance_criteria:
+      - AC006
+    context_files:
+      - src/git/apply.ts
+      - src/git/worktree.ts
+      - src/git/exec.ts
+      - src/git/safety.ts
+      - src/core/tasks/integrate.ts
+      - src/core/tasks/dispatch.ts
+      - src/core/tasks/update.ts
+      - src/core/tasks/write-scope-check.ts
+      - src/state/schemas.ts
+      - src/state/journal.ts
+      - tests/unit/journal.test.ts
+      - tests/integration/task-integrate.test.ts
+    write_scope:
+      - src/git/apply.ts
+      - src/core/tasks/integrate.ts
+      - src/state/schemas.ts
+      - src/state/journal.ts
+      - tests/unit/journal.test.ts
+      - tests/integration/task-integrate.test.ts
+    mapped_ac_ids:
+      - AC006
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/task-integrate.test.ts
+        tests/unit/journal.test.ts
+    result: null
+    usage: null
+  - id: T007
+    name: task-integrate command and crash recovery
+    objective: "Wire `pitway task-integrate <taskId>` (CLI registration in
+      `src/cli/commands/task-integrate.ts` + `src/cli/index.ts`) and deliver
+      AC006's idempotent re-run/crash-recovery semantics on top of T006's
+      engine: a re-run finding a matching `worktree_integrate` record performs
+      cleanup only and reports success ('cleanup pending' case); a re-run in the
+      applied-but-unrecorded window (forward apply --check fails, reverse-apply
+      succeeds) reports 'already applied, pending journal record and cleanup'
+      and completes journal + cleanup — never a bare refusal; diagnostics in
+      both windows explicitly warn against task-discard (the work is applied in
+      the main tree). Also prove AC007 end-to-end: post-integration main-tree
+      `task-verify` (while in_progress) records evidence exactly as a sequential
+      task's would, then review → completed produces the standard atomic commit.
+      Tests in `tests/integration/task-integrate-recovery.test.ts`: both crash
+      windows (simulated by killing between steps / staging equivalent on-disk
+      states), double-integrate idempotency, missing-worktree refusal pointing
+      at task-discard, and the AC007 evidence-parity case."
+    status: waiting
+    depends_on:
+      - T005
+      - T006
+    acceptance_criteria:
+      - AC006
+      - AC007
+    context_files:
+      - src/cli/commands/task-integrate.ts
+      - src/cli/index.ts
+      - src/core/tasks/integrate.ts
+      - src/core/tasks/verify.ts
+      - src/core/tasks/update.ts
+      - src/git/apply.ts
+      - src/git/worktree.ts
+      - tests/integration/task-integrate-recovery.test.ts
+    write_scope:
+      - src/cli/commands/task-integrate.ts
+      - src/cli/index.ts
+      - src/core/tasks/integrate.ts
+      - tests/integration/task-integrate-recovery.test.ts
+    mapped_ac_ids:
+      - AC006
+      - AC007
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/task-integrate-recovery.test.ts
+    result: null
+    usage: null
+  - id: T008
+    name: task-discard and residue surfacing
+    objective: "Implement `pitway task-discard <taskId>` and resume residue
+      classification per AC008: Core in `src/core/tasks/discard.ts` — strategy
+      gate; require `--reason`; remove worktree + branch (tolerating an
+      already-vanished worktree); append `worktree_discard` journal record
+      (reason, discarded branch HEAD SHA when resolvable, evidence-only; add the
+      kind + unit tests); transition `in_progress → failed` through the existing
+      state machine; output states discarded work is unrecoverable through
+      PitWay. Guard the single-exit rule: `task-update --status blocked` (and
+      any status change bypassing integrate/discard) refuses on a task with a
+      live `worktree_dispatch` record, pointing at task-integrate/task-discard
+      (`src/core/tasks/update.ts`). Resume: under `parallel_worktrees`,
+      `buildResumeView` classifies and reports read-only all four residue
+      classes — (a) live record, vanished worktree; (b) recordless
+      managed-prefix worktree; (c) integrate-recorded worktree ('cleanup
+      pending' → re-run task-integrate); (d) in_progress without record ('inline
+      or interrupted dispatch'). `--json` extended additively; sequential repos
+      byte-identical human output. Update the two known stale-assertion-prone
+      tests (`fresh-session-resume`, `self-hosting-readiness`) for any additive
+      shape change in the same task. Tests: discard-then-redispatch;
+      blocked-refusal on live dispatch; all four residue classes; sequential
+      repos untouched."
+    status: waiting
+    depends_on:
+      - T004
+      - T005
+    acceptance_criteria:
+      - AC008
+    context_files:
+      - src/core/tasks/discard.ts
+      - src/core/tasks/dispatch.ts
+      - src/core/tasks/update.ts
+      - src/core/tasks/state-machine.ts
+      - src/git/worktree.ts
+      - src/state/schemas.ts
+      - src/state/journal.ts
+      - src/cli/commands/task-discard.ts
+      - src/cli/commands/resume.ts
+      - src/cli/index.ts
+      - tests/unit/journal.test.ts
+      - tests/integration/task-discard.test.ts
+      - tests/integration/resume.test.ts
+      - tests/integration/fresh-session-resume.test.ts
+      - tests/integration/self-hosting-readiness.test.ts
+    write_scope:
+      - src/core/tasks/discard.ts
+      - src/core/tasks/update.ts
+      - src/state/schemas.ts
+      - src/state/journal.ts
+      - src/cli/commands/task-discard.ts
+      - src/cli/commands/resume.ts
+      - src/cli/index.ts
+      - tests/unit/journal.test.ts
+      - tests/integration/task-discard.test.ts
+      - tests/integration/resume.test.ts
+      - tests/integration/fresh-session-resume.test.ts
+      - tests/integration/self-hosting-readiness.test.ts
+    mapped_ac_ids:
+      - AC008
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/task-discard.test.ts
+        tests/integration/resume.test.ts
+    result: null
+    usage: null
+  - id: T009
+    name: End-to-end parallel lifecycle test
+    objective: "Author `tests/integration/parallel-worktrees-lifecycle.test.ts` per
+      AC009 (named after M012's branch-isolation-lifecycle convention) against a
+      real temp git repository: confirmed milestone with two independent
+      write-scope-disjoint tasks plus one dependent task; both independents
+      dispatched concurrently; simulated worker commits (each strictly inside
+      its own write_scope) in each worktree; integration in ascending task-id
+      order, each followed by authoritative main-tree task-verify (while
+      in_progress) and review → completed atomic commit; dependent task
+      completes sequentially. Assert: mainline history is exactly baseline + one
+      atomic trailer-carrying commit per task in integration order, no merge
+      commits, no surviving pitway/task/* branches or .pitway-worktrees/
+      entries; final `.pitway/` state structurally equivalent to sequential
+      execution's (statuses, attempts, results-present, promotion order — never
+      byte equality). Plus the conflict case (out-of-scope worker commit refused
+      at integrate, main tree byte-identical, worktree preserved) and the
+      `branch_strategy: milestone` interaction (worktrees branch from the
+      milestone branch, completions land there, `assertOnMilestoneBranch` holds,
+      base branch untouched). Test-only task: no src/ changes; any product
+      defect it finds stops work and is raised per the contract-conflict rule,
+      never silently patched here."
+    status: waiting
+    depends_on:
+      - T007
+      - T008
+    acceptance_criteria:
+      - AC009
+    context_files:
+      - tests/integration/parallel-worktrees-lifecycle.test.ts
+      - src/core/tasks/dispatch.ts
+      - src/core/tasks/integrate.ts
+      - src/core/tasks/discard.ts
+      - src/git/worktree.ts
+      - src/git/branch.ts
+      - src/cli/index.ts
+      - tests/integration/task-dispatch.test.ts
+      - tests/integration/task-integrate.test.ts
+    write_scope:
+      - tests/integration/parallel-worktrees-lifecycle.test.ts
+    mapped_ac_ids:
+      - AC009
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/parallel-worktrees-lifecycle.test.ts
+    result: null
+    usage: null
+  - id: T010
+    name: Protocol-doc parallel guidance
+    objective: "Deliver AC010's documentation as installed assets:
+      `protocol-driver.md` parallel-dispatch section (when to parallelize;
+      dispatch → driver-passes-bundle → worker-commits → integrate →
+      authoritative task-verify → review → completed sequence; ascending-task-id
+      integration order as driver convention; discard/orphan/cleanup-pending
+      recovery mapped to resume's residue classes;
+      PitWay-gates/driver-parallelizes disclosure incl. that PitWay cannot
+      verify actual concurrency); `coordination.md` parallel-mode counterpart
+      (main tree clean during worker execution, stale-snapshot hazard moves to
+      the integrate boundary, worktree `.pitway/` copy is stale read-only
+      transport — pre-dispatch state, empty journal);
+      `protocol-worker.md`/`dispatch.md` worker contract (worktree-only,
+      write_scope-only, local commits on the scaffolding branch, no
+      state-mutating pitway commands — mechanically enforced, no
+      merge/rebase/push, report the branch HEAD SHA); QA
+      read-only/dedicated-worktree guidance; three new command docs
+      (`commands/task-dispatch.md`, `commands/task-integrate.md`,
+      `commands/task-discard.md`) following the existing per-command convention.
+      Asset discovery is dynamic — no manifest edit exists or is needed; instead
+      extend `tests/unit/claude-assets.test.ts` and
+      `tests/integration/init.test.ts` with assertions that the three new
+      command docs are shipped by `listClaudeAssets` and installed by `pitway
+      init`. Every documented claim must match delivered T004/T007/T008 behavior
+      — no aspirational text."
+    status: waiting
+    depends_on:
+      - T007
+      - T008
+    acceptance_criteria:
+      - AC010
+    context_files:
+      - src/integrations/claude/protocol-driver.md
+      - src/integrations/claude/coordination.md
+      - src/integrations/claude/dispatch.md
+      - src/integrations/claude/protocol-worker.md
+      - src/integrations/claude/commands/task-dispatch.md
+      - src/integrations/claude/commands/task-integrate.md
+      - src/integrations/claude/commands/task-discard.md
+      - src/integrations/claude/commands/task-update.md
+      - src/state/claude-assets.ts
+      - tests/unit/claude-assets.test.ts
+      - tests/integration/init.test.ts
+      - src/cli/commands/task-dispatch.ts
+      - src/core/tasks/integrate.ts
+      - src/core/tasks/discard.ts
+    write_scope:
+      - src/integrations/claude/protocol-driver.md
+      - src/integrations/claude/coordination.md
+      - src/integrations/claude/dispatch.md
+      - src/integrations/claude/protocol-worker.md
+      - src/integrations/claude/commands/task-dispatch.md
+      - src/integrations/claude/commands/task-integrate.md
+      - src/integrations/claude/commands/task-discard.md
+      - tests/unit/claude-assets.test.ts
+      - tests/integration/init.test.ts
+    mapped_ac_ids:
+      - AC010
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/claude-assets.test.ts
+        tests/integration/init.test.ts
+    result: null
+    usage: null
+  - id: T011
+    name: Plan reconciliation and milestone gates
+    objective: "Reconcile `IMPLEMENTATION_PLAN.md` per AC011 — revision-header
+      entry; §10's sequential-execution line rewritten (sequential default,
+      parallel_worktrees delivered opt-in, stashes/auto-merges still never);
+      §10/§15's branch principle reworded to 'tasks never own PERSISTENT
+      branches' with the scaffolding-branch disposition and the
+      internal-contradiction note (the roadmap's own M014 entry sanctioned task
+      branches against §10's absolute wording — resolved in the roadmap's
+      favor); atomic-commit invariant stated as preserved with the sibling-rider
+      nuance; the worker-verification deviation named as disposition (4) with
+      reasons; §7 command list/count (18 → 21); §9 asset count (31 → 34);
+      Bootstrap table gains M013's row (M014's own row omitted per the
+      self-referential discipline); Revised Roadmap's M014 entry rewritten to
+      actual delivery; Status paragraph updated. Then run the milestone-level
+      gates exactly once: full `npm test` and `npx tsc --noEmit` (AC012) — the
+      verification-granularity discipline's single sanctioned full-suite point
+      for this milestone."
+    status: waiting
+    depends_on:
+      - T009
+      - T010
+    acceptance_criteria:
+      - AC011
+      - AC012
+    context_files:
+      - IMPLEMENTATION_PLAN.md
+      - src/cli/index.ts
+      - src/state/claude-assets.ts
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+    mapped_ac_ids:
+      - AC011
+      - AC012
+    verification:
+      strategy: command
+      detail: npm test && npx tsc --noEmit
+    result: null
+    usage: null
