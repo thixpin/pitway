@@ -27,7 +27,7 @@ export interface ResumeView {
   activeMilestone: string | null;
   contractStatus: MilestoneStatus | null;
   title: string | null;
-  tasks: Array<{ id: string; status: TaskStatus }>;
+  tasks: Array<{ id: string; name: string | null; status: TaskStatus }>;
   ready: string[];
   waiting: string[];
   blocked: string[];
@@ -121,7 +121,7 @@ export function buildResumeView(root: string): ResumeView {
     activeMilestone: state.active_milestone,
     contractStatus: contract.frontmatter.status,
     title: contract.frontmatter.title,
-    tasks: tasksFile.tasks.map((t) => ({ id: t.id, status: t.status })),
+    tasks: tasksFile.tasks.map((t) => ({ id: t.id, name: t.name ?? null, status: t.status })),
     ready,
     waiting: idsWithStatus(tasksFile.tasks, 'waiting'),
     blocked: idsWithStatus(tasksFile.tasks, 'blocked'),
@@ -166,7 +166,7 @@ export function renderResumeHuman(view: ResumeView): string {
   }
   lines.push('', '🛠 Tasks');
   for (const t of view.tasks) {
-    lines.push(`  ${t.id}  ${taskStatusLabel(t.status)}`);
+    lines.push(t.name !== null ? `  ${t.id}  ${t.name}  ${taskStatusLabel(t.status)}` : `  ${t.id}  ${taskStatusLabel(t.status)}`);
   }
   lines.push('');
   lines.push(`Ready: ${view.ready.join(', ') || '(none)'}`);

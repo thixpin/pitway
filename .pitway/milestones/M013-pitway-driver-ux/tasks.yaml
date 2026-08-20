@@ -69,7 +69,7 @@ tasks:
       test round-tripping a task with `name` set. Extend the resume/task-status
       integration tests to cover both the with-name and without-name (id-only,
       byte-identical to today) rendering cases."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - AC001
@@ -95,7 +95,13 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/unit/schemas.test.ts tests/integration/resume.test.ts
         tests/integration/task-status.test.ts
-    result: null
+    result:
+      summary: Added an additive-optional taskSchema.name field (min 1, max 80 chars),
+        absent on every pre-M013 task. Surfaced with id-fallback in resume's
+        task list (human and --json) and task-status's view (human and --json).
+      evidence: Tests  101 passed (101) | Start at  17:04:55 | Duration  1.94s
+        (transform 484ms, setup 0ms, import 762ms, tests 1.63s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T003
     objective: "Add a new, pure, exported Core function

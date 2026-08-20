@@ -9,6 +9,7 @@ import type { Task } from '../../state/schemas.js';
 
 export interface TaskStatusView {
   id: string;
+  name: string | null;
   status: Task['status'];
   dependsOn: string[];
   result: Task['result'];
@@ -35,12 +36,20 @@ export function buildTaskStatusView(root: string, taskId: string): TaskStatusVie
   const milestoneId = resolveActiveMilestone(root);
   const tasksFile = loadTasks(root, milestoneId);
   const task = findTask(tasksFile.tasks, taskId);
-  return { id: task.id, status: task.status, dependsOn: task.depends_on, result: task.result };
+  return {
+    id: task.id,
+    name: task.name ?? null,
+    status: task.status,
+    dependsOn: task.depends_on,
+    result: task.result,
+  };
 }
 
 export function renderTaskStatusHuman(view: TaskStatusView): string {
   const lines = [
-    `🛠 Task ${view.id}  ${taskStatusLabel(view.status)}`,
+    view.name !== null
+      ? `🛠 Task ${view.id}  ${view.name}  ${taskStatusLabel(view.status)}`
+      : `🛠 Task ${view.id}  ${taskStatusLabel(view.status)}`,
     `Depends on: ${view.dependsOn.length > 0 ? view.dependsOn.join(', ') : '(none)'}`,
   ];
   lines.push(view.result ? `Result: ${view.result.summary}` : 'Result: (none yet)');

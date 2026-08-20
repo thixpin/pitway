@@ -302,4 +302,47 @@ describe('pitway task-status', () => {
       expect('requiredSkills' in bundle).toBe(false);
     });
   });
+
+  // AC002 (M013/T002): task name id-fallback, both human and --json.
+  describe('task name rendering (M013/T002)', () => {
+    it('renders a task with name set, in both human and --json output', async () => {
+      saveTasks(root, 'M001', {
+        schema_version: 1,
+        tasks: [task({ id: 'T001', name: 'Config schema for branch_strategy', status: 'in_progress' })],
+      });
+
+      const jsonProgram = buildCli();
+      const jsonLines: string[] = [];
+      registerTaskStatusCommand(jsonProgram, { root, write: (s) => jsonLines.push(s) });
+      await jsonProgram.parseAsync(['node', 'pitway', 'task-status', 'T001', '--json']);
+      const view = JSON.parse(jsonLines.join('\n'));
+      expect(view.name).toBe('Config schema for branch_strategy');
+
+      const humanProgram = buildCli();
+      const humanLines: string[] = [];
+      registerTaskStatusCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
+      await humanProgram.parseAsync(['node', 'pitway', 'task-status', 'T001']);
+      expect(humanLines.join('\n')).toContain('🛠 Task T001  Config schema for branch_strategy  ● In Progress');
+    });
+
+    it('falls back to the bare id, byte-identical to pre-M013 output, when name is absent', async () => {
+      saveTasks(root, 'M001', {
+        schema_version: 1,
+        tasks: [task({ id: 'T001', status: 'in_progress' })],
+      });
+
+      const jsonProgram = buildCli();
+      const jsonLines: string[] = [];
+      registerTaskStatusCommand(jsonProgram, { root, write: (s) => jsonLines.push(s) });
+      await jsonProgram.parseAsync(['node', 'pitway', 'task-status', 'T001', '--json']);
+      const view = JSON.parse(jsonLines.join('\n'));
+      expect(view.name).toBeNull();
+
+      const humanProgram = buildCli();
+      const humanLines: string[] = [];
+      registerTaskStatusCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
+      await humanProgram.parseAsync(['node', 'pitway', 'task-status', 'T001']);
+      expect(humanLines.join('\n')).toContain('🛠 Task T001  ● In Progress');
+    });
+  });
 });

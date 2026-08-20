@@ -525,6 +525,61 @@ describe('task schema required_skills (T003)', () => {
   });
 });
 
+// AC001/T002 (M013): name is a new, additive-optional short-label field,
+// absent from every M001-M012 historical task.
+describe('task schema name (M013/T002)', () => {
+  const baseTask = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    id: 'T001',
+    objective: 'Do a thing.',
+    status: 'waiting',
+    depends_on: [],
+    acceptance_criteria: ['It works'],
+    write_scope: ['src/a.ts'],
+    verification: { strategy: 'tdd', detail: 'npm test' },
+    result: null,
+    usage: null,
+    ...overrides,
+  });
+
+  it('round-trips a task with name set, unchanged', () => {
+    const task = baseTask({ name: 'Config schema for branch_strategy' });
+    const result = taskSchema.safeParse(task);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.name).toBe('Config schema for branch_strategy');
+  });
+
+  it('accepts a task without name exactly as before (still valid)', () => {
+    const task = baseTask();
+    expect('name' in task).toBe(false);
+    const result = taskSchema.safeParse(task);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.name).toBeUndefined();
+  });
+
+  it('rejects an empty-string name', () => {
+    const task = baseTask({ name: '' });
+    expect(taskSchema.safeParse(task).success).toBe(false);
+  });
+
+  it('rejects a name longer than 80 characters', () => {
+    const task = baseTask({ name: 'x'.repeat(81) });
+    expect(taskSchema.safeParse(task).success).toBe(false);
+  });
+
+  it('accepts a name at exactly 80 characters', () => {
+    const task = baseTask({ name: 'x'.repeat(80) });
+    expect(taskSchema.safeParse(task).success).toBe(true);
+  });
+
+  it('every M001-M012-shaped historical task (no name) still parses unchanged', () => {
+    const file = fixture('valid/tasks.yaml') as { tasks: Record<string, unknown>[] };
+    for (const task of file.tasks) {
+      expect('name' in task).toBe(false);
+      expect(taskSchema.safeParse(task).success).toBe(true);
+    }
+  });
+});
+
 describe('buildTaskContextBundle context_files/write_scope surfacing', () => {
   const contract = fixture('valid/contract-frontmatter.yaml') as Parameters<
     typeof buildTaskContextBundle

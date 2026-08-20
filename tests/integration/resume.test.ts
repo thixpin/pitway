@@ -230,3 +230,50 @@ describe('pitway resume', () => {
     expect(humanLines.join('\n')).toMatch(/Branch mismatch: expected .* — switch manually/);
   });
 });
+
+// AC002 (M013/T002): task name id-fallback, both human and --json.
+describe('pitway resume task name rendering (M013/T002)', () => {
+  it('renders a task with name set, in both human and --json output', async () => {
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    saveContract(root, 'M001', { frontmatter: frontmatter('in_progress'), body: '\n' });
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [task({ id: 'T001', name: 'Config schema for branch_strategy', status: 'ready' })],
+    });
+
+    const jsonProgram = buildCli();
+    const jsonLines: string[] = [];
+    registerResumeCommand(jsonProgram, { root, write: (s) => jsonLines.push(s) });
+    await jsonProgram.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(jsonLines.join('\n'));
+    expect(view.tasks).toEqual([{ id: 'T001', name: 'Config schema for branch_strategy', status: 'ready' }]);
+
+    const humanProgram = buildCli();
+    const humanLines: string[] = [];
+    registerResumeCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
+    await humanProgram.parseAsync(['node', 'pitway', 'resume']);
+    expect(humanLines.join('\n')).toContain('  T001  Config schema for branch_strategy  ◌ Ready');
+  });
+
+  it('falls back to the bare id, byte-identical to pre-M013 output, when name is absent', async () => {
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    saveContract(root, 'M001', { frontmatter: frontmatter('in_progress'), body: '\n' });
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [task({ id: 'T001', status: 'ready' })],
+    });
+
+    const jsonProgram = buildCli();
+    const jsonLines: string[] = [];
+    registerResumeCommand(jsonProgram, { root, write: (s) => jsonLines.push(s) });
+    await jsonProgram.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(jsonLines.join('\n'));
+    expect(view.tasks).toEqual([{ id: 'T001', name: null, status: 'ready' }]);
+
+    const humanProgram = buildCli();
+    const humanLines: string[] = [];
+    registerResumeCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
+    await humanProgram.parseAsync(['node', 'pitway', 'resume']);
+    expect(humanLines.join('\n')).toContain('  T001  ◌ Ready');
+  });
+});

@@ -132,6 +132,11 @@ export const contractFrontmatterSchema = z.strictObject({
 export const taskSchema = z
   .strictObject({
     id: taskId,
+    // AC001/T002 (M013): additive-optional short label, mirroring
+    // contractFrontmatterSchema.title's shape but capped at 80 chars to stay
+    // a label, not a second objective. Absent on every task written before
+    // this milestone; every renderer falls back to the bare id.
+    name: z.string().min(1).max(80).optional(),
     objective: z.string().min(1),
     status: taskStatusSchema,
     depends_on: z.array(taskId),
