@@ -61,6 +61,39 @@ recorded — trust the write, or read `verification-results.yaml` directly;
 don't re-invoke bare `verify` expecting it to reflect already-recorded manual
 results.
 
+## Progress reporting
+
+Routine updates during task execution follow an "ADD-style" concise shape:
+resumed/current task, current action, exact milestone progress (`completed
+required tasks / total required tasks`), the next dependency-ready task, and
+a completion/blocker statement — capped to 2 short paragraphs or 3 bullets.
+Never narrate searches, file reads, shell commands, or internal reasoning,
+and never repeat contract details already known. Expand beyond this shape
+only for a blocker, a decision gate, a failed verification, a scope
+conflict, or a final milestone report.
+
+Once a milestone has been confirmed (`milestone-confirm` has run), end every
+routine update with the one-line racing footer —
+`🏎️ ~<workload>% · ✅ <completed>/<total> · Next: <task/gate>` — computed by
+`pitway resume` or `pitway milestone-status <id>` (both surface a `footer`
+field, `null` before confirmation). Before confirmation, show no footer and
+no footer-explanation text of any kind; the message simply ends after its
+normal content — silence is the signal, never a placeholder line.
+
+Two read-only surfaces support this:
+
+- `pitway verify <id> --status` — the latest recorded result per declared
+  check, without executing anything.
+- `pitway milestone-status <id> --report` — the full structured Progress
+  Report (workload, token totals, task table, critical path, token
+  breakdown), for when the developer explicitly asks for one.
+
+PitWay itself has no mechanism to verify that a driver session actually
+appends the footer or keeps routine updates terse — only that the
+underlying data and rendering are correct when a command is invoked. The
+same caveat already applies to `required_skills`: presence is proven,
+behavior is not.
+
 ## Dispatch discipline
 
 Task execution is not automatically a sub-agent dispatch — you choose
