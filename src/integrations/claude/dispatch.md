@@ -105,3 +105,29 @@ checked in two places:
   to commit if the working tree carries any dirty path outside that same
   boundary. A worker that ignored its write scope simply cannot complete
   the task; the commit is refused with the offending paths named.
+
+## Parallel dispatch (worktree mode)
+
+Under `execution.strategy: parallel_worktrees` the dispatch contract above
+gains a worktree flavor: `pitway task-dispatch <id>` (instead of a plain
+`task-update <id> in_progress`) both transitions the task and creates its
+temporary worktree + scaffolding branch, refusing when the task isn't
+parallel-eligible (dependency relation or write-scope overlap with any
+`in_progress` task, inline ones included), when the tree is dirty, or when
+a journal-pending amendment would hand the worker a stale contract.
+
+The bundle is still gathered at the main root (`task-status <id> --context
+--json`) and passed to the worker — never derived inside the worktree,
+whose committed `.pitway/` copy is stale transport. Add the assigned
+worktree path and scaffolding branch to the dispatch envelope; the worker
+follows `protocol-worker.md`'s worktree section (commit locally, report
+the branch HEAD SHA, everything else unchanged).
+
+On report: integrate one task at a time in ascending task id
+(`task-integrate <id>`), then the unchanged authoritative sequence —
+`task-verify <id>` in the main tree, `review`, `completed`. Worker-side
+checks are advisory; only the main-tree run records evidence. Abandon a
+dispatch with `task-discard <id> --reason <text>` (task becomes `failed`,
+then `ready` re-allows dispatch); `pitway resume` names every crash
+residue read-only. See `commands/task-dispatch.md`,
+`commands/task-integrate.md`, `commands/task-discard.md`.

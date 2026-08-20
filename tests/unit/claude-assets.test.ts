@@ -113,3 +113,16 @@ describe('listInstalledSkillNames', () => {
     expect(listInstalledSkillNames(root)).toEqual(['bug-fix', 'debugging', 'testing']);
   });
 });
+
+// AC010/T010 (M014): asset discovery is dynamic (listClaudeAssets readdirs
+// the integration directory) -- these assertions pin that the three new
+// parallel-mode command docs actually ship, rather than maintaining any
+// hardcoded manifest.
+describe('M014 parallel-mode command docs ship', () => {
+  it('lists the three new command docs among shipped assets', () => {
+    const assets = listClaudeAssets();
+    expect(assets).toContain('commands/task-dispatch.md');
+    expect(assets).toContain('commands/task-integrate.md');
+    expect(assets).toContain('commands/task-discard.md');
+  });
+});

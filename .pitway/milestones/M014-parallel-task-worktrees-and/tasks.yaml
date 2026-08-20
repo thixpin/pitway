@@ -541,7 +541,7 @@ tasks:
       command docs are shipped by `listClaudeAssets` and installed by `pitway
       init`. Every documented claim must match delivered T004/T007/T008 behavior
       — no aspirational text."
-    status: ready
+    status: completed
     depends_on:
       - T007
       - T008
@@ -578,7 +578,16 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/unit/claude-assets.test.ts
         tests/integration/init.test.ts
-    result: null
+    result:
+      summary: "[truncated] hree new command docs
+        (task-dispatch/task-integrate/task-discard) follow the existing
+        per-command convention. No manifest edit exists or is needed (discovery
+        is dynamic); claude-assets.test.ts and init.test.ts gain
+        shipped-and-installed assertions for the three docs (asset count now
+        34)."
+      evidence: Tests  35 passed (35) | Start at  19:56:27 | Duration  1.82s
+        (transform 223ms, setup 0ms, import 315ms, tests 1.47s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T011
     name: Plan reconciliation and milestone gates
@@ -598,7 +607,7 @@ tasks:
       gates exactly once: full `npm test` and `npx tsc --noEmit` (AC012) — the
       verification-granularity discipline's single sanctioned full-suite point
       for this milestone."
-    status: waiting
+    status: ready
     depends_on:
       - T009
       - T010

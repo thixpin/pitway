@@ -42,3 +42,25 @@ with a retry — it's a structural property of dispatching into a shared
 tree. Any driver logic that gates a decision on "is the tree clean/what's
 dirty" must re-derive that answer after the dispatch step it's gating, not
 carry a value computed earlier in the same turn.
+
+## Parallel mode moves the hazard, it does not remove it
+
+Under `execution.strategy: parallel_worktrees` the shared-tree hazard above
+inverts: dispatched workers write only in their own worktrees, so the main
+tree stays clean while they run — but the stale-snapshot rule moves to the
+**integrate boundary**. Every `task-integrate` changes the main tree (an
+applied, uncommitted diff) and every completion commit changes HEAD:
+re-derive tree status with the same read-only primitives after *each*
+integrate/completion step, and never carry a snapshot taken before a
+dispatch batch across any integrate.
+
+Two further parallel-mode facts, verified rather than assumed:
+
+- A task worktree's committed `.pitway/` copy is **stale read-only
+  transport**: it shows pre-dispatch task state, and per-worktree git-path
+  resolution means the journal reads as empty there. Neither you nor a
+  worker may treat in-worktree reads as authoritative — the driver passes
+  the bundle from the main root instead.
+- The state guard enforces this mechanically: every state-mutating pitway
+  command refuses inside a task worktree; only read-only commands run
+  there, as a convenience, with the staleness above.

@@ -122,6 +122,68 @@ demonstrated: a worker's own backgrounded verification command was still
 running when its report fired with an unrelated, non-standard message, and
 only independent re-verification caught it.
 
+## Parallel dispatch (execution.strategy: parallel_worktrees)
+
+Everything in this section applies only when the repository's committed
+`config.yaml` sets `execution.strategy: parallel_worktrees`. Absent that,
+PitWay is sequential and `task-dispatch`/`task-integrate`/`task-discard`
+refuse to run — nothing below applies.
+
+**PitWay gates; you parallelize.** PitWay never spawns, schedules, or
+monitors workers, and it cannot verify how many actually ran concurrently —
+concurrency is entirely yours. What PitWay enforces mechanically:
+eligibility (dependency-independence and pairwise-disjoint `write_scope`
+against every `in_progress` task, inline ones included), worktree
+lifecycle, authoritative-state protection (state-mutating commands refuse
+inside a task worktree), and integration validation (every changed path
+inside the task's `write_scope`, never `.pitway/`).
+
+**When to prefer parallel dispatch:** two or more `ready` tasks whose
+write scopes are disjoint and whose objectives are genuinely independent,
+each substantial enough to justify a worker. When in doubt, sequential
+inline execution stays the default — parallelism is an optimization, never
+a requirement.
+
+**The sequence, per parallel batch:**
+
+1. `pitway task-dispatch <id>` for each eligible task — each transitions to
+   `in_progress` and gets its own temporary worktree + scaffolding branch
+   (`pitway/task/<mId>-<tId>`). The `--json` envelope carries the worktree
+   path/branch/revision only.
+2. **You obtain each worker's context bundle at the main root** (`pitway
+   task-status <id> --context --json`) **and pass it to the worker** with
+   the fixed `protocol-worker.md` wrapper. Never have the worker derive
+   context inside the worktree: its committed `.pitway/` copy is stale
+   (pre-dispatch state, empty journal) and never authoritative.
+3. The worker edits only inside its worktree, only within `write_scope`,
+   and commits locally on the scaffolding branch (multi-commit is fine),
+   reporting its branch HEAD SHA back. It never merges/rebases/pushes and
+   never runs state-mutating pitway commands — the guard refuses them
+   mechanically.
+4. **Integrate one at a time, in ascending task id among finished tasks**
+   (the deterministic driver convention — PitWay validates each integrate
+   but does not order them): `pitway task-integrate <id>` applies the
+   combined diff to the main tree, uncommitted, and removes the
+   worktree/branch. The scaffolding branch never enters history —
+   diff-apply, never merge.
+5. Then the unchanged completion path, per integrated task: authoritative
+   `pitway task-verify <id>` in the main tree (worker-side checks are
+   advisory only and cannot write evidence), `pitway task-update <id>
+   review`, then `completed` for the one atomic commit.
+
+**Recovery:** `pitway resume` classifies every abnormal worktree state
+read-only — a live dispatch whose worktree vanished (`task-discard <id>`),
+a recordless worktree (inspect manually), `cleanup pending` (re-run
+`task-integrate <id>`; the work is already applied or recorded — do NOT
+discard), and an `in_progress` task with no dispatch record (inline work
+and an interrupted dispatch are indistinguishable; continue inline or
+reset it). A dispatched task's only exits are `task-integrate` and
+`task-discard` — direct `task-update` status changes refuse until the
+dispatch record is closed. Discarded work is unrecoverable through PitWay.
+
+**QA/review** may run in a read-only checkout or a dedicated non-task
+worktree you create yourself — never inside a task's own worktree.
+
 ## Skills
 
 PitWay vendors six Claude Code skills (`debugging`, `bug-fix`, `testing`,

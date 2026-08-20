@@ -129,6 +129,15 @@ describe('pitway init Claude Code asset installation (AC003)', () => {
     expect(shipped.length).toBeGreaterThan(0);
     const installed = listFilesRecursive(join(root, '.claude'));
     expect(installed).toEqual(shipped.slice().sort());
+    // AC010/T010 (M014): the three parallel-mode command docs install too --
+    // discovery is dynamic, so this is the shipped-and-installed proof.
+    for (const doc of [
+      'commands/task-dispatch.md',
+      'commands/task-integrate.md',
+      'commands/task-discard.md',
+    ]) {
+      expect(installed).toContain(doc);
+    }
     // Content is copied verbatim, not transformed.
     for (const asset of shipped) {
       expect(readFileSync(join(root, '.claude', asset), 'utf8')).toBe(

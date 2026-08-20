@@ -53,3 +53,24 @@ project beyond what it and this document say.
   --result ...` to make it durable. See `report-format.md` for the shape
   and length that report should take: your summary and evidence will be
   capped on the way in, so keep them dense rather than exhaustive.
+
+## If you were dispatched into a worktree (parallel mode)
+
+Your bundle may name an **assigned worktree path and scaffolding branch**.
+Then, additionally:
+
+- Work **only inside that worktree directory** — never in the main
+  repository checkout, never in another task's worktree.
+- The `git` prohibition above relaxes exactly one notch: you **commit your
+  own work locally on the assigned scaffolding branch** (multiple commits
+  are fine; ordinary `git add`/`git commit` inside your worktree only).
+  Still never: merge, rebase, push, checkout another branch, or touch the
+  main checkout's history.
+- The worktree contains a committed `.pitway/` directory — it is a **stale
+  snapshot**, not live state. The no-reading/no-writing-`.pitway/` rule
+  stands; state-mutating pitway commands are refused mechanically inside
+  your worktree anyway.
+- Do not touch `.pitway-worktree.yaml` (the worktree's runtime marker).
+- Finish by reporting your **scaffolding-branch HEAD commit SHA** alongside
+  the normal report shape — whoever dispatched you integrates it from the
+  main root; you never run the integration yourself.
