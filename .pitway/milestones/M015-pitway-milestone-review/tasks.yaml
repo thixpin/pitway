@@ -499,7 +499,7 @@ tasks:
       and `tests/integration/init.test.ts` with shipped-and-installed assertions
       for the new doc. Every claim must match delivered T002-T007 behavior — no
       aspirational text."
-    status: ready
+    status: completed
     depends_on:
       - T003
       - T004
@@ -527,7 +527,15 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/unit/claude-assets.test.ts
         tests/integration/init.test.ts
-    result: null
+    result:
+      summary: "[truncated] rifies reviewer independence, findings are
+        opinion-evidence, decide-before-complete). Asset discovery is dynamic
+        (glob-based), so the new doc ships/installs with zero installer code
+        changes; extended claude-assets.test.ts and init.test.ts with
+        shipped-and-installed assertions pinning it."
+      evidence: Tests  36 passed (36) | Start at  00:54:31 | Duration  1.87s
+        (transform 256ms, setup 0ms, import 356ms, tests 1.49s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T012
     name: README reconciliation
@@ -545,7 +553,7 @@ tasks:
       `context_files` row's §8-identical statement untouched. Docs-only task: no
       code, no tests authored; verified by CT016's review check plus the
       milestone gates."
-    status: waiting
+    status: ready
     depends_on:
       - T009
       - T010

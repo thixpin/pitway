@@ -138,6 +138,8 @@ describe('pitway init Claude Code asset installation (AC003)', () => {
     ]) {
       expect(installed).toContain(doc);
     }
+    // AC011/T010 (M015): the new milestone-review command doc installs too.
+    expect(installed).toContain('commands/milestone-review.md');
     // Content is copied verbatim, not transformed.
     for (const asset of shipped) {
       expect(readFileSync(join(root, '.claude', asset), 'utf8')).toBe(

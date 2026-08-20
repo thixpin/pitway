@@ -126,3 +126,12 @@ describe('M014 parallel-mode command docs ship', () => {
     expect(assets).toContain('commands/task-discard.md');
   });
 });
+
+// AC011/T010 (M015): asset discovery is dynamic -- this assertion pins
+// that the new milestone-review command doc actually ships, rather than
+// maintaining any hardcoded manifest.
+describe('M015 milestone-review command doc ships', () => {
+  it('lists the new command doc among shipped assets', () => {
+    expect(listClaudeAssets()).toContain('commands/milestone-review.md');
+  });
+});

@@ -204,6 +204,46 @@ can use; it never changes or reduces the driver's own mandatory independent
 diff/write_scope review above — that review still happens, every time,
 regardless of what a skill's own output says.
 
+## Milestone review
+
+An optional, role-based review workflow against a draft, confirmed,
+in_progress, or review milestone (never a completed or cancelled one).
+PitWay manages review **state** — sessions, briefs, findings, decisions;
+you run the actual review. See `commands/milestone-review.md` for the
+five-step flow (select roles with the developer, dispatch one reviewer
+subagent per role with its bounded `brief --json` envelope, record
+findings verbatim, present the report, the developer decides).
+
+Disclosures, in the same advisory-honesty register as every other
+capability PitWay cannot itself verify:
+
+- **No review command can mutate the milestone.** `start`/`brief`/
+  `record`/`report`/`decide` only ever read or write `reviews.yaml` —
+  never `contract.md` or `tasks.yaml`. Revision flows through the
+  existing sanctioned paths (`milestone-add --replace`,
+  `milestone-confirm --amend`), which you apply yourself.
+- **Detection, never prevention.** A reviewer subagent runs unconfined —
+  no worktree, no guard — so an unsanctioned contract/task-definition
+  edit made during a review is DETECTED by the definition-hash gate at
+  the next `brief`/`record` (a refusal naming the session as stale), not
+  prevented from happening. An edit made outside the hashed content
+  (frontmatter execution/lifecycle fields, files the review never
+  touches) is outside PitWay's visibility entirely.
+- **PitWay never runs reviews.** It cannot verify that a reviewer
+  subagent actually ran, ran independently of the others, or that its
+  findings weren't authored by you instead — the same caveat already
+  applies to `required_skills` and to worker report trust generally.
+- **A recorded finding is reviewer opinion, never implementation or
+  runtime evidence.** `milestone-review report` states this in its own
+  rendered text; treat a finding as a lead to investigate, not a fact
+  already proven.
+- **Decide before you complete.** The documented practice is `decide`
+  before `milestone-complete` — `milestone-confirm`/`milestone-complete`
+  are deliberately NOT coupled to review sessions (no open-session check
+  at either), so nothing mechanically stops you from completing a
+  milestone with a review still open; doing so leaves the review record
+  permanently unreadable against what actually shipped.
+
 ## Pre-dispatch conflict preflight
 
 Before dispatching any worker, compare the composed fixed worker rules
