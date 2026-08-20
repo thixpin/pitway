@@ -27,6 +27,7 @@ import {
 import { loadContract, loadState, loadTasks, resolveMilestoneDirName, saveTasks } from '../../state/store.js';
 import { deterministicBranchName } from '../milestones/confirm.js';
 import { resolveReadyTasks } from './dependencies.js';
+import { deriveLiveDispatches } from './dispatch.js';
 import { transitionTask } from './state-machine.js';
 import { MISSING_HASH_MARKER } from './verify.js';
 
@@ -507,6 +508,23 @@ export function updateTask(
   const milestoneId = resolveActiveMilestone(root);
   const tasksFile = loadTasks(root, milestoneId);
   const task = findTask(tasksFile.tasks, taskId);
+
+  // AC008/T008 (M014): a dispatched task's only legal exits from the main
+  // root are task-integrate and task-discard until its dispatch record is
+  // closed -- any direct status change (blocked included) would bypass the
+  // worktree lifecycle and strand the worktree/branch. The circular import
+  // with dispatch.ts is call-time-only (dispatch.ts calls updateTask, this
+  // calls deriveLiveDispatches; neither at module evaluation).
+  const liveDispatch = deriveLiveDispatches(readJournal(root), milestoneId).find(
+    (d) => d.taskId === taskId,
+  );
+  if (liveDispatch !== undefined) {
+    throw new TaskUpdateError(
+      `task ${taskId} has a live worktree dispatch (${liveDispatch.id}); ` +
+        `close it first with task-integrate ${taskId} or task-discard ${taskId} — ` +
+        `direct status changes would strand its worktree`,
+    );
+  }
 
   if (target === 'completed') {
     return completeTask(root, milestoneId, tasksFile, task, inputs);

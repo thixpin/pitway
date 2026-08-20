@@ -4,12 +4,16 @@ import { deterministicBranchName } from '../../core/milestones/confirm.js';
 import { computeMilestoneProgress } from '../../core/milestones/progress.js';
 import { computeRacingFooter, resolveNextTask } from '../../core/milestones/footer.js';
 import { allChecksPassed, computeLatestCheckResults } from '../../core/verification/status.js';
-import { loadContract, loadState, loadTasks } from '../../state/store.js';
+import { loadConfig, loadContract, loadState, loadTasks } from '../../state/store.js';
 import { deriveQuickChangeState, readAllQuickChanges } from '../../core/quick-change/create.js';
+import { deriveLiveDispatches } from '../../core/tasks/dispatch.js';
+import { listTaskWorktrees } from '../../git/worktree.js';
 import { renderOutput } from '../output.js';
 import { taskStatusLabel } from '../format.js';
-import type { MilestoneStatus, Task, TaskStatus } from '../../state/schemas.js';
-import type { JournalQuickChange, JournalQuickChangeStatus } from '../../state/journal.js';
+import { existsSync, realpathSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
+import { resolveExecutionStrategy, type MilestoneStatus, type Task, type TaskStatus } from '../../state/schemas.js';
+import { readJournal, type JournalQuickChange, type JournalQuickChangeStatus } from '../../state/journal.js';
 
 export interface PendingQuickChange {
   id: string;
@@ -26,6 +30,26 @@ export interface ResumeBranchView {
   matches: boolean;
 }
 
+// AC008/T008 (M014): read-only residue classification under
+// parallel_worktrees. Every abnormal dispatch/worktree combination a crash
+// can leave behind maps to exactly one class here, so resume can always
+// NAME the state -- it never removes anything.
+export interface DispatchResidue {
+  class:
+    | 'vanished-worktree' // live record, worktree missing -> task-discard
+    | 'recordless-worktree' // managed-prefix worktree, no record -> inspect manually
+    | 'cleanup-pending' // record closed, worktree/branch survives -> re-run task-integrate (or task-discard)
+    | 'inline-or-interrupted'; // in_progress task without a dispatch record -- legitimate inline work and a crash between transition and journal-append are indistinguishable
+  taskId: string | null;
+  path: string | null;
+  detail: string;
+}
+
+export interface ParallelView {
+  activeDispatches: Array<{ taskId: string; branch: string; worktreePath: string }>;
+  residues: DispatchResidue[];
+}
+
 export interface ResumeView {
   activeMilestone: string | null;
   contractStatus: MilestoneStatus | null;
@@ -38,6 +62,9 @@ export interface ResumeView {
   nextTask: string | null;
   pendingQuickChanges: PendingQuickChange[];
   branch?: ResumeBranchView;
+  // AC008 (M014): null for sequential repositories (key always present) --
+  // human output there is byte-identical to before.
+  parallel: ParallelView | null;
   // AC004 (M013): null before milestone-confirm has run -- silence is the
   // signal, never a placeholder string.
   footer: string | null;
@@ -81,6 +108,77 @@ function derivePendingQuickChanges(root: string): PendingQuickChange[] {
   return pending;
 }
 
+// Journal records carry the path as the dispatcher wrote it while git's
+// porcelain output reports the canonical form (macOS /var vs /private/var)
+// -- canonicalize both sides before comparing. A vanished path canonicalizes
+// through its (existing) parent directory.
+function canonicalPath(p: string): string {
+  if (existsSync(p)) return realpathSync(p);
+  const dir = dirname(p);
+  return existsSync(dir) ? join(realpathSync(dir), basename(p)) : resolve(p);
+}
+
+// AC008/T008: pure classification over already-read records + the actual
+// worktree listing. Read-only -- resume never removes anything.
+function buildParallelView(root: string, milestoneId: string, tasks: Task[]): ParallelView {
+  const records = readJournal(root);
+  const live = deriveLiveDispatches(records, milestoneId);
+  const liveByPath = new Map(live.map((d) => [canonicalPath(d.worktreePath), d]));
+  const worktrees = listTaskWorktrees(root);
+  const residues: DispatchResidue[] = [];
+
+  for (const dispatch of live) {
+    if (!existsSync(dispatch.worktreePath)) {
+      residues.push({
+        class: 'vanished-worktree',
+        taskId: dispatch.taskId,
+        path: dispatch.worktreePath,
+        detail: `live dispatch ${dispatch.id} for ${dispatch.taskId} has no worktree on disk — close it with task-discard ${dispatch.taskId}`,
+      });
+    }
+  }
+
+  const recordedPaths = new Set(
+    records.filter((r) => r.kind === 'worktree_dispatch').map((r) => canonicalPath(r.worktreePath)),
+  );
+  for (const wt of worktrees) {
+    if (!recordedPaths.has(canonicalPath(wt.path))) {
+      residues.push({
+        class: 'recordless-worktree',
+        taskId: wt.marker?.task ?? null,
+        path: wt.path,
+        detail: `worktree ${wt.path} has no dispatch record — foreign or pre-crash; inspect manually`,
+      });
+    } else if (!liveByPath.has(canonicalPath(wt.path)) && existsSync(wt.path)) {
+      residues.push({
+        class: 'cleanup-pending',
+        taskId: wt.marker?.task ?? null,
+        path: wt.path,
+        detail: `worktree ${wt.path} belongs to a closed dispatch — re-run task-integrate (or task-discard) to finish cleanup`,
+      });
+    }
+  }
+
+  const liveTaskIds = new Set(live.map((d) => d.taskId));
+  for (const t of tasks) {
+    if (t.status === 'in_progress' && !liveTaskIds.has(t.id)) {
+      residues.push({
+        class: 'inline-or-interrupted',
+        taskId: t.id,
+        path: null,
+        detail: `${t.id} is in_progress with no dispatch record — legitimate inline work and an interrupted dispatch are indistinguishable; continue inline or reset via task-update ${t.id} failed`,
+      });
+    }
+  }
+
+  return {
+    activeDispatches: live
+      .filter((d) => existsSync(d.worktreePath))
+      .map((d) => ({ taskId: d.taskId, branch: d.branch, worktreePath: d.worktreePath })),
+    residues,
+  };
+}
+
 // Reads only .pitway/ — no conversation or session input required. When
 // multiple tasks are ready, recommends the lowest task id (declared order),
 // deterministically, with no other prioritization in MVP.
@@ -99,6 +197,7 @@ export function buildResumeView(root: string): ResumeView {
       inProgress: [],
       nextTask: null,
       pendingQuickChanges,
+      parallel: null,
       footer: null,
     };
   }
@@ -127,6 +226,10 @@ export function buildResumeView(root: string): ResumeView {
   const progress = computeMilestoneProgress(tasksFile.tasks);
   const verificationPassed = allChecksPassed(contract, computeLatestCheckResults(root, state.active_milestone));
   const footer = computeRacingFooter(contract.frontmatter.status, progress, verificationPassed, tasksFile.tasks);
+  const parallel =
+    resolveExecutionStrategy(loadConfig(root)) === 'parallel_worktrees'
+      ? buildParallelView(root, state.active_milestone, tasksFile.tasks)
+      : null;
 
   return {
     activeMilestone: state.active_milestone,
@@ -140,6 +243,7 @@ export function buildResumeView(root: string): ResumeView {
     nextTask: resolveNextTask(tasksFile.tasks),
     pendingQuickChanges,
     ...(branch ? { branch } : {}),
+    parallel,
     footer,
   };
 }
@@ -192,6 +296,20 @@ export function renderResumeHuman(view: ResumeView): string {
     lines.push(`Continue: ${view.nextTask}`);
   } else {
     lines.push(view.nextTask ? `Next: ${view.nextTask}` : 'Next: (no ready task)');
+  }
+  if (view.parallel !== null) {
+    if (view.parallel.activeDispatches.length > 0) {
+      lines.push('', '🏎️ Dispatched worktrees');
+      for (const d of view.parallel.activeDispatches) {
+        lines.push(`  ${d.taskId}  ${d.branch}  ${d.worktreePath}`);
+      }
+    }
+    if (view.parallel.residues.length > 0) {
+      lines.push('', '🔧 Worktree residues (read-only report)');
+      for (const r of view.parallel.residues) {
+        lines.push(`  [${r.class}] ${r.detail}`);
+      }
+    }
   }
   if (quickChangeLines.length > 0) lines.push('', ...quickChangeLines);
   if (view.footer !== null) lines.push('', view.footer);

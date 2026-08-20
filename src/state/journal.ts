@@ -203,6 +203,21 @@ export const journalWorktreeIntegrateSchema = z.strictObject({
   at: z.string().min(1),
 });
 
+// AC008/T008 (M014): closes a worktree_dispatch (by dispatchId) after its
+// worktree was abandoned without integrating. discardedSha is the
+// scaffolding branch's HEAD when still resolvable -- evidence-only, like
+// worktree_integrate's workerSha.
+export const journalWorktreeDiscardSchema = z.strictObject({
+  kind: z.literal('worktree_discard'),
+  id: z.string().min(1),
+  dispatchId: z.string().min(1),
+  milestone: journalMilestoneId,
+  taskId: journalTaskId,
+  reason: z.string().min(1),
+  discardedSha: z.string().min(1).nullable(),
+  at: z.string().min(1),
+});
+
 export const journalRecordSchema = z.discriminatedUnion('kind', [
   journalEntrySchema,
   journalCheckpointSchema,
@@ -211,6 +226,7 @@ export const journalRecordSchema = z.discriminatedUnion('kind', [
   journalTaskVerifyEvidenceSchema,
   journalWorktreeDispatchSchema,
   journalWorktreeIntegrateSchema,
+  journalWorktreeDiscardSchema,
 ]);
 
 export const journalFileSchema = z.strictObject({
@@ -231,6 +247,7 @@ export type JournalTaskVerifyTypecheck = z.infer<typeof journalTaskVerifyTypeche
 export type JournalTaskVerifyEvidence = z.infer<typeof journalTaskVerifyEvidenceSchema>;
 export type JournalWorktreeDispatch = z.infer<typeof journalWorktreeDispatchSchema>;
 export type JournalWorktreeIntegrate = z.infer<typeof journalWorktreeIntegrateSchema>;
+export type JournalWorktreeDiscard = z.infer<typeof journalWorktreeDiscardSchema>;
 export type JournalRecord = z.infer<typeof journalRecordSchema>;
 export type JournalFile = z.infer<typeof journalFileSchema>;
 
@@ -390,6 +407,21 @@ export function appendWorktreeIntegrateRecord(
   const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
   if (!result.success) {
     throw new JournalError(`refusing to append invalid worktree_integrate record: ${formatIssues(result.error)}`);
+  }
+  saveJournalFile(cwd, result.data);
+  return full;
+}
+
+// Appends a worktree_discard record -- same sibling-record discipline.
+export function appendWorktreeDiscardRecord(
+  cwd: string,
+  record: Omit<JournalWorktreeDiscard, 'kind'>,
+): JournalWorktreeDiscard {
+  const file = loadJournalFile(cwd);
+  const full: JournalWorktreeDiscard = { kind: 'worktree_discard', ...record };
+  const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
+  if (!result.success) {
+    throw new JournalError(`refusing to append invalid worktree_discard record: ${formatIssues(result.error)}`);
   }
   saveJournalFile(cwd, result.data);
   return full;

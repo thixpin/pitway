@@ -409,7 +409,7 @@ tasks:
       shape change in the same task. Tests: discard-then-redispatch;
       blocked-refusal on live dispatch; all four residue classes; sequential
       repos untouched."
-    status: ready
+    status: completed
     depends_on:
       - T004
       - T005
@@ -450,7 +450,15 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/integration/task-discard.test.ts
         tests/integration/resume.test.ts
-    result: null
+    result:
+      summary: "[truncated] zed (macOS /var vs /private/var) before
+        journal-vs-porcelain comparison. The two stale-assertion-prone suites
+        (fresh-session-resume, self-hosting-readiness) pass unchanged -- the
+        additive key needed no assertion updates; resume.test.ts fixtures gained
+        the config.yaml every real repo has."
+      evidence: Tests  22 passed (22) | Start at  19:51:09 | Duration  7.57s
+        (transform 368ms, setup 0ms, import 551ms, tests 9.15s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T009
     name: End-to-end parallel lifecycle test
@@ -474,7 +482,7 @@ tasks:
       base branch untouched). Test-only task: no src/ changes; any product
       defect it finds stops work and is raised per the contract-conflict rule,
       never silently patched here."
-    status: waiting
+    status: ready
     depends_on:
       - T007
       - T008
@@ -525,7 +533,7 @@ tasks:
       command docs are shipped by `listClaudeAssets` and installed by `pitway
       init`. Every documented claim must match delivered T004/T007/T008 behavior
       — no aspirational text."
-    status: waiting
+    status: ready
     depends_on:
       - T007
       - T008

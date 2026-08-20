@@ -9,6 +9,7 @@ import {
   appendQuickChangeRecord,
   appendTaskVerifyEvidenceRecord,
   appendWorktreeDispatchRecord,
+  appendWorktreeDiscardRecord,
   appendWorktreeIntegrateRecord,
   JournalError,
   readJournal,
@@ -618,6 +619,51 @@ describe('worktree_integrate records (M014/T006)', () => {
         ...baseIntegrate,
         // @ts-expect-error deliberately missing workerSha
         workerSha: undefined,
+      }),
+    ).toThrow(JournalError);
+    expect(readJournal(repo)).toHaveLength(0);
+  });
+});
+
+// AC008/T008 (M014): worktree_discard -- closes a dispatch after abandonment;
+// same sibling-record discipline.
+describe('worktree_discard records (M014/T008)', () => {
+  const baseDiscard = {
+    id: 'wtx-1',
+    dispatchId: 'wtd-1',
+    milestone: 'M014',
+    taskId: 'T001',
+    reason: 'worker produced out-of-scope changes',
+    discardedSha: 'c'.repeat(40) as string | null,
+    at: '2026-08-20T00:00:00Z',
+  };
+
+  it('appends a worktree_discard record and reads it back', () => {
+    const record = appendWorktreeDiscardRecord(repo, baseDiscard);
+    expect(record.kind).toBe('worktree_discard');
+    expect(readJournal(repo)[0]).toMatchObject({
+      kind: 'worktree_discard',
+      dispatchId: 'wtd-1',
+      reason: 'worker produced out-of-scope changes',
+    });
+  });
+
+  it('accepts a null discardedSha (branch already gone)', () => {
+    const record = appendWorktreeDiscardRecord(repo, { ...baseDiscard, discardedSha: null });
+    expect(record.discardedSha).toBeNull();
+  });
+
+  it('is excluded from derivePending and invisible to git status', () => {
+    appendWorktreeDiscardRecord(repo, baseDiscard);
+    expect(derivePending(readJournal(repo))).toHaveLength(0);
+    expect(git(['status', '--porcelain'], repo).trim()).toBe('');
+  });
+
+  it('rejects a record missing the reason, appending nothing', () => {
+    expect(() =>
+      appendWorktreeDiscardRecord(repo, {
+        ...baseDiscard,
+        reason: '',
       }),
     ).toThrow(JournalError);
     expect(readJournal(repo)).toHaveLength(0);

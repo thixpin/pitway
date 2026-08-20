@@ -63,6 +63,9 @@ beforeEach(() => {
   git(['add', 'README.md'], root);
   git(['commit', '-q', '-m', 'init'], root);
   mkdirSync(join(root, '.pitway', 'milestones', 'M001'), { recursive: true });
+  // Real milestone-add-created repos always carry config.yaml (init writes
+  // it); buildResumeView reads it for the execution strategy (M014/T008).
+  writeFileSync(join(root, '.pitway', 'config.yaml'), 'schema_version: 1\n');
   // M013/T005: buildResumeView now also derives the racing footer, which
   // reads verification-results.yaml via the shared status helper -- present
   // (empty) on every real milestone-add-created milestone; matched here so
