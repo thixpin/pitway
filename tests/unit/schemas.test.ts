@@ -426,6 +426,76 @@ describe('task schema mapped_ac_ids (T010)', () => {
   });
 });
 
+// AC003/T003: required_skills is a new, additive-optional string array
+// field, absent from every M001-M010 historical task, fully independent of
+// the relevant_files/context_files/write_scope superRefine.
+describe('task schema required_skills (T003)', () => {
+  const baseTask = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    id: 'T001',
+    objective: 'Do a thing.',
+    status: 'waiting',
+    depends_on: [],
+    acceptance_criteria: ['It works'],
+    write_scope: ['src/a.ts'],
+    verification: { strategy: 'tdd', detail: 'npm test' },
+    result: null,
+    usage: null,
+    ...overrides,
+  });
+
+  it('accepts 0, 1, or 2 valid kebab-case required_skills, round-tripping unchanged', () => {
+    for (const skills of [[], ['debugging'], ['debugging', 'code-quality-review']]) {
+      const task = baseTask({ required_skills: skills });
+      const result = taskSchema.safeParse(task);
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data.required_skills).toEqual(skills);
+    }
+  });
+
+  it('accepts a task without required_skills exactly as before (still valid)', () => {
+    const task = baseTask();
+    expect('required_skills' in task).toBe(false);
+    const result = taskSchema.safeParse(task);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects 3 or more required_skills entries', () => {
+    const task = baseTask({ required_skills: ['debugging', 'testing', 'bug-fix'] });
+    expect(taskSchema.safeParse(task).success).toBe(false);
+  });
+
+  it('rejects a non-kebab-case entry', () => {
+    for (const bad of ['Debugging', 'code_quality_review', 'bad-', '-bad', '']) {
+      const task = baseTask({ required_skills: [bad] });
+      expect(taskSchema.safeParse(task).success).toBe(false);
+    }
+  });
+
+  it('rejects a duplicate name within one task\'s own list, naming it', () => {
+    const task = baseTask({ required_skills: ['debugging', 'debugging'] });
+    const result = taskSchema.safeParse(task);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.message.includes('debugging'))).toBe(true);
+    }
+  });
+
+  it('required_skills does not interact with the relevant_files/context_files/write_scope rule', () => {
+    // A relevant_files-only task with required_skills must validate on its
+    // own scope rule alone, unaffected by required_skills' own checks.
+    const task = baseTask({ write_scope: undefined, relevant_files: ['src/a.ts'], required_skills: ['debugging'] });
+    expect(taskSchema.safeParse(task).success).toBe(true);
+  });
+
+  it('every M001-M010-shaped historical task (no required_skills) still parses fine', () => {
+    const file = fixture('valid/tasks.yaml') as { tasks: Record<string, unknown>[] };
+    for (const task of file.tasks) {
+      expect('required_skills' in task).toBe(false);
+      expect(taskSchema.safeParse(task).success).toBe(true);
+    }
+  });
+});
+
 describe('buildTaskContextBundle context_files/write_scope surfacing', () => {
   const contract = fixture('valid/contract-frontmatter.yaml') as Parameters<
     typeof buildTaskContextBundle
@@ -479,5 +549,22 @@ describe('buildTaskContextBundle context_files/write_scope surfacing', () => {
     expect(bundle.contextFiles).toEqual(['src/target.ts', 'src/other.ts']);
     expect(bundle.writeScope).toEqual(['src/target.ts']);
     expect(bundle.relevantFiles).toBeUndefined();
+  });
+
+  // AC003/T003: requiredSkills passes through verbatim, and is omitted
+  // (undefined, not an empty array) when the task has none -- the same
+  // omission convention as writeScope/contextFiles above.
+  it('passes required_skills through verbatim as requiredSkills', () => {
+    const task = baseTask({ write_scope: ['src/target.ts'], required_skills: ['debugging', 'testing'] });
+    const bundle = buildTaskContextBundle(contract, [task], 'T001');
+    expect(bundle.requiredSkills).toEqual(['debugging', 'testing']);
+  });
+
+  it('omits requiredSkills entirely when the task has no required_skills', () => {
+    const task = baseTask({ write_scope: ['src/target.ts'] });
+    const bundle = buildTaskContextBundle(contract, [task], 'T001');
+    expect(bundle.requiredSkills).toBeUndefined();
+    const serialized = JSON.parse(JSON.stringify(bundle));
+    expect('requiredSkills' in serialized).toBe(false);
   });
 });

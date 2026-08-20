@@ -9,6 +9,10 @@ const taskId = z.string().regex(/^T\d{3}$/, 'task id must match T000');
 const criterionId = z.string().regex(/^AC\d{3}$/, 'criterion id must match AC000');
 const checkId = z.string().regex(/^CT\d{3}$/, 'check id must match CT000');
 const requirementId = z.string().regex(/^R\d{3}$/, 'requirement id must match R000');
+const skillName = z
+  .string()
+  .min(1)
+  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'skill name must be non-empty kebab-case');
 const isoTimestamp = z.iso.datetime();
 const sha256Hash = z.string().regex(/^sha256:[0-9a-f]{64}$/, 'hash must match sha256:<64 hex>');
 
@@ -126,6 +130,11 @@ export const taskSchema = z
     // absent on every M001-M006 historical task, so omitting it leaves
     // bundle generation byte-for-byte unchanged (see context-bundle.ts).
     mapped_ac_ids: z.array(z.string().min(1)).optional(),
+    // AC003/T003: additive-optional, at most two entries, non-empty
+    // kebab-case names -- absent on every M001-M010 historical task.
+    // Duplicate-name rejection lives in its own, fully independent
+    // superRefine below, never interacting with the scope-combination rule.
+    required_skills: z.array(skillName).max(2).optional(),
     verification: z.strictObject({
       strategy: z.enum(['tdd', 'command', 'manual', 'review']),
       detail: z.string().min(1),
@@ -183,6 +192,23 @@ export const taskSchema = z
           path: ['write_scope'],
         });
       }
+    }
+  })
+  // AC003/T003: required_skills' own validation, fully independent of the
+  // relevant_files/context_files/write_scope superRefine above -- a
+  // separate superRefine so the two never interact.
+  .superRefine((task, ctx) => {
+    if (!task.required_skills) return;
+    const seen = new Set<string>();
+    for (const name of task.required_skills) {
+      if (seen.has(name)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `required_skills contains a duplicate name: ${name}`,
+          path: ['required_skills'],
+        });
+      }
+      seen.add(name);
     }
   });
 

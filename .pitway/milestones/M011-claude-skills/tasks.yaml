@@ -256,7 +256,7 @@ tasks:
       with no required_skills at all is a complete no-op through this whole
       path, proven by a regression test against pre-existing task-status
       --context behavior.
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -287,7 +287,15 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/unit/schemas.test.ts tests/unit/skills.test.ts
         tests/unit/claude-assets.test.ts tests/integration/task-status.test.ts
-    result: null
+    result:
+      summary: "[truncated] Names discovers installed .claude/skills/<name>/SKILL.md
+        directories. task-status --context composes State then Core before
+        building the bundle -- a pre-dispatch context gate, refusing visibly and
+        naming every missing declared skill, a complete no-op when
+        required_skills is absent/empty."
+      evidence: Tests  95 passed (95) | Start at  13:43:42 | Duration  426ms
+        (transform 298ms, setup 0ms, import 460ms, tests 103ms, environment 0ms)
+    attempts: 1
     usage: null
   - id: T004
     objective: >-
@@ -620,7 +628,7 @@ tasks:
       bundle it could not retrieve; this gate proves only that PitWay's own
       managed skill installation is present, never that the dispatching harness
       itself loads it.
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T003
@@ -718,7 +726,7 @@ tasks:
       required_skills/task-status --context's own pre-dispatch context gate
       (AC003's own tests are the sole coverage for that) -- the document states
       this distinction plainly rather than implying otherwise.
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T003

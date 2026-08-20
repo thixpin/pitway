@@ -2,7 +2,11 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { classifyClaudeAssets, listClaudeAssets } from '../../src/state/claude-assets.js';
+import {
+  classifyClaudeAssets,
+  listClaudeAssets,
+  listInstalledSkillNames,
+} from '../../src/state/claude-assets.js';
 
 let root: string;
 
@@ -72,5 +76,40 @@ describe('classifyClaudeAssets', () => {
     writeDestination(root, asset!, sameLength);
     const result = classifyClaudeAssets(root);
     expect(result.find((c) => c.asset === asset)?.status).toBe('conflict');
+  });
+});
+
+// T003: focused unit tests for listInstalledSkillNames against a real temp
+// directory tree, not routed through a full pitway init.
+describe('listInstalledSkillNames', () => {
+  it('returns an empty array when .claude/skills/ does not exist at all', () => {
+    expect(listInstalledSkillNames(root)).toEqual([]);
+  });
+
+  it('returns an empty array when .claude/skills/ exists but is empty', () => {
+    mkdirSync(join(root, '.claude', 'skills'), { recursive: true });
+    expect(listInstalledSkillNames(root)).toEqual([]);
+  });
+
+  it('lists a skill directory that contains its own SKILL.md', () => {
+    mkdirSync(join(root, '.claude', 'skills', 'debugging'), { recursive: true });
+    writeFileSync(join(root, '.claude', 'skills', 'debugging', 'SKILL.md'), '---\nname: debugging\n---\n');
+    expect(listInstalledSkillNames(root)).toEqual(['debugging']);
+  });
+
+  it('never lists a directory present without its own SKILL.md', () => {
+    mkdirSync(join(root, '.claude', 'skills', 'debugging'), { recursive: true });
+    writeFileSync(join(root, '.claude', 'skills', 'debugging', 'SKILL.md'), 'x');
+    // A stray directory with no SKILL.md of its own.
+    mkdirSync(join(root, '.claude', 'skills', 'incomplete'), { recursive: true });
+    expect(listInstalledSkillNames(root)).toEqual(['debugging']);
+  });
+
+  it('sorts multiple installed skill names', () => {
+    for (const name of ['testing', 'bug-fix', 'debugging']) {
+      mkdirSync(join(root, '.claude', 'skills', name), { recursive: true });
+      writeFileSync(join(root, '.claude', 'skills', name, 'SKILL.md'), 'x');
+    }
+    expect(listInstalledSkillNames(root)).toEqual(['bug-fix', 'debugging', 'testing']);
   });
 });

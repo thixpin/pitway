@@ -17,6 +17,10 @@ export interface TaskContextBundle {
   // happens elsewhere in the workflow, not here.
   contextFiles?: string[];
   writeScope?: string[];
+  // AC003/T003: task.required_skills, passed through verbatim -- same
+  // omission convention as writeScope/contextFiles (undefined, not an
+  // empty array, when the task declares none).
+  requiredSkills?: string[];
   verificationInstructions: string;
 }
 
@@ -58,6 +62,7 @@ export function buildTaskContextBundle(
     relevantFiles: task.relevant_files,
     contextFiles: task.context_files,
     writeScope: task.write_scope,
+    requiredSkills: task.required_skills,
     verificationInstructions: task.verification.detail,
   };
 }

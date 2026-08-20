@@ -1,6 +1,8 @@
 import type { Command } from 'commander';
 import { loadContract, loadState, loadTasks } from '../../state/store.js';
+import { listInstalledSkillNames } from '../../state/claude-assets.js';
 import { buildTaskContextBundle } from '../../core/tasks/context-bundle.js';
+import { assertRequiredSkillsAvailable } from '../../core/tasks/skills.js';
 import { renderOutput } from '../output.js';
 import { taskStatusLabel } from '../format.js';
 import type { Task } from '../../state/schemas.js';
@@ -63,6 +65,13 @@ export function registerTaskStatusCommand(program: Command, deps: CommandDeps = 
         const milestoneId = resolveActiveMilestone(root);
         const contract = loadContract(root, milestoneId);
         const tasksFile = loadTasks(root, milestoneId);
+        // AC003/T003: pre-dispatch context gate -- State (what's actually
+        // installed), then Core (pure comparison), composed here before the
+        // bundle is built. A complete no-op when the task declares no
+        // required_skills, byte-for-byte matching pre-M011 behavior.
+        const task = findTask(tasksFile.tasks, id);
+        const available = listInstalledSkillNames(root);
+        assertRequiredSkillsAvailable(task.required_skills ?? [], available);
         const bundle = buildTaskContextBundle(contract.frontmatter, tasksFile.tasks, id);
         write(renderOutput(bundle, { json: options.json ?? true }, (b) => JSON.stringify(b, null, 2)));
         return;

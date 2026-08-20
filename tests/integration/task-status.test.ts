@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -191,6 +191,115 @@ describe('pitway task-status', () => {
 
       const bundle = JSON.parse(lines.join('\n'));
       expect(bundle.contractExcerpt.acceptanceCriteria).toEqual(multiAcFrontmatter.acceptance_criteria);
+    });
+  });
+
+  // AC003/T003: pre-dispatch context gate -- State (listInstalledSkillNames)
+  // composed with Core (assertRequiredSkillsAvailable) before the bundle is
+  // built.
+  describe('required_skills pre-dispatch context gate (T003)', () => {
+    function installSkill(name: string): void {
+      mkdirSync(join(root, '.claude', 'skills', name), { recursive: true });
+      writeFileSync(join(root, '.claude', 'skills', name, 'SKILL.md'), `---\nname: ${name}\n---\n`);
+    }
+
+    it('succeeds unchanged when every required skill is installed', async () => {
+      installSkill('debugging');
+      installSkill('testing');
+      saveTasks(root, 'M001', {
+        schema_version: 1,
+        tasks: [
+          task({
+            id: 'T002',
+            status: 'in_progress',
+            objective: 'Target task',
+            relevant_files: ['src/target.ts'],
+            required_skills: ['debugging', 'testing'],
+          }),
+        ],
+      });
+
+      const program = buildCli();
+      const lines: string[] = [];
+      registerTaskStatusCommand(program, { root, write: (s) => lines.push(s) });
+      await program.parseAsync(['node', 'pitway', 'task-status', 'T002', '--context', '--json']);
+
+      const bundle = JSON.parse(lines.join('\n'));
+      expect(bundle.requiredSkills).toEqual(['debugging', 'testing']);
+    });
+
+    it('refuses, naming the one missing skill, when one required skill is not installed', async () => {
+      installSkill('debugging');
+      saveTasks(root, 'M001', {
+        schema_version: 1,
+        tasks: [
+          task({
+            id: 'T002',
+            status: 'in_progress',
+            objective: 'Target task',
+            relevant_files: ['src/target.ts'],
+            required_skills: ['debugging', 'testing'],
+          }),
+        ],
+      });
+
+      const program = buildCli();
+      const lines: string[] = [];
+      registerTaskStatusCommand(program, { root, write: (s) => lines.push(s) });
+      await expect(
+        program.parseAsync(['node', 'pitway', 'task-status', 'T002', '--context', '--json']),
+      ).rejects.toThrow(/testing/);
+      expect(lines.join('\n')).not.toContain('"task"');
+    });
+
+    it('refuses, naming both missing skills, when two required skills are not installed', async () => {
+      saveTasks(root, 'M001', {
+        schema_version: 1,
+        tasks: [
+          task({
+            id: 'T002',
+            status: 'in_progress',
+            objective: 'Target task',
+            relevant_files: ['src/target.ts'],
+            required_skills: ['debugging', 'testing'],
+          }),
+        ],
+      });
+
+      const program = buildCli();
+      const lines: string[] = [];
+      registerTaskStatusCommand(program, { root, write: (s) => lines.push(s) });
+      let caught: Error | undefined;
+      try {
+        await program.parseAsync(['node', 'pitway', 'task-status', 'T002', '--context', '--json']);
+      } catch (error) {
+        caught = error as Error;
+      }
+      expect(caught?.message).toMatch(/debugging/);
+      expect(caught?.message).toMatch(/testing/);
+    });
+
+    it('is a complete no-op through this whole path when the task has no required_skills', async () => {
+      saveTasks(root, 'M001', {
+        schema_version: 1,
+        tasks: [
+          task({
+            id: 'T002',
+            status: 'in_progress',
+            objective: 'Target task',
+            relevant_files: ['src/target.ts'],
+          }),
+        ],
+      });
+
+      const program = buildCli();
+      const lines: string[] = [];
+      registerTaskStatusCommand(program, { root, write: (s) => lines.push(s) });
+      await program.parseAsync(['node', 'pitway', 'task-status', 'T002', '--context', '--json']);
+
+      const bundle = JSON.parse(lines.join('\n'));
+      expect(bundle.requiredSkills).toBeUndefined();
+      expect('requiredSkills' in bundle).toBe(false);
     });
   });
 });

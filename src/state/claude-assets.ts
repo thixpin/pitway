@@ -87,3 +87,18 @@ export function installClaudeAssets(root: string, assets: string[] = listClaudeA
   }
   return assets;
 }
+
+// AC003/T003: the one and only place in the codebase that reads
+// .claude/skills/ from disk for the pre-dispatch context gate. Every
+// immediate subdirectory name under <root>/.claude/skills/ that itself
+// contains a SKILL.md file, sorted; a directory present without its own
+// SKILL.md is never listed. Empty array when .claude/skills/ does not
+// exist at all.
+export function listInstalledSkillNames(root: string): string[] {
+  const skillsDir = join(root, '.claude', 'skills');
+  if (!existsSync(skillsDir)) return [];
+  return readdirSync(skillsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && existsSync(join(skillsDir, entry.name, 'SKILL.md')))
+    .map((entry) => entry.name)
+    .sort();
+}
