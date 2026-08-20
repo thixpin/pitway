@@ -1,2 +1,121 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-20T09:15:55Z
+    evidence: Tests  100 passed (100) | Start at  16:15:53 | Duration  1.87s
+      (transform 241ms, setup 0ms, import 375ms, tests 1.54s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2386
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-20T09:16:16Z
+    evidence: Tests  119 passed (119) | Start at  16:15:56 | Duration  20.10s
+      (transform 356ms, setup 0ms, import 592ms, tests 20.92s, environment 0ms)
+    recorded_by: command
+    duration_ms: 20408
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-20T09:16:52Z
+    evidence: Tests  73 passed (73) | Start at  16:16:16 | Duration  36.11s
+      (transform 527ms, setup 0ms, import 855ms, tests 55.66s, environment 0ms)
+    recorded_by: command
+    duration_ms: 36562
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-20T09:16:55Z
+    evidence: Tests  15 passed (15) | Start at  16:16:53 | Duration  2.18s
+      (transform 355ms, setup 0ms, import 593ms, tests 2.51s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2594
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-20T09:16:56Z
+    evidence: Tests  4 passed (4) | Start at  16:16:55 | Duration  843ms (transform
+      20ms, setup 0ms, import 28ms, tests 738ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 1131
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-20T09:17:15Z
+    evidence: Tests  20 passed (20) | Start at  16:16:56 | Duration  18.39s
+      (transform 198ms, setup 0ms, import 283ms, tests 18.02s, environment 0ms)
+    recorded_by: command
+    duration_ms: 18689
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-20T09:17:19Z
+    evidence: Tests  3 passed (3) | Start at  16:17:15 | Duration  4.35s (transform
+      175ms, setup 0ms, import 274ms, tests 3.98s, environment 0ms)
+    recorded_by: command
+    duration_ms: 4720
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-20T09:18:28Z
+    evidence: Tests  858 passed (858) | Start at  16:17:20 | Duration  67.98s
+      (transform 2.61s, setup 0ms, import 9.28s, tests 415.42s, environment 6ms)
+    recorded_by: command
+    duration_ms: 68289
+    termination_reason: exited
+  - check: CT009
+    status: pass
+    at: 2026-08-20T09:18:52Z
+    evidence: "Confirmed protocol-driver.md's new Verification discipline section
+      (lines 43-62) states all three rules verbatim:
+      task-execution-only-runs-own-command,
+      full-suite/typecheck-milestone-level-gates-only,
+      recorded-manual-results-authoritative. git show bde94b9 confirms only
+      protocol-driver.md + T008's own tasks.yaml completion write changed -- no
+      other file touched."
+    recorded_by: developer
+  - check: CT010
+    status: pass
+    at: 2026-08-20T09:19:06Z
+    evidence: "Confirmed: revision header has a dated M012/T009 entry; §7 confirms
+      18-command surface unchanged; §10 rewritten to real delivered
+      branch_strategy behavior (no longer says deferred); §15's subsection
+      retitled 'Delivered in M012', points to §10; Bootstrap table has M011's
+      row (M012's own correctly omitted); Revised Roadmap M012 entry reflects
+      actual delivery; M013 = PitWay Driver UX (new, real description)
+      immediately after M012; former M013/M014 correctly renumbered to M014/M015
+      with cross-refs updated in §10/§15/Token-Telemetry-Spike note; Status
+      paragraph updated. No stale reference to old numbering found via grep."
+    recorded_by: developer
+  - check: CT011
+    status: pass
+    at: 2026-08-20T09:19:22Z
+    evidence: "Confirmed via code review and T002's own 8-test integration suite:
+      resolveBranchStrategy(loadConfig(root)) gates the milestone-strategy path;
+      deterministicBranchName() (confirm.ts) reuses slugifyTitle from store.ts,
+      no duplicate slug logic; branch creation runs after
+      assertNoUnexpectedDirtyPaths; base_branch/base_revision null on every
+      historical/main-strategy contract (regression tests pass); fresh confirm
+      refuses via branchExists() check before any mutation (test: pre-existing
+      branch collision); resumed confirm (Case 2) performs zero branch mutation,
+      refuses on any mismatch including deleted branch (2 dedicated tests); grep
+      for stash/reset/force/-D across confirm.ts and branch.ts finds zero actual
+      git invocations of any of those -- only comment/error-message text."
+    recorded_by: developer
+  - check: CT012
+    status: pass
+    at: 2026-08-20T09:19:36Z
+    evidence: "Confirmed via code review: assertOnMilestoneBranch defined once
+      (src/git/branch.ts), imported into both src/core/tasks/update.ts (2 call
+      sites: candidate-check + completion-commit) and
+      src/core/milestones/complete.ts (2 call sites, both in_progress and
+      completed-resume paths) -- never duplicated. Function body only reads
+      currentBranch(cwd) and throws GitError on mismatch; contains zero
+      git-mutating calls, never runs a checkout. Returns immediately (true
+      no-op) when expectedBranchName is null, exactly the
+      main-strategy/untracked case. T003's own dedicated integration tests
+      (task-update.test.ts, milestone-complete.test.ts) confirm a deliberate
+      mismatch refuses cleanly with nothing staged/committed before this guard's
+      own diagnostic fires."
+    recorded_by: developer

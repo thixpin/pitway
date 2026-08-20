@@ -2,7 +2,7 @@
 schema_version: 1
 id: M012
 title: Milestone Git branch isolation
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-20T08:35:09Z
 verification_approved_hash: sha256:8d70813bfbb5ea919328240257d2ff0824af01182ef491b55039843e868d909b
