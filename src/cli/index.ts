@@ -22,6 +22,7 @@ import { registerUsageAddCommand } from './commands/usage-add.js';
 import { registerVerificationRepairCommand } from './commands/verification-repair.js';
 import { registerVerifyCommand } from './commands/verify.js';
 import { registerWriteMsArtifactsCommand } from './commands/write-ms-artifacts.js';
+import { installWorktreeGuard } from './worktree-guard.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(here, '../../package.json'), 'utf8')) as {
@@ -43,6 +44,9 @@ export function buildCli(): Command {
 }
 
 export function registerAllCommands(program: Command, deps: CommandDeps = {}): void {
+  // AC005/T005 (M014): fail-closed worktree guard, installed once for every
+  // command -- present and future -- rather than per-command enumeration.
+  installWorktreeGuard(program, deps);
   registerAutoRunCommand(program, deps);
   registerInitCommand(program, deps);
   registerMilestoneAddCommand(program, deps);

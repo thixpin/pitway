@@ -235,7 +235,7 @@ tasks:
       task-verify, milestone-complete, and one never-enumerated command (init)
       all refuse; task-status --context, resume, and verify --status still run;
       bare verify refuses; everything unchanged in a normal repo root."
-    status: ready
+    status: completed
     depends_on:
       - T003
     acceptance_criteria:
@@ -255,7 +255,15 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/worktree-state-guard.test.ts
-    result: null
+    result:
+      summary: "[truncated] rktree's milestone/task and the authoritative main root
+        (derived from the common git dir). Tests prove refusals for task-update,
+        task-verify, milestone-complete, bare verify, and the never-enumerated
+        init; permitted reads still work in the worktree; everything unchanged
+        in a normal root."
+      evidence: Tests  7 passed (7) | Start at  19:36:13 | Duration  4.64s (transform
+        189ms, setup 0ms, import 283ms, tests 4.27s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T006
     name: Integration engine
@@ -384,7 +392,7 @@ tasks:
       shape change in the same task. Tests: discard-then-redispatch;
       blocked-refusal on live dispatch; all four residue classes; sequential
       repos untouched."
-    status: waiting
+    status: ready
     depends_on:
       - T004
       - T005
