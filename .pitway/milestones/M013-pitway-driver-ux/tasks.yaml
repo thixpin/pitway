@@ -1,0 +1,329 @@
+schema_version: 1
+tasks:
+  - id: T001
+    objective: "Extract the per-check latest-result derivation currently private
+      inside `src/core/milestones/complete.ts`'s `assertGatesSatisfied` into one
+      small, shared, exported Core function, e.g.
+      `src/core/verification/status.ts`: `computeLatestCheckResults(root:
+      string, milestoneId: string, contract: ContractFile): Map<string, 'pass' |
+      'fail'>` (or an equivalent narrow return shape). Refactor `complete.ts` to
+      call this helper instead of its own private copy -- zero behavior change,
+      proven by the existing `milestone-complete` test suite passing unchanged.
+      Then add a `--status` flag to `pitway verify <id>`
+      (`src/cli/commands/verify.ts`): reads `verification-results.yaml` via the
+      new shared helper and renders every declared check with its latest
+      recorded status (`✅ pass` / `❌ fail`) or `⏳ pending` when nothing has been
+      recorded yet, without executing any command and without mutating
+      `verification-results.yaml`. Works regardless of milestone status (draft
+      through completed). This is the first task in the graph because AC003's
+      workload percentage and AC004/AC005's footer/report all need this same
+      shared helper to derive a `verificationPassed` boolean -- one
+      implementation, not reimplemented per caller."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC008
+    context_files:
+      - src/core/milestones/complete.ts
+      - src/cli/commands/verify.ts
+      - src/core/verification/run.ts
+      - src/state/store.ts
+      - src/core/verification/status.ts
+      - tests/unit/verification-status.test.ts
+      - tests/integration/verify.test.ts
+      - tests/integration/milestone-complete.test.ts
+    write_scope:
+      - src/core/verification/status.ts
+      - src/core/milestones/complete.ts
+      - src/cli/commands/verify.ts
+      - tests/unit/verification-status.test.ts
+      - tests/integration/verify.test.ts
+      - tests/integration/milestone-complete.test.ts
+    mapped_ac_ids:
+      - AC008
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/verification-status.test.ts
+        tests/integration/milestone-complete.test.ts
+        tests/integration/verify.test.ts
+    result: null
+    usage: null
+  - id: T002
+    objective: "Add an additive-optional `name: z.string().min(1).max(80)` field to
+      `taskSchema` (`src/state/schemas.ts`), mirroring
+      `contractFrontmatterSchema.title`'s shape but capped as a short label.
+      Surface it with id-fallback in `pitway resume`'s task list
+      (`buildResumeView`/`renderResumeHuman`, `src/cli/commands/resume.ts`) and
+      `pitway task-status <id>` (`src/cli/commands/task-status.ts`), both human
+      and `--json` output. Add a unit test proving a pre-existing `tasks.yaml`
+      fixture with no `name` on any task still parses unchanged, and a second
+      test round-tripping a task with `name` set. Extend the resume/task-status
+      integration tests to cover both the with-name and without-name (id-only,
+      byte-identical to today) rendering cases."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC001
+      - AC002
+    context_files:
+      - src/state/schemas.ts
+      - src/cli/commands/resume.ts
+      - src/cli/commands/task-status.ts
+      - tests/unit/schemas.test.ts
+      - tests/integration/resume.test.ts
+      - tests/integration/task-status.test.ts
+    write_scope:
+      - src/state/schemas.ts
+      - src/cli/commands/resume.ts
+      - src/cli/commands/task-status.ts
+      - tests/unit/schemas.test.ts
+      - tests/integration/resume.test.ts
+      - tests/integration/task-status.test.ts
+    mapped_ac_ids:
+      - AC001
+      - AC002
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/schemas.test.ts tests/integration/resume.test.ts
+        tests/integration/task-status.test.ts
+    result: null
+    usage: null
+  - id: T003
+    objective: "Add a new, pure, exported Core function
+      (`src/core/milestones/workload.ts`, `computeWorkloadPercentage(status:
+      MilestoneStatus, progress: MilestoneProgress, verificationPassed:
+      boolean): number`) implementing the exact five-band cumulative workload
+      formula: drafting 5%; +5% (10% cumulative) once confirmed or later;
+      weighted task execution up to +75% (85% cumulative) scaled by
+      `progress.completed / progress.total` (0 when total is 0); +10% (95%
+      cumulative) once `verificationPassed` is true; +5% (100%, only exactly
+      100%) once `status` is `completed`. Round to nearest integer. Unit tests
+      must prove the exact boundary values described in AC003: draft->5,
+      confirmed/0-progress->10, confirmed/all-tasks-done/not- verified->85,
+      confirmed/all-tasks-done/verified->95, completed->100 (and no other
+      combination yields 100)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC003
+    context_files:
+      - src/core/milestones/progress.ts
+      - src/state/schemas.ts
+      - src/core/milestones/workload.ts
+      - tests/unit/workload.test.ts
+    write_scope:
+      - src/core/milestones/workload.ts
+      - tests/unit/workload.test.ts
+    mapped_ac_ids:
+      - AC003
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/workload.test.ts
+    result: null
+    usage: null
+  - id: T004
+    objective: "Add a new, pure, exported Core function
+      (`src/core/tasks/critical-path.ts`, `computeCriticalPath(tasks: Task[]):
+      string[]`) computing the longest chain of not-completed, not-cancelled
+      tasks connected by `depends_on`, ties broken by ascending task id. Assumes
+      the graph is already proven acyclic (the same guarantee
+      `resolveReadyTasks` in `src/core/tasks/dependencies.ts` already relies on
+      -- no second cycle check performed here). Unit tests: a fixture DAG with a
+      known longest chain asserts the exact returned id sequence; a fixture
+      where every required task is already completed returns `[]`."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC006
+    context_files:
+      - src/core/tasks/dependencies.ts
+      - src/state/schemas.ts
+      - src/core/tasks/critical-path.ts
+      - tests/unit/critical-path.test.ts
+    write_scope:
+      - src/core/tasks/critical-path.ts
+      - tests/unit/critical-path.test.ts
+    mapped_ac_ids:
+      - AC006
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/critical-path.test.ts
+    result: null
+    usage: null
+  - id: T005
+    objective: "Add a new Core function (`src/core/milestones/footer.ts`,
+      `computeRacingFooter(...)`) rendering the exact one-line racing footer
+      `🏎️ ~<workload>% · ✅ <completed>/<total> · Next: <task/gate>` using
+      T003's workload percentage and the existing `computeMilestoneProgress`
+      count. Extract the next-dependency-ready-task/gate resolution currently
+      private inside `resume.ts`'s `buildResumeView` into one shared exported
+      helper so `resume` and `milestone-status` never duplicate it. Returns
+      `null` when `status` is `draft`. Icon precedence: `🏁` (status completed,
+      trailing segment reads `Complete`) > `🔧` (any task `blocked`) > `🏁` (all
+      required tasks completed, milestone not yet completed, trailing segment
+      reads `Next: <task/gate>` -- shares the `🏁` icon with the completed case,
+      distinguished only by that trailing text) > `🏎️` (default). Wire a
+      `footer: string | null` field into both `pitway resume` and `pitway
+      milestone-status <id>` (human: final line when non-null, entirely absent
+      when null; `--json`: the field is always present, `null` when withheld).
+      Unit tests cover all four icon cases plus the draft-returns- null case;
+      integration tests confirm the footer line appears/is absent correctly in
+      both commands' human and JSON output."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+      - T003
+    acceptance_criteria:
+      - AC004
+    context_files:
+      - src/cli/commands/resume.ts
+      - src/cli/commands/milestone-status.ts
+      - src/core/milestones/workload.ts
+      - src/core/verification/status.ts
+      - src/core/milestones/progress.ts
+      - src/core/milestones/footer.ts
+      - tests/unit/footer.test.ts
+      - tests/integration/resume.test.ts
+      - tests/integration/milestone-status.test.ts
+    write_scope:
+      - src/core/milestones/footer.ts
+      - src/cli/commands/resume.ts
+      - src/cli/commands/milestone-status.ts
+      - tests/unit/footer.test.ts
+      - tests/integration/resume.test.ts
+      - tests/integration/milestone-status.test.ts
+    mapped_ac_ids:
+      - AC004
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/footer.test.ts tests/integration/resume.test.ts
+        tests/integration/milestone-status.test.ts
+    result: null
+    usage: null
+  - id: T006
+    objective: "Add a `--report` flag to `pitway milestone-status <id>` rendering
+      the on-demand structured Progress Report, in order: title; T003's workload
+      percentage plus completed/total count; recorded token total and
+      missing-usage count (existing `aggregateUsage`, unchanged); a task table
+      (id; `name` when present via T002, else `objective` truncated to 60 chars
+      with a trailing ellipsis when cut; execution mode when recorded, blank
+      otherwise; evidence-honest status per AC007 -- `completed · verified` only
+      when a `task_verify_evidence` journal record for that exact milestone+task
+      has an `evidence` string matching the task's persisted `result.evidence`
+      (add a small exported helper, e.g. `hasVerifiedEvidence(root, milestoneId,
+      task): boolean`, to `src/core/tasks/update.ts`, reusing `readJournal`
+      (`src/state/journal.ts`) the same way `resolveTaskVerifyEvidence` already
+      does rather than a second scanning implementation), plain `completed`
+      otherwise, every other status via the existing `taskStatusLabel`;
+      runtime-reported task tokens or `N/A`); T004's critical path; the active
+      in-progress task and next ready task; a token breakdown limited to
+      task/planning/qa/total/missing -- explicitly no `driver_overhead` line
+      (see contract Objective); T005's racing footer as the final line.
+      `--report` composes with `--json` exactly as the command's existing
+      default view does. Integration tests cover: the full report shape
+      end-to-end against a real fixture milestone with a mix of
+      verified/plain-completed/in-progress/ready tasks (including at least one
+      completed task with a real task-verify evidence record and one completed
+      via plain `--result`/`--message`); the token-breakdown section contains no
+      driver_overhead key in either human or JSON output; a task with no `name`
+      renders its truncated objective, not a bare id."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+      - T005
+    acceptance_criteria:
+      - AC005
+      - AC007
+    context_files:
+      - src/cli/commands/milestone-status.ts
+      - src/core/milestones/workload.ts
+      - src/core/milestones/footer.ts
+      - src/core/tasks/critical-path.ts
+      - src/core/verification/status.ts
+      - src/core/metrics/aggregate.ts
+      - src/cli/format.ts
+      - src/core/tasks/update.ts
+      - src/state/journal.ts
+      - tests/integration/milestone-status.test.ts
+    write_scope:
+      - src/cli/commands/milestone-status.ts
+      - src/core/tasks/update.ts
+      - tests/integration/milestone-status.test.ts
+    mapped_ac_ids:
+      - AC005
+      - AC007
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-status.test.ts
+    result: null
+    usage: null
+  - id: T007
+    objective: "Add a new `protocol-driver.md` section documenting: the ADD-style
+      concise routine-update convention (5-field cap, expand only for a
+      blocker/gate/failed-verification/scope-conflict/final report); the rule
+      that every routine update ends with T005's racing footer once (and only
+      once) the milestone is confirmed, with no footer or footer-explanation
+      text before that; and one-line descriptions of the two new read-only
+      flags, `verify <id> --status` (T001) and `milestone-status <id> --report`
+      (T006). Explicitly disclose, matching `required_skills`'s own disclosure
+      pattern, that PitWay has no mechanism to verify a driver session actually
+      appends the footer or keeps updates terse -- only that the underlying
+      data/rendering is correct when invoked. A single targeted insertion into
+      the existing file; no other file is touched to satisfy this task."
+    status: waiting
+    depends_on:
+      - T001
+      - T005
+      - T006
+    acceptance_criteria:
+      - AC009
+    context_files:
+      - src/integrations/claude/protocol-driver.md
+    write_scope:
+      - src/integrations/claude/protocol-driver.md
+    mapped_ac_ids:
+      - AC009
+    verification:
+      strategy: manual
+      detail: Confirm the new protocol-driver.md section documents the ADD-style
+        convention, the footer-after-confirmation rule, and both new flags, with
+        the disclosed can't-verify-the-habit caveat; confirm only this file
+        changed.
+    result: null
+    usage: null
+  - id: T008
+    objective: "Reconcile `IMPLEMENTATION_PLAN.md` to this milestone's actual
+      delivered scope: revision header; §7's command-surface sentence/table
+      (still eighteen commands -- `verify` and `milestone-status` each gain a
+      flag); §9's Claude-asset count basis (confirm and state explicitly whether
+      it changes); the Bootstrap delivery table gains M012's row; the Revised
+      Roadmap's M013 entry is rewritten from its placeholder to describe actual
+      delivery, including the disclosed driver_overhead- omission deviation; the
+      Status paragraph. Update the `Backlog / Pending Candidates` section's
+      `Task human-readable name field` entry to record it as delivered by this
+      milestone rather than an open candidate -- add a new Backlog entry for the
+      deferred missing-`.pitway/`-state diagnostic (evaluated and deferred per
+      this contract's Out-of-scope section, pending a shared CLI error-handling
+      entry point). This task also runs this milestone's own
+      full-suite/typecheck regression gate exactly once: `npm test && npx tsc
+      --noEmit`."
+    status: waiting
+    depends_on:
+      - T007
+    acceptance_criteria:
+      - AC010
+    context_files:
+      - IMPLEMENTATION_PLAN.md
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+    mapped_ac_ids:
+      - AC010
+    verification:
+      strategy: command
+      detail: npm test && npx tsc --noEmit
+    result: null
+    usage: null
