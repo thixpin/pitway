@@ -17,14 +17,20 @@ acceptance_criteria:
       empty (no migration for M001-M014; the file is created on first write,
       never by milestone-add). Shape: `sessions[]`, each with a generated id
       (`rev-<hex>`), `status: open | decided`, `created_at`, the selected
-      `roles[]`, a `content_hash` (sha256 over the raw `contract.md` bytes PLUS
-      a canonical JSON projection of every task's DEFINITION — id, name,
+      `roles[]`, a `content_hash` (sha256 over a canonical JSON projection of
+      the contract's own CONTENT — `id`, `title`, `requirement`,
+      `acceptance_criteria`, `verification` — PLUS the raw body text, PLUS a
+      canonical JSON projection of every task's DEFINITION — id, name,
       objective, depends_on, acceptance_criteria,
       context_files/write_scope/relevant_files, mapped_ac_ids, required_skills,
-      verification — deliberately excluding status/attempts/result/usage:
-      reviewers review the milestone's CONTENT, and execution telemetry is not a
-      revision, so task transitions and confirm's own planned→waiting/ready
-      promotion never stale a session while a real
+      verification — deliberately excluding, on BOTH the contract and task
+      sides, every execution/lifecycle field: `status`, `confirmed_at`,
+      `verification_approved_hash`, `base_branch`, `base_revision` on the
+      contract; `status`/`attempts`/`result`/`usage` on tasks: reviewers review
+      the milestone's CONTENT, and execution telemetry is not a revision, so
+      task transitions AND `milestone-confirm`'s own status promotion
+      (draft→confirmed→in_progress, which also sets `confirmed_at` and
+      `verification_approved_hash`) never stale a session while a real
       `task-amend`/`--replace`/`--amend` correctly does; the same
       canonicalize-then-hash discipline as `verification_approved_hash`, which
       hashes the canonical verification block, never raw file bytes),
@@ -420,8 +426,11 @@ decisions); the driver dispatches the actual reviewers.
    advisory-honesty register, stated in the docs verbatim. Confirmation
    and completion stay uncoupled from review sessions in MVP — the human
    gate already owns that judgment.
-4. **Hash-gated staleness over CONTENT, not execution.** A session pins
-   a hash of contract.md bytes + a canonical task-DEFINITION projection
+4. **Hash-gated staleness over CONTENT, not execution.** A session pins a
+   hash of a canonical contract-CONTENT projection (id/title/requirement/
+   acceptance_criteria/verification + body — execution/lifecycle fields
+   status/confirmed_at/verification_approved_hash/base_branch/base_revision
+   excluded) + a canonical task-DEFINITION projection
    (status/attempts/result/usage excluded) at start; `brief`/`record`
    refuse on mismatch. Real revisions (`task-amend`, `--replace`,
    `--amend`) invalidate; task transitions and confirm's own status
@@ -501,3 +510,20 @@ decisions); the driver dispatches the actual reviewers.
   gains open-session discovery; missing T004 dependency edges, findings
   caps, target normalization, parseAsync switch, and injected-stream TTY
   detection all pinned at drafting.
+- 2026-08-21 — Gate-caught defect fix (T008's real-lifecycle test, the
+  M012/T005-M013/T008-M014/T011 widening precedent): `content_hash`'s
+  contract-side component was implemented as literal raw `contract.md`
+  file bytes, so `milestone-confirm`'s own status/confirmed_at/
+  verification_approved_hash rewrite staled every session opened before
+  confirm — directly contradicting decision 4 ("confirm's own status
+  promotion never [stales a session]") and AC001's own "never raw file
+  bytes" precedent-match to `verification_approved_hash`. Corrected to a
+  canonical content-only projection of the contract's frontmatter
+  (id/title/requirement/acceptance_criteria/verification) + body,
+  excluding the same class of execution/lifecycle fields the task-side
+  projection already excluded. AC001's text and decision 4 both corrected
+  to match; `computeReviewContentHash`'s signature changed from raw text
+  to the parsed contract (`src/core/reviews/roles.ts`,
+  `src/core/reviews/session.ts`, `tests/unit/review-state.test.ts` —
+  T008's write_scope widened to cover the fix and its existing unit
+  tests, since it was T008's own real-lifecycle test that caught this).

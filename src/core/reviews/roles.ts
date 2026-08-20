@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { ReviewFindingsSnapshot, Task } from '../../state/schemas.js';
+import type { ContractFrontmatter, ReviewFindingsSnapshot, Task } from '../../state/schemas.js';
 
 export class ReviewRoleError extends Error {}
 
@@ -137,9 +137,38 @@ function projectTaskDefinition(task: Task): TaskDefinitionProjection {
   };
 }
 
-// AC001's content_hash: sha256 over the raw contract.md bytes PLUS a
-// canonical JSON projection of every task's DEFINITION -- the same
-// canonicalize-then-hash discipline as verification_approved_hash
+// Contract-side projection: id/title/requirement/acceptance_criteria/
+// verification only -- deliberately excluding every execution/lifecycle
+// field (status, confirmed_at, verification_approved_hash, base_branch,
+// base_revision), the contract-side mirror of projectTaskDefinition's own
+// status/attempts/result/usage exclusion. Fixed 2026-08-21 (T008's
+// real-lifecycle test caught this): the original implementation hashed
+// contract.md's raw file bytes wholesale, so milestone-confirm's own
+// status/confirmed_at/verification_approved_hash rewrite staled every
+// session opened before confirm -- directly contradicting decision 4
+// ("confirm's own status promotion never [stales a session]").
+interface ContractContentProjection {
+  id: string;
+  title: string;
+  requirement: string | null;
+  acceptance_criteria: ContractFrontmatter['acceptance_criteria'];
+  verification: ContractFrontmatter['verification'];
+}
+
+function projectContractContent(frontmatter: ContractFrontmatter): ContractContentProjection {
+  return {
+    id: frontmatter.id,
+    title: frontmatter.title,
+    requirement: frontmatter.requirement,
+    acceptance_criteria: frontmatter.acceptance_criteria,
+    verification: frontmatter.verification,
+  };
+}
+
+// AC001's content_hash: sha256 over a canonical JSON projection of the
+// contract's own CONTENT + its raw body text, PLUS a canonical JSON
+// projection of every task's DEFINITION -- the same canonicalize-then-hash
+// discipline as verification_approved_hash
 // (src/core/contracts/verification-hash.ts), which hashes the canonical
 // verification block rather than raw file bytes. `tasks` is expected in
 // tasks.yaml's own on-disk order; a stable projection order (not sorted by
@@ -147,9 +176,14 @@ function projectTaskDefinition(task: Task): TaskDefinitionProjection {
 // which is the intended, disclosed behavior -- content_hash covers the
 // milestone's CONTENT as currently persisted, not a normalized abstraction
 // of it.
-export function computeReviewContentHash(contractText: string, tasks: Task[]): string {
-  const projection = tasks.map(projectTaskDefinition);
-  const canonical = JSON.stringify(projection);
-  const combined = `${contractText}\n${canonical}`;
-  return `sha256:${createHash('sha256').update(combined).digest('hex')}`;
+export function computeReviewContentHash(
+  contract: { frontmatter: ContractFrontmatter; body: string },
+  tasks: Task[],
+): string {
+  const canonical = JSON.stringify({
+    contract: projectContractContent(contract.frontmatter),
+    body: contract.body,
+    tasks: tasks.map(projectTaskDefinition),
+  });
+  return `sha256:${createHash('sha256').update(canonical).digest('hex')}`;
 }

@@ -1,8 +1,6 @@
 import { randomUUID, randomBytes } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { appendJournalEntry } from '../../state/journal.js';
-import { loadContract, loadReviews, loadTasks, resolveMilestoneDirName, saveReviews } from '../../state/store.js';
+import { loadContract, loadReviews, loadTasks, saveReviews } from '../../state/store.js';
 import type { ReviewSession } from '../../state/schemas.js';
 import { assertKnownReviewRoles, computeReviewContentHash } from './roles.js';
 
@@ -40,22 +38,16 @@ function generateSessionId(): string {
   return `rev-${randomBytes(6).toString('hex')}`;
 }
 
-// Raw on-disk bytes, not a re-serialized reconstruction -- AC001's
-// content_hash covers contract.md exactly as currently persisted (draft
-// milestones have no baseline commit yet, so this must read the working
-// tree, matching what brief/record recompute later to detect drift).
-export function readContractRawText(root: string, milestoneId: string): string {
-  const dir = resolveMilestoneDirName(root, milestoneId);
-  return readFileSync(join(root, '.pitway', 'milestones', dir, 'contract.md'), 'utf8');
-}
-
 // Exported for T004/T005's staleness gate: recomputes the same content_hash
 // a session pinned at start, from the milestone's CURRENT on-disk contract
-// + task definitions.
+// content + task definitions (never raw file bytes -- see
+// computeReviewContentHash's own fixed-2026-08-21 note: execution/lifecycle
+// fields are excluded so milestone-confirm's own status rewrite never trips
+// this).
 export function computeCurrentReviewContentHash(root: string, milestoneId: string): string {
-  const contractText = readContractRawText(root, milestoneId);
+  const contract = loadContract(root, milestoneId);
   const tasks = loadTasks(root, milestoneId).tasks;
-  return computeReviewContentHash(contractText, tasks);
+  return computeReviewContentHash(contract, tasks);
 }
 
 // AC002: unknown/duplicate/empty role refusals, each naming the offenders.

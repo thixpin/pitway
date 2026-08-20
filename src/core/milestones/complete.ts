@@ -48,6 +48,10 @@ const completionPaths = (root: string, milestoneId: string): string[] => {
     `.pitway/milestones/${dir}/verification-results.yaml`,
     `.pitway/milestones/${dir}/verification-repairs.yaml`,
     `.pitway/milestones/${dir}/usage.yaml`,
+    // M015/T008 (AC008): a review recorded after the last task completes
+    // rides the completion commit like every other per-milestone file
+    // above. Subset semantics keep this harmless when absent.
+    `.pitway/milestones/${dir}/reviews.yaml`,
     '.pitway/state.yaml',
   ];
 };

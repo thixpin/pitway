@@ -322,29 +322,53 @@ describe('computeReviewContentHash (AC001)', () => {
     result: null,
     usage: null,
   };
-  const contractText = '---\nid: M001\n---\nbody\n';
+  const baseContract = {
+    frontmatter: {
+      schema_version: 1 as const,
+      id: 'M001',
+      title: 'Example milestone',
+      status: 'draft' as const,
+      requirement: null,
+      confirmed_at: null,
+      verification_approved_hash: null,
+      acceptance_criteria: [{ id: 'AC001', text: 'Behavior holds.' }],
+      verification: [
+        { id: 'CT001', criterion: 'AC001', type: 'manual' as const, instruction: 'Check it.' },
+      ],
+    },
+    body: 'body\n',
+  };
 
   it('is deterministic for the same inputs', () => {
-    const a = computeReviewContentHash(contractText, [baseTask]);
-    const b = computeReviewContentHash(contractText, [baseTask]);
+    const a = computeReviewContentHash(baseContract, [baseTask]);
+    const b = computeReviewContentHash(baseContract, [baseTask]);
     expect(a).toBe(b);
     expect(a).toMatch(/^sha256:[0-9a-f]{64}$/);
   });
 
-  it('changes when the contract text changes', () => {
-    const a = computeReviewContentHash(contractText, [baseTask]);
-    const b = computeReviewContentHash('---\nid: M001\n---\nother body\n', [baseTask]);
+  it('changes when the contract body changes', () => {
+    const a = computeReviewContentHash(baseContract, [baseTask]);
+    const b = computeReviewContentHash({ ...baseContract, body: 'other body\n' }, [baseTask]);
+    expect(a).not.toBe(b);
+  });
+
+  it('changes when a contract CONTENT field changes (title)', () => {
+    const a = computeReviewContentHash(baseContract, [baseTask]);
+    const b = computeReviewContentHash(
+      { ...baseContract, frontmatter: { ...baseContract.frontmatter, title: 'Renamed' } },
+      [baseTask],
+    );
     expect(a).not.toBe(b);
   });
 
   it('changes when a task DEFINITION field changes (objective)', () => {
-    const a = computeReviewContentHash(contractText, [baseTask]);
-    const b = computeReviewContentHash(contractText, [{ ...baseTask, objective: 'Do a different thing' }]);
+    const a = computeReviewContentHash(baseContract, [baseTask]);
+    const b = computeReviewContentHash(baseContract, [{ ...baseTask, objective: 'Do a different thing' }]);
     expect(a).not.toBe(b);
   });
 
   it('does NOT change when only status/attempts/result/usage change (execution telemetry excluded)', () => {
-    const a = computeReviewContentHash(contractText, [baseTask]);
+    const a = computeReviewContentHash(baseContract, [baseTask]);
     const executed: Task = {
       ...baseTask,
       status: 'completed',
@@ -352,7 +376,24 @@ describe('computeReviewContentHash (AC001)', () => {
       result: { summary: 'done', evidence: 'tests pass' },
       usage: { total_tokens: 42 },
     };
-    const b = computeReviewContentHash(contractText, [executed]);
+    const b = computeReviewContentHash(baseContract, [executed]);
+    expect(a).toBe(b);
+  });
+
+  it('does NOT change when only the contract\'s own execution/lifecycle fields change (confirm never stales a session)', () => {
+    const a = computeReviewContentHash(baseContract, [baseTask]);
+    const confirmed = {
+      ...baseContract,
+      frontmatter: {
+        ...baseContract.frontmatter,
+        status: 'in_progress' as const,
+        confirmed_at: '2026-08-21T00:00:00Z',
+        verification_approved_hash: 'sha256:' + 'a'.repeat(64),
+        base_branch: 'pitway/M001-example',
+        base_revision: 'deadbeef',
+      },
+    };
+    const b = computeReviewContentHash(confirmed, [baseTask]);
     expect(a).toBe(b);
   });
 });

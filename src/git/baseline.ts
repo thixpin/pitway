@@ -46,6 +46,12 @@ export function computeExpectedBaselinePaths(
     `.pitway/milestones/${milestoneDir}/verification-results.yaml`,
     `.pitway/milestones/${milestoneDir}/verification-repairs.yaml`,
     `.pitway/milestones/${milestoneDir}/usage.yaml`,
+    // M015/T008 (AC008): a reviewed draft must confirm cleanly -- its
+    // reviews.yaml (materialized via review start/record before
+    // confirmation) rides the baseline commit like every other
+    // per-milestone file above. Subset semantics keep this harmless when
+    // the file is absent (no review ever happened before confirm).
+    `.pitway/milestones/${milestoneDir}/reviews.yaml`,
     ...extraExpectedPaths,
   ];
   if (requirementId) paths.push(`.pitway/requirements/${requirementId}.md`);

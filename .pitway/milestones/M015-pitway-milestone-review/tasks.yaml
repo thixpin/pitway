@@ -381,7 +381,7 @@ tasks:
       task completes rides the milestone-complete commit; quick-change create
       refuses while a review write is pending (disclosed edge); control:
       genuinely unrelated dirt still refuses everywhere."
-    status: ready
+    status: completed
     depends_on:
       - T005
     acceptance_criteria:
@@ -395,17 +395,34 @@ tasks:
       - src/core/tasks/integrate.ts
       - src/core/journal/operations.ts
       - src/core/reviews/record.ts
+      - src/core/reviews/roles.ts
+      - src/core/reviews/session.ts
+      - src/state/schemas.ts
       - tests/integration/review-state-lifecycle.test.ts
+      - tests/unit/review-state.test.ts
+      - tests/unit/git-baseline.test.ts
     write_scope:
       - src/git/baseline.ts
       - src/core/milestones/complete.ts
+      - src/core/reviews/roles.ts
+      - src/core/reviews/session.ts
       - tests/integration/review-state-lifecycle.test.ts
+      - tests/unit/review-state.test.ts
+      - tests/unit/git-baseline.test.ts
     mapped_ac_ids:
       - AC008
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/review-state-lifecycle.test.ts
-    result: null
+    result:
+      summary: "[truncated] ing precedent (contract amended, T008's write_scope
+        widened twice: once for roles.ts/session.ts/review-state.test.ts, once
+        more for tests/unit/git-baseline.test.ts's own now-stale exact-path
+        assertion, caught by a full-suite run). Full suite (1084/1084) and
+        typecheck clean after the fix."
+      evidence: Tests  2 passed (2) | Start at  00:49:23 | Duration  3.36s (transform
+        373ms, setup 0ms, import 504ms, tests 2.77s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T009
     name: End-to-end review lifecycle test
@@ -424,7 +441,7 @@ tasks:
       (default-deny, no guard changes) and works at the main root. Test-only
       task: no src/ changes; any product defect stops work per the
       contract-conflict rule."
-    status: waiting
+    status: ready
     depends_on:
       - T003
       - T004

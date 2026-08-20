@@ -43,6 +43,7 @@ describe('computeExpectedBaselinePaths', () => {
       '.pitway/milestones/M002/verification-results.yaml',
       '.pitway/milestones/M002/verification-repairs.yaml',
       '.pitway/milestones/M002/usage.yaml',
+      '.pitway/milestones/M002/reviews.yaml',
     ]);
   });
 
