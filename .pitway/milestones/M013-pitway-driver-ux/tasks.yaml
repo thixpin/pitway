@@ -198,7 +198,7 @@ tasks:
       Unit tests cover all four icon cases plus the draft-returns- null case;
       integration tests confirm the footer line appears/is absent correctly in
       both commands' human and JSON output."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -228,7 +228,15 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/unit/footer.test.ts tests/integration/resume.test.ts
         tests/integration/milestone-status.test.ts
-    result: null
+    result:
+      summary: "[truncated] ly-remains > running, the last two sharing the 🏁 icon.
+        Fixed a pre-existing test assertion in milestone-status.test.ts that
+        asserted no percentages anywhere in human output -- the footer is the
+        one sanctioned exception (decision 5's carve-out), everything above it
+        stays percentage-free."
+      evidence: Tests  29 passed (29) | Start at  17:12:35 | Duration  2.33s
+        (transform 450ms, setup 0ms, import 683ms, tests 3.24s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T006
     objective: "Add a `--report` flag to `pitway milestone-status <id>` rendering
@@ -257,7 +265,7 @@ tasks:
       via plain `--result`/`--message`); the token-breakdown section contains no
       driver_overhead key in either human or JSON output; a task with no `name`
       renders its truncated objective, not a bare id."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002

@@ -1,6 +1,8 @@
 import type { Command } from 'commander';
 import { loadContract, loadTasks, loadUsage } from '../../state/store.js';
 import { computeMilestoneProgress, type MilestoneProgress } from '../../core/milestones/progress.js';
+import { computeRacingFooter } from '../../core/milestones/footer.js';
+import { allChecksPassed, computeLatestCheckResults } from '../../core/verification/status.js';
 import { aggregateUsage, type UsageAggregate } from '../../core/metrics/aggregate.js';
 import { resolveCommitSha } from '../../git/trailers.js';
 import { renderOutput } from '../output.js';
@@ -15,6 +17,8 @@ export interface MilestoneStatusView {
   baselineSha: string | null;
   aggregate: UsageAggregate;
   tasks: Array<{ id: string; status: TaskStatus }>;
+  // AC004 (M013): null before milestone-confirm has run.
+  footer: string | null;
 }
 
 export function buildMilestoneStatusView(root: string, milestoneId: string): MilestoneStatusView {
@@ -23,14 +27,17 @@ export function buildMilestoneStatusView(root: string, milestoneId: string): Mil
   // AC005/T005 (M012): bounds the search when this milestone tracks a
   // branch (base_revision non-null); unbounded (today's behavior) otherwise.
   const since = contract.frontmatter.base_revision ?? undefined;
+  const progress = computeMilestoneProgress(tasksFile.tasks);
+  const verificationPassed = allChecksPassed(contract, computeLatestCheckResults(root, milestoneId));
   return {
     id: contract.frontmatter.id,
     title: contract.frontmatter.title,
     status: contract.frontmatter.status,
-    progress: computeMilestoneProgress(tasksFile.tasks),
+    progress,
     baselineSha: resolveCommitSha(root, { milestone: milestoneId, ...(since !== undefined ? { since } : {}) }) ?? null,
     aggregate: aggregateUsage(tasksFile.tasks, loadUsage(root, milestoneId)),
     tasks: tasksFile.tasks.map((t) => ({ id: t.id, status: t.status })),
+    footer: computeRacingFooter(contract.frontmatter.status, progress, verificationPassed, tasksFile.tasks),
   };
 }
 
@@ -61,6 +68,7 @@ export function renderMilestoneStatusHuman(view: MilestoneStatusView): string {
   for (const t of view.tasks) {
     lines.push(`  ${t.id}  ${taskStatusLabel(t.status)}`);
   }
+  if (view.footer !== null) lines.push('', view.footer);
   return lines.join('\n');
 }
 

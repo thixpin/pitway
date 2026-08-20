@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { saveContract, saveTasks, saveUsage } from '../../src/state/store.js';
+import { saveContract, saveTasks, saveUsage, saveVerificationResults } from '../../src/state/store.js';
 import { buildCli } from '../../src/cli/index.js';
 import { registerMilestoneStatusCommand } from '../../src/cli/commands/milestone-status.js';
 import type { ContractFrontmatter, Task } from '../../src/state/schemas.js';
@@ -46,6 +46,10 @@ beforeEach(() => {
   git(['config', 'user.name', 'Test'], root);
 
   mkdirSync(join(root, '.pitway', 'milestones', 'M001'), { recursive: true });
+  // M013/T005: buildMilestoneStatusView now also derives the racing footer,
+  // which reads verification-results.yaml via the shared status helper --
+  // present (empty) on every real milestone-add-created milestone.
+  saveVerificationResults(root, 'M001', { schema_version: 1, results: [] });
   saveContract(root, 'M001', { frontmatter, body: '\n# Contract\n' });
   saveTasks(root, 'M001', {
     schema_version: 1,
@@ -84,7 +88,7 @@ describe('pitway milestone-status', () => {
     expect(view.tasks).toHaveLength(4);
   });
 
-  it('renders human output with per-task status labels and no percentages', async () => {
+  it('renders human output with per-task status labels and no percentages outside the racing footer', async () => {
     const program = buildCli();
     const lines: string[] = [];
     registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
@@ -94,8 +98,13 @@ describe('pitway milestone-status', () => {
     expect(output).toContain('Test Milestone');
     expect(output).toContain('T001');
     expect(output).toContain('Completed');
-    expect(output).not.toContain('%');
-    expect(output).not.toMatch(/\b\d+%/);
+    // M013/AC004: the racing footer is the one sanctioned exception to the
+    // no-percentages rule (decision 5) -- everything above it stays free of
+    // any percentage.
+    const [body, footer] = output.split('\n\n🏎️');
+    expect(body).not.toContain('%');
+    expect(body).not.toMatch(/\b\d+%/);
+    expect(footer).toMatch(/^ \d+% ·/);
   });
 });
 
@@ -158,5 +167,33 @@ describe('pitway milestone-status usage aggregation', () => {
     const output = await runStatus();
     expect(output).toContain('Tokens: 84.2k');
     expect(output).not.toMatch(/tasks? N\/A/);
+  });
+});
+
+// AC004 (M013/T005): the racing footer, wired into milestone-status.
+describe('pitway milestone-status racing footer (M013/T005)', () => {
+  it('is entirely absent (not blank) for a draft milestone', async () => {
+    saveContract(root, 'M001', { frontmatter: { ...frontmatter, status: 'draft' }, body: '\n# Contract\n' });
+    saveTasks(root, 'M001', { schema_version: 1, tasks: [task({ id: 'T001', status: 'planned' })] });
+
+    const view = JSON.parse(await runStatus(['--json'])) as { footer: string | null };
+    expect(view.footer).toBeNull();
+    // The footer's own shape (a workload % followed by the count segment) is
+    // unique -- unlike a bare 🏁, which also appears in the header line.
+    expect(await runStatus()).not.toMatch(/\d+% · ✅/);
+  });
+
+  it('renders the footer as the final line once confirmed', async () => {
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [task({ id: 'T001', status: 'completed' }), task({ id: 'T002', status: 'ready' })],
+    });
+
+    const view = JSON.parse(await runStatus(['--json'])) as { footer: string | null };
+    expect(view.footer).toBe('🏎️ 48% · ✅ 1/2 · Next: T002');
+
+    const output = await runStatus();
+    const lines = output.split('\n');
+    expect(lines[lines.length - 1]).toBe('🏎️ 48% · ✅ 1/2 · Next: T002');
   });
 });

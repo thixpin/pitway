@@ -1,6 +1,9 @@
 import type { Command } from 'commander';
 import { currentBranch } from '../../git/branch.js';
 import { deterministicBranchName } from '../../core/milestones/confirm.js';
+import { computeMilestoneProgress } from '../../core/milestones/progress.js';
+import { computeRacingFooter, resolveNextTask } from '../../core/milestones/footer.js';
+import { allChecksPassed, computeLatestCheckResults } from '../../core/verification/status.js';
 import { loadContract, loadState, loadTasks } from '../../state/store.js';
 import { deriveQuickChangeState, readAllQuickChanges } from '../../core/quick-change/create.js';
 import { renderOutput } from '../output.js';
@@ -35,6 +38,9 @@ export interface ResumeView {
   nextTask: string | null;
   pendingQuickChanges: PendingQuickChange[];
   branch?: ResumeBranchView;
+  // AC004 (M013): null before milestone-confirm has run -- silence is the
+  // signal, never a placeholder string.
+  footer: string | null;
 }
 
 function idsWithStatus(tasks: Task[], status: TaskStatus): string[] {
@@ -93,6 +99,7 @@ export function buildResumeView(root: string): ResumeView {
       inProgress: [],
       nextTask: null,
       pendingQuickChanges,
+      footer: null,
     };
   }
 
@@ -117,6 +124,10 @@ export function buildResumeView(root: string): ResumeView {
         })()
       : undefined;
 
+  const progress = computeMilestoneProgress(tasksFile.tasks);
+  const verificationPassed = allChecksPassed(contract, computeLatestCheckResults(root, state.active_milestone));
+  const footer = computeRacingFooter(contract.frontmatter.status, progress, verificationPassed, tasksFile.tasks);
+
   return {
     activeMilestone: state.active_milestone,
     contractStatus: contract.frontmatter.status,
@@ -126,9 +137,10 @@ export function buildResumeView(root: string): ResumeView {
     waiting: idsWithStatus(tasksFile.tasks, 'waiting'),
     blocked: idsWithStatus(tasksFile.tasks, 'blocked'),
     inProgress,
-    nextTask: inProgress.length > 0 ? inProgress[0]! : ready.length > 0 ? ready[0]! : null,
+    nextTask: resolveNextTask(tasksFile.tasks),
     pendingQuickChanges,
     ...(branch ? { branch } : {}),
+    footer,
   };
 }
 
@@ -182,6 +194,7 @@ export function renderResumeHuman(view: ResumeView): string {
     lines.push(view.nextTask ? `Next: ${view.nextTask}` : 'Next: (no ready task)');
   }
   if (quickChangeLines.length > 0) lines.push('', ...quickChangeLines);
+  if (view.footer !== null) lines.push('', view.footer);
   return lines.join('\n');
 }
 

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { saveContract, saveState, saveTasks } from '../../src/state/store.js';
+import { saveContract, saveState, saveTasks, saveVerificationResults } from '../../src/state/store.js';
 import { buildCli } from '../../src/cli/index.js';
 import { registerResumeCommand } from '../../src/cli/commands/resume.js';
 import { deterministicBranchName } from '../../src/core/milestones/confirm.js';
@@ -63,6 +63,11 @@ beforeEach(() => {
   git(['add', 'README.md'], root);
   git(['commit', '-q', '-m', 'init'], root);
   mkdirSync(join(root, '.pitway', 'milestones', 'M001'), { recursive: true });
+  // M013/T005: buildResumeView now also derives the racing footer, which
+  // reads verification-results.yaml via the shared status helper -- present
+  // (empty) on every real milestone-add-created milestone; matched here so
+  // this hand-built fixture reflects that, the same way real milestones do.
+  saveVerificationResults(root, 'M001', { schema_version: 1, results: [] });
 });
 
 afterEach(() => {
@@ -275,5 +280,50 @@ describe('pitway resume task name rendering (M013/T002)', () => {
     registerResumeCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
     await humanProgram.parseAsync(['node', 'pitway', 'resume']);
     expect(humanLines.join('\n')).toContain('  T001  ◌ Ready');
+  });
+});
+
+// AC004 (M013/T005): the racing footer, wired into resume.
+describe('pitway resume racing footer (M013/T005)', () => {
+  it('is entirely absent (not blank) for a draft milestone', async () => {
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    saveContract(root, 'M001', { frontmatter: frontmatter('draft'), body: '\n' });
+    saveTasks(root, 'M001', { schema_version: 1, tasks: [task({ id: 'T001', status: 'planned' })] });
+
+    const jsonProgram = buildCli();
+    const jsonLines: string[] = [];
+    registerResumeCommand(jsonProgram, { root, write: (s) => jsonLines.push(s) });
+    await jsonProgram.parseAsync(['node', 'pitway', 'resume', '--json']);
+    expect(JSON.parse(jsonLines.join('\n')).footer).toBeNull();
+
+    const humanProgram = buildCli();
+    const humanLines: string[] = [];
+    registerResumeCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
+    await humanProgram.parseAsync(['node', 'pitway', 'resume']);
+    // The footer's own shape (a workload % followed by the count segment) is
+    // unique -- unlike a bare 🏁, which also appears in the header line.
+    expect(humanLines.join('\n')).not.toMatch(/\d+% · ✅/);
+  });
+
+  it('renders the footer as the final line once confirmed', async () => {
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    saveContract(root, 'M001', { frontmatter: frontmatter('in_progress'), body: '\n' });
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [task({ id: 'T001', status: 'completed' }), task({ id: 'T002', status: 'ready' })],
+    });
+
+    const jsonProgram = buildCli();
+    const jsonLines: string[] = [];
+    registerResumeCommand(jsonProgram, { root, write: (s) => jsonLines.push(s) });
+    await jsonProgram.parseAsync(['node', 'pitway', 'resume', '--json']);
+    expect(JSON.parse(jsonLines.join('\n')).footer).toBe('🏎️ 48% · ✅ 1/2 · Next: T002');
+
+    const humanProgram = buildCli();
+    const humanLines: string[] = [];
+    registerResumeCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
+    await humanProgram.parseAsync(['node', 'pitway', 'resume']);
+    const lines = humanLines.join('\n').split('\n');
+    expect(lines[lines.length - 1]).toBe('🏎️ 48% · ✅ 1/2 · Next: T002');
   });
 });
