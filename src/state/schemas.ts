@@ -69,6 +69,15 @@ export const configSchema = z.strictObject({
       branch_strategy: z.enum(['main', 'milestone']),
     })
     .optional(),
+  // AC001/T001 (M014): additive-optional -- absent on every config.yaml
+  // written before this milestone, and on every fresh `pitway init` output
+  // (init does not write this field), resolving to 'sequential' via
+  // resolveExecutionStrategy below.
+  execution: z
+    .strictObject({
+      strategy: z.enum(['sequential', 'parallel_worktrees']),
+    })
+    .optional(),
 });
 
 export const stateSchema = z.strictObject({
@@ -287,6 +296,15 @@ export type BranchStrategy = 'main' | 'milestone';
 // fallback independently.
 export function resolveBranchStrategy(config: PitwayConfig): BranchStrategy {
   return config.git?.branch_strategy ?? 'main';
+}
+export type ExecutionStrategy = 'sequential' | 'parallel_worktrees';
+
+// AC001/T001 (M014): the one place that resolves an absent `execution` field
+// to its 'sequential' default -- every later call site reads the active
+// strategy through this helper rather than re-deriving the
+// absent-means-sequential fallback independently.
+export function resolveExecutionStrategy(config: PitwayConfig): ExecutionStrategy {
+  return config.execution?.strategy ?? 'sequential';
 }
 export type PitwayState = z.infer<typeof stateSchema>;
 export type ContractFrontmatter = z.infer<typeof contractFrontmatterSchema>;

@@ -3,6 +3,7 @@ import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import {
   configSchema,
+  resolveExecutionStrategy,
   contractFrontmatterSchema,
   resolveBranchStrategy,
   stateSchema,
@@ -114,6 +115,50 @@ describe('config schema git.branch_strategy (M012/T001)', () => {
       git: { branch_strategy: 'feature' },
     });
     expect(result.success).toBe(false);
+  });
+});
+
+// AC001/T001 (M014): additive-optional execution block -- absent resolves to
+// 'sequential', byte-identical to today; mirrors git.branch_strategy exactly.
+describe('config schema execution.strategy (M014/T001)', () => {
+  it('resolves a bare, pre-existing config.yaml (no execution key at all) to sequential', () => {
+    const bare = fixture('valid/config.yaml') as Record<string, unknown>;
+    const parsed = configSchema.parse(bare);
+    expect(resolveExecutionStrategy(parsed)).toBe('sequential');
+  });
+
+  it('round-trips execution.strategy: parallel_worktrees through parse', () => {
+    const parsed = configSchema.parse({
+      schema_version: 1,
+      execution: { strategy: 'parallel_worktrees' },
+    });
+    expect(resolveExecutionStrategy(parsed)).toBe('parallel_worktrees');
+  });
+
+  it('round-trips execution.strategy: sequential explicitly', () => {
+    const parsed = configSchema.parse({
+      schema_version: 1,
+      execution: { strategy: 'sequential' },
+    });
+    expect(resolveExecutionStrategy(parsed)).toBe('sequential');
+  });
+
+  it('rejects an unrecognized execution.strategy value', () => {
+    const result = configSchema.safeParse({
+      schema_version: 1,
+      execution: { strategy: 'threads' },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts execution alongside git without interference', () => {
+    const parsed = configSchema.parse({
+      schema_version: 1,
+      git: { branch_strategy: 'milestone' },
+      execution: { strategy: 'parallel_worktrees' },
+    });
+    expect(resolveBranchStrategy(parsed)).toBe('milestone');
+    expect(resolveExecutionStrategy(parsed)).toBe('parallel_worktrees');
   });
 });
 
