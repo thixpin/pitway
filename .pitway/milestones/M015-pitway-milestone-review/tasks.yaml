@@ -219,7 +219,7 @@ tasks:
       happy path snapshot shape; re-record appends and wins derivation without
       mutating the prior snapshot; empty-findings validity; malformed file
       refusal naming issues; all session/hash refusals."
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -242,7 +242,15 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-review-record.test.ts
-    result: null
+    result:
+      summary: "[truncated] s file, normalizes targets (trim+case-fold), appends an
+        append-only per-role snapshot, journal-records per AC001; refuses on
+        no-open-session, role-not-in-session, terminal milestone, and the
+        definition-hash staleness gate). Wired `milestone-review record <id>
+        --role --file` into the CLI."
+      evidence: Tests  8 passed (8) | Start at  23:59:49 | Duration  2.77s (transform
+        226ms, setup 0ms, import 313ms, tests 2.37s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T006
     name: milestone-review report
@@ -264,7 +272,7 @@ tasks:
       (`tests/integration/milestone-review-report.test.ts`): ordering, overlap
       listing, declared-conflict listing, pending-role listing, honesty text
       presence, empty-session report."
-    status: waiting
+    status: ready
     depends_on:
       - T005
     acceptance_criteria:
@@ -315,7 +323,7 @@ tasks:
       (`tests/integration/milestone-review-decide.test.ts`): each outcome;
       pending-role refusals; rejected-with-pending; decided-session closure
       enables a fresh start; the no-mutation byte check."
-    status: waiting
+    status: ready
     depends_on:
       - T005
     acceptance_criteria:
@@ -357,7 +365,7 @@ tasks:
       task completes rides the milestone-complete commit; quick-change create
       refuses while a review write is pending (disclosed edge); control:
       genuinely unrelated dirt still refuses everywhere."
-    status: waiting
+    status: ready
     depends_on:
       - T005
     acceptance_criteria:

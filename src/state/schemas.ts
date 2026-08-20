@@ -387,3 +387,11 @@ export type ReviewDecision = z.infer<typeof reviewDecisionSchema>;
 export type ReviewSessionStatus = z.infer<typeof reviewSessionStatusSchema>;
 export type ReviewSession = z.infer<typeof reviewSessionSchema>;
 export type ReviewsFile = z.infer<typeof reviewsFileSchema>;
+
+// M015/T005 (AC005): the `record --file` input wrapper -- reuses
+// reviewFindingEntrySchema exactly as-is (no second schema; T001 owns the
+// entry shape and its caps).
+export const reviewRecordInputSchema = z.strictObject({
+  findings: z.array(reviewFindingEntrySchema),
+});
+export type ReviewRecordInput = z.infer<typeof reviewRecordInputSchema>;

@@ -1,6 +1,7 @@
 import type { Command } from 'commander';
 import { startReviewSession, type ReviewSessionView } from '../../core/reviews/session.js';
 import { buildReviewBrief, type ReviewBriefView } from '../../core/reviews/brief.js';
+import { recordReviewFindings, type RecordReviewView } from '../../core/reviews/record.js';
 import { promptForRoles, type PromptStreams } from '../review-prompt.js';
 import { renderOutput } from '../output.js';
 
@@ -38,6 +39,10 @@ function renderBriefHuman(view: ReviewBriefView): string {
     `--- Tasks (${view.tasks.length}) ---`,
     ...view.tasks.map((t) => `${t.id}${t.name ? ` — ${t.name}` : ''}: ${t.objective}`),
   ].join('\n');
+}
+
+function renderRecordHuman(view: RecordReviewView): string {
+  return `📜 Recorded ${view.findingsCount} finding(s) for role "${view.role}" on session ${view.sessionId} (${view.milestone}).`;
 }
 
 export function registerMilestoneReviewCommand(program: Command, deps: CommandDeps = {}): void {
@@ -88,5 +93,20 @@ export function registerMilestoneReviewCommand(program: Command, deps: CommandDe
       const root = deps.root ?? process.cwd();
       const view = buildReviewBrief(root, id, options.role);
       write(renderOutput(view, { json: options.json }, renderBriefHuman));
+    });
+
+  milestoneReview
+    .command('record <id>')
+    .description(
+      'Record one role\'s findings for the open session as a full, append-only snapshot -- ' +
+        'never mutates or confirms the milestone itself.',
+    )
+    .requiredOption('--role <role>', 'the role recording findings (must be part of the open session)')
+    .requiredOption('--file <path>', 'path to a YAML file with a top-level findings[] list')
+    .option('--json', 'output machine-readable JSON')
+    .action((id: string, options: { role: string; file: string; json?: boolean }) => {
+      const root = deps.root ?? process.cwd();
+      const view = recordReviewFindings(root, id, { role: options.role, filePath: options.file });
+      write(renderOutput(view, { json: options.json }, renderRecordHuman));
     });
 }
