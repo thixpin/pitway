@@ -153,7 +153,7 @@ tasks:
       -- no second cycle check performed here). Unit tests: a fixture DAG with a
       known longest chain asserts the exact returned id sequence; a fixture
       where every required task is already completed returns `[]`."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - AC006
@@ -170,7 +170,14 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/unit/critical-path.test.ts
-    result: null
+    result:
+      summary: Added computeCriticalPath (src/core/tasks/critical-path.ts), a pure
+        function computing the longest chain of not-completed/not-cancelled
+        tasks connected by depends_on, ties broken by ascending task id,
+        assuming a graph already proven acyclic elsewhere.
+      evidence: Tests  6 passed (6) | Start at  17:07:21 | Duration  117ms (transform
+        16ms, setup 0ms, import 23ms, tests 3ms, environment 0ms)
+    attempts: 1
     usage: null
   - id: T005
     objective: "Add a new Core function (`src/core/milestones/footer.ts`,
