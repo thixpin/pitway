@@ -441,7 +441,7 @@ tasks:
       (default-deny, no guard changes) and works at the main root. Test-only
       task: no src/ changes; any product defect stops work per the
       contract-conflict rule."
-    status: ready
+    status: completed
     depends_on:
       - T003
       - T004
@@ -471,7 +471,15 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-review-lifecycle.test.ts
         tests/integration/worktree-state-guard.test.ts
-    result: null
+    result:
+      summary: "[truncated] tended tests/integration/worktree-state-guard.test.ts per
+        AC009: a real open review session seeded in beforeEach,
+        `milestone-review report` proven to refuse inside a real task worktree
+        (WorktreeGuardError, zero guard changes) and to work at the main root.
+        Test-only task: no src/ changes."
+      evidence: Tests  12 passed (12) | Start at  00:52:08 | Duration  5.49s
+        (transform 483ms, setup 0ms, import 697ms, tests 7.46s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T010
     name: Claude assets for milestone review

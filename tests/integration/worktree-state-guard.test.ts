@@ -94,6 +94,11 @@ beforeEach(async () => {
   writeFileSync(tasks, TASKS_FIXTURE);
   expect((await runAt(root, ['milestone-add', '--contract', contract, '--tasks', tasks])).error).toBeUndefined();
   expect((await runAt(root, ['milestone-confirm', 'M001'])).error).toBeUndefined();
+  // A real open review session so `milestone-review report` has something
+  // genuine to render at the main root (AC009/M015).
+  expect(
+    (await runAt(root, ['milestone-review', 'start', 'M001', '--roles', 'developer'])).error,
+  ).toBeUndefined();
   worktree = createTaskWorktree(root, 'M001', 'T001').path;
 });
 
@@ -140,6 +145,15 @@ describe('worktree state guard (M014/T005)', () => {
 
     const resume = await runAt(worktree, ['resume']);
     expect(resume.error).toBeUndefined();
+  });
+
+  it('refuses milestone-review report inside the worktree but works at the main root (AC009/M015)', async () => {
+    const inside = await runAt(worktree, ['milestone-review', 'report', 'M001']);
+    expect(inside.error).toBeInstanceOf(WorktreeGuardError);
+
+    const atRoot = await runAt(root, ['milestone-review', 'report', 'M001', '--json']);
+    expect(atRoot.error).toBeUndefined();
+    expect(atRoot.lines.join('\n')).toContain('developer');
   });
 
   it('leaves every command unchanged in the main repository root', async () => {
