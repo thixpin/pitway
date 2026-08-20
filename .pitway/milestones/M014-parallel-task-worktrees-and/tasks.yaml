@@ -607,7 +607,7 @@ tasks:
       gates exactly once: full `npm test` and `npx tsc --noEmit` (AC012) — the
       verification-granularity discipline's single sanctioned full-suite point
       for this milestone."
-    status: ready
+    status: completed
     depends_on:
       - T009
       - T010
@@ -618,13 +618,28 @@ tasks:
       - IMPLEMENTATION_PLAN.md
       - src/cli/index.ts
       - src/state/claude-assets.ts
+      - tests/integration/cli.test.ts
+      - tests/unit/journal.test.ts
+      - tests/unit/parallel-eligibility.test.ts
     write_scope:
       - IMPLEMENTATION_PLAN.md
+      - tests/integration/cli.test.ts
+      - tests/unit/journal.test.ts
+      - tests/unit/parallel-eligibility.test.ts
     mapped_ac_ids:
       - AC011
       - AC012
     verification:
       strategy: command
       detail: npm test && npx tsc --noEmit
-    result: null
+    result:
+      summary: "[truncated] ist assertion legitimately broken by the three new
+        commands, and the typecheck gate caught two type-level defects in
+        earlier M014 tasks' test files -- both fixed via developer-precedent
+        task-amend scope widenings (Change Log entries recorded). Final clean
+        run: 1002/1002 tests, tsc clean."
+      evidence: Tests  1002 passed (1002) | Start at  20:03:49 | Duration  75.76s
+        (transform 3.17s, setup 0ms, import 10.71s, tests 508.82s, environment
+        6ms)
+    attempts: 1
     usage: null

@@ -510,3 +510,12 @@ commit per task, no merge commits, no persistent task branches.
   claim corrected to dynamic-discovery reality; AC011 gains the
   worker-verification deviation as disposition (4); task-integrate split
   into engine + command/recovery tasks (11 tasks total).
+- 2026-08-20 — T011 scope widening (developer-approved via the established
+  M012/T005 / M013/T008 remedy for this exact failure mode): T011's own
+  milestone-level full-suite gate caught `tests/integration/cli.test.ts`'s
+  registered-command-list assertion legitimately broken by the three new
+  commands (18 → 21) — a real regression outside T011's drafted
+  `write_scope` (`IMPLEMENTATION_PLAN.md` only). T011's
+  `write_scope`/`context_files` are widened to include
+  `tests/integration/cli.test.ts` so the stale assertion is fixed in the
+  same task whose gate caught it.

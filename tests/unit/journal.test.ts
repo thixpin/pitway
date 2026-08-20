@@ -577,7 +577,7 @@ describe('worktree_dispatch records (M014/T004)', () => {
     expect(() =>
       appendWorktreeDispatchRecord(repo, {
         ...baseDispatch,
-        // @ts-expect-error deliberately invalid milestone id
+        // Runtime-invalid milestone id (zod regex), type-valid string.
         milestone: 'X1',
       }),
     ).toThrow(JournalError);

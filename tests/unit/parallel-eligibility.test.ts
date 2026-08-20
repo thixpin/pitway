@@ -9,7 +9,6 @@ import type { Task } from '../../src/state/schemas.js';
 
 function task(overrides: Partial<Task> & { id: string }): Task {
   return {
-    id: overrides.id,
     objective: `objective for ${overrides.id}`,
     status: 'ready',
     depends_on: [],
