@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { startReviewSession, type ReviewSessionView } from '../../core/reviews/session.js';
+import { buildReviewBrief, type ReviewBriefView } from '../../core/reviews/brief.js';
 import { promptForRoles, type PromptStreams } from '../review-prompt.js';
 import { renderOutput } from '../output.js';
 
@@ -22,6 +23,21 @@ function parseRolesCsv(raw: string): string[] {
 
 function renderStartHuman(view: ReviewSessionView): string {
   return `📜 Review ${view.id} opened for ${view.milestone} — roles: ${view.roles.join(', ')}.`;
+}
+
+function renderBriefHuman(view: ReviewBriefView): string {
+  return [
+    `📜 Brief for role "${view.role}" — ${view.milestone} (session ${view.sessionId})`,
+    `Focus: ${view.focus}`,
+    '',
+    view.instructions,
+    '',
+    `--- Contract: ${view.contract.frontmatter.id} "${view.contract.frontmatter.title}" ---`,
+    view.contract.body.trim(),
+    '',
+    `--- Tasks (${view.tasks.length}) ---`,
+    ...view.tasks.map((t) => `${t.id}${t.name ? ` — ${t.name}` : ''}: ${t.objective}`),
+  ].join('\n');
 }
 
 export function registerMilestoneReviewCommand(program: Command, deps: CommandDeps = {}): void {
@@ -58,5 +74,19 @@ export function registerMilestoneReviewCommand(program: Command, deps: CommandDe
       }
       const view = startReviewSession(root, id, { roles });
       write(renderOutput(view, { json: options.json }, renderStartHuman));
+    });
+
+  milestoneReview
+    .command('brief <id>')
+    .description(
+      'Read-only: emit one reviewer role\'s brief for the open session -- the bounded envelope ' +
+        'a driver forwards to a dispatched reviewer subagent.',
+    )
+    .requiredOption('--role <role>', 'the role to brief (must be part of the open session)')
+    .option('--json', 'output machine-readable JSON')
+    .action((id: string, options: { role: string; json?: boolean }) => {
+      const root = deps.root ?? process.cwd();
+      const view = buildReviewBrief(root, id, options.role);
+      write(renderOutput(view, { json: options.json }, renderBriefHuman));
     });
 }

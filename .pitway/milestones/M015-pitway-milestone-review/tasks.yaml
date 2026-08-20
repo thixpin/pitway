@@ -174,7 +174,7 @@ tasks:
       tests (`tests/integration/milestone-review-brief.test.ts`): happy path
       content, all three refusals (hash mismatch driven by a real `milestone-add
       --replace` revision)."
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -195,7 +195,15 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-review-brief.test.ts
-    result: null
+    result:
+      summary: "[truncated] ly instructions with AC005's exact YAML shape, contract
+        frontmatter+body, full task list, session content_hash; refuses on
+        no-open-session, role-not-in-session, terminal milestone, and the
+        definition-hash staleness gate) and wired `milestone-review brief <id>
+        --role <role>` into the CLI."
+      evidence: Tests  6 passed (6) | Start at  23:57:36 | Duration  1.87s (transform
+        226ms, setup 0ms, import 315ms, tests 1.47s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T005
     name: milestone-review record with hash gate
