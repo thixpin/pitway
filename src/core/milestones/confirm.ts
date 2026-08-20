@@ -3,8 +3,7 @@ import { computeExpectedBaselinePaths, createBaselineCommit } from '../../git/ba
 import { commitOrResume } from '../../git/commit-or-resume.js';
 import { checkWorkingTreeClean } from '../../git/safety.js';
 import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
-import { listClaudeAssetDestinations } from '../../state/claude-assets.js';
-import { classifyRootInstructionFiles } from '../../state/root-instructions.js';
+import { listSafeManagedDirtyPaths } from '../../state/managed-init-paths.js';
 import { parseContractFile, serializeContractFile } from '../../state/contract-file.js';
 import { appendJournalEntry, readJournal } from '../../state/journal.js';
 import {
@@ -83,22 +82,21 @@ function runConfirm(root: string, milestoneId: string, contract: ContractFile): 
   // passed into the Git-layer function — baseline.ts itself stays free of
   // any State import.
   const milestoneDir = resolveMilestoneDirName(root, milestoneId);
-  // M006 hotfix: init-installed Claude assets (when present) are exact-path
-  // expected too, the same way .pitway/config.yaml/state.yaml already are --
-  // resolved from the one authoritative asset list, never a broad .claude/**
-  // acceptance, so an unmanaged file under .claude/ still refuses.
-  //
-  // AC004/T004: root instruction files are content-aware, not merely
-  // path-known -- a 'conflict'-classified AGENTS.md/CLAUDE.md is excluded
-  // from the expected set entirely, so it is never silently staged into the
-  // baseline commit merely because its path is a recognized one.
-  const rootInstructionPaths = classifyRootInstructionFiles(root)
-    .filter((c) => c.status !== 'conflict')
-    .map((c) => c.file);
-  const expectedPaths = computeExpectedBaselinePaths(milestoneDir, requirement, [
-    ...listClaudeAssetDestinations(),
-    ...rootInstructionPaths,
-  ]);
+  // M006 hotfix, extended for real by AC005/T005: init-installed Claude
+  // assets and root instruction files (when present) are exact-path
+  // expected too, the same way .pitway/config.yaml/state.yaml already are.
+  // listSafeManagedDirtyPaths(root) is the single shared, content-aware
+  // mechanism for this -- a 'conflict'-classified .claude/ asset or root
+  // file is excluded from the expected set entirely, so it is never
+  // silently staged into the baseline commit merely because its path is a
+  // recognized one; it correctly becomes unexpected dirt and refuses
+  // confirmation instead. Replaces the previous path-only
+  // listClaudeAssetDestinations() call entirely.
+  const expectedPaths = computeExpectedBaselinePaths(
+    milestoneDir,
+    requirement,
+    listSafeManagedDirtyPaths(root),
+  );
 
   if (status === 'draft') {
     if (baselineSha !== undefined) {

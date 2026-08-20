@@ -376,3 +376,118 @@ describe('quick-change create gates (smoke: built by a prior task, exercised her
     expect(error?.message).toMatch(/working tree is not clean/);
   });
 });
+
+// AC005/T005: a genuinely fresh init, never committed as test setup (unlike
+// the shared beforeEach above, which commits init's output specifically so
+// the OLD, unfixed create gate would allow the rest of this file's tests
+// to run at all) -- exercises the real fix, own local roots throughout.
+describe('quick-change after a fresh, uncommitted pitway init (T005/AC005)', () => {
+  function makeFreshRoot(prefix: string): string {
+    const dir = mkdtempSync(join(tmpdir(), prefix));
+    git(['init', '-q'], dir);
+    git(['config', 'user.email', 'test@example.com'], dir);
+    git(['config', 'user.name', 'Test'], dir);
+    writeFileSync(join(dir, 'README.md'), 'seed\n');
+    writeFileSync(join(dir, 'target.txt'), 'ORIGINAL\n');
+    git(['add', 'README.md', 'target.txt'], dir);
+    git(['commit', '-q', '-m', 'init'], dir);
+    return dir;
+  }
+
+  async function createIn(
+    cwd: string,
+    objective = 'Fix the regression',
+    scope = ['target.txt'],
+    verify = PASSING_VERIFY,
+  ): Promise<{ lines: string[]; error?: Error }> {
+    const args = ['quick-change', 'create', '--objective', objective, '--verify', verify, '--json'];
+    for (const s of scope) args.push('--scope', s);
+    return run(args, cwd);
+  }
+
+  it('a fresh default init immediately followed by create succeeds with no other changes', async () => {
+    const freshRoot = makeFreshRoot('pitway-qc-fresh-');
+    try {
+      const initResult = await run(['init'], freshRoot);
+      expect(initResult.error).toBeUndefined();
+      const { error } = await createIn(freshRoot);
+      expect(error).toBeUndefined();
+    } finally {
+      rmSync(freshRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('the same sequence after pitway init --no-claude also succeeds', async () => {
+    const freshRoot = makeFreshRoot('pitway-qc-fresh-noclaude-');
+    try {
+      await run(['init', '--no-claude'], freshRoot);
+      const { error } = await createIn(freshRoot);
+      expect(error).toBeUndefined();
+    } finally {
+      rmSync(freshRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('a fresh init plus one arbitrary extra untracked file still refuses, naming only that file', async () => {
+    const freshRoot = makeFreshRoot('pitway-qc-fresh-stray-');
+    try {
+      await run(['init'], freshRoot);
+      writeFileSync(join(freshRoot, 'stray.txt'), 'uncommitted\n');
+      const { error } = await createIn(freshRoot);
+      expect(error?.message).toMatch(/working tree is not clean/);
+      expect(error?.message).toContain('stray.txt');
+      expect(error?.message).not.toContain('.pitway/config.yaml');
+      expect(error?.message).not.toContain('.pitway/state.yaml');
+    } finally {
+      rmSync(freshRoot, { recursive: true, force: true });
+    }
+  });
+
+  // T005: the dedicated mixed dirty-state regression case -- managed dirt
+  // (.pitway/config.yaml, .pitway/state.yaml, every installed .claude/
+  // asset) coexists with one genuinely unrelated dirty file.
+  it('a mixed dirty state (managed dirt + one unrelated file) refuses, naming exactly and only the unrelated file', async () => {
+    const freshRoot = makeFreshRoot('pitway-qc-fresh-mixed-');
+    try {
+      await run(['init'], freshRoot);
+      writeFileSync(join(freshRoot, 'unrelated.txt'), 'developer work in progress\n');
+      const { error } = await createIn(freshRoot);
+      expect(error?.message).toMatch(/working tree is not clean/);
+      expect(error?.message).toContain('unrelated.txt');
+      expect(error?.message).not.toContain('.pitway/config.yaml');
+      expect(error?.message).not.toContain('.pitway/state.yaml');
+      expect(error?.message).not.toContain('.claude/');
+    } finally {
+      rmSync(freshRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('create/approve/run/commit succeeds end to end, landing one commit with the declared scope plus swept managed init output', async () => {
+    const freshRoot = makeFreshRoot('pitway-qc-fresh-e2e-');
+    try {
+      await run(['init'], freshRoot);
+      const created = await createIn(freshRoot);
+      expect(created.error).toBeUndefined();
+      const id = idOf(created.lines);
+
+      expect((await run(['quick-change', 'approve', id, '--json'], freshRoot)).error).toBeUndefined();
+
+      writeFileSync(join(freshRoot, 'target.txt'), 'FIXED\n');
+      const ran = await run(['quick-change', 'run', id, '--json'], freshRoot);
+      expect(ran.error).toBeUndefined();
+      expect((JSON.parse(ran.lines[0]!) as { status: string }).status).toBe('pass');
+
+      const committed = await run(['quick-change', 'commit', id, '--json'], freshRoot);
+      expect(committed.error).toBeUndefined();
+      expect((JSON.parse(committed.lines[0]!) as { outcome: string }).outcome).toBe('committed');
+
+      expect(headFiles(freshRoot)).toContain('target.txt');
+      expect(headFiles(freshRoot)).toContain('.pitway/config.yaml');
+      expect(headFiles(freshRoot)).toContain('.pitway/state.yaml');
+      expect(headFiles(freshRoot)).toContain('AGENTS.md');
+      expect(git(['status', '--porcelain'], freshRoot).trim()).toBe('');
+    } finally {
+      rmSync(freshRoot, { recursive: true, force: true });
+    }
+  });
+});

@@ -8,6 +8,7 @@ import {
   type JournalQuickChangeStatus,
   type JournalRecord,
 } from '../../state/journal.js';
+import { listSafeManagedDirtyPaths } from '../../state/managed-init-paths.js';
 import { loadState } from '../../state/store.js';
 
 export class QuickChangeError extends Error {}
@@ -112,15 +113,23 @@ function assertValidScope(root: string, rawScope: string[]): string[] {
   return normalized;
 }
 
-// Mirrors task-update's own clean-start invariant (assertDirtySubset in
-// src/core/tasks/update.ts) but simpler: a quick-change has no pending
-// journal-materialized state file of its own to allow through, so create
-// requires the tree to be fully clean, not merely a known subset.
+// AC005/T005: mirrors the assertNoUnexpectedDirtyPaths pattern already
+// duplicated identically in src/core/milestones/confirm.ts and
+// src/core/milestones/complete.ts (this small, established, per-caller
+// duplication is followed as-is here, not re-abstracted into a new shared
+// helper). A quick-change has no pending journal-materialized state file of
+// its own to allow through, so the only expected dirt is PitWay's own
+// managed init output -- listSafeManagedDirtyPaths(root) -- never a
+// caller-declared scope (create has no scope yet at this point). Any
+// additional, non-managed dirty path still refuses, naming exactly that
+// path.
 function assertCleanWorkingTree(root: string): void {
-  const { clean, dirtyPaths } = checkWorkingTreeClean(root);
-  if (!clean) {
+  const expected = new Set(listSafeManagedDirtyPaths(root));
+  const { dirtyPaths } = checkWorkingTreeClean(root);
+  const unexpected = dirtyPaths.filter((p) => !expected.has(p));
+  if (unexpected.length > 0) {
     throw new QuickChangeError(
-      `cannot create quick-change: working tree is not clean: ${dirtyPaths.join(', ')}`,
+      `cannot create quick-change: working tree is not clean: ${unexpected.join(', ')}`,
     );
   }
 }

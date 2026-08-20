@@ -6,6 +6,7 @@ import {
   readJournal,
   type JournalQuickChange,
 } from '../../state/journal.js';
+import { listSafeManagedDirtyPaths } from '../../state/managed-init-paths.js';
 import { deriveQuickChangeState } from './create.js';
 import { QuickChangeError } from './run.js';
 
@@ -110,12 +111,20 @@ export function commitQuickChange(root: string, changeId: string): QuickChangeCo
     );
   }
 
-  assertDirtySubset(root, current.scope);
+  // AC005/T005: a create that succeeded in the fresh-init window still
+  // leaves the same managed dirt present at commit time, and current.scope
+  // (the change's own declared file scope) never covers it -- so this
+  // first quick-change commit, when it is also the repository's first
+  // commit since init, must also be allowed to sweep and stage the managed
+  // init output alongside the change's own scope, exactly like a
+  // milestone's own baseline commit already does.
+  const expectedPaths = [...current.scope, ...listSafeManagedDirtyPaths(root)];
+  assertDirtySubset(root, expectedPaths);
 
   const message = composeMessage(`fix: ${current.objective}`, { 'PitWay-Change': current.id });
 
   const result = commitOrResume(root, {
-    expectedPaths: current.scope,
+    expectedPaths,
     findExistingCommit: () => resolveChangeCommitSha(root, changeId),
     localStateAdvanced: true,
     message,

@@ -384,6 +384,21 @@ describe('pitway milestone-confirm', () => {
     expect(loadContract(root, 'M001').frontmatter.status).toBe('draft');
     expect(git(['diff', '--cached', '--name-only'], root).trim()).toBe('');
   });
+
+  // T005: direct regression test for the M006-era gap listSafeManagedDirtyPaths
+  // closes -- a manually-tampered, genuinely-conflicting managed .claude/
+  // asset now refuses confirmation, naming that asset, rather than being
+  // silently staged into the baseline commit merely because its path is a
+  // recognized one.
+  it('refuses a manually-tampered, conflicting managed .claude/ asset, naming it, not silently staging it', async () => {
+    await addMilestone();
+    const [asset] = listClaudeAssetDestinations();
+    writeFileSync(join(root, ...asset!.split('/')), 'tampered content, not the shipped bytes\n');
+    const { error } = await run(['milestone-confirm', 'M001'], root);
+    expect(error?.message).toContain(asset!);
+    expect(loadContract(root, 'M001').frontmatter.status).toBe('draft');
+    expect(git(['diff', '--cached', '--name-only'], root).trim()).toBe('');
+  });
 });
 
 // M006 hotfix: --no-claude must remain entirely unaffected -- no Claude
