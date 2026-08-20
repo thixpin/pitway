@@ -15,6 +15,21 @@ PitWay is an npm-distributed CLI that controls the engineering process around AI
 
 ---
 
+## Why PitWay?
+
+AI coding agents move fast — and that's exactly the problem. Left unstructured, an agent can drift from what was asked, skip verification, or quietly touch files outside its intended scope, with no durable record of what actually happened or why.
+
+PitWay doesn't replace the agent driving your work — it gives that work a process:
+
+- **A confirmed plan before code.** Every milestone starts as a contract — objective, acceptance criteria, verification checks — reviewed and approved by a human before any implementation begins.
+- **Boundaries an agent can't quietly cross.** `write_scope` mechanically limits what a task may touch.
+- **Verification, not vibes.** Every task is checked against its own declared command before it's considered done, with a mandatory full test suite gating milestone completion.
+- **A record that survives the conversation.** Git commits carry traceable `PitWay-Milestone`/`PitWay-Task` trailers — the history holds even after the AI session that produced it is gone.
+
+The result: agents move fast, and the engineering process stays in control of where they land.
+
+---
+
 ## How It Works
 
 ```mermaid
