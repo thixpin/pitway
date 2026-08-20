@@ -553,7 +553,7 @@ tasks:
       `context_files` row's §8-identical statement untouched. Docs-only task: no
       code, no tests authored; verified by CT016's review check plus the
       milestone gates."
-    status: ready
+    status: completed
     depends_on:
       - T009
       - T010
@@ -572,7 +572,20 @@ tasks:
       strategy: manual
       detail: Reviewed against AC014's checklist (CT016); no automated test owns
         README prose.
-    result: null
+    result:
+      summary: "[truncated] --help). Also fixed a drafting gap caught at this task's
+        own start: T012's task text named \"CT016\" as its review check, but the
+        contract's verification array never actually had one -- added CT016
+        (type review, criterion AC014) via milestone-confirm --amend, mirroring
+        CT014/CT015's style."
+      evidence: "Manual review against AC014's checklist (this task's own declared
+        strategy; task-verify does not apply to manual-strategy tasks): the
+        milestone-review stage appears in both prose and diagram; the Opt-in
+        Policies section documents both config keys with correct defaults; the
+        footer/--report mention is present; the Engineering Boundaries table
+        gained exactly the review-honesty row; the README's existing register is
+        preserved throughout."
+    attempts: 1
     usage: null
   - id: T011
     name: Plan reconciliation and milestone gates
@@ -588,7 +601,7 @@ tasks:
       readline-not-arrow-keys, confirm/review uncoupling, the bootstrap-review
       disclosure); Status paragraph updated. Then run the milestone-level gates
       exactly once: full `npm test` and `npx tsc --noEmit` (AC013)."
-    status: waiting
+    status: ready
     depends_on:
       - T009
       - T010

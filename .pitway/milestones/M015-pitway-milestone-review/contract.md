@@ -5,7 +5,7 @@ title: PitWay Milestone Review
 status: in_progress
 requirement: null
 confirmed_at: 2026-08-20T16:37:15Z
-verification_approved_hash: sha256:e2ac53d5b3d93fb6c0585f3d2ced82d8579ba92dc1a14b06b00b1d31df72e57c
+verification_approved_hash: sha256:9f7bb19d9ff518cef6aaeb02942f1275abd9b56eb438dc682f49a4e11de261e0
 base_branch: null
 base_revision: null
 acceptance_criteria:
@@ -393,6 +393,23 @@ verification:
       named deviations/decisions including the bootstrap-review disclosure, the
       Status update, and that no M001-M014 history was rewritten beyond the
       sanctioned reconciliation points.
+  - id: CT016
+    criterion: AC014
+    type: review
+    instruction: Read the reconciled README.md against AC014's checklist — confirm
+      the milestone-review stage appears in both the lifecycle prose and the
+      mermaid diagram (an optional role-based review loop between Contract and
+      Human Approval, findings-only reviewers, developer decision); the new
+      'Opt-in policies' section documents git.branch_strategy (M012) and
+      execution.strategy (M014) with their correct byte-identical defaults and a
+      one-paragraph parallel-worktrees shape; a one-line mention of the
+      permanent progress footer and milestone-status --report (M013) is present;
+      the Engineering Boundaries table gained the review-honesty row (findings
+      only, PitWay never runs reviews or verifies reviewer independence) while
+      the existing context_files row's statement is untouched; and the README's
+      existing register — high-level, count-free, defers the command surface to
+      pitway --help, claims bounded by fresh-clone evidence — is preserved
+      throughout, with no feature invented and no count hardcoded.
 ---
 
 # M015 — PitWay Milestone Review
@@ -527,3 +544,11 @@ decisions); the driver dispatches the actual reviewers.
   `src/core/reviews/session.ts`, `tests/unit/review-state.test.ts` —
   T008's write_scope widened to cover the fix and its existing unit
   tests, since it was T008's own real-lifecycle test that caught this).
+- 2026-08-21 — Drafting-gap fix, caught at T012's own start: T012's task
+  text already named "CT016" as its review-type verification check, but
+  no CT016 was ever actually drafted into this contract's `verification:`
+  array (AC014 was added late, before confirmation, and its check was
+  missed). Added CT016 (type: review, criterion: AC014), mirroring
+  CT014/CT015's own instruction style, so T012's own verification
+  strategy (`manual`, "Reviewed against AC014's checklist (CT016)") names
+  a check that actually exists.
