@@ -157,20 +157,88 @@ describe('pitway init Claude Code asset installation (AC003)', () => {
     expect(statSync(join(root, '.claude', first[0]!)).mtimeMs).toBe(mtimeBefore);
   });
 
-  it('refuses a partial .claude/ state and writes nothing at all, including .pitway/', async () => {
+  // T002: corrected semantics -- a partial-but-non-conflicting .claude/
+  // state (some assets absent, none differing) is no longer refused; it
+  // installs the missing assets cleanly, mirroring .pitway/'s own
+  // fresh-install behavior. Only an actual content conflict refuses.
+  it('a partial-but-non-conflicting .claude/ state installs the missing assets cleanly', async () => {
     await runInit(root);
     const shipped = listClaudeAssets();
-    // Simulate an interrupted/tampered install: remove exactly one managed
-    // asset, leaving the rest present.
+    // Simulate an interrupted install: remove exactly one managed asset,
+    // leaving the rest present and unmodified.
     rmSync(join(root, '.claude', shipped[0]!));
+
+    const { error } = await runInit(root);
+    expect(error).toBeUndefined();
+    expect(existsSync(join(root, '.claude', shipped[0]!))).toBe(true);
+    expect(listFilesRecursive(join(root, '.claude'))).toEqual(shipped.slice().sort());
+  });
+
+  // T002: direct regression test for installClaudeAssets's new subset
+  // parameter -- not merely the all-identical or all-absent extremes.
+  it('a mixed rerun installs only the absent assets, leaving identical ones untouched', async () => {
+    await runInit(root);
+    const shipped = listClaudeAssets();
+    const removed = shipped[0]!;
+    const untouched = shipped[1]!;
+    rmSync(join(root, '.claude', removed));
+    const mtimeBefore = statSync(join(root, '.claude', untouched)).mtimeMs;
+
+    const { error } = await runInit(root);
+    expect(error).toBeUndefined();
+    expect(existsSync(join(root, '.claude', removed))).toBe(true);
+    expect(statSync(join(root, '.claude', untouched)).mtimeMs).toBe(mtimeBefore);
+  });
+
+  it('refuses a single conflicting command doc, naming exactly that path, writing nothing else', async () => {
+    await runInit(root);
+    const commandDoc = listClaudeAssets().find((a) => a.startsWith('commands/'))!;
+    writeFileSync(join(root, '.claude', commandDoc), 'tampered content\n');
+    const absentAsset = listClaudeAssets().find((a) => a !== commandDoc)!;
+    rmSync(join(root, '.claude', absentAsset));
+
+    const { error } = await runInit(root);
+    expect(error?.message).toMatch(new RegExp(commandDoc.replace('.', '\\.')));
+    expect(error?.message).not.toMatch(new RegExp(absentAsset.replace('.', '\\.')));
+    // Nothing else got written either — the refusal is atomic.
+    expect(existsSync(join(root, '.claude', absentAsset))).toBe(false);
+  });
+
+  it('refuses a single conflicting skill the same way', async () => {
+    await runInit(root);
+    const skill = 'skills/debugging/SKILL.md';
+    writeFileSync(join(root, '.claude', skill), 'tampered content\n');
+
+    const { error } = await runInit(root);
+    expect(error?.message).toMatch(/skills\/debugging\/SKILL\.md/);
+  });
+
+  it('refuses two simultaneous conflicts, naming both together, not just one', async () => {
+    await runInit(root);
+    const commandDoc = listClaudeAssets().find((a) => a.startsWith('commands/'))!;
+    const skill = 'skills/debugging/SKILL.md';
+    writeFileSync(join(root, '.claude', commandDoc), 'tampered command doc\n');
+    writeFileSync(join(root, '.claude', skill), 'tampered skill\n');
+
+    const { error } = await runInit(root);
+    expect(error?.message).toMatch(new RegExp(commandDoc.replace('.', '\\.')));
+    expect(error?.message).toMatch(/skills\/debugging\/SKILL\.md/);
+  });
+
+  it('a conflict alongside otherwise-absent assets writes nothing at all, including .pitway/', async () => {
+    await runInit(root);
+    const shipped = listClaudeAssets();
+    const conflicting = shipped[0]!;
+    const absent = shipped[1]!;
+    writeFileSync(join(root, '.claude', conflicting), 'tampered content\n');
+    rmSync(join(root, '.claude', absent));
     rmSync(join(root, '.pitway'), { recursive: true, force: true });
 
     const { error } = await runInit(root);
-    expect(error?.message).toMatch(/inconsistent|partial/i);
-    expect(error?.message).toMatch(/\.claude/);
+    expect(error?.message).toMatch(/conflicting|inconsistent/i);
     // Nothing else got written either — the refusal is atomic.
     expect(existsSync(join(root, '.pitway'))).toBe(false);
-    expect(existsSync(join(root, '.claude', shipped[0]!))).toBe(false);
+    expect(existsSync(join(root, '.claude', absent))).toBe(false);
   });
 
   // T005/AC010: the last asset-creating task in this milestone -- proves

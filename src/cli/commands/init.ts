@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { assertGitWorkTree } from '../../git/exec.js';
-import { installClaudeAssets, probeClaudeAssets } from '../../state/claude-assets.js';
+import { classifyClaudeAssets, installClaudeAssets } from '../../state/claude-assets.js';
 import { StateStoreError, loadConfig, loadState, saveConfig, saveState } from '../../state/store.js';
 import { renderOutput } from '../output.js';
 
@@ -30,27 +30,34 @@ export function runInit(root: string, options: { claude?: boolean } = {}): InitV
   const state = probe(() => loadState(root));
 
   const installClaude = options.claude ?? true;
-  // Probed up front, alongside config/state, so every refusal is decided
-  // before anything is written — installing .claude/ assets must never
-  // happen if the overall call is about to refuse for an unrelated reason.
-  const claudeProbe = installClaude ? probeClaudeAssets(root) : 'ok';
-  // Same refusal philosophy as config/state: a fresh install on 'missing',
-  // a safe no-op on 'ok', and a hard refusal on any partial/inconsistent
-  // mix of the pitway-managed asset set rather than silently overwriting
-  // whatever's already under .claude/.
-  if (installClaude && claudeProbe === 'invalid') {
+  // Classified up front, alongside config/state, so every refusal is
+  // decided before anything is written — installing .claude/ assets must
+  // never happen if the overall call is about to refuse for an unrelated
+  // reason. --no-claude skips classification and every .claude/ read
+  // entirely.
+  const classification = installClaude ? classifyClaudeAssets(root) : [];
+  const conflicts = classification.filter((c) => c.status === 'conflict');
+  // Per-file, content-comparing refusal: only an actual byte conflict
+  // refuses, naming every conflicting path together (not just the first).
+  // A harmless partial mix (some assets absent, none differing) is no
+  // longer refused — see finish() below.
+  if (conflicts.length > 0) {
     throw new Error(
-      'refusing to initialize: .claude/ is in a partial or inconsistent state relative to the ' +
-        'pitway-managed assets under src/integrations/claude/; will not overwrite — inspect manually ' +
-        '(or pass --no-claude to skip Claude Code asset installation)',
+      'refusing to initialize: .claude/ has conflicting content relative to the pitway-managed ' +
+        `assets under src/integrations/claude/ (will not overwrite): ${conflicts
+          .map((c) => `.claude/${c.asset}`)
+          .join(', ')} — inspect manually (or pass --no-claude to skip Claude Code asset installation)`,
     );
   }
 
   function finish(created: boolean, message: string): InitView {
     let claudeInstalled = false;
-    if (installClaude && claudeProbe === 'missing') {
-      installClaudeAssets(root);
-      claudeInstalled = true;
+    if (installClaude) {
+      const absent = classification.filter((c) => c.status === 'absent').map((c) => c.asset);
+      if (absent.length > 0) {
+        installClaudeAssets(root, absent);
+        claudeInstalled = true;
+      }
     }
     return { created, message, claudeInstalled };
   }

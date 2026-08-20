@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -43,38 +43,42 @@ export function listClaudeAssetDestinations(): string[] {
   return listClaudeAssets().map((asset) => `.claude/${asset}`);
 }
 
-export type ClaudeAssetsProbe = 'ok' | 'missing' | 'invalid';
+export interface ClaudeAssetClassification {
+  asset: string;
+  status: 'absent' | 'identical' | 'conflict';
+}
 
-// Probes the target repo's .claude/ directory against the currently shipped
-// asset set, generalizing init's existing config.yaml/state.yaml two-file
-// probe (each independently missing/ok/invalid, combined into one verdict)
-// from a fixed pair to a dynamic asset list:
-//   - every asset present  -> 'ok'      (already installed; no-op)
-//   - every asset absent   -> 'missing' (fresh install)
-//   - any other mix        -> 'invalid' (partial/inconsistent; refuse)
+// Classifies every currently shipped asset against <root>/.claude/<asset>:
+// the one and only place in the codebase that compares installed .claude/
+// asset bytes. 'absent' when the destination file does not exist yet;
+// 'identical' when it exists and its bytes exactly equal the shipped
+// source (a real content comparison, never mtime/size); 'conflict' when it
+// exists with different bytes.
 //
 // Only the pitway-managed asset paths are inspected. .claude/ is shared
 // space -- a developer's own Claude Code configuration (settings.json,
 // skills/, unrelated commands) may already live there and is never
-// touched or considered by this probe.
-export function probeClaudeAssets(root: string): ClaudeAssetsProbe {
-  const assets = listClaudeAssets();
+// touched or considered by this classification.
+export function classifyClaudeAssets(root: string): ClaudeAssetClassification[] {
   const claudeDir = join(root, '.claude');
-  const present = assets.filter((asset) => {
-    const path = join(claudeDir, asset);
-    return existsSync(path) && statSync(path).isFile();
+  return listClaudeAssets().map((asset) => {
+    const destination = join(claudeDir, asset);
+    if (!existsSync(destination)) {
+      return { asset, status: 'absent' };
+    }
+    const shipped = readFileSync(join(assetsSourceDir, asset));
+    const installed = readFileSync(destination);
+    return { asset, status: shipped.equals(installed) ? 'identical' : 'conflict' };
   });
-  if (present.length === 0) return 'missing';
-  if (present.length === assets.length) return 'ok';
-  return 'invalid';
 }
 
-// Installs every currently shipped .md asset into <root>/.claude/,
-// mirroring src/integrations/claude/'s relative layout exactly (e.g.
-// commands/milestone-add.md -> .claude/commands/milestone-add.md). Callers
-// are expected to have already refused on a non-'missing' probe result.
-export function installClaudeAssets(root: string): string[] {
-  const assets = listClaudeAssets();
+// Installs the given subset of currently shipped .md assets into
+// <root>/.claude/, mirroring src/integrations/claude/'s relative layout
+// exactly (e.g. commands/milestone-add.md -> .claude/commands/milestone-add.md).
+// Defaults to the full shipped set for backward-compatible callers; init.ts
+// passes exactly the classified-'absent' subset so an 'identical' asset is
+// never rewritten.
+export function installClaudeAssets(root: string, assets: string[] = listClaudeAssets()): string[] {
   const claudeDir = join(root, '.claude');
   for (const asset of assets) {
     const destination = join(claudeDir, asset);

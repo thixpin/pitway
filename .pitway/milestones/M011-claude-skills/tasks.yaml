@@ -148,7 +148,7 @@ tasks:
       semantics: a partial-but-non-conflicting state (some assets absent, none
       differing) is no longer refused -- it installs the missing assets cleanly;
       only an actual content conflict refuses.
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -174,7 +174,15 @@ tasks:
       detail: npm test -- tests/integration/init.test.ts
         tests/unit/claude-assets.test.ts
         tests/unit/no-global-claude-access.test.ts
-    result: null
+    result:
+      summary: "[truncated] d tests/unit/no-global-claude-access.test.ts (structural,
+        self-proving). Rewrote the stale partial-state-refusal test to match
+        corrected semantics (partial-but-non-conflicting installs cleanly) and
+        added mixed-rerun, single/double-conflict, and conflict-alongside-absent
+        regression tests."
+      evidence: Tests  26 passed (26) | Start at  13:27:18 | Duration  1.52s
+        (transform 219ms, setup 0ms, import 310ms, tests 1.19s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T003
     objective: >-
@@ -248,7 +256,7 @@ tasks:
       with no required_skills at all is a complete no-op through this whole
       path, proven by a regression test against pre-existing task-status
       --context behavior.
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:
@@ -393,7 +401,7 @@ tasks:
       listClaudeAssetDestinations()) to also include the currently-identical/
       absent root paths, and adds one new test confirming milestone-confirm
       succeeds cleanly with both root instruction files present and untracked.
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:
