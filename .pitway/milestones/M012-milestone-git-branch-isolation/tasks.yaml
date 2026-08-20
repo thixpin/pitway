@@ -495,7 +495,7 @@ tasks:
       `task-verify.md` or `verify.md`'s own command docs. This task touches only
       `protocol-driver.md`; no other Claude asset, and no code, changes for this
       task."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - AC008
@@ -512,7 +512,17 @@ tasks:
         full-suite/typecheck-is-milestone-level-only rule, and the
         recorded-manual-results-are-authoritative rule; confirm no other file
         was touched.
-    result: null
+    result:
+      summary: "[truncated] ommand-type CT, or a genuine cross-cutting investigation);
+        recorded manual/review verification results are authoritative and should
+        not be re-derived by re-invoking bare `verify`. Codifies the developer's
+        2026-08-20 correction during M011's execution. Only protocol-driver.md
+        was touched."
+      evidence: "Manual review: protocol-driver.md's new section states the three
+        rules plainly, in the same style as the document's other rule sections;
+        no other file in this milestone's write_scope was modified for this
+        task."
+    attempts: 1
     usage: null
   - id: T009
     objective: >-

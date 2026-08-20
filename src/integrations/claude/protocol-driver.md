@@ -40,6 +40,27 @@ the smallest one that actually fits:
 A bug inside an *active* milestone's own scope never uses any of these —
 that's a task or the ripple-fix policy instead.
 
+## Verification discipline
+
+Task execution runs only that task's own declared verification command —
+directly, or via `task-verify`. Never run the full `npm test` suite or
+`tsc --noEmit` ad hoc after an individual task "just to check."
+
+Full-suite and typecheck runs are milestone-level gates only: either a
+milestone's own explicit `command`-type verification check (declared in the
+contract, run via `verify`), or a genuinely cross-cutting investigation where
+a task's own narrow declared scope can't rule out a wider regression — never
+a routine per-task habit.
+
+Once a manual or review check has been recorded via `verify <id> --check
+<ct-id> --pass|--fail`, that record is authoritative in
+`verification-results.yaml`. Re-invoking bare `verify <id>` a second time
+reruns every command-type check fresh and, by the tool's own design, always
+displays non-command checks as pending regardless of what is already
+recorded — trust the write, or read `verification-results.yaml` directly;
+don't re-invoke bare `verify` expecting it to reflect already-recorded manual
+results.
+
 ## Dispatch discipline
 
 Task execution is not automatically a sub-agent dispatch — you choose
