@@ -117,7 +117,7 @@ tasks:
       confirmed/0-progress->10, confirmed/all-tasks-done/not- verified->85,
       confirmed/all-tasks-done/verified->95, completed->100 (and no other
       combination yields 100)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - AC003
@@ -134,7 +134,14 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/unit/workload.test.ts
-    result: null
+    result:
+      summary: "Added computeWorkloadPercentage (src/core/milestones/workload.ts), a
+        pure function implementing the exact 5-band cumulative workload formula:
+        draft 5, confirmed-or-later 10, +up to 75 scaled by completed/total, +10
+        once verified, completed short-circuits to exactly 100 unconditionally."
+      evidence: Tests  8 passed (8) | Start at  17:05:59 | Duration  115ms (transform
+        15ms, setup 0ms, import 23ms, tests 2ms, environment 0ms)
+    attempts: 1
     usage: null
   - id: T004
     objective: "Add a new, pure, exported Core function
@@ -184,7 +191,7 @@ tasks:
       Unit tests cover all four icon cases plus the draft-returns- null case;
       integration tests confirm the footer line appears/is absent correctly in
       both commands' human and JSON output."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002
