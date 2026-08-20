@@ -112,7 +112,7 @@ tasks:
       completes the baseline commit; a resumed confirm on the wrong branch
       refuses without checking out; and a resumed confirm whose expected branch
       was deleted between attempts refuses rather than recreating it.
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -140,7 +140,16 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/unit/git-branch.test.ts
         tests/integration/milestone-confirm.test.ts tests/unit/schemas.test.ts
-    result: null
+    result:
+      summary: "[truncated] frontmatter write. Resumed confirm performs zero branch
+        mutation and refuses with a diagnostic naming both branches unless
+        already on the exact expected branch, including when that branch was
+        deleted. main strategy (explicit or absent) is fully unaffected --
+        verified by regression tests."
+      evidence: Tests  119 passed (119) | Start at  15:43:13 | Duration  20.72s
+        (transform 367ms, setup 0ms, import 581ms, tests 21.54s, environment
+        0ms)
+    attempts: 1
     usage: null
   - id: T003
     objective: >-
@@ -181,7 +190,7 @@ tasks:
       same two cases for `milestone-complete`; and a full `main`-strategy
       regression pass proving neither commit path's behavior changed at all when
       no branch is tracked.
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:
@@ -237,7 +246,7 @@ tasks:
       section entirely absent, proving no regression to existing resume output);
       and the no-active-milestone case (unaffected, already covered by existing
       tests -- confirm rather than assume).
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:
@@ -296,7 +305,7 @@ tasks:
       bound is real, not a no-op); the graceful-fallback case for an unreachable
       `since` value; and a regression test proving every call site with no
       `base_revision` available still performs today's unbounded scan unchanged.
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:

@@ -113,6 +113,12 @@ export const contractFrontmatterSchema = z.strictObject({
   requirement: requirementId.nullable(),
   confirmed_at: isoTimestamp.nullable(),
   verification_approved_hash: sha256Hash.nullable(),
+  // AC002/T002 (M012): additive-optional, nullable -- absent (parsed as
+  // undefined) on every contract.md written before this milestone, treated
+  // identically to null by every consumer. Set at confirm time under
+  // git.branch_strategy: milestone; left null under branch_strategy: main.
+  base_branch: z.string().min(1).nullable().optional(),
+  base_revision: z.string().min(1).nullable().optional(),
   acceptance_criteria: z
     .array(z.strictObject({ id: criterionId, text: z.string().min(1) }))
     .min(1),

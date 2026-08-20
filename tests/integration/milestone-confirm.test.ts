@@ -637,3 +637,120 @@ describe('pitway milestone-confirm --amend', () => {
     expect(loadContract(root, 'M001').frontmatter.verification_approved_hash).toBe(secondView.hash);
   });
 });
+
+// M012/T002 (AC002): branch_strategy: milestone branch creation, and the
+// two-case hardened resume design -- fresh confirm refuses on an already-
+// existing branch (never reuses/resets it); resumed confirm performs no
+// branch mutation and refuses on any position mismatch.
+function setBranchStrategy(strategy: 'main' | 'milestone'): void {
+  writeFileSync(
+    join(root, '.pitway', 'config.yaml'),
+    `schema_version: 1\ngit:\n  branch_strategy: ${strategy}\n`,
+  );
+}
+
+describe('pitway milestone-confirm with branch_strategy: milestone (M012/T002)', () => {
+  it('leaves base_branch/base_revision null and creates no branch when git is absent from config (default main)', async () => {
+    const before = git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim();
+    await confirmed();
+    const contract = loadContract(root, 'M001');
+    expect(contract.frontmatter.base_branch ?? null).toBeNull();
+    expect(contract.frontmatter.base_revision ?? null).toBeNull();
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe(before);
+  });
+
+  it('leaves base_branch/base_revision null and creates no branch under explicit branch_strategy: main', async () => {
+    setBranchStrategy('main');
+    const before = git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim();
+    await confirmed();
+    const contract = loadContract(root, 'M001');
+    expect(contract.frontmatter.base_branch ?? null).toBeNull();
+    expect(contract.frontmatter.base_revision ?? null).toBeNull();
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe(before);
+  });
+
+  it('creates the deterministic branch, checks it out, and records base_branch/base_revision on a fresh confirm', async () => {
+    setBranchStrategy('milestone');
+    const startBranch = git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim();
+    const startRevision = git(['rev-parse', 'HEAD'], root).trim();
+    await confirmed();
+
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe(
+      'pitway/M001-confirmable-milestone',
+    );
+    const contract = loadContract(root, 'M001');
+    expect(contract.frontmatter.base_branch).toBe(startBranch);
+    expect(contract.frontmatter.base_revision).toBe(startRevision);
+    // The baseline commit landed on the new branch, not the original one.
+    expect(git(['rev-parse', startBranch], root).trim()).toBe(startRevision);
+  });
+
+  it('refuses a fresh confirm when the deterministic branch name already exists, without reusing or resetting it (covers both a genuine foreign collision and a simulated orphaned-from-crash branch identically -- this design deliberately never distinguishes the two)', async () => {
+    setBranchStrategy('milestone');
+    await addMilestone();
+    git(['branch', 'pitway/M001-confirmable-milestone'], root);
+    const branchTip = git(['rev-parse', 'pitway/M001-confirmable-milestone'], root).trim();
+    const startBranch = git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim();
+
+    const { error } = await run(['milestone-confirm', 'M001'], root);
+    expect(error?.message).toMatch(/already exists/i);
+    expect(loadContract(root, 'M001').frontmatter.status).toBe('draft');
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe(startBranch);
+    // Never deleted, reset, or force-created over.
+    expect(git(['rev-parse', 'pitway/M001-confirmable-milestone'], root).trim()).toBe(branchTip);
+    expect(commitCount(root)).toBe(1);
+  });
+
+  it('resumes and completes the baseline commit when re-invoked while still on the correct milestone branch', async () => {
+    setBranchStrategy('milestone');
+    await addMilestone();
+    const hook = installFailingHook();
+    const { error } = await run(['milestone-confirm', 'M001'], root);
+    expect(error).toBeDefined();
+    expect(loadContract(root, 'M001').frontmatter.status).toBe('in_progress');
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe(
+      'pitway/M001-confirmable-milestone',
+    );
+
+    rmSync(hook);
+    const { lines, error: retryError } = await run(['milestone-confirm', 'M001', '--json'], root);
+    expect(retryError).toBeUndefined();
+    expect((JSON.parse(lines[0]!) as { outcome: string }).outcome).toBe('committed');
+    expect(headFiles(root)).toEqual(expectedBaselineFiles());
+  });
+
+  it('refuses to resume when checked out on a different branch, without checking anything out itself', async () => {
+    setBranchStrategy('milestone');
+    const startBranch = git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim();
+    await addMilestone();
+    const hook = installFailingHook();
+    await run(['milestone-confirm', 'M001'], root);
+    rmSync(hook);
+    git(['checkout', startBranch], root);
+
+    const { error } = await run(['milestone-confirm', 'M001'], root);
+    expect(error?.message).toMatch(/expected branch pitway\/M001-confirmable-milestone/);
+    expect(error?.message).toMatch(new RegExp(`found ${startBranch}`));
+    // Confirm never checked anything out to fix the mismatch.
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe(startBranch);
+  });
+
+  it('refuses to resume when the expected branch was deleted between attempts', async () => {
+    setBranchStrategy('milestone');
+    const startBranch = git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim();
+    await addMilestone();
+    const hook = installFailingHook();
+    await run(['milestone-confirm', 'M001'], root);
+    rmSync(hook);
+    git(['checkout', startBranch], root);
+    git(['branch', '-d', 'pitway/M001-confirmable-milestone'], root);
+
+    const { error } = await run(['milestone-confirm', 'M001'], root);
+    expect(error?.message).toMatch(/expected branch pitway\/M001-confirmable-milestone/);
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe(startBranch);
+    // Confirm never recreated the deleted branch.
+    expect(() =>
+      git(['show-ref', '--verify', '--quiet', 'refs/heads/pitway/M001-confirmable-milestone'], root),
+    ).toThrow();
+  });
+});

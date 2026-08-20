@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { branchExists, createAndCheckoutBranch, currentBranch, currentRevision } from '../../git/branch.js';
 import { computeExpectedBaselinePaths, createBaselineCommit } from '../../git/baseline.js';
 import { commitOrResume } from '../../git/commit-or-resume.js';
 import { checkWorkingTreeClean } from '../../git/safety.js';
@@ -7,19 +8,31 @@ import { listSafeManagedDirtyPaths } from '../../state/managed-init-paths.js';
 import { parseContractFile, serializeContractFile } from '../../state/contract-file.js';
 import { appendJournalEntry, readJournal } from '../../state/journal.js';
 import {
+  loadConfig,
   loadContract,
   loadTasks,
   readInputFile,
   resolveMilestoneDirName,
   saveContract,
   saveTasks,
+  slugifyTitle,
 } from '../../state/store.js';
 import type { ContractFile } from '../../state/contract-file.js';
-import type { Task } from '../../state/schemas.js';
+import { resolveBranchStrategy, type Task } from '../../state/schemas.js';
 import { derivePending } from '../journal/operations.js';
 import { computeVerificationHash } from '../contracts/verification-hash.js';
 import { resolveReadyTasks } from '../tasks/dependencies.js';
 import { transitionMilestone } from './state-machine.js';
+
+// AC002/T002 (M012): the deterministic branch name a milestone-strategy
+// milestone's own branch always has -- shared by confirm's own branch
+// creation/resume logic here and, from T003 onward, by the commit-branch
+// guard wired into task completion and milestone-complete (both import this
+// from here rather than re-deriving the naming logic independently).
+export function deterministicBranchName(milestoneId: string, title: string): string {
+  const slug = slugifyTitle(title);
+  return slug.length > 0 ? `pitway/${milestoneId}-${slug}` : `pitway/${milestoneId}`;
+}
 
 export class MilestoneConfirmError extends Error {}
 
@@ -110,6 +123,27 @@ function runConfirm(root: string, milestoneId: string, contract: ContractFile): 
     }
     assertNoUnexpectedDirtyPaths(root, expectedPaths);
 
+    // AC002/T002 Case 1 (fresh confirm): under branch_strategy: milestone,
+    // this is the one and only branch mutation confirm ever performs on a
+    // fresh confirm. If the deterministic branch name already exists --
+    // a genuine foreign collision or PitWay's own orphaned half-created
+    // branch from an earlier crashed attempt, deliberately never
+    // distinguished -- refuse outright rather than reuse/reset it.
+    let baseBranch: string | null = null;
+    let baseRevision: string | null = null;
+    if (resolveBranchStrategy(loadConfig(root)) === 'milestone') {
+      const branchName = deterministicBranchName(milestoneId, contract.frontmatter.title);
+      if (branchExists(root, branchName)) {
+        throw new MilestoneConfirmError(
+          `cannot confirm ${milestoneId}: branch ${branchName} already exists -- refusing to ` +
+            `reuse or reset it; inspect manually before retrying`,
+        );
+      }
+      baseBranch = currentBranch(root);
+      baseRevision = currentRevision(root);
+      createAndCheckoutBranch(root, branchName);
+    }
+
     const confirmedAt = nowSeconds();
     const finalStatus = transitionMilestone(transitionMilestone(status, 'confirmed'), 'in_progress');
     const updated: ContractFile = {
@@ -118,6 +152,8 @@ function runConfirm(root: string, milestoneId: string, contract: ContractFile): 
         status: finalStatus,
         confirmed_at: confirmedAt,
         verification_approved_hash: null,
+        base_branch: baseBranch,
+        base_revision: baseRevision,
       },
       body: contract.body,
     };
@@ -162,6 +198,23 @@ function runConfirm(root: string, milestoneId: string, contract: ContractFile): 
         commit: baselineSha,
         readyTasks,
       };
+    }
+    // AC002/T002 Case 2 (resumed confirm): performs no branch mutation of
+    // any kind. base_branch was already recorded (possibly null, under
+    // branch_strategy: main or an untracked milestone) in the earlier
+    // Case 1 write that got this far. If a branch is tracked, refuse
+    // unless the currently checked-out branch is exactly the milestone's
+    // own expected branch -- including when that branch no longer exists
+    // at all -- rather than checking out anything automatically.
+    if (contract.frontmatter.base_branch != null) {
+      const branchName = deterministicBranchName(milestoneId, contract.frontmatter.title);
+      const actual = currentBranch(root);
+      if (actual !== branchName) {
+        throw new MilestoneConfirmError(
+          `cannot resume confirming ${milestoneId}: expected branch ${branchName} to be checked ` +
+            `out, found ${actual}; switch to ${branchName} manually and retry`,
+        );
+      }
     }
     assertNoUnexpectedDirtyPaths(root, expectedPaths);
     // Re-run the (idempotent) promotion in case the write was interrupted.
