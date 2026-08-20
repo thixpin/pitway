@@ -2,7 +2,7 @@
 schema_version: 1
 id: M014
 title: Parallel task worktrees
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-20T12:18:29Z
 verification_approved_hash: sha256:0bce5cc75f4d885540c1a3746ad85129ea7673b25a55e38a5932288725fe376a
@@ -519,3 +519,13 @@ commit per task, no merge commits, no persistent task branches.
   `write_scope`/`context_files` are widened to include
   `tests/integration/cli.test.ts` so the stale assertion is fixed in the
   same task whose gate caught it.
+- 2026-08-20 — Second T011 scope widening, same gate (recorded after T011's
+  checkpoint commit freed the pending-amendment slot; the widening itself
+  was applied via task-amend before T011's final verify run): AC012's
+  typecheck gate caught two type-level defects in earlier M014 tasks' own
+  test files (an unused `@ts-expect-error` in `tests/unit/journal.test.ts`'s
+  worktree_dispatch block — the deliberately-invalid milestone id is
+  type-valid, only zod-invalid; and a duplicate object-literal key in
+  `tests/unit/parallel-eligibility.test.ts`'s task factory) — runtime-green
+  but type-red, so the full suite alone missed them. T011 fixed both at the
+  gate that caught them.

@@ -1,2 +1,146 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-20T13:06:28Z
+    evidence: Tests  89 passed (89) | Start at  20:06:25 | Duration  2.42s
+      (transform 250ms, setup 0ms, import 395ms, tests 2.06s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2800
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-20T13:06:28Z
+    evidence: Tests  10 passed (10) | Start at  20:06:28 | Duration  113ms
+      (transform 20ms, setup 0ms, import 28ms, tests 3ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 454
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-20T13:06:31Z
+    evidence: Tests  10 passed (10) | Start at  20:06:28 | Duration  2.60s
+      (transform 23ms, setup 0ms, import 63ms, tests 2.46s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2891
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-20T13:06:38Z
+    evidence: Tests  46 passed (46) | Start at  20:06:31 | Duration  7.12s
+      (transform 266ms, setup 0ms, import 417ms, tests 12.64s, environment 0ms)
+    recorded_by: command
+    duration_ms: 7422
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-20T13:06:43Z
+    evidence: Tests  7 passed (7) | Start at  20:06:39 | Duration  4.62s (transform
+      228ms, setup 0ms, import 313ms, tests 4.22s, environment 0ms)
+    recorded_by: command
+    duration_ms: 4922
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-20T13:06:54Z
+    evidence: Tests  15 passed (15) | Start at  20:06:44 | Duration  10.12s
+      (transform 404ms, setup 0ms, import 587ms, tests 15.28s, environment 0ms)
+    recorded_by: command
+    duration_ms: 10415
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-20T13:07:00Z
+    evidence: Tests  12 passed (12) | Start at  20:06:54 | Duration  6.08s
+      (transform 407ms, setup 0ms, import 586ms, tests 10.01s, environment 0ms)
+    recorded_by: command
+    duration_ms: 6420
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-20T13:07:08Z
+    evidence: Tests  22 passed (22) | Start at  20:07:01 | Duration  7.63s
+      (transform 442ms, setup 0ms, import 635ms, tests 9.20s, environment 0ms)
+    recorded_by: command
+    duration_ms: 7971
+    termination_reason: exited
+  - check: CT009
+    status: pass
+    at: 2026-08-20T13:07:17Z
+    evidence: Tests  3 passed (3) | Start at  20:07:08 | Duration  8.85s (transform
+      190ms, setup 0ms, import 271ms, tests 8.50s, environment 0ms)
+    recorded_by: command
+    duration_ms: 9176
+    termination_reason: exited
+  - check: CT010
+    status: fail
+    at: 2026-08-20T13:08:33Z
+    evidence: 121|     expect((await run(['init'], root)).error).toBeUndefined(); |
+      122| | ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+    recorded_by: command
+    duration_ms: 75415
+    termination_reason: exited
+  - check: CT011
+    status: pass
+    at: 2026-08-20T13:08:33Z
+    evidence: (no output; exit 0)
+    recorded_by: command
+    duration_ms: 700
+    termination_reason: exited
+  - check: CT010
+    status: pass
+    at: 2026-08-20T13:15:36Z
+    evidence: Tests  1002 passed (1002) | Start at  20:14:24 | Duration  71.97s
+      (transform 2.87s, setup 0ms, import 10.15s, tests 483.44s, environment
+      8ms)
+    recorded_by: command
+    duration_ms: 72408
+    termination_reason: exited
+  - check: CT012
+    status: pass
+    at: 2026-08-20T13:16:12Z
+    evidence: "Reviewed all AC010 doc deliverables against delivered code:
+      protocol-driver.md 'Parallel dispatch' section present (14
+      parallel/worktree references) covering config gating, driver-passes-bundle
+      handoff, worker-commit -> integrate -> task-verify -> review -> completed
+      sequence (review state included), ascending-task-id convention,
+      residue-class recovery mapped to resume's four classes,
+      PitWay-gates/driver-parallelizes disclosure incl.
+      cannot-verify-actual-concurrency, and QA read-only/dedicated-worktree
+      guidance; coordination.md parallel-mode counterpart states the
+      integrate-boundary hazard and stale worktree .pitway/ copy (empty
+      per-worktree journal, verified fact); protocol-worker.md worktree section
+      states the one-notch git relaxation (local commits only), branch-HEAD-SHA
+      reporting, marker untouched; dispatch.md worktree flavor present. Three
+      command docs exist and follow the per-command convention
+      (task-integrate.md documents the review state, idempotent re-runs, and
+      never-discard-in-crash-window). No hardcoded-manifest claims anywhere;
+      listClaudeAssets() returns 34 dynamically; claude-assets.test.ts +
+      init.test.ts assert the three docs ship and install (35 tests passing,
+      CT-covered). Every doc claim traced to tested T004/T007/T008 behavior; no
+      aspirational text found."
+    recorded_by: developer
+  - check: CT013
+    status: pass
+    at: 2026-08-20T13:16:13Z
+    evidence: "Reviewed the reconciled IMPLEMENTATION_PLAN.md against AC011: all
+      four dispositions explicitly written -- (1) sequential-default rewrite in
+      section 10 (sequential byte-identical default, parallel_worktrees
+      delivered opt-in, stashes/auto-merges still never), (2) branch principle
+      reworded to tasks-never-own-PERSISTENT-branches (3 occurrences) with the
+      internal-contradiction note resolved in the roadmap's favor, (3)
+      atomic-commit invariant stated preserved with the disclosed sibling-rider
+      nuance referencing findCompletionCommit's parsed comparison, (4)
+      worker-verification deviation named with both reasons (per-worktree
+      journal resolution; landed-state observation). Command surface 21 matches
+      the registered reality (cli.test.ts asserts the exact 21-name list,
+      passing); asset count 34 matches listClaudeAssets() at runtime; Bootstrap
+      table gains exactly one M013 row with M014's own row correctly omitted;
+      Revised Roadmap M014 entry rewritten to actual delivery incl. the
+      dogfood-irony disclosure and the two developer-directed standalone footer
+      fixes; Status paragraph updated to the M014/T011 snapshot with M013 marked
+      completed. Revision-header entry added; no M001-M013 historical text
+      rewritten beyond the sanctioned reconciliation points (spot-checked
+      M012/M013 entries and section 15's M012 subsection rewording, which is the
+      sanctioned disposition (2) itself)."
+    recorded_by: developer
