@@ -255,7 +255,7 @@ tasks:
       section entirely absent, proving no regression to existing resume output);
       and the no-active-milestone case (unaffected, already covered by existing
       tests -- confirm rather than assume).
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -273,7 +273,15 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/resume.test.ts
-    result: null
+    result:
+      summary: "[truncated] en the active milestone tracks a branch (base_branch
+        non-null); entirely absent from both JSON and human output for a
+        main-strategy or untracked milestone. Read-only orientation only --
+        resume never runs a checkout. A mismatch is reported plainly with both
+        branch names in the human text."
+      evidence: Tests  7 passed (7) | Start at  15:51:44 | Duration  1.51s (transform
+        180ms, setup 0ms, import 264ms, tests 1.16s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T005
     objective: >-

@@ -1,4 +1,6 @@
 import type { Command } from 'commander';
+import { currentBranch } from '../../git/branch.js';
+import { deterministicBranchName } from '../../core/milestones/confirm.js';
 import { loadContract, loadState, loadTasks } from '../../state/store.js';
 import { deriveQuickChangeState, readAllQuickChanges } from '../../core/quick-change/create.js';
 import { renderOutput } from '../output.js';
@@ -12,6 +14,15 @@ export interface PendingQuickChange {
   objective: string;
 }
 
+// AC004/T004 (M012): present only when the active milestone tracks a branch
+// (base_branch non-null under branch_strategy: milestone) -- absent, not
+// merely blank, for a main-strategy or untracked milestone.
+export interface ResumeBranchView {
+  expected: string;
+  actual: string;
+  matches: boolean;
+}
+
 export interface ResumeView {
   activeMilestone: string | null;
   contractStatus: MilestoneStatus | null;
@@ -23,6 +34,7 @@ export interface ResumeView {
   inProgress: string[];
   nextTask: string | null;
   pendingQuickChanges: PendingQuickChange[];
+  branch?: ResumeBranchView;
 }
 
 function idsWithStatus(tasks: Task[], status: TaskStatus): string[] {
@@ -93,6 +105,18 @@ export function buildResumeView(root: string): ResumeView {
   // one in_progress task, but pick the lowest id deterministically anyway.
   const inProgress = idsWithStatus(tasksFile.tasks, 'in_progress').sort();
 
+  // AC004/T004: read-only orientation only -- never a git mutation of any
+  // kind. Present only when this milestone tracks a branch.
+  const { base_branch: baseBranch, title } = contract.frontmatter;
+  const branch: ResumeBranchView | undefined =
+    baseBranch != null
+      ? (() => {
+          const expected = deterministicBranchName(state.active_milestone!, title);
+          const actual = currentBranch(root);
+          return { expected, actual, matches: actual === expected };
+        })()
+      : undefined;
+
   return {
     activeMilestone: state.active_milestone,
     contractStatus: contract.frontmatter.status,
@@ -104,6 +128,7 @@ export function buildResumeView(root: string): ResumeView {
     inProgress,
     nextTask: inProgress.length > 0 ? inProgress[0]! : ready.length > 0 ? ready[0]! : null,
     pendingQuickChanges,
+    ...(branch ? { branch } : {}),
   };
 }
 
@@ -131,9 +156,15 @@ export function renderResumeHuman(view: ResumeView): string {
   const lines = [
     `🏁 Resuming ${view.activeMilestone} — ${view.title}`,
     `Contract: ${view.contractStatus}`,
-    '',
-    '🛠 Tasks',
   ];
+  if (view.branch) {
+    lines.push(
+      view.branch.matches
+        ? `Branch: ${view.branch.actual} (tracked, checked out)`
+        : `Branch mismatch: expected ${view.branch.expected}, currently on ${view.branch.actual} — switch manually`,
+    );
+  }
+  lines.push('', '🛠 Tasks');
   for (const t of view.tasks) {
     lines.push(`  ${t.id}  ${taskStatusLabel(t.status)}`);
   }
