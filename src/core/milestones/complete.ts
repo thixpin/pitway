@@ -5,12 +5,12 @@ import { checkWorkingTreeClean, classifyDirtyPaths } from '../../git/safety.js';
 import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
 import { parseContractFile } from '../../state/contract-file.js';
 import { reconcilePending } from '../../state/journal.js';
+import { computeLatestCheckResults } from '../verification/status.js';
 import {
   loadContract,
   loadState,
   loadTasks,
   loadVerificationRepairs,
-  loadVerificationResults,
   resolveMilestoneDirName,
   saveContract,
   saveState,
@@ -75,10 +75,7 @@ function assertGatesSatisfied(root: string, milestoneId: string, contract: Contr
     .tasks.filter((t) => t.status !== 'cancelled' && t.status !== 'completed')
     .map((t) => `${t.id} (${t.status})`);
 
-  const latest = new Map<string, 'pass' | 'fail'>();
-  for (const result of loadVerificationResults(root, milestoneId).results) {
-    latest.set(result.check, result.status);
-  }
+  const latest = computeLatestCheckResults(root, milestoneId);
   const missingChecks: string[] = [];
   const failingChecks: string[] = [];
   for (const check of contract.frontmatter.verification) {

@@ -699,3 +699,62 @@ describe('pitway verify recursion guard (T002)', () => {
     expect(recorded[0]!.evidence).toContain('RECURSION_OK');
   });
 });
+
+// AC008 (M013): read-only status view, never executes anything, never
+// mutates verification-results.yaml.
+describe('pitway verify --status (M013/T001)', () => {
+  interface StatusView {
+    id: string;
+    checks: Array<{ check: string; status: string }>;
+  }
+
+  it('reports pending for every check before any run, without executing or recording anything', async () => {
+    await confirmed();
+    const before = commitCount(root);
+    const { lines, error } = await run(['verify', '--status', '--json'], root);
+    expect(error).toBeUndefined();
+    const view = JSON.parse(lines[0]!) as StatusView;
+    expect(view.checks).toEqual([
+      { check: 'CT001', status: 'pending' },
+      { check: 'CT002', status: 'pending' },
+      { check: 'CT003', status: 'pending' },
+    ]);
+    expect(results()).toEqual([]);
+    expect(commitCount(root)).toBe(before);
+  });
+
+  it('reflects previously recorded results without re-executing command checks', async () => {
+    await confirmed(FAILING_CHECKS);
+    await run(['verify'], root);
+    await run(['verify', '--check', 'CT003', '--pass', '--evidence', 'docs reviewed'], root);
+    const recordedBefore = results().length;
+
+    const { lines, error } = await run(['verify', '--status', '--json'], root);
+    expect(error).toBeUndefined();
+    const view = JSON.parse(lines[0]!) as StatusView;
+    expect(view.checks).toEqual([
+      { check: 'CT001', status: 'pass' },
+      { check: 'CT002', status: 'fail' },
+      { check: 'CT003', status: 'pass' },
+    ]);
+    // Nothing was appended by --status itself.
+    expect(results().length).toBe(recordedBefore);
+  });
+
+  it('works for an unconfirmed (draft) milestone, unlike bare verify', async () => {
+    await addMilestone();
+    const { lines, error } = await run(['verify', '--status', '--json'], root);
+    expect(error).toBeUndefined();
+    const view = JSON.parse(lines[0]!) as StatusView;
+    expect(view.checks.every((c) => c.status === 'pending')).toBe(true);
+  });
+
+  it('refuses when combined with --check/--pass/--fail/--evidence', async () => {
+    await confirmed();
+    const { error } = await run(
+      ['verify', '--status', '--check', 'CT003', '--pass', '--evidence', 'x'],
+      root,
+    );
+    expect(error?.message).toMatch(/--status/);
+  });
+});

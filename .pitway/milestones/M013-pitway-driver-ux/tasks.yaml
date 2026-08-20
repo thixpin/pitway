@@ -19,7 +19,7 @@ tasks:
       workload percentage and AC004/AC005's footer/report all need this same
       shared helper to derive a `verificationPassed` boolean -- one
       implementation, not reimplemented per caller."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - AC008
@@ -46,7 +46,16 @@ tasks:
       detail: npm test -- tests/unit/verification-status.test.ts
         tests/integration/milestone-complete.test.ts
         tests/integration/verify.test.ts
-    result: null
+    result:
+      summary: "[truncated]  suite passing unchanged. Added a --status flag to verify:
+        reads verification-results.yaml via the shared helper and renders every
+        declared check's latest recorded status (pass/fail/pending) without
+        executing anything or mutating verification-results.yaml; works for
+        draft milestones too."
+      evidence: Tests  53 passed (53) | Start at  17:01:46 | Duration  18.92s
+        (transform 481ms, setup 0ms, import 752ms, tests 33.10s, environment
+        0ms)
+    attempts: 1
     usage: null
   - id: T002
     objective: "Add an additive-optional `name: z.string().min(1).max(80)` field to

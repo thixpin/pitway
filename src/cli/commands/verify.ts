@@ -8,6 +8,7 @@ import {
   type VerifyRecordView,
   type VerifyRunView,
 } from '../../core/verification/run.js';
+import { getVerificationStatus, type VerifyStatusView } from '../../core/verification/status.js';
 import { renderOutput } from '../output.js';
 
 function renderRunHuman(view: VerifyRunView): string {
@@ -36,6 +37,15 @@ function renderCheckRunHuman(view: VerifyCheckRunView): string {
   return `🔍 ${view.check}  ${icon} — ${view.evidence} (${view.id})`;
 }
 
+function renderStatusHuman(view: VerifyStatusView): string {
+  const lines = [`🔍 Verification status ${view.id}`];
+  for (const c of view.checks) {
+    const label = c.status === 'pass' ? '✅ pass' : c.status === 'fail' ? '❌ fail' : '⏳ pending';
+    lines.push(`  ${c.check}  ${label}`);
+  }
+  return lines.join('\n');
+}
+
 export interface CommandDeps {
   root?: string;
   write?: (line: string) => void;
@@ -46,6 +56,7 @@ interface VerifyOptions {
   pass?: boolean;
   fail?: boolean;
   evidence?: string;
+  status?: boolean;
   json?: boolean;
 }
 
@@ -58,9 +69,18 @@ export function registerVerifyCommand(program: Command, deps: CommandDeps = {}):
     .option('--pass', 'record the check as passing')
     .option('--fail', 'record the check as failing')
     .option('--evidence <text>', 'evidence supporting the recorded result')
+    .option('--status', 'show the latest recorded result per check, without executing anything')
     .option('--json', 'output machine-readable JSON')
     .action((id: string | undefined, options: VerifyOptions) => {
       const root = deps.root ?? process.cwd();
+      if (options.status) {
+        if (options.check !== undefined || options.pass || options.fail || options.evidence !== undefined) {
+          throw new VerifyError('--status cannot be combined with --check, --pass, --fail, or --evidence');
+        }
+        const view = getVerificationStatus(root, id);
+        write(renderOutput(view, { json: options.json }, renderStatusHuman));
+        return;
+      }
       if (options.check === undefined) {
         if (options.pass || options.fail || options.evidence !== undefined) {
           throw new VerifyError('--pass, --fail, and --evidence require --check <ctid>');
