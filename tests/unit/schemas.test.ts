@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   configSchema,
   contractFrontmatterSchema,
+  resolveBranchStrategy,
   stateSchema,
   taskSchema,
   tasksFileSchema,
@@ -84,6 +85,34 @@ describe.each(cases)('$artifact schema', ({ schema, valid, invalid, offendingFie
   it('rejects unknown top-level keys', () => {
     const data = fixture(valid) as Record<string, unknown>;
     const result = schema.safeParse({ ...data, unexpected_key: true });
+    expect(result.success).toBe(false);
+  });
+});
+
+// AC001/T001 (M012): config.yaml's first real (non-schema_version) field --
+// additive-optional, absent resolves to 'main', byte-identical to today.
+describe('config schema git.branch_strategy (M012/T001)', () => {
+  it('resolves a bare, pre-existing config.yaml (no git key at all) to main', () => {
+    const bare = fixture('valid/config.yaml') as Record<string, unknown>;
+    const parsed = configSchema.parse(bare);
+    expect(resolveBranchStrategy(parsed)).toBe('main');
+  });
+
+  it('round-trips git.branch_strategy: milestone through parse', () => {
+    const parsed = configSchema.parse({ schema_version: 1, git: { branch_strategy: 'milestone' } });
+    expect(resolveBranchStrategy(parsed)).toBe('milestone');
+  });
+
+  it('round-trips git.branch_strategy: main explicitly', () => {
+    const parsed = configSchema.parse({ schema_version: 1, git: { branch_strategy: 'main' } });
+    expect(resolveBranchStrategy(parsed)).toBe('main');
+  });
+
+  it('rejects an unrecognized branch_strategy value', () => {
+    const result = configSchema.safeParse({
+      schema_version: 1,
+      git: { branch_strategy: 'feature' },
+    });
     expect(result.success).toBe(false);
   });
 });

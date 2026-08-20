@@ -59,8 +59,16 @@ export const taskUsageSchema = z
   })
   .nullable();
 
+// AC001/T001 (M012): additive-optional -- absent on every config.yaml written
+// before this milestone, and on every fresh `pitway init` output (init does
+// not write this field), resolving to 'main' via resolveBranchStrategy below.
 export const configSchema = z.strictObject({
   schema_version: schemaVersion,
+  git: z
+    .strictObject({
+      branch_strategy: z.enum(['main', 'milestone']),
+    })
+    .optional(),
 });
 
 export const stateSchema = z.strictObject({
@@ -260,6 +268,15 @@ export const verificationRepairsFileSchema = z.strictObject({
 });
 
 export type PitwayConfig = z.infer<typeof configSchema>;
+export type BranchStrategy = 'main' | 'milestone';
+
+// AC001/T001 (M012): the one place that resolves an absent `git` field to
+// its 'main' default -- every later call site reads the active strategy
+// through this helper rather than re-deriving the absent-means-main
+// fallback independently.
+export function resolveBranchStrategy(config: PitwayConfig): BranchStrategy {
+  return config.git?.branch_strategy ?? 'main';
+}
 export type PitwayState = z.infer<typeof stateSchema>;
 export type ContractFrontmatter = z.infer<typeof contractFrontmatterSchema>;
 export type VerificationCheck = z.infer<typeof verificationCheckSchema>;
