@@ -3,6 +3,7 @@ import { startReviewSession, type ReviewSessionView } from '../../core/reviews/s
 import { buildReviewBrief, type ReviewBriefView } from '../../core/reviews/brief.js';
 import { recordReviewFindings, type RecordReviewView } from '../../core/reviews/record.js';
 import { buildReviewReport, type ReviewReportView } from '../../core/reviews/report.js';
+import { decideReview, type DecideReviewView } from '../../core/reviews/decide.js';
 import { promptForRoles, type PromptStreams } from '../review-prompt.js';
 import { renderOutput } from '../output.js';
 
@@ -99,6 +100,17 @@ function renderReportHuman(view: ReviewReportView): string {
   return lines.join('\n');
 }
 
+// AC007: the human output for revision_requested names both sanctioned
+// revision paths -- a draft milestone-add --replace's, a confirmed
+// milestone-confirm --amend's.
+function renderDecideHuman(view: DecideReviewView): string {
+  const base = `📜 Session ${view.sessionId} (${view.milestone}) decided: ${view.outcome}.`;
+  if (view.outcome !== 'revision_requested') return base;
+  return `${base} Revise via \`milestone-add --replace\` (draft) or \`milestone-confirm --amend\` (confirmed).`;
+}
+
+const DECIDE_OUTCOMES = ['accepted', 'revision_requested', 'rejected'] as const;
+
 export function registerMilestoneReviewCommand(program: Command, deps: CommandDeps = {}): void {
   const write = deps.write ?? ((line: string) => console.log(line));
   const milestoneReview = program
@@ -175,5 +187,26 @@ export function registerMilestoneReviewCommand(program: Command, deps: CommandDe
       const root = deps.root ?? process.cwd();
       const view = buildReviewReport(root, id);
       write(renderOutput(view, { json: options.json }, renderReportHuman));
+    });
+
+  milestoneReview
+    .command('decide <id>')
+    .description(
+      'Close the open session: accepted/revision_requested require every selected role recorded; ' +
+        'rejected is the explicit abandonment path for an unfinished review.',
+    )
+    .requiredOption('--outcome <outcome>', `one of: ${DECIDE_OUTCOMES.join(', ')}`)
+    .option('--note <text>', 'optional decision note, up to 300 characters')
+    .option('--json', 'output machine-readable JSON')
+    .action((id: string, options: { outcome: string; note?: string; json?: boolean }) => {
+      if (!(DECIDE_OUTCOMES as readonly string[]).includes(options.outcome)) {
+        throw new Error(`--outcome must be one of: ${DECIDE_OUTCOMES.join(', ')}`);
+      }
+      const root = deps.root ?? process.cwd();
+      const view = decideReview(root, id, {
+        outcome: options.outcome as (typeof DECIDE_OUTCOMES)[number],
+        note: options.note,
+      });
+      write(renderOutput(view, { json: options.json }, renderDecideHuman));
     });
 }

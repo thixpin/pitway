@@ -331,7 +331,7 @@ tasks:
       (`tests/integration/milestone-review-decide.test.ts`): each outcome;
       pending-role refusals; rejected-with-pending; decided-session closure
       enables a fresh start; the no-mutation byte check."
-    status: ready
+    status: completed
     depends_on:
       - T005
     acceptance_criteria:
@@ -352,7 +352,15 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-review-decide.test.ts
-    result: null
+    result:
+      summary: "[truncated] isted, journal-recorded, session -> decided). Wired
+        `milestone-review decide <id> --outcome [--note]`; human output for
+        revision_requested names both sanctioned revision paths. Test pins that
+        no review command ever writes contract.md or tasks.yaml across a full
+        start/record/decide cycle."
+      evidence: Tests  10 passed (10) | Start at  00:05:29 | Duration  3.46s
+        (transform 248ms, setup 0ms, import 346ms, tests 3.02s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T008
     name: Reviews lifecycle allowlist rows and ride-along proof
@@ -466,7 +474,7 @@ tasks:
       and `tests/integration/init.test.ts` with shipped-and-installed assertions
       for the new doc. Every claim must match delivered T002-T007 behavior — no
       aspirational text."
-    status: waiting
+    status: ready
     depends_on:
       - T003
       - T004
