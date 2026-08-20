@@ -1,0 +1,524 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Review state schema and role registry
+    objective: "Add `reviewsFileSchema` to `src/state/schemas.ts` (sessions with
+      id/status/created_at/roles/content_hash/findings-snapshots/ nullable
+      decision, per AC001's exact shape) with load/save in `src/state/store.ts`
+      following verification-results' precedent (absent file loads empty;
+      created on first write, never by milestone-add). Implement the Core role
+      registry (`src/core/reviews/roles.ts`): nine built-in roles (developer,
+      architect, devops, qa, product, business, business-analyst, ui-ux, user)
+      with AC001's exact focus texts as data; kebab-case ids schema-side,
+      registered-roles-only validation helper; the newest-snapshot-per-role
+      derivation helper; the finding-ENTRY schema with AC001's caps (owned here
+      — T005 adds only the input-file wrapper reusing it); the
+      definition-projection content-hash helper (contract bytes + canonical
+      task-definition JSON, execution fields excluded); and the journal backing:
+      a `review_recording` operation type in `journalOperationTypeSchema`
+      (`src/state/journal.ts`) plus a `reviews.yaml` case in `resolveTargetPath`
+      (`src/core/journal/operations.ts`), unit-tested in
+      `tests/unit/journal.test.ts` like every prior addition. Unit tests
+      (`tests/unit/review-state.test.ts`): schema round-trips, absent-file
+      default, unknown-role rejection, duplicate handling, newest-per-role
+      derivation, decision shape."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC001
+    context_files:
+      - src/state/schemas.ts
+      - src/state/store.ts
+      - src/core/reviews/roles.ts
+      - src/state/journal.ts
+      - src/core/journal/operations.ts
+      - src/state/contract-file.ts
+      - tests/unit/review-state.test.ts
+      - tests/unit/journal.test.ts
+    write_scope:
+      - src/state/schemas.ts
+      - src/state/store.ts
+      - src/core/reviews/roles.ts
+      - src/state/journal.ts
+      - src/core/journal/operations.ts
+      - tests/unit/review-state.test.ts
+      - tests/unit/journal.test.ts
+    mapped_ac_ids:
+      - AC001
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/review-state.test.ts tests/unit/journal.test.ts
+    result: null
+    usage: null
+  - id: T002
+    name: milestone-review start and CLI registration
+    objective: "Implement `src/core/reviews/session.ts` (open-session creation per
+      AC002: role validation against T001's registry,
+      completed/cancelled-milestone refusal, one-open-session refusal, T001's
+      definition-projection content_hash, the review_recording journal append
+      with immediate materialization) and the top-level `milestone-review`
+      command with the `start <id> --roles <csv>` subcommand
+      (`src/cli/commands/milestone-review.ts`, registered in `src/cli/index.ts`
+      — quick-change's subcommand precedent). Update
+      `tests/integration/cli.test.ts`'s registered-command-list assertion to 22
+      IN THIS TASK (the M014 lesson: the command-adding task owns the surface
+      assertion — including the test NAME hardcoding the count). Also switch the
+      bin entry's `program.parse` to `await program.parseAsync` in
+      `src/cli/index.ts`: this milestone introduces the first async command
+      action (T003's prompt), and a sync parse would turn its refusal path into
+      an unhandled rejection in the real binary. Integration tests
+      (`tests/integration/milestone-review-start.test.ts`): session created with
+      correct roles/hash on a draft and on a confirmed milestone;
+      unknown/duplicate/empty role refusals naming offenders;
+      completed-milestone refusal; second-open-session refusal."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - AC002
+    context_files:
+      - src/core/reviews/session.ts
+      - src/core/reviews/roles.ts
+      - src/state/schemas.ts
+      - src/state/store.ts
+      - src/state/contract-file.ts
+      - src/cli/commands/milestone-review.ts
+      - src/cli/commands/quick-change.ts
+      - src/cli/index.ts
+      - tests/integration/milestone-review-start.test.ts
+      - tests/integration/cli.test.ts
+    write_scope:
+      - src/core/reviews/session.ts
+      - src/cli/commands/milestone-review.ts
+      - src/cli/index.ts
+      - tests/integration/milestone-review-start.test.ts
+      - tests/integration/cli.test.ts
+    mapped_ac_ids:
+      - AC002
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-review-start.test.ts
+        tests/integration/cli.test.ts
+    result: null
+    usage: null
+  - id: T003
+    name: Interactive role selection
+    objective: "Deliver AC003's numbered multi-select for `milestone-review start`
+      when `--roles` is omitted on a TTY: plain `node:readline` against
+      injectable input/output streams (`src/cli/review-prompt.ts` or equivalent
+      within scope), roles listed with focus one-liners, `1,3,4`-style input,
+      one re-prompt on empty/invalid then refuse; non-TTY without `--roles`
+      refuses naming the flag (TTY detection reads the INJECTED input stream's
+      own isTTY, never process.stdin directly, so both branches are
+      test-drivable); `--roles` supplied never prompts. No new runtime
+      dependencies — `interactive-ux.md`'s arrow-key design stays design-only,
+      stated in a code comment. Integration tests
+      (`tests/integration/milestone-review-interactive.test.ts`) drive the
+      prompt through injected streams: valid selection opens the session;
+      invalid-then-valid re-prompt; invalid-twice refusal; non-TTY refusal;
+      --roles bypass."
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - AC003
+    context_files:
+      - src/cli/review-prompt.ts
+      - src/cli/commands/milestone-review.ts
+      - src/core/reviews/roles.ts
+      - tests/integration/milestone-review-interactive.test.ts
+    write_scope:
+      - src/cli/review-prompt.ts
+      - src/cli/commands/milestone-review.ts
+      - tests/integration/milestone-review-interactive.test.ts
+    mapped_ac_ids:
+      - AC003
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-review-interactive.test.ts
+    result: null
+    usage: null
+  - id: T004
+    name: milestone-review brief
+    objective: "Implement `milestone-review brief <id> --role <role>` per AC004
+      (Core in `src/core/reviews/brief.ts`): read-only role brief — registry
+      focus text, findings-only mandate and the AC005 findings YAML shape as
+      instructions, contract frontmatter + body, full task list, session
+      content_hash. Refusals: no open session; role not in the open session;
+      hash mismatch (milestone revised mid-review — stale briefs refused, never
+      served). `--json` is the driver-forwarded reviewer envelope. Integration
+      tests (`tests/integration/milestone-review-brief.test.ts`): happy path
+      content, all three refusals (hash mismatch driven by a real `milestone-add
+      --replace` revision)."
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - AC004
+    context_files:
+      - src/core/reviews/brief.ts
+      - src/core/reviews/session.ts
+      - src/core/reviews/roles.ts
+      - src/state/store.ts
+      - src/cli/commands/milestone-review.ts
+      - tests/integration/milestone-review-brief.test.ts
+    write_scope:
+      - src/core/reviews/brief.ts
+      - src/cli/commands/milestone-review.ts
+      - tests/integration/milestone-review-brief.test.ts
+    mapped_ac_ids:
+      - AC004
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-review-brief.test.ts
+    result: null
+    usage: null
+  - id: T005
+    name: milestone-review record with hash gate
+    objective: "Implement `milestone-review record <id> --role <role> --file <yaml>`
+      per AC005 (Core in `src/core/reviews/record.ts`): input validated by a
+      thin wrapper REUSING T001's finding-entry schema (no second schema);
+      targets normalized (trim/case-fold) with unknown-ACnnn/Tnnn acceptance
+      (warn-in-report, T006); snapshot appended (append-only, newest wins) and
+      journal-recorded per AC001; empty findings valid. Refusals: no open
+      session; role not in session; terminal milestone; the definition-hash
+      staleness gate with the fresh-session/decide-rejected diagnostic.
+      Integration tests (`tests/integration/milestone-review-record.test.ts`):
+      happy path snapshot shape; re-record appends and wins derivation without
+      mutating the prior snapshot; empty-findings validity; malformed file
+      refusal naming issues; all session/hash refusals."
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - AC005
+    context_files:
+      - src/core/reviews/record.ts
+      - src/core/reviews/session.ts
+      - src/state/schemas.ts
+      - src/state/store.ts
+      - src/state/contract-file.ts
+      - src/cli/commands/milestone-review.ts
+      - tests/integration/milestone-review-record.test.ts
+    write_scope:
+      - src/core/reviews/record.ts
+      - src/state/schemas.ts
+      - src/cli/commands/milestone-review.ts
+      - tests/integration/milestone-review-record.test.ts
+    mapped_ac_ids:
+      - AC005
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-review-record.test.ts
+    result: null
+    usage: null
+  - id: T006
+    name: milestone-review report
+    objective: "Implement `milestone-review report <id>` per AC006:
+      `src/core/reviews/report.ts` builds the report VIEW only (honesty text as
+      view data; zero rendering in Core — the codebase convention);
+      `renderReviewReportHuman` lives in the CLI command module. View:
+      role/finding/severity (blocker > major > minor)/ normalized targets with
+      unknown-target warning markers/ recommendation; newest-per-role snapshots
+      only, with a superseded-snapshot count when re-recorded; mechanical
+      conflict surfacing (declared conflicts_with pairs + shared normalized
+      targets side by side); pending roles listed, never omitted; the honesty
+      text (reconciliation is the developer/driver's; findings are
+      opinion-evidence, never implementation/runtime proof). Also AC006's
+      discovery hook: `pitway resume` lists an open review session (milestone,
+      session id, roles, recorded/pending counts) — additive --json key,
+      byte-identical output when none; update the two stale-assertion-prone
+      suites if the additive key trips them. Integration tests
+      (`tests/integration/milestone-review-report.test.ts`): ordering, overlap
+      listing, declared-conflict listing, pending-role listing, honesty text
+      presence, empty-session report."
+    status: waiting
+    depends_on:
+      - T005
+    acceptance_criteria:
+      - AC006
+    context_files:
+      - src/core/reviews/report.ts
+      - src/core/reviews/record.ts
+      - src/core/reviews/session.ts
+      - src/core/reviews/roles.ts
+      - src/state/store.ts
+      - src/cli/commands/milestone-review.ts
+      - src/cli/commands/resume.ts
+      - tests/integration/milestone-review-report.test.ts
+      - tests/integration/resume.test.ts
+      - tests/integration/fresh-session-resume.test.ts
+      - tests/integration/self-hosting-readiness.test.ts
+    write_scope:
+      - src/core/reviews/report.ts
+      - src/cli/commands/milestone-review.ts
+      - src/cli/commands/resume.ts
+      - tests/integration/milestone-review-report.test.ts
+      - tests/integration/resume.test.ts
+      - tests/integration/fresh-session-resume.test.ts
+      - tests/integration/self-hosting-readiness.test.ts
+    mapped_ac_ids:
+      - AC006
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-review-report.test.ts
+        tests/integration/resume.test.ts
+    result: null
+    usage: null
+  - id: T007
+    name: milestone-review decide
+    objective: "Implement `milestone-review decide <id> --outcome accepted|
+      revision_requested|rejected [--note <text>]` per AC007 (Core in
+      `src/core/reviews/decide.ts`): accepted/revision_requested refuse while
+      any selected role lacks a recorded snapshot (naming pending roles);
+      rejected permitted with pending roles (explicit abandonment — also the
+      path the record/brief stale-hash diagnostic names); terminal milestones
+      refuse decide like every review mutation (AC007's abandoned-by-refusal
+      disposition, report stays readable); decision persisted and
+      journal-recorded, session -> decided; revision_requested output names
+      milestone-add --replace (draft) and milestone-confirm --amend (confirmed)
+      as the sanctioned revision paths. No review command writes
+      contract.md/tasks.yaml — pin with a test asserting both files' bytes are
+      untouched across a full start/record/decide cycle. Integration tests
+      (`tests/integration/milestone-review-decide.test.ts`): each outcome;
+      pending-role refusals; rejected-with-pending; decided-session closure
+      enables a fresh start; the no-mutation byte check."
+    status: waiting
+    depends_on:
+      - T005
+    acceptance_criteria:
+      - AC007
+    context_files:
+      - src/core/reviews/decide.ts
+      - src/core/reviews/session.ts
+      - src/core/reviews/record.ts
+      - src/state/store.ts
+      - src/cli/commands/milestone-review.ts
+      - tests/integration/milestone-review-decide.test.ts
+    write_scope:
+      - src/core/reviews/decide.ts
+      - src/cli/commands/milestone-review.ts
+      - tests/integration/milestone-review-decide.test.ts
+    mapped_ac_ids:
+      - AC007
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-review-decide.test.ts
+    result: null
+    usage: null
+  - id: T008
+    name: Reviews lifecycle allowlist rows and ride-along proof
+    objective: "Deliver AC008's no-deadlock/no-dangle guarantee. Exactly two
+      enumerated per-file allowlists gain a `reviews.yaml` row (subset
+      semantics, harmless when absent): `computeExpectedBaselinePaths`
+      (`src/git/baseline.ts`) so a reviewed draft confirms cleanly with
+      reviews.yaml riding the baseline commit, and `milestone-complete`'s
+      `completionPaths` (`src/core/milestones/complete.ts`) so a post-last-task
+      review rides the completion commit. NO edits to
+      task-update/task-verify/task-integrate: their existing journal-pending
+      classification already expects the journal-backed write (T001's
+      review_recording + resolveTargetPath) — proven by tests, not code.
+      Integration tests (`tests/integration/review-state-lifecycle.test.ts`):
+      draft-session write rides the baseline commit at confirm; on a CONFIRMED
+      milestone, record -> task-update in_progress succeeds -> task-verify
+      succeeds -> completion commit carries reviews.yaml; record after the final
+      task completes rides the milestone-complete commit; quick-change create
+      refuses while a review write is pending (disclosed edge); control:
+      genuinely unrelated dirt still refuses everywhere."
+    status: waiting
+    depends_on:
+      - T005
+    acceptance_criteria:
+      - AC008
+    context_files:
+      - src/git/baseline.ts
+      - src/core/milestones/complete.ts
+      - src/core/milestones/confirm.ts
+      - src/core/tasks/update.ts
+      - src/core/tasks/verify.ts
+      - src/core/tasks/integrate.ts
+      - src/core/journal/operations.ts
+      - src/core/reviews/record.ts
+      - tests/integration/review-state-lifecycle.test.ts
+    write_scope:
+      - src/git/baseline.ts
+      - src/core/milestones/complete.ts
+      - tests/integration/review-state-lifecycle.test.ts
+    mapped_ac_ids:
+      - AC008
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/review-state-lifecycle.test.ts
+    result: null
+    usage: null
+  - id: T009
+    name: End-to-end review lifecycle test
+    objective: "Author `tests/integration/milestone-review-lifecycle.test.ts` per
+      AC010 against real temp repos: draft path (start two roles -> brief both
+      -> record one -> milestone-add --replace WHILE the session is open ->
+      second record and brief refuse on the definition-hash gate -> decide
+      rejected (abandonment) -> new session on the revised draft records both
+      cleanly -> report proves ordering/overlap/superseded-count/honesty text ->
+      decide revision_requested names the revision paths); confirmed path (start
+      -> record one role -> a REAL task-update transition -> record the second
+      role SUCCEEDS -> decide accepted — genuine interleaving, execution never
+      stales the definition hash); one-open-session and terminal-milestone
+      refusals. Also extend `tests/integration/worktree-state-guard.test.ts` per
+      AC009: prove `milestone-review report` refuses inside a real task worktree
+      (default-deny, no guard changes) and works at the main root. Test-only
+      task: no src/ changes; any product defect stops work per the
+      contract-conflict rule."
+    status: waiting
+    depends_on:
+      - T003
+      - T004
+      - T006
+      - T007
+      - T008
+    acceptance_criteria:
+      - AC009
+      - AC010
+    context_files:
+      - tests/integration/milestone-review-lifecycle.test.ts
+      - tests/integration/worktree-state-guard.test.ts
+      - src/core/reviews/session.ts
+      - src/core/reviews/brief.ts
+      - src/core/reviews/record.ts
+      - src/core/reviews/report.ts
+      - src/core/reviews/decide.ts
+      - src/cli/commands/milestone-review.ts
+      - src/cli/worktree-guard.ts
+    write_scope:
+      - tests/integration/milestone-review-lifecycle.test.ts
+      - tests/integration/worktree-state-guard.test.ts
+    mapped_ac_ids:
+      - AC009
+      - AC010
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-review-lifecycle.test.ts
+        tests/integration/worktree-state-guard.test.ts
+    result: null
+    usage: null
+  - id: T010
+    name: Claude assets for milestone review
+    objective: "Deliver AC011's installed assets: `commands/milestone-review.md`
+      (the /milestone-review driver surface) documenting role selection WITH the
+      developer (the backlog doc's three example combinations quoted as
+      examples-not-presets), one reviewer subagent per role receiving only its
+      brief --json envelope, verbatim finding recording (normalization allowed,
+      invention refused), report presentation, human decision;
+      `protocol-driver.md` gains a 'Milestone review' section with the same flow
+      plus AC011's disclosures in the advisory-honesty register: no review
+      COMMAND can mutate milestone state; an unsanctioned reviewer edit is
+      DETECTED by the hash gate, never prevented; PitWay never runs reviews and
+      cannot verify reviewer independence or concurrency; findings are
+      opinion-evidence; the documented practice is decide-before-complete. Asset
+      discovery dynamic (34 -> 35); extend `tests/unit/claude-assets.test.ts`
+      and `tests/integration/init.test.ts` with shipped-and-installed assertions
+      for the new doc. Every claim must match delivered T002-T007 behavior — no
+      aspirational text."
+    status: waiting
+    depends_on:
+      - T003
+      - T004
+      - T006
+      - T007
+    acceptance_criteria:
+      - AC011
+    context_files:
+      - src/integrations/claude/commands/milestone-review.md
+      - src/integrations/claude/protocol-driver.md
+      - src/integrations/claude/commands/quick-change.md
+      - src/state/claude-assets.ts
+      - tests/unit/claude-assets.test.ts
+      - tests/integration/init.test.ts
+      - src/cli/commands/milestone-review.ts
+      - src/core/reviews/report.ts
+    write_scope:
+      - src/integrations/claude/commands/milestone-review.md
+      - src/integrations/claude/protocol-driver.md
+      - tests/unit/claude-assets.test.ts
+      - tests/integration/init.test.ts
+    mapped_ac_ids:
+      - AC011
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/claude-assets.test.ts
+        tests/integration/init.test.ts
+    result: null
+    usage: null
+  - id: T012
+    name: README reconciliation
+    objective: "Reconcile `README.md` per AC014, preserving its existing register
+      (high-level, count-free, defers the command surface to `pitway --help`,
+      claims bounded by fresh-clone evidence): add the optional role-based
+      review stage to the How-It-Works lifecycle prose AND mermaid diagram
+      (findings-only reviewers between Contract and Human Approval, developer
+      decision); add an 'Opt-in policies' section for `git.branch_strategy`
+      (M012) and `execution.strategy` (M014) with their byte-identical defaults
+      and a one-paragraph parallel-worktrees shape; one line for the M013
+      progress footer/`milestone-status --report`; extend the Engineering
+      Boundaries table with the review-honesty row (findings only, PitWay never
+      runs reviews or verifies reviewer independence) while leaving the
+      `context_files` row's §8-identical statement untouched. Docs-only task: no
+      code, no tests authored; verified by CT016's review check plus the
+      milestone gates."
+    status: waiting
+    depends_on:
+      - T009
+      - T010
+    acceptance_criteria:
+      - AC014
+    context_files:
+      - README.md
+      - IMPLEMENTATION_PLAN.md
+      - src/integrations/claude/commands/milestone-review.md
+      - src/cli/commands/milestone-review.ts
+    write_scope:
+      - README.md
+    mapped_ac_ids:
+      - AC014
+    verification:
+      strategy: manual
+      detail: Reviewed against AC014's checklist (CT016); no automated test owns
+        README prose.
+    result: null
+    usage: null
+  - id: T011
+    name: Plan reconciliation and milestone gates
+    objective: "Reconcile `IMPLEMENTATION_PLAN.md` per AC012 — revision-header
+      entry; M015 (PitWay Milestone Review) inserted and Extended dogfood
+      validation + release increment renumbered M016 throughout including every
+      cross-reference (grep-verified: no stale 'M015 — Extended dogfood' text
+      remains); §7 command list/count to 22 with a milestone-review table row;
+      §9 asset count to 35 with an M015-additions bullet; Bootstrap table gains
+      M014's row (M015's own omitted per the self-referential discipline);
+      Revised Roadmap M015 entry written to actual delivery naming every
+      disclosed deviation/decision (command-shape spacing, known-roles-only,
+      readline-not-arrow-keys, confirm/review uncoupling, the bootstrap-review
+      disclosure); Status paragraph updated. Then run the milestone-level gates
+      exactly once: full `npm test` and `npx tsc --noEmit` (AC013)."
+    status: waiting
+    depends_on:
+      - T009
+      - T010
+      - T012
+    acceptance_criteria:
+      - AC012
+      - AC013
+    context_files:
+      - IMPLEMENTATION_PLAN.md
+      - drafts/M015-milestone-review-backlog.md
+      - src/cli/index.ts
+      - src/state/claude-assets.ts
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+    mapped_ac_ids:
+      - AC012
+      - AC013
+    verification:
+      strategy: command
+      detail: npm test && npx tsc --noEmit
+    result: null
+    usage: null
