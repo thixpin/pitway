@@ -40,7 +40,15 @@ unless the choice is materially ambiguous.
 3. Pull its context bundle: `pitway task-status <id> --context --json`. This
    is the *only* task-specific material a worker should receive — no
    milestone history, no sibling task detail beyond each dependency's
-   concise result summary already folded into the bundle.
+   concise result summary already folded into the bundle. This is also
+   where a task's declared `required_skills` gate fires: if a declared
+   skill is not installed at `.claude/skills/<name>/SKILL.md`, this call
+   refuses and names the missing skill. Treat that refusal exactly like any
+   other blocking refusal — do not proceed to dispatch a worker on a task
+   whose context bundle you could not retrieve. This gate proves only that
+   PitWay's own managed skill installation is present at the conventional
+   path; it does not and cannot prove that your harness actually loads the
+   skill once dispatched.
 4. Dispatch a worker using your own tooling (whatever subagent/sub-session
    mechanism your harness provides), handing it exactly two things: the
    fixed text in `protocol-worker.md`, and the bundle from step 3. Nothing

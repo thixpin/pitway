@@ -68,6 +68,26 @@ demonstrated: a worker's own backgrounded verification command was still
 running when its report fired with an unrelated, non-standard message, and
 only independent re-verification caught it.
 
+## Skills
+
+PitWay vendors six Claude Code skills (`debugging`, `bug-fix`, `testing`,
+`code-quality-review`, `architecture-review`, `security-audit`) at
+`.claude/skills/`. A task being drafted may declare `required_skills` (at
+most two, kebab-case) when its work genuinely benefits from one of these
+skills' scope — named explicitly because the task's own domain matches,
+never added "whenever unsure." `pitway task-status <id> --context` then
+refuses visibly if a declared skill is not installed; see `dispatch.md` for
+where in the dispatch sequence that refusal fires.
+
+`required_skills` is not the only way a skill gets used: a driver or a
+dispatched worker may also load any installed skill informally and
+voluntarily even when the task at hand doesn't declare it — the same live
+practice already used for this project's own architecture-review contract
+passes. Loading `code-quality-review` this way is a tool that review step
+can use; it never changes or reduces the driver's own mandatory independent
+diff/write_scope review above — that review still happens, every time,
+regardless of what a skill's own output says.
+
 ## Pre-dispatch conflict preflight
 
 Before dispatching any worker, compare the composed fixed worker rules

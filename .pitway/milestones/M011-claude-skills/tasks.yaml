@@ -646,7 +646,7 @@ tasks:
       bundle it could not retrieve; this gate proves only that PitWay's own
       managed skill installation is present, never that the dispatching harness
       itself loads it.
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T003
@@ -672,7 +672,15 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/unit/skills-structure.test.ts
-    result: null
+    result:
+      summary: "[truncated] ction (when/how to declare required_skills,
+        informal/voluntary loading, code-quality-review never replacing
+        mandatory review). dispatch.md's existing pull-context-bundle step (step
+        3) now documents that this is where the pre-dispatch context gate fires
+        and that a refusal blocks dispatch."
+      evidence: Tests  15 passed (15) | Start at  13:54:55 | Duration  112ms
+        (transform 14ms, setup 0ms, import 22ms, tests 5ms, environment 0ms)
+    attempts: 1
     usage: null
   - id: T007
     objective: >-
