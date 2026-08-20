@@ -1,0 +1,766 @@
+schema_version: 1
+tasks:
+  - id: T001
+    objective: >-
+      Vendor six Claude Code skills verbatim from
+      github.com/thixpin/claude-config at pinned commit
+      d498eae219441839f75f737643857f6c0f84df12 (already cloned and reviewed
+      firsthand this session -- content is copied byte-for-byte from that
+      reviewed clone, never re-fetched or re-typed, to eliminate any risk of
+      accidental paraphrase): debugging, bug-fix, testing, code-quality-review,
+      architecture-review, security-audit, each landing unmodified at
+      src/integrations/claude/skills/<name>/SKILL.md (frontmatter and body both
+      byte-for-byte identical to the pinned commit -- no attribution text added
+      inside any vendored file). infra-design and terraform-review are not
+      vendored (no PitWay infrastructure/IaC domain -- explicitly evaluated and
+      rejected, not silently skipped). claude-config's own commands/ directory
+      is not vendored at all, wholesale or partially -- do not create anything
+      under src/integrations/claude/commands/ beyond PitWay's own eighteen
+      existing command docs, which stay completely untouched by this task.
+
+      One new file, src/integrations/claude/skills/NOTICE.md, records: the
+      source repository URL, the pinned commit SHA, the MIT license identifier,
+      and the copyright notice exactly as it appears in the pinned commit's own
+      LICENSE file -- whatever holder name and year that file actually states,
+      copied verbatim, not assumed or guessed at drafting time -- plus the
+      reuse-unchanged classification for all six vendored skills and the
+      explicit infra-design/terraform-review rejection with its reason. This is
+      the one and only place attribution lives.
+
+      A new test (extend tests/integration/init.test.ts's existing "pitway init
+      Claude Code asset installation" describe block, or an adjacent new
+      describe block in the same file) proves, via a real pitway init in a fresh
+      temp repo (not assumed from listClaudeAssets()'s existing generic coverage
+      alone), that all six skills install to exactly
+      .claude/skills/<name>/SKILL.md and NOTICE.md installs to
+      .claude/skills/NOTICE.md. This task does not touch
+      src/state/claude-assets.ts or src/cli/commands/init.ts at all -- it only
+      adds new source assets for the existing glob-based installer to discover;
+      T002 is where init's own installation mechanism itself changes.
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC001
+    context_files:
+      - src/state/claude-assets.ts
+      - tests/integration/init.test.ts
+      - src/integrations/claude/skills/debugging/SKILL.md
+      - src/integrations/claude/skills/bug-fix/SKILL.md
+      - src/integrations/claude/skills/testing/SKILL.md
+      - src/integrations/claude/skills/code-quality-review/SKILL.md
+      - src/integrations/claude/skills/architecture-review/SKILL.md
+      - src/integrations/claude/skills/security-audit/SKILL.md
+      - src/integrations/claude/skills/NOTICE.md
+    write_scope:
+      - src/integrations/claude/skills/debugging/SKILL.md
+      - src/integrations/claude/skills/bug-fix/SKILL.md
+      - src/integrations/claude/skills/testing/SKILL.md
+      - src/integrations/claude/skills/code-quality-review/SKILL.md
+      - src/integrations/claude/skills/architecture-review/SKILL.md
+      - src/integrations/claude/skills/security-audit/SKILL.md
+      - src/integrations/claude/skills/NOTICE.md
+      - tests/integration/init.test.ts
+    mapped_ac_ids:
+      - AC001
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/init.test.ts
+    result: null
+    usage: null
+  - id: T002
+    objective: >-
+      Correct pitway init's own asset-installation semantics: replace the
+      existing coarse probeClaudeAssets ('ok' | 'missing' | 'invalid', which
+      refuses on any partial mix of the managed asset set with no per-file
+      detail) with a per-file, content-comparing classification. Remove
+      probeClaudeAssets and the ClaudeAssetsProbe type entirely -- do not keep
+      them alongside the new mechanism.
+
+      New export in src/state/claude-assets.ts: classifyClaudeAssets(root:
+      string): ClaudeAssetClassification[] (a new exported type, {asset: string,
+      status: 'absent' | 'identical' | 'conflict'}). For every asset
+      listClaudeAssets() already discovers (every command doc, protocol
+      document, and -- via the same pre-existing glob, zero special-casing --
+      T001's vendored skills and NOTICE.md), compares <root>/.claude/<asset>
+      against the shipped source: absent when the destination does not exist;
+      identical when it exists and its bytes exactly equal the shipped source (a
+      real Buffer.equals content comparison, never mtime/size); conflict when it
+      exists with different bytes.
+
+      src/cli/commands/init.ts's runInit is restructured around this
+      classification, computed up front (alongside the existing config/state
+      probes) before any write occurs anywhere: if classifyClaudeAssets(root)
+      contains one or more 'conflict' entries, the whole command refuses, naming
+      every conflicting `.claude/<asset>` path in one message (not just the
+      first), and writes absolutely nothing -- not config.yaml, not state.yaml,
+      not any `.claude/` asset, not T004's root discovery files. When there are
+      zero conflicts: installClaudeAssets gains an optional second parameter,
+      assets: string[] = listClaudeAssets() (its existing zero-argument shape
+      keeps writing everything, additive not breaking, since init.ts is the only
+      caller today), and init.ts calls it with exactly the classified-'absent'
+      subset -- an 'identical' asset is never rewritten, not even with equal
+      bytes, a real behavioral guarantee rather than a
+      harmless-because-equal-bytes coincidence. A call where every asset is
+      already 'identical' passes an empty list (or skips the call entirely),
+      performing zero filesystem writes under .claude/ at all. `--no-claude`
+      skips classifyClaudeAssets and every .claude/ read entirely -- `.claude/`
+      is never inspected, and the directory is never created if it did not
+      already exist.
+
+      Nothing in this task (or anywhere else in this milestone) ever reads or
+      writes a path under the developer's home directory -- every call takes an
+      explicit root and operates only under `<root>/.claude/`.
+
+      New tests/unit/claude-assets.test.ts: focused unit tests for
+      classifyClaudeAssets against a real temp directory tree (not a full pitway
+      init) -- covering absent/identical/conflict for a representative asset.
+      New tests/unit/no-global-claude-access.test.ts: a structural test
+      (grep/AST-based, proven able to fail against a deliberately-reintroduced
+      reference) asserting neither src/state/claude-assets.ts nor
+      src/cli/commands/init.ts references os.homedir, process.env.HOME, or
+      process.env.USERPROFILE anywhere -- later tasks extend this same file for
+      their own new modules once they exist.
+
+      tests/integration/init.test.ts gains: a fresh default install (nothing
+      present) installs every asset including T001's skills; an identical rerun
+      performs zero .claude/ writes and reports success; a mixed rerun (some
+      assets already identical, at least one genuinely absent, zero conflicts)
+      installs only the absent ones and asserts the already-identical files'
+      bytes/mtimes are untouched -- the direct regression test for
+      installClaudeAssets's new subset parameter; a single conflicting command
+      doc (an existing .claude/commands/<name>.md with different content,
+      simulated before calling init) refuses, naming exactly that path; a single
+      conflicting skill (.claude/skills/<name>/SKILL.md with different content)
+      refuses the same way; two simultaneous conflicts (one command doc, one
+      skill) refuse naming both together, not just one; a conflict alongside
+      otherwise- absent assets writes nothing at all, verified by asserting no
+      file was created anywhere under .pitway/ or .claude/ after the refusal;
+      and --no-claude leaves .claude/ completely untouched (the directory is not
+      even created). The existing "refuses a partial .claude state and writes
+      nothing at all, including .pitway/" test is revised to match the corrected
+      semantics: a partial-but-non-conflicting state (some assets absent, none
+      differing) is no longer refused -- it installs the missing assets cleanly;
+      only an actual content conflict refuses.
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - AC002
+    context_files:
+      - src/state/claude-assets.ts
+      - src/cli/commands/init.ts
+      - tests/integration/init.test.ts
+      - src/integrations/claude/skills/debugging/SKILL.md
+      - src/integrations/claude/skills/NOTICE.md
+      - tests/unit/claude-assets.test.ts
+      - tests/unit/no-global-claude-access.test.ts
+    write_scope:
+      - src/state/claude-assets.ts
+      - src/cli/commands/init.ts
+      - tests/integration/init.test.ts
+      - tests/unit/claude-assets.test.ts
+      - tests/unit/no-global-claude-access.test.ts
+    mapped_ac_ids:
+      - AC002
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/init.test.ts
+        tests/unit/claude-assets.test.ts
+        tests/unit/no-global-claude-access.test.ts
+    result: null
+    usage: null
+  - id: T003
+    objective: >-
+      required_skills schema field + a pre-dispatch context gate, layered
+      strictly across CLI/Core/State. taskSchema (src/state/schemas.ts,
+      strictObject) gains a new additive-optional field, required_skills:
+      z.array(<kebab-case skill-name schema>).max(2).optional(), validated with
+      a superRefine (or inline .refine) enforcing: every entry valid non-empty
+      kebab-case, at most two entries, no duplicate names within one task's own
+      list -- each violation refused at schema-validation time with a message
+      naming the specific violation (not a generic "invalid required_skills").
+      Absent and present-but-empty are both treated as "no skill requirement"
+      everywhere downstream. This field participates in no way in the existing
+      relevant_files/context_files/write_scope superRefine -- fully independent,
+      no interaction.
+
+      buildTaskContextBundle (src/core/tasks/context-bundle.ts) gains exactly
+      one new passthrough field on TaskContextBundle, requiredSkills?: string[]
+      (task.required_skills verbatim), mirroring writeScope/contextFiles'
+      existing passthrough pattern -- the function stays pure, no filesystem
+      access added to it.
+
+      New src/core/tasks/skills.ts is pure, nothing else: export
+      assertRequiredSkillsAvailable(requiredNames: string[], availableNames:
+      string[]): void. No root parameter, no node:fs import, no .claude/
+      knowledge anywhere in this file -- it only compares two plain string
+      arrays, throwing a new RequiredSkillsError naming every entry of
+      requiredNames absent from availableNames (not just the first) when any
+      exist; a complete no-op when requiredNames is empty.
+
+      src/state/claude-assets.ts (not src/core/tasks/skills.ts) owns discovery
+      of what is actually installed: a new export, listInstalledSkillNames(root:
+      string): string[], sitting alongside this file's existing root-taking
+      reads (including T002's own new classifyClaudeAssets) -- lists every
+      immediate subdirectory name under <root>/.claude/skills/ that itself
+      contains a SKILL.md file, sorted, an empty array when .claude/skills/ does
+      not exist. This is the only place in the codebase that reads
+      .claude/skills/ from disk for this purpose.
+
+      src/cli/commands/task-status.ts's --context branch orchestrates, owning no
+      validation logic of its own: calls listInstalledSkillNames(root) (State),
+      then assertRequiredSkillsAvailable(task.required_skills ?? [], available)
+      (Core), before building/returning the bundle -- on a thrown
+      RequiredSkillsError, the whole command exits non-zero and writes nothing,
+      exactly like every other Core-validated refusal in this codebase; when the
+      task has no required_skills, this whole sequence is a complete no-op,
+      byte-for-byte matching every pre-M011 task's behavior. This is a
+      pre-dispatch context gate, distinct from T002's own installation-time
+      conflict refusal (a different mechanism, different trigger, different
+      file): it proves only that PitWay's own managed
+      .claude/skills/<name>/SKILL.md installation is present, never that a
+      dispatching harness outside PitWay's control actually loads it -- the same
+      disclosed limitation IMPLEMENTATION_PLAN.md section 8 already states for
+      worker read-boundary enforcement generally.
+
+      Test coverage beyond ordinary schema round-tripping: a task with 0/1/2
+      valid required_skills round-trips through schema validation unchanged; 3+
+      entries refused; a non-kebab-case entry refused; a duplicate entry
+      refused; buildTaskContextBundle passes requiredSkills through verbatim and
+      omits it (undefined, not an empty array) when the task has none, matching
+      writeScope/contextFiles' existing omission convention;
+      assertRequiredSkillsAvailable itself is unit-tested directly against plain
+      arrays (no fixtures, no filesystem) for the 0/1/2-missing and no-op cases;
+      listInstalledSkillNames is unit-tested against a real temp directory tree
+      (a focused test, not routed through a full pitway init) covering: no
+      .claude/skills/ at all, an empty one, one skill present, a directory
+      present without its own SKILL.md (must not be listed); a task-status
+      --context call for a task with all required skills installed succeeds
+      unchanged; a call naming one missing skill refuses, naming it; a call
+      naming two missing skills refuses, naming both, not just the first; a task
+      with no required_skills at all is a complete no-op through this whole
+      path, proven by a regression test against pre-existing task-status
+      --context behavior.
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - AC003
+    context_files:
+      - src/state/schemas.ts
+      - src/state/claude-assets.ts
+      - src/core/tasks/context-bundle.ts
+      - src/core/tasks/skills.ts
+      - src/cli/commands/task-status.ts
+      - tests/unit/schemas.test.ts
+      - tests/unit/skills.test.ts
+      - tests/unit/claude-assets.test.ts
+      - tests/integration/task-status.test.ts
+    write_scope:
+      - src/state/schemas.ts
+      - src/state/claude-assets.ts
+      - src/core/tasks/context-bundle.ts
+      - src/core/tasks/skills.ts
+      - src/cli/commands/task-status.ts
+      - tests/unit/schemas.test.ts
+      - tests/unit/skills.test.ts
+      - tests/unit/claude-assets.test.ts
+      - tests/integration/task-status.test.ts
+    mapped_ac_ids:
+      - AC003
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/schemas.test.ts tests/unit/skills.test.ts
+        tests/unit/claude-assets.test.ts tests/integration/task-status.test.ts
+    result: null
+    usage: null
+  - id: T004
+    objective: >-
+      New root agent-discovery files: pitway init makes PitWay usage immediately
+      discoverable to any agent opening the initialized project, via two new,
+      minimal, non-destructive root files -- AGENTS.md (generic, no
+      Claude-specific wording) and CLAUDE.md (Claude-specific entry point).
+
+      New src/state/root-instructions.ts (State layer, no Core involvement --
+      purely static content materialization with byte-comparison idempotency,
+      the same shape T002's classifyClaudeAssets already established). One
+      shared list of bullet lines is the single source of truth, never
+      duplicated independently between the two files' content constants, stating
+      exactly and only: this project uses PitWay; run `pitway resume` before
+      starting or resuming any work; never edit `.pitway/` directly; work only
+      within a confirmed task boundary; obtain a task's bounded context via
+      `pitway task-status <id> --context`. CLAUDE.md's own framing additionally
+      points to AGENTS.md and to `.claude/protocol-driver.md` (never restating
+      the driver protocol itself). Neither file ever contains contract text,
+      milestone history, IMPLEMENTATION_PLAN.md content, or other verbose
+      protocol prose; both stay a handful of lines.
+
+      export classifyRootInstructionFiles(root: string, opts?:
+      {includeClaudeMd?: boolean}): RootInstructionClassification[] (default
+      {includeClaudeMd: true}; RootInstructionClassification = {file:
+      'AGENTS.md' | 'CLAUDE.md', status: 'absent' | 'identical' | 'conflict'}),
+      the read-only classifier -- mirrors T002's classifyClaudeAssets exactly in
+      shape and semantics. When includeClaudeMd is false, CLAUDE.md is never
+      stat'd or read at all and is omitted from the returned array entirely (not
+      merely marked absent), preserving --no-claude's "never inspected"
+      guarantee. This is a genuine exported deliverable, not a private
+      implementation detail -- T005 imports and reuses it directly.
+
+      export applyRootInstructionFiles(root: string, opts: {includeClaudeMd:
+      boolean}): {agentsMd: 'created'|'identical'|'preserved', claudeMd?:
+      'created'|'identical'|'preserved'} is built directly on top of
+      classifyRootInstructionFiles (calls it, then acts): absent -> write the
+      fixed content, report 'created'; identical -> report 'identical', no
+      write; conflict -> never write or append, report 'preserved'.
+
+      src/cli/commands/init.ts wires this in: called from inside runInit's
+      finish() path (i.e. strictly after T002's .claude/ conflict preflight has
+      already passed or been skipped via --no-claude -- never before it, so a
+      refused Claude-asset installation never leaves a partial instruction setup
+      behind), with includeClaudeMd set to the same installClaude flag
+      --no-claude controls. When either file's outcome is 'preserved', the CLI
+      prints a concise warning containing the exact fixed content that would
+      have been written -- the literal string constant itself, not a paraphrase
+      -- so a developer can merge it in by hand.
+
+      Baseline git-safety integration, delivered for real: pitway init never
+      commits anything itself -- AGENTS.md/CLAUDE.md sit untracked exactly like
+      freshly installed .claude/ assets already do, until the first
+      milestone-confirm sweeps everything PitWay-managed into its baseline
+      commit. src/core/milestones/confirm.ts's computeExpectedBaselinePaths call
+      is extended with classifyRootInstructionFiles(root).filter(c => c.status
+      !== 'conflict').map(c => c.file), added to the existing
+      listClaudeAssetDestinations() as extraExpectedPaths -- a root file
+      classified 'conflict' is therefore never included, never silently staged
+      merely because its path is known; if it happens to be genuinely dirty at
+      that moment it correctly becomes unexpected dirt and refuses confirmation,
+      the same treatment .claude/ conflicts already get. In the realistic case
+      this task's own tests construct -- a developer's pre-existing AGENTS.md/
+      CLAUDE.md already tracked and committed before ever running pitway init --
+      the file is simply clean and never enters the dirty-path question at all:
+      milestone-confirm proceeds normally and the file is never staged into
+      PitWay's own baseline commit. Without this baseline wiring, every one of
+      this project's own dozens of existing integration tests that run a real
+      init followed by a real milestone-confirm (and every real developer repo)
+      would break: an untracked, freshly-created AGENTS.md would become
+      unexpected dirt the very first time milestone-confirm runs. task-verify's
+      dirty-path allowance and completeTask's expectedPaths need no update --
+      both operate only after this first baseline commit already exists.
+
+      This task does not yet make .claude/ assets themselves content-aware at
+      confirm time (today's listClaudeAssetDestinations() call stays as-is here
+      -- a pre-existing gap since M006, not introduced or widened by this task's
+      own two new root paths, which are content-aware from the start), and does
+      not touch quick-change/create.ts at all -- T005 closes both of those with
+      one shared mechanism built on top of this task's own exported
+      classifyRootInstructionFiles.
+
+      Test coverage in tests/integration/init.test.ts: both root files absent
+      creates both; an identical rerun performs zero writes to either; an
+      existing, user-authored AGENTS.md is preserved byte-for-byte with a
+      warning printed containing the exact fixed content; an existing,
+      user-authored CLAUDE.md is preserved the same way; a simulated .claude/
+      conflict (per T002) alongside two otherwise-absent root files causes the
+      whole init to refuse with neither root file created, proving the preflight
+      ordering; --no-claude creates/preserves AGENTS.md only, never touching
+      CLAUDE.md or .claude/. New tests/unit/root-instructions.test.ts: focused
+      unit tests for classifyRootInstructionFiles and applyRootInstructionFiles
+      against a real temp directory (absent/identical/conflict for each file,
+      includeClaudeMd true and false, confirming CLAUDE.md is never read at all
+      when false). Extends T002's tests/unit/no-global-claude-access.test.ts to
+      also assert src/state/root-instructions.ts contains no
+      os.homedir/process.env.HOME/process.env.USERPROFILE reference. Extends
+      tests/integration/self-hosting-readiness.test.ts's existing real init ->
+      milestone-add -> milestone-confirm coverage with two real full-lifecycle
+      tests: (a) both root files are untracked immediately after init,
+      milestone-confirm succeeds without refusing, both root files appear in the
+      resulting baseline commit's file list, and git status --porcelain is empty
+      immediately afterward; (b) a pre-existing, already-committed AGENTS.md
+      with different content is left completely untouched by init
+      (byte-identical to its original content afterward), milestone-confirm
+      still succeeds (the file was never dirty), and the baseline commit's file
+      list does NOT include AGENTS.md -- the direct regression proof that a
+      preserved file is never staged merely because its path is known. Updates
+      tests/integration/milestone-confirm.test.ts's own
+      expected-baseline-file-list fixtures (already built from
+      listClaudeAssetDestinations()) to also include the currently-identical/
+      absent root paths, and adds one new test confirming milestone-confirm
+      succeeds cleanly with both root instruction files present and untracked.
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - AC004
+    context_files:
+      - src/cli/commands/init.ts
+      - src/state/claude-assets.ts
+      - src/core/milestones/confirm.ts
+      - src/git/baseline.ts
+      - tests/integration/init.test.ts
+      - tests/integration/self-hosting-readiness.test.ts
+      - tests/integration/milestone-confirm.test.ts
+      - src/integrations/claude/protocol-driver.md
+      - src/state/root-instructions.ts
+      - tests/unit/root-instructions.test.ts
+      - tests/unit/no-global-claude-access.test.ts
+    write_scope:
+      - src/state/root-instructions.ts
+      - src/cli/commands/init.ts
+      - src/core/milestones/confirm.ts
+      - tests/integration/init.test.ts
+      - tests/integration/self-hosting-readiness.test.ts
+      - tests/integration/milestone-confirm.test.ts
+      - tests/unit/root-instructions.test.ts
+      - tests/unit/no-global-claude-access.test.ts
+    mapped_ac_ids:
+      - AC004
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/init.test.ts
+        tests/unit/root-instructions.test.ts
+        tests/unit/no-global-claude-access.test.ts
+        tests/integration/self-hosting-readiness.test.ts
+        tests/integration/milestone-confirm.test.ts
+    result: null
+    usage: null
+  - id: T005
+    objective: >-
+      Integration hardening: close two real, related Git-safety gaps for good --
+      quick-change create's clean-tree check, and .claude/ asset content-
+      awareness at milestone-confirm's own baseline-staging time (T004 already
+      made root-instruction-file staging content-aware; this task extends the
+      identical treatment to .claude/ assets, closing a gap that has existed for
+      .claude/ assets alone since M006, unrelated to and not introduced by this
+      milestone).
+
+      New src/state/managed-init-paths.ts: export listSafeManagedDirtyPaths(
+      root: string): string[] -- a State-layer function composing T002's
+      classifyClaudeAssets(root) and T004's classifyRootInstructionFiles(root),
+      never duplicating either one's comparison logic. Filters OUT every entry
+      classified 'conflict' from both (an 'absent' entry is harmless to include
+      -- never actually dirty, so its presence in an expected-paths ceiling
+      changes nothing), unions in the two literal repository-relative paths
+      '.pitway/config.yaml' and '.pitway/state.yaml' unconditionally (no content
+      check of their own -- mirroring src/git/baseline.ts's own hardcoded
+      treatment of these identical two paths; they are PitWay's own state,
+      written only by PitWay's own commands, dirty only in the window between a
+      fresh init and that repository's first-ever commit), and returns the
+      combined real repository-relative destination paths (.claude/<asset> for
+      Claude assets, the bare filename for root instruction files, plus the two
+      .pitway/* paths). A path currently in 'conflict' state -- tampered
+      .claude/ asset or different-content root file alike -- is therefore never
+      treated as safe dirt by either consumer below.
+
+      quick-change after init: src/core/quick-change/create.ts's
+      assertCleanWorkingTree (today: refuses unconditionally on any dirty path
+      at all, no allowance mechanism whatsoever) is rewritten to mirror the
+      existing assertNoUnexpectedDirtyPaths pattern already duplicated
+      identically in src/core/milestones/confirm.ts and
+      src/core/milestones/complete.ts (this small, established, per-caller
+      6-line filter-and-throw duplication is followed as-is, not re-abstracted
+      into a new shared helper): compute checkWorkingTreeClean(root).dirtyPaths,
+      subtract listSafeManagedDirtyPaths(root), and refuse -- naming only the
+      genuinely-unexpected remainder, same error prefix as today ("cannot create
+      quick-change: working tree is not clean: <paths>") -- only when that
+      remainder is non-empty. A fresh pitway init (with or without --no-claude)
+      followed immediately by quick-change create, with no other changes, now
+      succeeds. Any additional, non-managed untracked or modified file still
+      refuses, naming exactly that file.
+
+      quick-change commit, same window: src/core/quick-change/commit.ts's own
+      assertDirtySubset(root, current.scope) has the identical, previously
+      unnoticed trap -- a create that now succeeds in the fresh-init window
+      still leaves the same managed dirt present at commit time, and
+      current.scope never includes it, so commit would refuse on exactly the
+      paths create just allowed through. assertDirtySubset's call site is
+      updated to pass [...current.scope, ...listSafeManagedDirtyPaths(root)] as
+      its expected set, and commitOrResume's own expectedPaths argument (the set
+      it actually stages) is extended identically, so this first quick-change
+      commit -- when it is also the repository's first commit since init --
+      genuinely stages and lands the managed init output alongside the change's
+      own scope, rather than leaving it perpetually dirty. A later, genuine
+      milestone-confirm baseline is unaffected: by then these paths are already
+      tracked and clean.
+
+      Baseline staging extended to .claude/ assets: confirm.ts's
+      computeExpectedBaselinePaths call is updated once more (T004 already added
+      the root-file half) to pass listSafeManagedDirtyPaths(root) as its whole
+      extraExpectedPaths argument, replacing the separate
+      listClaudeAssetDestinations() call entirely. A .claude/ asset manually
+      edited to diverge from its shipped content, sitting dirty at
+      milestone-confirm time, now correctly refuses the confirm (naming that
+      path) instead of being silently swept into the baseline commit.
+
+      Test coverage, real temp-repo tests, no mocking of the classifiers
+      themselves: tests/integration/quick-change.test.ts gains a new describe
+      block (deliberately not reusing the existing beforeEach's own
+      committed-post-init workaround, so it exercises the real fix) covering: a
+      fresh default pitway init immediately followed by quick-change
+      create/approve/run/commit succeeds end-to-end, and the resulting commit's
+      file list includes both the change's own declared scope and the swept
+      .pitway/config.yaml, .pitway/state.yaml, and .claude/* managed paths; the
+      same create-through-commit sequence after pitway init --no-claude also
+      succeeds (fewer managed paths -- AGENTS.md only, no .claude/ assets --
+      still all safe); a fresh init plus one arbitrary extra untracked file (a
+      stray source file) still refuses quick-change create, naming only that
+      stray file, never any managed path; a dedicated mixed dirty-state
+      regression case -- .pitway/config.yaml and .pitway/state.yaml genuinely
+      dirty from a fresh init, plus one unrelated developer/source file also
+      dirty or untracked at the same time -- proves quick-change create still
+      refuses, naming exactly and only the unrelated file, never
+      .pitway/config.yaml, .pitway/state.yaml, or any .claude/ asset even though
+      those are genuinely dirty in the same working tree. The existing "refuses
+      on a dirty working tree" test in that same file (predates this task, uses
+      the shared beforeEach's already-committed- post-init fixture) is left
+      unmodified and must still pass -- an explicit regression check.
+      tests/integration/milestone-confirm.test.ts gains a real test proving a
+      manually-tampered, genuinely-conflicting .claude/ asset present at confirm
+      time now refuses confirmation, naming that asset, rather than being
+      silently staged -- the direct regression test for the M006-era gap closed
+      here. New tests/unit/managed-init-paths.test.ts: a focused unit test for
+      listSafeManagedDirtyPaths against real temp directory trees (no full
+      pitway init) exercising a representative mix of absent/identical/ conflict
+      across both .claude/ assets and root instruction files together (not each
+      kind in isolation), confirming every 'conflict' entry from either
+      classifier is excluded, every 'absent'/'identical' entry from either is
+      included, the two .pitway/* paths are always present regardless of
+      classifier state, and the result is stable and idempotent across repeat
+      calls with no filesystem side effects of its own.
+    status: waiting
+    depends_on:
+      - T002
+      - T004
+    acceptance_criteria:
+      - AC005
+    context_files:
+      - src/state/claude-assets.ts
+      - src/state/root-instructions.ts
+      - src/core/milestones/confirm.ts
+      - src/core/milestones/complete.ts
+      - src/core/quick-change/create.ts
+      - src/core/quick-change/commit.ts
+      - src/git/safety.ts
+      - src/git/baseline.ts
+      - tests/integration/quick-change.test.ts
+      - tests/integration/milestone-confirm.test.ts
+      - src/state/managed-init-paths.ts
+      - tests/unit/managed-init-paths.test.ts
+    write_scope:
+      - src/state/managed-init-paths.ts
+      - src/core/quick-change/create.ts
+      - src/core/quick-change/commit.ts
+      - src/core/milestones/confirm.ts
+      - tests/integration/quick-change.test.ts
+      - tests/integration/milestone-confirm.test.ts
+      - tests/unit/managed-init-paths.test.ts
+    mapped_ac_ids:
+      - AC005
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/quick-change.test.ts
+        tests/unit/managed-init-paths.test.ts
+        tests/integration/milestone-confirm.test.ts
+    result: null
+    usage: null
+  - id: T006
+    objective: >-
+      Mechanical structural validation for the vendored skill set, plus driver
+      documentation. New test (tests/unit/skills-structure.test.ts) validates
+      frontmatter shape without ever mutating a real file. The core of the test
+      is a pure, local function, validateSkillFrontmatter(directoryName: string,
+      skillMdContent: string): string[] (violation messages, empty when valid),
+      checking: name and description keys both present and non-empty; name is
+      valid kebab-case and matches directoryName exactly; description meets a
+      minimum length (a structural floor only -- this test never judges
+      description quality, that is not something an automated check can do).
+      Every negative case (missing name, missing description, mismatched
+      name/directory, non-kebab-case name, a too-short description) is exercised
+      by calling this pure function directly with synthetic string literals --
+      no writeFileSync, rmSync, renameSync, or any other mutation of a real path
+      under src/integrations/claude/skills/ anywhere in this test file, and no
+      temporary corrupt-then-restore of a real vendored file. Separately, one
+      positive-case test reads every real file under
+      src/integrations/claude/skills/<name>/SKILL.md (read-only --
+      readFileSync/readdirSync only) and asserts the same pure function reports
+      zero violations for each, plus a real duplicate-name check across the
+      actual installed set.
+
+      src/integrations/claude/protocol-driver.md and dispatch.md each gain
+      small, targeted sections (never a rewrite of existing content): how and
+      when a driver declares required_skills while drafting a task (naming a
+      genuine scope match to one of the six vendored skills, not "whenever
+      unsure"); that a driver or a dispatched worker may also load any installed
+      skill informally and voluntarily even when a task does not require it --
+      documenting, for the first time, the exact live practice this session
+      already used for M010's own two architecture-review contract passes; an
+      explicit restatement that loading code-quality-review never changes or
+      reduces the driver's own mandatory independent diff/write_scope review
+      (M006/AC004's existing rule) -- it is a tool that review step can use,
+      never a substitute for the review requirement itself; and an explicit
+      statement that dispatch.md's existing pull-context-bundle step (already
+      immediately before its dispatch step, its sequence unchanged by this
+      milestone) is where AC003's pre-dispatch context gate actually fires -- a
+      driver must treat a refused task-status <id> --context call as a blocking
+      refusal and must not proceed to dispatch a worker on a task whose context
+      bundle it could not retrieve; this gate proves only that PitWay's own
+      managed skill installation is present, never that the dispatching harness
+      itself loads it.
+    status: waiting
+    depends_on:
+      - T001
+      - T003
+    acceptance_criteria:
+      - AC006
+    context_files:
+      - src/integrations/claude/skills/debugging/SKILL.md
+      - src/integrations/claude/skills/bug-fix/SKILL.md
+      - src/integrations/claude/skills/testing/SKILL.md
+      - src/integrations/claude/skills/code-quality-review/SKILL.md
+      - src/integrations/claude/skills/architecture-review/SKILL.md
+      - src/integrations/claude/skills/security-audit/SKILL.md
+      - src/integrations/claude/skills/NOTICE.md
+      - src/integrations/claude/protocol-driver.md
+      - src/integrations/claude/dispatch.md
+      - tests/unit/skills-structure.test.ts
+    write_scope:
+      - tests/unit/skills-structure.test.ts
+      - src/integrations/claude/protocol-driver.md
+      - src/integrations/claude/dispatch.md
+    mapped_ac_ids:
+      - AC006
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/skills-structure.test.ts
+    result: null
+    usage: null
+  - id: T007
+    objective: >-
+      Real comparative dogfood evidence (executed directly by the driver, not
+      dispatched as a PitWay task -- see the disclosed non-bootstrap gap below),
+      meeting four validity requirements a prior drafting round left
+      underspecified:
+
+      (1) Write the comparison rubric into
+      docs/evidence/M011/skill-dogfood-evidence.md FIRST, before either dispatch
+      runs: the exact bounded, read-only task text both dispatches will receive
+      verbatim, the model/config held constant across both, and a concrete
+      checklist of what "structure/thoroughness/adherence differs" means for the
+      specific skill under test (named in advance, not chosen after seeing
+      results).
+
+      (2) Both dispatches must be read-only by construction -- a real, concrete
+      review or investigation task against this repository (sized comparably to
+      M006/AC005's own matched-pair methodology) that requires no file write, so
+      neither run can collide with the other or with this repository's working
+      tree.
+
+      (3) Launch both as independent, fresh-context, mutually isolated sub-agent
+      dispatches -- neither given any visibility into the other's transcript,
+      output, or existence; dispatched together (not chained sequentially in a
+      way that lets the second see or be influenced by the first).
+
+      (4) The skill-loaded dispatch loads a genuinely relevant vendored skill
+      through the dispatching harness's own skill mechanism directly (the same
+      live mechanism this session already used for M010's two
+      architecture-review passes -- not required_skills/task-status --context,
+      which this standalone auxiliary dispatch never goes through at all, see
+      the disclosed gap below); record concrete evidence that it actually loaded
+      (a quoted tool-invocation record, transcript excerpt, or equivalent
+      harness-produced artifact) -- a prose claim alone does not satisfy this.
+
+      Record in docs/evidence/M011/skill-dogfood-evidence.md: the rubric itself
+      (per (1), written first); total token cost for each dispatch
+      (runtime-reported only, never estimated, per decision 8; a
+      startup/overhead figure only as an explicitly-labeled derived estimate if
+      the harness doesn't report it directly, never presented as measured); the
+      rubric-scored comparison; the concrete loading evidence per (4); and the
+      task outcome for both. Report the comparison honestly regardless of
+      direction -- a null or negative result is recorded plainly, mirroring
+      M006/AC005's own precedent of reporting a raw-cost increase candidly
+      rather than reframing it.
+
+      The document must explicitly separate, under clearly labeled headings,
+      artifact-verified facts (token costs as runtime-reported, the rubric text,
+      the rubric-scored comparison, (2)'s read-only construction -- checkable
+      directly from the bounded task text itself -- and (4)'s concrete loading
+      evidence -- each backed by something the harness itself produced, or by
+      the task text itself) from driver-attested facts (that the rubric was
+      genuinely written before either dispatch ran, that the two dispatches were
+      genuinely independent/non-chained with no cross- visibility, and the
+      actual order the dispatch calls were issued in). Do not word (1)'s
+      write-first ordering, (3)'s mutual isolation, or dispatch ordering
+      generally as independently proven by the committed file -- state them only
+      as driver-attested, exactly as (1) and (3) above already require.
+
+      Explicitly disclose the same non-bootstrap gap mapped_ac_ids disclosed in
+      M007/M008 (AC011/T010's precedent): M011's own tasks.yaml is drafted and
+      confirmed before T003 lands required_skills in this repository's own
+      validation code, so no task in M011's own graph can declare
+      required_skills on itself -- this comparison is therefore a standalone,
+      auxiliary dispatch built specifically for this evidence, not a real M011
+      task, and it demonstrates only whether loading a vendored skill's content
+      changes a dispatched worker's real output, never
+      required_skills/task-status --context's own pre-dispatch context gate
+      (AC003's own tests are the sole coverage for that) -- the document states
+      this distinction plainly rather than implying otherwise.
+    status: waiting
+    depends_on:
+      - T001
+      - T003
+    acceptance_criteria:
+      - AC007
+    context_files:
+      - docs/evidence/M006-context-efficiency.md
+      - docs/evidence/M007/claude-skills-decision.md
+      - docs/evidence/M011/skill-dogfood-evidence.md
+    write_scope:
+      - docs/evidence/M011/skill-dogfood-evidence.md
+    mapped_ac_ids:
+      - AC007
+    verification:
+      strategy: manual
+      detail: developer/driver review per CT011
+    result: null
+    usage: null
+  - id: T008
+    objective: "Roadmap-reconciliation review, mirroring M005/T009 through
+      M010/T004: confirm IMPLEMENTATION_PLAN.md accurately reflects M011's
+      actual delivery -- the Bootstrap delivery table gains M010's row (M011's
+      own row correctly omitted, left for whichever milestone next runs its own
+      reconciliation task); section 9's Claude-asset file count and
+      installed-assets list are updated for the six new skill files plus
+      NOTICE.md; section 7's init description is updated to cover the corrected
+      per-file collision/idempotency semantics, the new root AGENTS.md/CLAUDE.md
+      bootstrap-file behavior, and the content-aware git-safety integration
+      covering quick-change and baseline staging, while explicitly confirming
+      the command surface is unchanged by this milestone (no new CLI command);
+      the Revised Roadmap's M011 entry reflects actual delivery (vendored skill
+      set, the infra-design/terraform-review rejection and its reason, the
+      corrected init asset-collision semantics, the new root agent-discovery
+      files wired into baseline git-safety, the quick-change and
+      .claude-conflict-at-confirm-time fixes, required_skills schema and the
+      pre-dispatch context gate, the dogfood evidence finding and its disclosed
+      non-bootstrap gap) in place of the current not-yet-drafted placeholder;
+      the Status line reflects M011's actual delivery."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+      - T005
+      - T006
+      - T007
+    acceptance_criteria:
+      - AC008
+    context_files:
+      - IMPLEMENTATION_PLAN.md
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+    mapped_ac_ids:
+      - AC008
+    verification:
+      strategy: manual
+      detail: developer/driver review per CT012
+    result: null
+    usage: null
