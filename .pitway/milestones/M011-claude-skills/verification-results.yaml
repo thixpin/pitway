@@ -1,2 +1,192 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-20T07:04:54Z
+    evidence: Tests  38 passed (38) | Start at  14:04:52 | Duration  1.91s
+      (transform 234ms, setup 0ms, import 329ms, tests 1.55s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2425
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-20T07:04:55Z
+    evidence: Tests  95 passed (95) | Start at  14:04:54 | Duration  418ms
+      (transform 284ms, setup 0ms, import 472ms, tests 101ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 720
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-20T07:05:12Z
+    evidence: Tests  84 passed (84) | Start at  14:04:55 | Duration  16.70s
+      (transform 710ms, setup 0ms, import 1.17s, tests 22.06s, environment 0ms)
+    recorded_by: command
+    duration_ms: 17021
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-20T07:05:28Z
+    evidence: Tests  51 passed (51) | Start at  14:05:12 | Duration  15.72s
+      (transform 441ms, setup 0ms, import 670ms, tests 26.01s, environment 0ms)
+    recorded_by: command
+    duration_ms: 16138
+    termination_reason: exited
+  - check: CT013
+    status: pass
+    at: 2026-08-20T07:06:33Z
+    evidence: Tests  823 passed (823) | Start at  14:05:28 | Duration  65.06s
+      (transform 2.69s, setup 0ms, import 8.93s, tests 394.01s, environment 6ms)
+    recorded_by: command
+    duration_ms: 65521
+    termination_reason: exited
+  - check: CT014
+    status: pass
+    at: 2026-08-20T07:06:34Z
+    evidence: Tests  15 passed (15) | Start at  14:06:34 | Duration  118ms
+      (transform 14ms, setup 0ms, import 21ms, tests 4ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 533
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-20T07:08:28Z
+    evidence: "All 6 SKILL.md byte-identical to pinned clone (diff empty).
+      infra-design/terraform-review absent. claude-config commands/ never
+      vendored (grep clean). NOTICE.md verified against real LICENSE (Copyright
+      (c) 2026 Soe Thura, verbatim). No attribution text inside any SKILL.md. No
+      home-dir access (grep clean). Note: instruction text says 'eighteen'
+      command docs; actual is seventeen (18 CLI commands minus init, which gets
+      no doc per IMPLEMENTATION_PLAN.md sec9 -- pre-existing, correct count; the
+      AC001 sentence's own number is a minor pre-existing drafting inaccuracy,
+      not a delivery defect). init.test.ts proves fresh install of all
+      6+NOTICE.md."
+    recorded_by: developer
+  - check: CT006
+    status: pass
+    at: 2026-08-20T07:08:28Z
+    evidence: probeClaudeAssets/ClaudeAssetsProbe grep-confirmed removed.
+      classifyClaudeAssets uses Buffer.equals (real byte comparison).
+      installClaudeAssets(root, assets=listClaudeAssets()) subset param
+      confirmed. init.ts refuses atomically on any conflict, naming all
+      conflicting paths (src/cli/commands/init.ts). --no-claude short-circuits
+      classification entirely (grep confirmed). All required test cases present
+      and passing in tests/integration/init.test.ts (26/26 in T002's own run).
+    recorded_by: developer
+  - check: CT007
+    status: pass
+    at: 2026-08-20T07:08:28Z
+    evidence: src/core/tasks/skills.ts grep-confirmed zero fs/root/.claude
+      references in code (only comment mentions). src/state/claude-assets.ts
+      confirmed sole disk-reader for .claude/skills/ (listInstalledSkillNames).
+      assertRequiredSkillsAvailable has exactly one call site (task-status.ts).
+      Integration tests confirm refusal naming missing skills (1 and 2 missing
+      cases) and complete no-op when absent -- 95/95 passed in T003's own run.
+    recorded_by: developer
+  - check: CT008
+    status: pass
+    at: 2026-08-20T07:08:28Z
+    evidence: AGENTS_MD_CONTENT/CLAUDE_MD_CONTENT confirmed built from one shared
+      SHARED_BULLETS array, exactly 5 elements matching AC004's required list.
+      CLAUDE.md content points to AGENTS.md and .claude/protocol-driver.md.
+      classifyRootInstructionFiles/applyRootInstructionFiles both exported (grep
+      confirmed), latter built directly on former.
+      no-global-claude-access.test.ts extended to root-instructions.ts.
+      confirm.ts's computeExpectedBaselinePaths call confirmed content-aware via
+      listSafeManagedDirtyPaths. 83/83 tests passed in T004's own run, including
+      both full-lifecycle regression tests.
+    recorded_by: developer
+  - check: CT009
+    status: pass
+    at: 2026-08-20T07:08:28Z
+    evidence: listSafeManagedDirtyPaths confirmed composing
+      classifyClaudeAssets+classifyRootInstructionFiles with no
+      re-implementation, unconditionally unioning
+      .pitway/config.yaml+state.yaml. create.ts/commit.ts both confirmed
+      consuming it (commit.ts's assertDirtySubset+commitOrResume both extended).
+      confirm.ts confirmed passing it as the whole extraExpectedPaths, replacing
+      listClaudeAssetDestinations() entirely. All required test cases (fresh
+      init +/- no-claude, arbitrary extra file, mixed dirty-state, full e2e
+      round trip, tampered-asset confirm refusal) present and passing -- 51/51
+      in T005's own run.
+    recorded_by: developer
+  - check: CT010
+    status: pass
+    at: 2026-08-20T07:08:28Z
+    evidence: tests/unit/skills-structure.test.ts grep-confirmed zero
+      writeFileSync/rmSync/renameSync usage (comment mention only).
+      Positive-case test reads real files read-only plus duplicate-name check.
+      protocol-driver.md gains a targeted Skills section; dispatch.md's step 3
+      documents the pre-dispatch gate and blocking-refusal treatment. 15/15
+      tests passed.
+    recorded_by: developer
+  - check: CT011
+    status: pass
+    at: 2026-08-20T07:08:28Z
+    evidence: "docs/evidence/M011/skill-dogfood-evidence.md confirmed to contain
+      explicit '### Artifact-verified facts' and '### Driver-attested facts'
+      labeled headings (grep confirmed). Rubric written and committed before
+      dispatch. Concrete loading evidence: verbatim quote independently checked
+      byte-for-byte against the real SKILL.md. Runtime-reported token figures
+      for both dispatches. Outcome reported honestly as negative/null, not
+      reframed. Non-bootstrap gap disclosed explicitly."
+    recorded_by: developer
+  - check: CT012
+    status: pass
+    at: 2026-08-20T07:08:29Z
+    evidence: IMPLEMENTATION_PLAN.md Bootstrap table confirmed to include M010's
+      row, M011's own correctly omitted. Sec9 count updated to 31 files with new
+      M011-additions bullet. Sec7 init description covers corrected collision
+      semantics, root files, and content-aware quick-change/baseline integration
+      while confirming command count unchanged at eighteen. Revised Roadmap M011
+      entry and Status line both updated to reflect actual delivery including
+      the honestly-reported dogfood finding.
+    recorded_by: developer
+  - check: CT001
+    status: pass
+    at: 2026-08-20T07:09:01Z
+    evidence: Tests  38 passed (38) | Start at  14:08:59 | Duration  2.00s
+      (transform 272ms, setup 0ms, import 379ms, tests 1.62s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2468
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-20T07:09:02Z
+    evidence: Tests  95 passed (95) | Start at  14:09:01 | Duration  547ms
+      (transform 423ms, setup 0ms, import 683ms, tests 121ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 871
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-20T07:09:19Z
+    evidence: Tests  84 passed (84) | Start at  14:09:02 | Duration  16.45s
+      (transform 768ms, setup 0ms, import 1.17s, tests 22.27s, environment 0ms)
+    recorded_by: command
+    duration_ms: 16783
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-20T07:09:35Z
+    evidence: Tests  51 passed (51) | Start at  14:09:19 | Duration  16.12s
+      (transform 438ms, setup 0ms, import 678ms, tests 26.89s, environment 0ms)
+    recorded_by: command
+    duration_ms: 16637
+    termination_reason: exited
+  - check: CT013
+    status: pass
+    at: 2026-08-20T07:10:41Z
+    evidence: Tests  823 passed (823) | Start at  14:09:36 | Duration  64.73s
+      (transform 2.69s, setup 0ms, import 9.04s, tests 392.74s, environment 5ms)
+    recorded_by: command
+    duration_ms: 65192
+    termination_reason: exited
+  - check: CT014
+    status: pass
+    at: 2026-08-20T07:10:41Z
+    evidence: Tests  15 passed (15) | Start at  14:10:41 | Duration  132ms
+      (transform 18ms, setup 0ms, import 26ms, tests 5ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 574
+    termination_reason: exited

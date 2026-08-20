@@ -2,7 +2,7 @@
 schema_version: 1
 id: M011
 title: Claude Skills
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-20T05:09:13Z
 verification_approved_hash: sha256:b9fee3a6a6e4f61b6bcdb5dfc7481127ff31b73a9a94476ab2e9a02d8f6354f5
