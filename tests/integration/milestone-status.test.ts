@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { saveContract, saveTasks, saveUsage, saveVerificationResults } from '../../src/state/store.js';
+import { appendTaskVerifyEvidenceRecord } from '../../src/state/journal.js';
 import { buildCli } from '../../src/cli/index.js';
 import { registerMilestoneStatusCommand } from '../../src/cli/commands/milestone-status.js';
 import type { ContractFrontmatter, Task } from '../../src/state/schemas.js';
@@ -195,5 +196,80 @@ describe('pitway milestone-status racing footer (M013/T005)', () => {
     const output = await runStatus();
     const lines = output.split('\n');
     expect(lines[lines.length - 1]).toBe('🏎️ 48% · ✅ 1/2 · Next: T002');
+  });
+});
+
+// AC005/AC007 (M013/T006): the on-demand Progress Report.
+describe('pitway milestone-status --report (M013/T006)', () => {
+  it('renders the full report shape with evidence-honest task labeling and no driver_overhead line', async () => {
+    appendTaskVerifyEvidenceRecord(root, {
+      id: 'tve-test001',
+      milestone: 'M001',
+      taskId: 'T001',
+      attempts: 1,
+      command: 'npm test',
+      exitCode: 0,
+      evidence: 'verified evidence text',
+      durationMs: 100,
+      terminationReason: 'exited',
+      fingerprint: { entries: [] },
+      at: '2026-08-20T00:00:00Z',
+    });
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [
+        task({
+          id: 'T001',
+          name: 'Config schema',
+          status: 'completed',
+          result: { summary: 's', evidence: 'verified evidence text' },
+          usage: { total_tokens: 100 },
+        }),
+        task({
+          id: 'T002',
+          status: 'completed',
+          depends_on: ['T001'],
+          result: { summary: 's2', evidence: 'plain evidence, not journal-backed' },
+        }),
+        task({ id: 'T003', status: 'ready', depends_on: ['T002'] }),
+      ],
+    });
+    saveUsage(root, 'M001', { schema_version: 1, planning: { attempts: 1, total_tokens: 200 }, qa: null });
+
+    const view = JSON.parse(await runStatus(['--report', '--json'])) as {
+      mode: string;
+      tasks: Array<{ id: string; label: string; statusLabel: string; tokens: number | null }>;
+      criticalPath: string[];
+      tokenBreakdown: Record<string, unknown>;
+    };
+    expect(view.mode).toBe('report');
+    expect(view.tasks.find((t) => t.id === 'T001')).toMatchObject({
+      label: 'Config schema',
+      statusLabel: '✓ Completed · verified',
+      tokens: 100,
+    });
+    expect(view.tasks.find((t) => t.id === 'T002')).toMatchObject({ statusLabel: '✓ Completed' });
+    expect(view.criticalPath).toEqual(['T003']);
+    expect(view.tokenBreakdown).toEqual({ task: 100, planning: 200, qa: null, total: 300, missing: 3 });
+    expect('driver_overhead' in view.tokenBreakdown).toBe(false);
+
+    const output = await runStatus(['--report']);
+    expect(output).not.toContain('driver_overhead');
+    expect(output).toContain('Config schema');
+    expect(output).toContain('✓ Completed · verified');
+    const lines = output.split('\n');
+    expect(lines[lines.length - 1]).toMatch(/^🏎️ \d+% · ✅/);
+  });
+
+  it('falls back to the truncated objective, not a bare id, when name is absent', async () => {
+    const longObjective = 'x'.repeat(80);
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [task({ id: 'T001', status: 'ready', objective: longObjective })],
+    });
+    const view = JSON.parse(await runStatus(['--report', '--json'])) as {
+      tasks: Array<{ id: string; label: string }>;
+    };
+    expect(view.tasks[0]!.label).toBe(`${'x'.repeat(60)}…`);
   });
 });

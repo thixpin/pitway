@@ -265,7 +265,7 @@ tasks:
       via plain `--result`/`--message`); the token-breakdown section contains no
       driver_overhead key in either human or JSON output; a task with no `name`
       renders its truncated objective, not a bare id."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -296,7 +296,15 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-status.test.ts
-    result: null
+    result:
+      summary: "[truncated]  limited to task/planning/qa/ total/missing with no
+        driver_overhead line, racing footer as final line). Added
+        hasVerifiedEvidence to src/core/tasks/update.ts (journal-based evidence
+        provenance check, since no field on the task record itself distinguishes
+        a task-verify-backed completion)."
+      evidence: Tests  10 passed (10) | Start at  17:16:46 | Duration  1.97s
+        (transform 202ms, setup 0ms, import 292ms, tests 1.59s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T007
     objective: "Add a new `protocol-driver.md` section documenting: the ADD-style
@@ -311,7 +319,7 @@ tasks:
       appends the footer or keeps updates terse -- only that the underlying
       data/rendering is correct when invoked. A single targeted insertion into
       the existing file; no other file is touched to satisfy this task."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T005

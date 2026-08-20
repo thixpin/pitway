@@ -302,6 +302,25 @@ function resolveTaskVerifyEvidence(
   return record;
 }
 
+// AC007 (M013): evidence-honest labeling for a completed task -- there is no
+// field on the task record itself distinguishing a task-verify-backed
+// completion from a plain --result/--message one; provenance lives only in
+// the append-only journal. True only when a task_verify_evidence record for
+// this exact milestone+task carries the same evidence text now persisted in
+// task.result -- proving the currently-recorded result actually came from
+// that record, not merely that a verify run happened at some point.
+// Deliberately does not call validateTaskVerifyEvidence -- this is a
+// historical-provenance check on an already-completed task, not a
+// freshness/staleness gate on a not-yet-completed one.
+export function hasVerifiedEvidence(root: string, milestoneId: string, task: Task): boolean {
+  if (task.result === null) return false;
+  const records = readJournal(root).filter(
+    (r): r is JournalTaskVerifyEvidence =>
+      r.kind === 'task_verify_evidence' && r.milestone === milestoneId && r.taskId === task.id,
+  );
+  return records.some((r) => r.evidence === task.result!.evidence);
+}
+
 function persistTask(root: string, milestoneId: string, tasksFile: TasksFile, updated: Task): void {
   saveTasks(root, milestoneId, {
     schema_version: tasksFile.schema_version,
