@@ -100,7 +100,7 @@ pitway resume
 
 > 📌 **Commit Traceability:** Before implementation begins, the developer reviews and confirms the milestone contract. Task commits carry `PitWay-Milestone` and `PitWay-Task` Git trailers; milestone baseline and completion commits carry the milestone trailer.
 
-> 📊 **Progress at a Glance:** Once a milestone is confirmed, routine driver updates end with a one-line progress footer (e.g. `🏎️ 54% · ✅ 7/12 · Next: T008`); run `pitway milestone-status <id> --report` for the full structured progress report on demand.
+> 📊 **Progress at a Glance:** Once a milestone is confirmed, routine driver updates end with a one-line progress footer (e.g. `🏎️ 54% · ✅ 7/12 · Next: T008`). `pitway milestone-status <id>` renders a per-task table with an inline progress bar; add `--report` for the full structured progress report on demand.
 
 ### 3. Explore Commands
 
@@ -115,7 +115,7 @@ pitway --help
 ## Commands & Integration
 
 - **Command Reference:** Run `pitway --help` for the full, authoritative CLI command surface and available flags.
-- **Claude Code:** For Claude Code projects, the installed `.claude/` assets document how the driver interacts with PitWay.
+- **Claude Code:** `pitway init` installs PitWay's commands as real Claude Code slash commands (`.claude/commands/*.md`, each carrying `description`/`argument-hint` metadata for the `/` picker), alongside the driver protocol documents that explain how and when to use them.
 
 ---
 
