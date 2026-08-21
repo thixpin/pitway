@@ -1,5 +1,5 @@
 ---
-description: Run an in_progress task's approved verification command and persist evidence
+description: PitWay: Run an in_progress task's approved verification command and persist evidence
 argument-hint: <id>
 ---
 

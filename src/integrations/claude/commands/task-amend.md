@@ -1,5 +1,5 @@
 ---
-description: Amend a task's objective, scope, or verification definition
+description: PitWay: Amend a task's objective, scope, or verification definition
 argument-hint: <task-id>
 ---
 

@@ -15,6 +15,7 @@ export function registerMilestoneCancelCommand(program: Command, deps: CommandDe
   const write = deps.write ?? ((line: string) => console.log(line));
   program
     .command('milestone-cancel <id>')
+    .alias('ms-cancel')
     .description('Permanently abandon a draft milestone; the directory is preserved, the id never reused.')
     .option('--json', 'output machine-readable JSON')
     .action((id: string, options: { json?: boolean }) => {

@@ -1,5 +1,5 @@
 ---
-description: Reconstruct workflow state from .pitway/ and recommend the next task
+description: PitWay: Reconstruct workflow state from .pitway/ and recommend the next task
 ---
 
 # resume

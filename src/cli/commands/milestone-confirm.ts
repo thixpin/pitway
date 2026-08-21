@@ -23,6 +23,7 @@ export function registerMilestoneConfirmCommand(program: Command, deps: CommandD
   const write = deps.write ?? ((line: string) => console.log(line));
   program
     .command('milestone-confirm <id>')
+    .alias('ms-confirm')
     .description('Confirm a draft milestone, or record an amended verification plan with --amend.')
     .option('--amend', 'record a pending amendment; requires --file')
     .option('--file <path>', 'path to the validated draft contract file holding the full amended contract')

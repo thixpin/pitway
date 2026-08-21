@@ -1,5 +1,5 @@
 ---
-description: Bounded small-fix workflow against an already-completed milestone
+description: PitWay: Bounded small-fix workflow against an already-completed milestone
 argument-hint: <create|approve|run|commit|cancel|promote|status> [change-id]
 ---
 

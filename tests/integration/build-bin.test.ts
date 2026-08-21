@@ -116,6 +116,20 @@ describe('build produces a real, spawnable dist/ binary (M008/T001/AC001)', () =
       },
     );
 
+    // M019/T003 (AC011): the 7 named milestone-* commands' ms-* aliases,
+    // reachable via the real compiled binary too, not only the in-process
+    // construction cli.test.ts already covers in depth.
+    it.each(['ms-add', 'ms-cancel', 'ms-complete', 'ms-confirm', 'ms-list', 'ms-review', 'ms-status'])(
+      'registers and reaches "%s" via --help on the real binary',
+      (alias) => {
+        const output = execFileSync('node', [distEntry, alias, '--help'], {
+          cwd: repoRoot,
+          stdio: 'pipe',
+        }).toString();
+        expect(output).toContain(alias);
+      },
+    );
+
     it('reports the package version', () => {
       const output = execFileSync('node', [distEntry, '--version'], {
         cwd: repoRoot,

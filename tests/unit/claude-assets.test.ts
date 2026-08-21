@@ -182,3 +182,52 @@ describe('M019 driver usage-propagation MUST instruction is documented', () => {
     expect(text).toMatch(/MUST/);
   });
 });
+
+// M019/T003 (AC009, AC010): the 7 new ms-* alias command docs ship, each
+// byte-identical in body to its canonical milestone-* counterpart; every
+// PitWay-owned command doc's description is 'PitWay: '-prefixed; the 6
+// vendored skills are explicitly unchanged.
+describe('M019 ms-* alias command docs ship and stay in parity (AC009, AC010)', () => {
+  const MS_ALIASES = [
+    'ms-add',
+    'ms-cancel',
+    'ms-complete',
+    'ms-confirm',
+    'ms-list',
+    'ms-review',
+    'ms-status',
+  ];
+
+  it('lists all 7 alias command docs among shipped assets', () => {
+    const assets = listClaudeAssets();
+    for (const alias of MS_ALIASES) {
+      expect(assets).toContain(`commands/${alias}.md`);
+    }
+  });
+
+  it.each(MS_ALIASES.map((alias) => [alias, alias.replace('ms-', 'milestone-')]))(
+    'commands/%s.md is byte-identical to commands/%s.md',
+    (alias, canonical) => {
+      expect(shippedContent(`commands/${alias}.md`)).toEqual(shippedContent(`commands/${canonical}.md`));
+    },
+  );
+
+  it("every command doc's description starts with 'PitWay: ', including the new milestone-merge.md and the 7 ms-*.md aliases", () => {
+    const commandAssets = listClaudeAssets().filter((a) => a.startsWith('commands/'));
+    expect(commandAssets.length).toBeGreaterThanOrEqual(31);
+    for (const asset of commandAssets) {
+      const text = shippedContent(asset).toString('utf8');
+      const match = /^description:\s*"?(.*?)"?$/m.exec(text);
+      expect(match?.[1]?.startsWith('PitWay: ')).toBe(true);
+    }
+  });
+
+  it('leaves the 6 vendored skills entirely unaffected by the PitWay: prefix', () => {
+    const skillAssets = listClaudeAssets().filter((a) => a.startsWith('skills/'));
+    expect(skillAssets.length).toBeGreaterThan(0);
+    for (const asset of skillAssets) {
+      const text = shippedContent(asset).toString('utf8');
+      expect(text).not.toMatch(/^description:\s*"?PitWay: /m);
+    }
+  });
+});

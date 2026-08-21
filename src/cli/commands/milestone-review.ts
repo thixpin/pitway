@@ -115,6 +115,7 @@ export function registerMilestoneReviewCommand(program: Command, deps: CommandDe
   const write = deps.write ?? ((line: string) => console.log(line));
   const milestoneReview = program
     .command('milestone-review')
+    .alias('ms-review')
     .description(
       'A role-based review workflow: PitWay manages review state (sessions/briefs/findings/decisions); ' +
         'the driver dispatches the actual reviewers.',

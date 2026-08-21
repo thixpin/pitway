@@ -1,5 +1,5 @@
 ---
-description: Transition a task's status; completion commits its files atomically
+description: PitWay: Transition a task's status; completion commits its files atomically
 argument-hint: <id> <status>
 ---
 

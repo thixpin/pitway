@@ -44,23 +44,38 @@ items:
     archived_reason: null
   - id: B004
     title: Improve CLI test coverage; resolve local-vs-Codecov discrepancy
-    reason: Codecov shows several weak CLI files (cli/commands/milestone-review.ts ~43%,
-      cli/commands/task-verify.ts ~41%, cli/commands/task-integrate.ts ~50%, 
-      cli/commands/verification-repair.ts ~57%, cli/commandsindex.ts ~75%; overall ~87%), 
-      while local Vitest V8 numbers read higher for some -- the discrepancy (coverage config, 
-      included/excluded files, source maps, report format, Codecov upload config, CI workflow)
-      needs investigating before trusting either number. Add meaningful
-      behavioral/branch tests for real gaps (error paths, validation failures,
-      state-transition failures, subprocess failures, recovery/repair paths)
-      prioritized milestone-review > task-verify > task-integrate >
-      verification-repair > cli/index, targeting >90% genuine Codecov coverage
-      -- never superficial line-only tests, config changes to hide uncovered
-      code, or unrelated refactors.
+    reason: Codecov shows several weak CLI files (cli/commands/milestone-review.ts
+      ~43%, cli/commands/task-verify.ts ~41%, cli/commands/task-integrate.ts
+      ~50%, cli/commands/verification-repair.ts ~57%, cli/commandsindex.ts ~75%;
+      overall ~87%), while local Vitest V8 numbers read higher for some -- the
+      discrepancy (coverage config, included/excluded files, source maps, report
+      format, Codecov upload config, CI workflow) needs investigating before
+      trusting either number. Add meaningful behavioral/branch tests for real
+      gaps (error paths, validation failures, state-transition failures,
+      subprocess failures, recovery/repair paths) prioritized milestone-review >
+      task-verify > task-integrate > verification-repair > cli/index, targeting
+      >90% genuine Codecov coverage -- never superficial line-only tests, config
+      changes to hide uncovered code, or unrelated refactors.
     status: pending
     source:
       milestone: M018
       task: null
     created_at: 2026-08-21T14:35:13.758Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B005
+    title: Align milestone-status/progress-report table format with usage view
+    reason: PitWay already integrated a table-view report format that shows usage
+      per row elsewhere, but pitway milestone-status --report / the progress
+      report still use the older row layout and don't follow that same table
+      design. Align them (developer-flagged during M019 execution while
+      reviewing milestone-status output).
+    status: pending
+    source:
+      milestone: M019
+      task: null
+    created_at: 2026-08-21T17:01:18.814Z
     resolved_at: null
     promoted_to: null
     archived_reason: null

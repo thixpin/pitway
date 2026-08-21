@@ -285,6 +285,7 @@ export function registerMilestoneStatusCommand(program: Command, deps: CommandDe
   const write = deps.write ?? ((line: string) => console.log(line));
   program
     .command('milestone-status <id>')
+    .alias('ms-status')
     .description('Show a milestone\'s status, contract, progress, and tasks.')
     .option('--report', 'render the full structured Progress Report instead of the default summary')
     .option('--json', 'output machine-readable JSON')
