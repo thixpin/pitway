@@ -13,7 +13,7 @@ tasks:
       (skills/commands/agents.md files) as a real, first-party example, plus
       official Anthropic documentation for anything not exercised locally. For
       OpenCode, use real web research (its own docs/README/config schema)."
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - claude-code.md and opencode.md each cover all 8 dimensions with real
@@ -30,6 +30,7 @@ tasks:
       detail: Manual review of docs/evidence/M022/claude-code.md and opencode.md for
         real citations and 8-dimension coverage.
     result: null
+    attempts: 1
     usage: null
   - id: T002
     name: "Research: Codex + Cursor"
@@ -40,7 +41,7 @@ tasks:
       tool, each covering all 8 dimensions (or an explicit 'not applicable' note
       where genuinely true). Cite real documentation/source URLs -- never invent
       a config shape or field name; use real web research."
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - codex.md and cursor.md each cover all 8 dimensions with real citations
@@ -54,6 +55,7 @@ tasks:
       detail: Manual review of docs/evidence/M022/codex.md and cursor.md for real
         citations and 8-dimension coverage.
     result: null
+    attempts: 1
     usage: null
   - id: T003
     name: "Research: GitHub Copilot + Gemini CLI"
@@ -65,7 +67,7 @@ tasks:
       dimensions (or an explicit 'not applicable' note where genuinely true).
       Cite real documentation/source URLs -- never invent a config shape or
       field name; use real web research."
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - github-copilot.md and gemini-cli.md each cover all 8 dimensions with
@@ -80,6 +82,7 @@ tasks:
       detail: Manual review of docs/evidence/M022/github-copilot.md and gemini-cli.md
         for real citations and 8-dimension coverage.
     result: null
+    attempts: 1
     usage: null
   - id: T004
     name: "Research: Aider"
@@ -89,7 +92,7 @@ tasks:
       explicit 'not applicable' note where genuinely true). Cite real
       documentation/source URLs -- never invent a config shape or field name;
       use real web research."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - aider.md covers all 8 dimensions with real citations
@@ -101,8 +104,27 @@ tasks:
       strategy: manual
       detail: Manual review of docs/evidence/M022/aider.md for real citations and
         8-dimension coverage.
-    result: null
-    usage: null
+    result:
+      summary: Aider researched across all 8 dimensions from live official docs;
+        docs/evidence/M022/aider.md written with 25 real aider.chat citations.
+      evidence: "[truncated] y extensible tool-calling framework (no MCP in mainline |
+        through v0.86.1, settled against the official release HISTORY rather |
+        than conflicting third-party claims). Real representations: built-in |
+        slash commands; explicit-load conventions files (/read, --read, read:);
+        | model-scoped metadata (.aider.model.settings.yml, |
+        .aider.model.metadata.json); layered CLI-flag > AIDER_* env > |
+        .aider.conf.yml argument system; text-based edit formats instead of tool
+        | calls; confirmation-prompt permissions (--yes-always, |
+        --no-suggest-shell-commands, --read, --aiderignore, --dry-run). |
+        Sources consulted live: 11 aider.chat documentation pages (conventions,
+        | commands, modes, watch, lint-test, aider_conf, options, |
+        adv-model-settings, edit-formats, scripting, HISTORY). | Manual
+        verification per the task's declared strategy: every dimension | section
+        carries at least one real citation; the three not-applicable |
+        dimensions state absence with reasoning and nearest-analog citations."
+    attempts: 1
+    usage:
+      total_tokens: 54394
   - id: T005
     name: Synthesis comparison
     objective: "Write docs/evidence/M022/comparison.md, grounded entirely in
