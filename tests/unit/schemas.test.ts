@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import {
+  backlogFileSchema,
+  backlogItemSchema,
   configSchema,
   resolveExecutionStrategy,
   contractFrontmatterSchema,
@@ -695,5 +697,97 @@ describe('buildTaskContextBundle context_files/write_scope surfacing', () => {
     expect(bundle.requiredSkills).toBeUndefined();
     const serialized = JSON.parse(JSON.stringify(bundle));
     expect('requiredSkills' in serialized).toBe(false);
+  });
+});
+
+describe('backlog item schema (M018/T001)', () => {
+  const baseItem = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    id: 'B001',
+    title: 'Handle stale evidence',
+    reason: 'Discovered while implementing T003; unrelated to that scope.',
+    status: 'pending',
+    source: { milestone: null, task: null },
+    created_at: '2026-08-21T09:00:00Z',
+    resolved_at: null,
+    promoted_to: null,
+    archived_reason: null,
+    ...overrides,
+  });
+
+  it('accepts a minimal pending item with no source', () => {
+    expect(backlogItemSchema.safeParse(baseItem()).success).toBe(true);
+  });
+
+  it('accepts a pending item with source.milestone and source.task set', () => {
+    const item = baseItem({ source: { milestone: 'M018', task: 'T003' } });
+    expect(backlogItemSchema.safeParse(item).success).toBe(true);
+  });
+
+  it('rejects an id that does not match B000', () => {
+    const result = backlogItemSchema.safeParse(baseItem({ id: 'B1' }));
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects source.task set without source.milestone', () => {
+    const result = backlogItemSchema.safeParse(baseItem({ source: { milestone: null, task: 'T003' } }));
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((i) => i.message).join('; ')).toContain('source.milestone');
+    }
+  });
+
+  it('accepts a promoted item with resolved_at and promoted_to set', () => {
+    const item = baseItem({
+      status: 'promoted',
+      resolved_at: '2026-08-21T10:00:00Z',
+      promoted_to: { milestone: 'M019', task: 'T001' },
+    });
+    expect(backlogItemSchema.safeParse(item).success).toBe(true);
+  });
+
+  it('rejects a promoted item missing promoted_to', () => {
+    const item = baseItem({ status: 'promoted', resolved_at: '2026-08-21T10:00:00Z' });
+    expect(backlogItemSchema.safeParse(item).success).toBe(false);
+  });
+
+  it('rejects promoted_to.task set without promoted_to.milestone', () => {
+    const item = baseItem({
+      status: 'promoted',
+      resolved_at: '2026-08-21T10:00:00Z',
+      promoted_to: { milestone: null, task: 'T001' },
+    });
+    const result = backlogItemSchema.safeParse(item);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((i) => i.message).join('; ')).toContain('promoted_to.milestone');
+    }
+  });
+
+  it('accepts an archived item with resolved_at and archived_reason set', () => {
+    const item = baseItem({
+      status: 'archived',
+      resolved_at: '2026-08-21T10:00:00Z',
+      archived_reason: 'No longer relevant.',
+    });
+    expect(backlogItemSchema.safeParse(item).success).toBe(true);
+  });
+
+  it('rejects an archived item missing archived_reason', () => {
+    const item = baseItem({ status: 'archived', resolved_at: '2026-08-21T10:00:00Z' });
+    expect(backlogItemSchema.safeParse(item).success).toBe(false);
+  });
+
+  it('rejects a pending item that already carries promoted_to', () => {
+    const item = baseItem({ promoted_to: { milestone: 'M019', task: null } });
+    expect(backlogItemSchema.safeParse(item).success).toBe(false);
+  });
+
+  it('rejects an unknown extra field (strictObject)', () => {
+    const item = baseItem({ priority: 'high' });
+    expect(backlogItemSchema.safeParse(item).success).toBe(false);
+  });
+
+  it('backlogFileSchema accepts an empty items array', () => {
+    expect(backlogFileSchema.safeParse({ schema_version: 1, items: [] }).success).toBe(true);
   });
 });

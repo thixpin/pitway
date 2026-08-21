@@ -590,6 +590,81 @@ describe('review_recording journal entries (M015/T001)', () => {
   });
 });
 
+// M018/T001 (AC003): backlog_recording -- fifth checkpoint-eligible
+// operation type, reused across add/promote/archive exactly the way
+// task_amendment is reused by both task-add and task-amend. Unlike every
+// other operation type, its resolveTargetPath case is root-level
+// ('.pitway/backlog.yaml'), not nested under a milestone directory --
+// derivePending/reconcilePending require no change to handle this
+// generically, proven directly below.
+describe('backlog_recording journal entries (M018/T001)', () => {
+  it('appends a backlog_recording entry and reads it back', () => {
+    const entry = appendJournalEntry(repo, {
+      milestone: 'M018',
+      type: 'backlog_recording',
+      operationId: 'br-1',
+      target: 'B001',
+      payload: { operation: 'add' },
+    });
+    expect(entry.kind).toBe('entry');
+
+    const all = readJournal(repo);
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({
+      kind: 'entry',
+      milestone: 'M018',
+      type: 'backlog_recording',
+      operationId: 'br-1',
+      target: 'B001',
+    });
+  });
+
+  it('resolveTargetPath maps backlog_recording to the root-level backlog.yaml, ignoring milestoneDir', () => {
+    expect(resolveTargetPath({ type: 'backlog_recording' }, 'M018')).toBe('.pitway/backlog.yaml');
+    expect(resolveTargetPath({ type: 'backlog_recording' }, 'M999')).toBe('.pitway/backlog.yaml');
+  });
+
+  it('is checkpoint-eligible exactly like task_amendment -- derivePending excludes it once checkpointed', () => {
+    appendJournalEntry(repo, {
+      milestone: 'M018',
+      type: 'backlog_recording',
+      operationId: 'br-2',
+      payload: {},
+    });
+    expect(derivePending(readJournal(repo)).map((e) => e.operationId)).toEqual(['br-2']);
+
+    appendCheckpointMarker(repo, 'M018', 'br-2', 'deadbeef');
+    expect(derivePending(readJournal(repo))).toHaveLength(0);
+  });
+
+  it('reconcilePending self-heals a backlog_recording entry with no code change needed for its root-level target', () => {
+    mkdirSync(join(repo, '.pitway', 'milestones', 'M018'), { recursive: true });
+    writeFileSync(join(repo, '.pitway', 'backlog.yaml'), 'schema_version: 1\nitems: []\n');
+
+    appendJournalEntry(repo, {
+      milestone: 'M018',
+      type: 'backlog_recording',
+      operationId: 'br-3',
+      payload: {},
+    });
+
+    const relTarget = resolveTargetPath({ type: 'backlog_recording' }, 'M018');
+    expect(relTarget).toBe('.pitway/backlog.yaml');
+    git(['add', '--', relTarget], repo);
+    const message = composeMessage('workflow: complete T001', {
+      'PitWay-Milestone': 'M018',
+      'PitWay-Task': 'T001',
+    });
+    git(['commit', '-m', message], repo);
+    const sha = git(['rev-parse', 'HEAD'], repo).trim();
+
+    const created = reconcilePending(repo, 'M018');
+    expect(created).toHaveLength(1);
+    expect(created[0]).toMatchObject({ entryOperationId: 'br-3', commitSha: sha });
+    expect(derivePending(readJournal(repo))).toHaveLength(0);
+  });
+});
+
 describe('layering: src/core/journal/ must not import node:fs or node:path', () => {
   it('contains zero direct fs/path imports across every file in src/core/journal/', () => {
     const dir = join(process.cwd(), 'src', 'core', 'journal');

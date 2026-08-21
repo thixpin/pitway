@@ -395,3 +395,84 @@ export const reviewRecordInputSchema = z.strictObject({
   findings: z.array(reviewFindingEntrySchema),
 });
 export type ReviewRecordInput = z.infer<typeof reviewRecordInputSchema>;
+
+// M018/T001 (AC001): deferred-work backlog item -- schema v1, root-level
+// .pitway/backlog.yaml (see loadBacklog/saveBacklog in store.ts). id is
+// minted by an in-memory max+1 scan (nextBacklogId), never a directory
+// scan -- backlog has no one-file-per-item layout.
+const backlogItemId = z.string().regex(/^B\d{3}$/, 'backlog item id must match B000');
+
+export const backlogStatusSchema = z.enum(['pending', 'promoted', 'archived']);
+
+// Shared by both source (AC001) and promoted_to (AC002) -- same two-field
+// shape, not a {type, id} discriminated reference, because task ids are
+// milestone-scoped, not globally unique (nextSequentialTaskId scans only
+// the current milestone's own tasks.yaml).
+const backlogReferenceSchema = z.strictObject({
+  milestone: milestoneId.nullable(),
+  task: taskId.nullable(),
+});
+
+export const backlogItemSchema = z
+  .strictObject({
+    id: backlogItemId,
+    title: z.string().min(1).max(80),
+    reason: z.string().min(1),
+    status: backlogStatusSchema,
+    source: backlogReferenceSchema,
+    created_at: isoTimestamp,
+    resolved_at: isoTimestamp.nullable(),
+    promoted_to: backlogReferenceSchema.nullable(),
+    archived_reason: z.string().min(1).nullable(),
+  })
+  .superRefine((item, ctx) => {
+    if (item.source.task !== null && item.source.milestone === null) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'source.milestone is required whenever source.task is present',
+        path: ['source', 'milestone'],
+      });
+    }
+    if (item.promoted_to?.task !== null && item.promoted_to?.milestone === null) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'promoted_to.milestone is required whenever promoted_to.task is present',
+        path: ['promoted_to', 'milestone'],
+      });
+    }
+    if (item.status === 'pending') {
+      if (item.resolved_at !== null || item.promoted_to !== null || item.archived_reason !== null) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'a pending item must not carry resolved_at/promoted_to/archived_reason',
+          path: ['status'],
+        });
+      }
+    } else if (item.status === 'promoted') {
+      if (item.resolved_at === null || item.promoted_to === null || item.archived_reason !== null) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'a promoted item requires resolved_at/promoted_to and no archived_reason',
+          path: ['status'],
+        });
+      }
+    } else if (item.status === 'archived') {
+      if (item.resolved_at === null || item.archived_reason === null || item.promoted_to !== null) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'an archived item requires resolved_at/archived_reason and no promoted_to',
+          path: ['status'],
+        });
+      }
+    }
+  });
+
+export const backlogFileSchema = z.strictObject({
+  schema_version: schemaVersion,
+  items: z.array(backlogItemSchema),
+});
+
+export type BacklogStatus = z.infer<typeof backlogStatusSchema>;
+export type BacklogReference = z.infer<typeof backlogReferenceSchema>;
+export type BacklogItem = z.infer<typeof backlogItemSchema>;
+export type BacklogFile = z.infer<typeof backlogFileSchema>;

@@ -8,6 +8,7 @@ import {
   MilestoneResolutionError,
   StateStoreError,
   createMilestoneDir,
+  loadBacklog,
   loadConfig,
   loadContract,
   loadState,
@@ -16,8 +17,10 @@ import {
   loadVerificationRepairs,
   loadVerificationResults,
   milestoneDirExists,
+  nextBacklogId,
   nextRequirementId,
   readInputFile,
+  saveBacklog,
   saveConfig,
   saveContract,
   saveRequirement,
@@ -29,6 +32,8 @@ import {
   slugifyTitle,
 } from '../../src/state/store.js';
 import type {
+  BacklogFile,
+  BacklogItem,
   PitwayConfig,
   PitwayState,
   TasksFile,
@@ -140,6 +145,59 @@ describe('loadVerificationRepairs bootstrap tolerance', () => {
     // fails, exactly the "other I/O error" case the tolerance must not mask.
     mkdirSync(join(root, '.pitway', 'milestones', 'M001', 'verification-repairs.yaml'));
     expect(() => loadVerificationRepairs(root, 'M001')).toThrowError(StateStoreError);
+  });
+});
+
+// M018/T001 (AC001): loadBacklog/saveBacklog are root-level, not
+// per-milestone -- same absent-file tolerance idiom as
+// loadVerificationRepairs above, applied to .pitway/backlog.yaml directly
+// under root instead of a milestone directory.
+describe('loadBacklog/saveBacklog (root-level, M018/T001)', () => {
+  it('treats a missing backlog.yaml as an empty, schema-valid store', () => {
+    expect(loadBacklog(root)).toEqual({ schema_version: 1, items: [] });
+  });
+
+  it('round-trips a genuinely existing backlog.yaml', () => {
+    const backlog: BacklogFile = {
+      schema_version: 1,
+      items: [
+        {
+          id: 'B001',
+          title: 'Handle stale evidence',
+          reason: 'Discovered while implementing T003.',
+          status: 'pending',
+          source: { milestone: 'M018', task: 'T003' },
+          created_at: '2026-08-21T09:00:00Z',
+          resolved_at: null,
+          promoted_to: null,
+          archived_reason: null,
+        },
+      ],
+    };
+    saveBacklog(root, backlog);
+    expect(loadBacklog(root)).toEqual(backlog);
+  });
+
+  it('writes backlog.yaml at the repo root, not inside any milestone directory', () => {
+    saveBacklog(root, { schema_version: 1, items: [] });
+    expect(readdirSync(join(root, '.pitway'))).toContain('backlog.yaml');
+  });
+
+  it('still reports malformed YAML with the file path, not silently treated as empty', () => {
+    writeFileSync(join(root, '.pitway', 'backlog.yaml'), 'items: [unclosed\n');
+    expect(() => loadBacklog(root)).toThrowError(StateStoreError);
+    expect(() => loadBacklog(root)).toThrowError(/backlog\.yaml/);
+  });
+});
+
+describe('nextBacklogId (M018/T001)', () => {
+  it('returns B001 for an empty items array', () => {
+    expect(nextBacklogId([])).toBe('B001');
+  });
+
+  it('returns max+1 by scanning the given items array in memory', () => {
+    const items = [{ id: 'B001' }, { id: 'B003' }, { id: 'B002' }] as BacklogItem[];
+    expect(nextBacklogId(items)).toBe('B004');
   });
 });
 
