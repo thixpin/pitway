@@ -192,7 +192,7 @@ tasks:
       time. End with an explicit statement that no MVP-boundary decision
       (canonical format, new driver, plugin architecture) is made here --
       findings only, per AC001."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -209,5 +209,26 @@ tasks:
       strategy: manual
       detail: Manual review of docs/evidence/M022/comparison.md, spot-check several
         claims against the underlying per-tool documents.
-    result: null
-    usage: null
+    result:
+      summary: comparison.md synthesized from the 7 per-tool evidence files across all
+        8 dimensions -- common vs. driver-specific capabilities, every claim
+        traced to a specific per-tool finding, closing with the AC001
+        no-decision statement.
+      evidence: "[truncated] at, new | driver adapter, plugin architecture, pitway
+        update). | Key convergences: Agent Skills SKILL.md standard 6/7 tools
+        (Aider N/A); | the .agents/skills cross-tool convention; commands
+        folding into skills in | 3 tools; MCP 6/7; permissions share only the
+        allow/ask/deny vocabulary, | never conflict-resolution semantics
+        (last-match-wins vs deny-wins vs | most-restrictive-wins vs
+        deny>ask>allow all coexist). | Conflicts/unverified flags carried
+        forward unresolved, per the task's own | rule: Codex .agents/skills vs
+        third-party .codex/skills, Cursor | ~/.cursor/commands and .cursorrules,
+        Codex apply_patch/spawn_agent, | Gemini trusted-folders, Copilot
+        prompt-files preview status. | Worker verification: 8 claims
+        spot-checked against exact per-tool source | text; one post-spot-check
+        correction (an unsupported \"originator\" claim | reworded to the
+        sourced \"follows and extends\"). | No new research performed at
+        synthesis time -- grounded entirely in | T001-T004's committed files."
+    attempts: 1
+    usage:
+      total_tokens: 104215
