@@ -107,7 +107,7 @@ tasks:
       milestone-review record's new --usage flag. Then run pitway backlog
       promote B006 --task T001 and pitway backlog promote B007 --task T002,
       closing out both backlog items formally (AC009)."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -122,5 +122,22 @@ tasks:
       strategy: manual
       detail: Manual review of the IMPLEMENTATION_PLAN.md diff plus backlog list
         output after both promotions.
-    result: null
+    result:
+      summary: IMPLEMENTATION_PLAN.md reconciled (sections 4 and 7); B006 and B007
+        both promoted, closing them out formally.
+      evidence: |
+        IMPLEMENTATION_PLAN.md: section 4 gains a note on reviews.yaml's new
+        usage field and the journal's new backlog_archive sibling kind (neither
+        file was previously shown in section 4's own directory sketch); section
+        7's milestone-review row documents record --usage / report's usage
+        disclosure (tokens only); section 7's backlog row documents archive no
+        longer requiring an active milestone. Top-of-file changelog paragraph
+        gained the standard M021/T003 entry. No Bootstrap-table/roadmap-header
+        changes -- M021's own row left for the next reconciliation task, per
+        established precedent.
+        backlog promote B006 --task T001 and backlog promote B007 --task T002
+        both succeeded.
+        AC010: npm run build clean; npm test -- 1355/1355 passed (86 files);
+        npx tsc --noEmit clean.
+    attempts: 1
     usage: null
