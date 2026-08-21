@@ -11,6 +11,7 @@ const pkg = JSON.parse(
 
 const ALL_COMMAND_NAMES = [
   'auto-run',
+  'backlog',
   'init',
   'milestone-add',
   'milestone-cancel',
@@ -69,7 +70,7 @@ describe('pitway bin entry point', () => {
 });
 
 describe('registerAllCommands', () => {
-  it('registers all 23 commands on a fresh buildCli() program', () => {
+  it('registers all 24 commands on a fresh buildCli() program', () => {
     const program = buildCli();
     registerAllCommands(program, {});
     expect(program.commands.map((c) => c.name()).sort()).toEqual(ALL_COMMAND_NAMES);
@@ -96,6 +97,21 @@ describe('registerAllCommands', () => {
       registerAllCommands(program, {});
       await expect(
         program.parseAsync(['node', 'pitway', 'auto-run', subcommand, '--help']),
+      ).rejects.toThrow();
+      expect(lines.join('')).toContain(subcommand);
+    },
+  );
+
+  // M018/T003 (AC006): backlog's five subcommands nest under the single
+  // top-level 'backlog' entry, mirroring auto-run's own subcommand
+  // reachability coverage above.
+  it.each(['add', 'list', 'show', 'promote', 'archive'])(
+    'the real entry-point construction registers "backlog %s" and it responds to --help',
+    async (subcommand) => {
+      const { program, lines } = captureProgram();
+      registerAllCommands(program, {});
+      await expect(
+        program.parseAsync(['node', 'pitway', 'backlog', subcommand, '--help']),
       ).rejects.toThrow();
       expect(lines.join('')).toContain(subcommand);
     },

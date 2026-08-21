@@ -1,0 +1,28 @@
+schema_version: 1
+items:
+  - id: B001
+    title: ms-* milestone command aliases
+    reason: Command names discovered during real-world PitWay usage can be
+      ambiguous, and milestone commands are unnecessarily long. Standardize
+      PitWay ownership in metadata and add ms-* aliases for milestone commands.
+    status: pending
+    source:
+      milestone: M018
+      task: null
+    created_at: 2026-08-21T14:22:28.932Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B002
+    title: Improve milestone reviewer selection UX
+    reason: Reviewer selection is difficult to scan because the current
+      role/description presentation is visually noisy. Make role names visually
+      prominent and descriptions concise.
+    status: pending
+    source:
+      milestone: M018
+      task: null
+    created_at: 2026-08-21T14:22:29.192Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null

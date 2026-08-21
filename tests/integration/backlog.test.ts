@@ -12,6 +12,8 @@ import { showBacklogItem } from '../../src/core/backlog/show.js';
 import { derivePending } from '../../src/core/journal/operations.js';
 import { readJournal, type JournalEntry } from '../../src/state/journal.js';
 import { loadBacklog } from '../../src/state/store.js';
+import { createTaskWorktree } from '../../src/git/worktree.js';
+import { WorktreeGuardError } from '../../src/cli/worktree-guard.js';
 
 // M018/T002 (AC001-AC005): backlog's core lifecycle, exercised directly
 // (no CLI wiring yet -- that's T003) against a real temp git repo, exactly
@@ -368,5 +370,39 @@ describe('backlog reconciliation via the existing pending/fold machinery (AC003/
 
     expect(pendingBacklogEntries()).toHaveLength(0);
     expect(commitCount(root)).toBe(before + 1); // exactly one commit: T001's own completion
+  });
+});
+
+// M018/T003 (AC006): backlog add/promote/archive are state-mutating and
+// refused by worktree-guard.ts's existing default-deny mechanism -- no
+// code change there was needed, proven directly (mirrors
+// tests/integration/worktree-state-guard.test.ts's own coverage style).
+describe('backlog CLI worktree guard (AC006)', () => {
+  it('refuses backlog add/promote/archive inside a task worktree', async () => {
+    const worktree = createTaskWorktree(root, 'M001', 'T001').path;
+
+    const add = await run(['backlog', 'add', '--title', 'X', '--reason', 'Y'], worktree);
+    expect(add.error).toBeInstanceOf(WorktreeGuardError);
+
+    const promote = await run(['backlog', 'promote', 'B001', '--task', 'T001'], worktree);
+    expect(promote.error).toBeInstanceOf(WorktreeGuardError);
+
+    const archive = await run(['backlog', 'archive', 'B001', '--reason', 'Z'], worktree);
+    expect(archive.error).toBeInstanceOf(WorktreeGuardError);
+  });
+
+  // Deliberately NOT added to READ_ONLY_COMMANDS, matching quick-change
+  // status's own precedent (AC006/Design Decisions) -- backlog inspection
+  // stays driver-owned, not a worker capability, so list/show are refused
+  // in a worktree too, unlike resume/task-status/milestone-status.
+  it('also refuses backlog list/show inside a task worktree (not allowlisted, unlike resume/task-status)', async () => {
+    addBacklogItem(root, { title: 'X', reason: 'Y' });
+    const worktree = createTaskWorktree(root, 'M001', 'T001').path;
+
+    const list = await run(['backlog', 'list'], worktree);
+    expect(list.error).toBeInstanceOf(WorktreeGuardError);
+
+    const show = await run(['backlog', 'show', 'B001'], worktree);
+    expect(show.error).toBeInstanceOf(WorktreeGuardError);
   });
 });

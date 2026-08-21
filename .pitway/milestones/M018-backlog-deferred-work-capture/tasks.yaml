@@ -159,7 +159,7 @@ tasks:
       tests/integration/cli.test.ts's ALL_COMMAND_NAMES and 'registers all N
       commands' count (23 -> 24) and tests/integration/build-bin.test.ts's
       separately-maintained real-binary command list (AC006)."
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -184,7 +184,16 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/integration/cli.test.ts
         tests/integration/build-bin.test.ts tests/integration/backlog.test.ts
-    result: null
+    result:
+      summary: "[truncated] ver a dedicated backlog commit. Note: the
+        globally-installed published pitway (v0.1.1) cannot parse
+        backlog_recording journal entries written by this repo's own
+        in-development schema, so `node dist/cli/index.js` (the local build) is
+        used for all pitway commands for the remainder of M018."
+      evidence: Tests  105 passed (105) | Start at  21:22:55 | Duration  17.74s
+        (transform 769ms, setup 0ms, import 1.06s, tests 21.96s, environment
+        0ms)
+    attempts: 1
     usage: null
   - id: T004
     name: pendingBacklogItems in pitway resume
@@ -194,7 +203,7 @@ tasks:
       (src/cli/commands/resume.ts) -- additive only, no change to resume's
       existing recommendation logic. Update every exact-shape --json assertion
       this additive key touches (AC007)."
-    status: waiting
+    status: ready
     depends_on:
       - T003
     acceptance_criteria:
@@ -226,7 +235,7 @@ tasks:
       milestone exactly like task-add does; document the five subcommands in
       USAGE.md. Update every shipped-asset assertion this new file touches
       (AC008).
-    status: waiting
+    status: ready
     depends_on:
       - T003
     acceptance_criteria:

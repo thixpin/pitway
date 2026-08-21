@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { registerAutoRunCommand } from './commands/auto-run.js';
+import { registerBacklogCommand } from './commands/backlog.js';
 import { registerInitCommand } from './commands/init.js';
 import { registerMilestoneAddCommand } from './commands/milestone-add.js';
 import { registerMilestoneCancelCommand } from './commands/milestone-cancel.js';
@@ -53,6 +54,7 @@ export function registerAllCommands(program: Command, deps: CommandDeps = {}): v
   // command -- present and future -- rather than per-command enumeration.
   installWorktreeGuard(program, deps);
   registerAutoRunCommand(program, deps);
+  registerBacklogCommand(program, deps);
   registerInitCommand(program, deps);
   registerMilestoneAddCommand(program, deps);
   registerMilestoneCancelCommand(program, deps);
