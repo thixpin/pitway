@@ -16,7 +16,7 @@ tasks:
       pre-confirmation review leaves exactly such entries pending; inline
       task-update in_progress is not blocked by them, and this task's own
       completion commit clears them."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - AC001
@@ -34,7 +34,16 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/milestone-confirm.test.ts
-    result: null
+    result:
+      summary: "[truncated] the baseline commit already captured (e.g. a
+        pre-confirmation review's reviews.yaml) stayed pending forever, blocking
+        task-dispatch (found live in M016). Added reconcilePending(root,
+        milestoneId) after createBaselineCommit at both call sites in
+        confirm.ts; byte-match semantics unchanged."
+      evidence: Tests  37 passed (37) | Start at  11:46:44 | Duration  20.73s
+        (transform 278ms, setup 0ms, import 377ms, tests 20.26s, environment
+        0ms)
+    attempts: 1
     usage: null
   - id: T007
     name: Global test and hook timeouts for load-sensitive tests
@@ -50,7 +59,7 @@ tasks:
       argument -- the only check that can actually observe this AC. Executed
       INLINE and SECOND, before any parallel dispatch, so every later worktree
       inherits the config. The npm-pack transient is NOT claimed fixed."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
