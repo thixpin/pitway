@@ -13,6 +13,11 @@ on:
 
 permissions:
   contents: read
+  # Trusted Publishing (OIDC): lets this workflow exchange a short-lived
+  # GitHub-issued identity token for npm publish credentials -- no NPM_TOKEN
+  # secret needed. Configured on npm's side against this exact repo +
+  # workflow filename (thixpin/pitway, publish.yml).
+  id-token: write
 
 jobs:
   publish:
@@ -29,6 +34,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Update npm (Trusted Publishing/OIDC needs npm >= 11.5.1)
+        run: npm install -g npm@latest
 
       - name: Verify the pushed tag matches package.json's version
         if: github.event_name == 'push'
@@ -48,5 +56,3 @@ jobs:
 
       - name: Publish
         run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
