@@ -349,7 +349,7 @@ tasks:
       write_scope and single completion commit rather than a separate standalone
       commit, per explicit developer decision at confirm time (AC018, AC019,
       AC020, AC021)."
-    status: ready
+    status: completed
     depends_on:
       - T002
       - T003
@@ -375,7 +375,22 @@ tasks:
       strategy: manual
       detail: developer/driver review per CT012/CT013's instructions, plus a full npm
         test run (CT014) confirming no regression across the whole suite
-    result: null
+    result:
+      summary: "[truncated] , reconciled IMPLEMENTATION_PLAN.md (command count 24->25,
+        | asset count 37->45, Bootstrap table gains M018's row, roadmap header |
+        M017->M018 delivered plus a new M019 entry), and committed the |
+        developer's pre-existing workflow diagram edit as part of this task per
+        | earlier decision."
+      evidence: |
+        Manual review confirms: backlog show B001/B002/B003 each read status
+        promoted with promoted_to correctly naming M019 and T003/T004/T005;
+        backlog list --status pending shows only B004 (pre-existing) and B005
+        (newly recorded during M019, disclosed separately) remaining.
+        IMPLEMENTATION_PLAN.md command-surface count reads 25, asset count 45,
+        Bootstrap table includes M018's row, roadmap header/entry reflect M018
+        delivered plus M019. npx tsc --noEmit clean; full npm test: 86 files /
+        1313 tests passed (CT014).
+    attempts: 1
     usage: null
   - id: T007
     name: Driver runtime usage-propagation contract

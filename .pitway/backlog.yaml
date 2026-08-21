@@ -5,26 +5,30 @@ items:
     reason: Command names discovered during real-world PitWay usage can be
       ambiguous, and milestone commands are unnecessarily long. Standardize
       PitWay ownership in metadata and add ms-* aliases for milestone commands.
-    status: pending
+    status: promoted
     source:
       milestone: M018
       task: null
     created_at: 2026-08-21T14:22:28.932Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-21T17:08:41.163Z
+    promoted_to:
+      milestone: M019
+      task: T003
     archived_reason: null
   - id: B002
     title: Improve milestone reviewer selection UX
     reason: Reviewer selection is difficult to scan because the current
       role/description presentation is visually noisy. Make role names visually
       prominent and descriptions concise.
-    status: pending
+    status: promoted
     source:
       milestone: M018
       task: null
     created_at: 2026-08-21T14:22:29.192Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-21T17:08:41.455Z
+    promoted_to:
+      milestone: M019
+      task: T004
     archived_reason: null
   - id: B003
     title: Review backlog storage scalability
@@ -34,13 +38,15 @@ items:
       items over time. Evaluate whether the backlog should eventually support
       archival, partitioning, or another storage strategy when backlog volume
       grows.
-    status: pending
+    status: promoted
     source:
       milestone: M018
       task: null
     created_at: 2026-08-21T14:24:42.090Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-21T17:08:41.731Z
+    promoted_to:
+      milestone: M019
+      task: T005
     archived_reason: null
   - id: B004
     title: Improve CLI test coverage; resolve local-vs-Codecov discrepancy
