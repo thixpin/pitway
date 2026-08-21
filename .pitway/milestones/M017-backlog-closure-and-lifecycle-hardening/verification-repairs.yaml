@@ -1,2 +1,14 @@
 schema_version: 1
-records: []
+records:
+  - id: VR001
+    files:
+      - tests/integration/task-update.test.ts
+    checks:
+      - CT011
+    change_log: CT011 (tsc --noEmit) caught a stale explicit return-type annotation
+      on the update() test helper in tests/integration/task-update.test.ts, left
+      behind when T003 widened the shared run() helper's return type to add
+      errLines for the stderr-capture assertions. Widened update()'s own
+      annotation to match; no behavior change.
+    approved_at: 2026-08-21T06:22:08Z
+    status: committed

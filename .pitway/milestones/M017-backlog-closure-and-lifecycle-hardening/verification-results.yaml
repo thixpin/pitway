@@ -1,2 +1,78 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-21T06:15:25Z
+    evidence: Tests  37 passed (37) | Start at  13:15:01 | Duration  23.40s
+      (transform 350ms, setup 0ms, import 486ms, tests 22.79s, environment 0ms)
+    recorded_by: command
+    duration_ms: 23975
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-21T06:15:42Z
+    evidence: Tests  93 passed (93) | Start at  13:15:25 | Duration  17.20s
+      (transform 845ms, setup 0ms, import 1.26s, tests 18.36s, environment 0ms)
+    recorded_by: command
+    duration_ms: 17564
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-21T06:15:46Z
+    evidence: Tests  33 passed (33) | Start at  13:15:43 | Duration  3.51s
+      (transform 64ms, setup 0ms, import 142ms, tests 3.37s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3860
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-21T06:16:20Z
+    evidence: Tests  75 passed (75) | Start at  13:15:47 | Duration  33.24s
+      (transform 835ms, setup 0ms, import 1.18s, tests 55.31s, environment 0ms)
+    recorded_by: command
+    duration_ms: 33627
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-21T06:17:06Z
+    evidence: Tests  49 passed (49) | Start at  13:16:21 | Duration  44.70s
+      (transform 438ms, setup 0ms, import 685ms, tests 43.86s, environment 0ms)
+    recorded_by: command
+    duration_ms: 45994
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-21T06:17:42Z
+    evidence: Tests  60 passed (60) | Start at  13:17:06 | Duration  35.96s
+      (transform 1.76s, setup 0ms, import 2.98s, tests 69.97s, environment 1ms)
+    recorded_by: command
+    duration_ms: 36424
+    termination_reason: exited
+  - check: CT010
+    status: pass
+    at: 2026-08-21T06:19:26Z
+    evidence: Tests  1147 passed (1147) | Start at  13:17:43 | Duration  102.98s
+      (transform 4.31s, setup 0ms, import 19.53s, tests 682.27s, environment
+      46ms)
+    recorded_by: command
+    duration_ms: 103440
+    termination_reason: exited
+  - check: CT011
+    status: fail
+    at: 2026-08-21T06:19:27Z
+    evidence: >-
+      failures: tests/integration/task-update.test.ts(1053,13): error TS2339:
+      Property 'errLines
+
+      : error TS2339: Property 'errLines' does not exist on type '{ lines:
+      string[]; error?: Error | undefined; }'.
+    recorded_by: command
+    duration_ms: 911
+    termination_reason: exited
+  - check: CT011
+    status: pass
+    at: 2026-08-21T06:22:15Z
+    evidence: (no output; exit 0)
+    recorded_by: command
+    duration_ms: 947
+    termination_reason: exited

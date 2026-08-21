@@ -158,7 +158,9 @@ async function run(
   }
 }
 
-async function update(args: string[]): Promise<{ lines: string[]; error?: Error }> {
+async function update(
+  args: string[],
+): Promise<{ lines: string[]; errLines: string[]; error?: Error }> {
   return run(['task-update', ...args], root);
 }
 
