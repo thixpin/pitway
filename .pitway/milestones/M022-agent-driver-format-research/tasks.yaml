@@ -1,0 +1,135 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: "Research: Claude Code + OpenCode"
+    objective: "Real, sourced research on how Claude Code and OpenCode each
+      represent: skills, commands, agents, rules/instructions, metadata,
+      arguments, tools, and permissions. Write docs/evidence/M022/claude-code.md
+      and docs/evidence/M022/opencode.md, one per tool, each covering all 8
+      dimensions (or an explicit 'not applicable' note per dimension where
+      genuinely true). Cite real documentation/source URLs -- never invent a
+      config shape or field name. For Claude Code, ground findings in this
+      repository's own src/integrations/claude/ assets
+      (skills/commands/agents.md files) as a real, first-party example, plus
+      official Anthropic documentation for anything not exercised locally. For
+      OpenCode, use real web research (its own docs/README/config schema)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - claude-code.md and opencode.md each cover all 8 dimensions with real
+        citations
+      - Claude Code findings are grounded in this repo's own shipped assets plus
+        official docs; OpenCode findings cite real external sources
+      - no dimension is silently skipped; genuine non-applicability is stated
+        explicitly
+    write_scope:
+      - docs/evidence/M022/claude-code.md
+      - docs/evidence/M022/opencode.md
+    verification:
+      strategy: manual
+      detail: Manual review of docs/evidence/M022/claude-code.md and opencode.md for
+        real citations and 8-dimension coverage.
+    result: null
+    usage: null
+  - id: T002
+    name: "Research: Codex + Cursor"
+    objective: "Real, sourced research on how Codex (OpenAI's CLI coding agent) and
+      Cursor each represent: skills, commands, agents, rules/instructions,
+      metadata, arguments, tools, and permissions. Write
+      docs/evidence/M022/codex.md and docs/evidence/M022/cursor.md, one per
+      tool, each covering all 8 dimensions (or an explicit 'not applicable' note
+      where genuinely true). Cite real documentation/source URLs -- never invent
+      a config shape or field name; use real web research."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - codex.md and cursor.md each cover all 8 dimensions with real citations
+      - no dimension is silently skipped; genuine non-applicability is stated
+        explicitly
+    write_scope:
+      - docs/evidence/M022/codex.md
+      - docs/evidence/M022/cursor.md
+    verification:
+      strategy: manual
+      detail: Manual review of docs/evidence/M022/codex.md and cursor.md for real
+        citations and 8-dimension coverage.
+    result: null
+    usage: null
+  - id: T003
+    name: "Research: GitHub Copilot + Gemini CLI"
+    objective: "Real, sourced research on how GitHub Copilot (its CLI/agent mode and
+      custom-instructions surface) and Gemini CLI each represent: skills,
+      commands, agents, rules/instructions, metadata, arguments, tools, and
+      permissions. Write docs/evidence/M022/github-copilot.md and
+      docs/evidence/M022/gemini-cli.md, one per tool, each covering all 8
+      dimensions (or an explicit 'not applicable' note where genuinely true).
+      Cite real documentation/source URLs -- never invent a config shape or
+      field name; use real web research."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - github-copilot.md and gemini-cli.md each cover all 8 dimensions with
+        real citations
+      - no dimension is silently skipped; genuine non-applicability is stated
+        explicitly
+    write_scope:
+      - docs/evidence/M022/github-copilot.md
+      - docs/evidence/M022/gemini-cli.md
+    verification:
+      strategy: manual
+      detail: Manual review of docs/evidence/M022/github-copilot.md and gemini-cli.md
+        for real citations and 8-dimension coverage.
+    result: null
+    usage: null
+  - id: T004
+    name: "Research: Aider"
+    objective: "Real, sourced research on how Aider represents: skills, commands,
+      agents, rules/instructions, metadata, arguments, tools, and permissions.
+      Write docs/evidence/M022/aider.md covering all 8 dimensions (or an
+      explicit 'not applicable' note where genuinely true). Cite real
+      documentation/source URLs -- never invent a config shape or field name;
+      use real web research."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - aider.md covers all 8 dimensions with real citations
+      - no dimension is silently skipped; genuine non-applicability is stated
+        explicitly
+    write_scope:
+      - docs/evidence/M022/aider.md
+    verification:
+      strategy: manual
+      detail: Manual review of docs/evidence/M022/aider.md for real citations and
+        8-dimension coverage.
+    result: null
+    usage: null
+  - id: T005
+    name: Synthesis comparison
+    objective: "Write docs/evidence/M022/comparison.md, grounded entirely in
+      T001-T004's own per-tool findings: identify capabilities common across
+      most/all 7 tools (candidates for a shared representation) and capabilities
+      that are genuinely driver-specific (candidates that would not generalize),
+      across all 8 dimensions. Every claim traces back to a specific tool's own
+      documented finding from T001-T004 -- no new research invented at synthesis
+      time. End with an explicit statement that no MVP-boundary decision
+      (canonical format, new driver, plugin architecture) is made here --
+      findings only, per AC001."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+    acceptance_criteria:
+      - comparison.md identifies common vs. driver-specific capabilities across
+        all 8 dimensions, each claim traceable to a specific per-tool finding
+      - comparison.md explicitly states no MVP-boundary decision is made by this
+        milestone
+    write_scope:
+      - docs/evidence/M022/comparison.md
+    verification:
+      strategy: manual
+      detail: Manual review of docs/evidence/M022/comparison.md, spot-check several
+        claims against the underlying per-tool documents.
+    result: null
+    usage: null
