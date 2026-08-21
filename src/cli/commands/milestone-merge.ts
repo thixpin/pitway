@@ -18,6 +18,7 @@ export function registerMilestoneMergeCommand(program: Command, deps: CommandDep
   const write = deps.write ?? ((line: string) => console.log(line));
   program
     .command('milestone-merge <id>')
+    .alias('ms-merge')
     .description(
       "Merge a completed milestone's own branch into a target branch (default: the milestone's base_branch).",
     )

@@ -122,13 +122,17 @@ describe('registerAllCommands', () => {
   // native Commander alias; aliases add no new top-level program.commands
   // entries (the 'registers all 25 commands' test above already pins that
   // count unchanged), so reachability is asserted via direct invocation +
-  // Command.aliases() here instead.
+  // Command.aliases() here instead. milestone-merge/ms-merge added by a
+  // post-M019 quick-change (qc-7e6fb2a4) at explicit developer request --
+  // M019/AC013 originally excluded it since it postdated the backlog item's
+  // fixed command list.
   const MS_ALIASES: Array<[string, string]> = [
     ['milestone-add', 'ms-add'],
     ['milestone-cancel', 'ms-cancel'],
     ['milestone-complete', 'ms-complete'],
     ['milestone-confirm', 'ms-confirm'],
     ['milestone-list', 'ms-list'],
+    ['milestone-merge', 'ms-merge'],
     ['milestone-review', 'ms-review'],
     ['milestone-status', 'ms-status'],
   ];
@@ -168,12 +172,13 @@ describe('registerAllCommands', () => {
     },
   );
 
-  // AC013: scope is fixed to exactly the 7 named milestone-* commands --
-  // milestone-merge gets no ms-merge alias, no task-* command gains an
-  // alias, and auto-run/quick-change/backlog/resume/etc. are unchanged. A
-  // single assertion over every registered command's own alias set proves
-  // no alias exists outside the 7 declared above.
-  it('registers no alias anywhere outside the 7 named milestone-* commands', () => {
+  // Scope is fixed to exactly the 8 named milestone-* commands (the original
+  // 7 from M019/AC013, plus milestone-merge/ms-merge added by qc-7e6fb2a4)
+  // -- no task-* command gains an alias, and auto-run/quick-change/backlog/
+  // resume/etc. are unchanged. A single assertion over every registered
+  // command's own alias set proves no alias exists outside the 8 declared
+  // above.
+  it('registers no alias anywhere outside the 8 named milestone-* commands', () => {
     const program = buildCli();
     registerAllCommands(program, {});
     const actualAliasPairs = program.commands

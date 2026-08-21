@@ -183,10 +183,11 @@ describe('M019 driver usage-propagation MUST instruction is documented', () => {
   });
 });
 
-// M019/T003 (AC009, AC010): the 7 new ms-* alias command docs ship, each
-// byte-identical in body to its canonical milestone-* counterpart; every
-// PitWay-owned command doc's description is 'PitWay: '-prefixed; the 6
-// vendored skills are explicitly unchanged.
+// M019/T003 (AC009, AC010) + post-M019 quick-change qc-7e6fb2a4 (ms-merge):
+// the 8 ms-* alias command docs ship, each byte-identical in body to its
+// canonical milestone-* counterpart; every PitWay-owned command doc's
+// description is 'PitWay: '-prefixed; the 6 vendored skills are explicitly
+// unchanged.
 describe('M019 ms-* alias command docs ship and stay in parity (AC009, AC010)', () => {
   const MS_ALIASES = [
     'ms-add',
@@ -194,11 +195,12 @@ describe('M019 ms-* alias command docs ship and stay in parity (AC009, AC010)', 
     'ms-complete',
     'ms-confirm',
     'ms-list',
+    'ms-merge',
     'ms-review',
     'ms-status',
   ];
 
-  it('lists all 7 alias command docs among shipped assets', () => {
+  it('lists all 8 alias command docs among shipped assets', () => {
     const assets = listClaudeAssets();
     for (const alias of MS_ALIASES) {
       expect(assets).toContain(`commands/${alias}.md`);
