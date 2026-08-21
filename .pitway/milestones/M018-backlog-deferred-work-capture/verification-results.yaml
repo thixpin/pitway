@@ -1,2 +1,85 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-21T14:40:59Z
+    evidence: Tests  142 passed (142) | Start at  21:40:59 | Duration  268ms
+      (transform 108ms, setup 0ms, import 210ms, tests 102ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 736
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-21T14:41:00Z
+    evidence: Tests  8 passed (8) | Start at  21:41:00 | Duration  99ms (transform
+      13ms, setup 0ms, import 20ms, tests 3ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 425
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-21T14:41:08Z
+    evidence: Tests  44 passed (44) | Start at  21:41:00 | Duration  8.08s
+      (transform 66ms, setup 0ms, import 117ms, tests 7.88s, environment 0ms)
+    recorded_by: command
+    duration_ms: 8369
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-21T14:41:26Z
+    evidence: Tests  30 passed (30) | Start at  21:41:09 | Duration  17.25s
+      (transform 269ms, setup 0ms, import 372ms, tests 16.79s, environment 0ms)
+    recorded_by: command
+    duration_ms: 17550
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-21T14:42:12Z
+    evidence: Tests  95 passed (95) | Start at  21:41:26 | Duration  46.13s
+      (transform 646ms, setup 0ms, import 985ms, tests 65.03s, environment 0ms)
+    recorded_by: command
+    duration_ms: 46516
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-21T14:42:30Z
+    evidence: Tests  105 passed (105) | Start at  21:42:13 | Duration  17.35s
+      (transform 790ms, setup 0ms, import 1.13s, tests 21.50s, environment 0ms)
+    recorded_by: command
+    duration_ms: 17736
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-21T14:42:33Z
+    evidence: Tests  15 passed (15) | Start at  21:42:30 | Duration  2.57s
+      (transform 490ms, setup 0ms, import 726ms, tests 3.29s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2906
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-21T14:42:35Z
+    evidence: Tests  38 passed (38) | Start at  21:42:33 | Duration  1.84s
+      (transform 252ms, setup 0ms, import 361ms, tests 1.46s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2128
+    termination_reason: exited
+  - check: CT010
+    status: pass
+    at: 2026-08-21T14:44:16Z
+    evidence: Tests  1240 passed (1240) | Start at  21:42:35 | Duration  100.65s
+      (transform 3.43s, setup 0ms, import 15.89s, tests 673.53s, environment
+      11ms)
+    recorded_by: command
+    duration_ms: 100965
+    termination_reason: exited
+  - check: CT009
+    status: pass
+    at: 2026-08-21T14:44:25Z
+    evidence: "Manually confirmed: IMPLEMENTATION_PLAN.md's command-surface count
+      reads 24; the Bootstrap delivery table gains M017's own row and correctly
+      omits M018's own row; the Backlog / Pending Candidates section carries an
+      explicit redirect note naming pitway backlog add/list as the live
+      authoritative source, with all existing entries preserved untouched as
+      frozen history."
+    recorded_by: developer

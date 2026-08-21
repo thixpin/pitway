@@ -2,7 +2,7 @@
 schema_version: 1
 id: M018
 title: Backlog / Deferred Work Capture
-status: in_progress
+status: completed
 requirement: R002
 confirmed_at: 2026-08-21T13:58:13Z
 verification_approved_hash: sha256:33ff6b93b3f191d935c24f842ace541da48072372dc1056f38bbcda5254a3252
