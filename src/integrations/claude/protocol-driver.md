@@ -33,11 +33,17 @@ a task or the ripple-fix policy.
 ## Verification discipline
 
 Task execution runs only that task's own declared verification command —
-directly or via `task-verify`. Never run the full `npm test` suite or
-`tsc --noEmit` ad hoc after a task "just to check." Full-suite/typecheck
-runs are milestone-level gates only: a contract-declared `command` check
-run via `verify`, or a genuinely cross-cutting investigation a task's
-narrow scope cannot settle — never a per-task habit.
+directly or via `task-verify` — and a dispatched worker runs only the
+exact command its bundle carries (`protocol-worker.md`,
+`report-format.md`). Never run the full `npm test` suite or `tsc --noEmit`
+ad hoc after a task "just to check." Full-suite/typecheck runs are
+milestone-level gates only: a contract-declared `command` check run via
+`verify`, or a genuinely cross-cutting investigation a task's narrow scope
+cannot settle — never a per-task habit. The one sanctioned way a task runs
+the full suite is when you, drafting the contract, explicitly declare it
+as that task's own verification command (a disclosed, justified exception
+recorded in the task, as M016/T001 did) — then it is that task's declared
+command, not an ad hoc run.
 
 A manual/review result recorded via `verify <id> --check <ct-id>
 --pass|--fail` is authoritative in `verification-results.yaml`.

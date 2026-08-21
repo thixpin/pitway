@@ -25,8 +25,12 @@ applies only to a fresh write — once a task is `completed`, resupplying
 ## Testing discipline: guidance, not enforcement
 
 Run targeted tests while implementing — the specific file or case you're
-working on, never the whole suite on every intermediate step — and the
-**full** suite once, at the end, as the final gate before reporting done.
-PitWay does not enforce this in code; it is a protocol convention that
-keeps iteration fast and the final signal trustworthy, not a rule PitWay
-can check or block on.
+working on, never the whole suite on every intermediate step. Before
+reporting done, run **exactly the verification command the bundle gave
+you** and nothing broader (`protocol-worker.md`). **Do not run the full
+suite by default**: full-suite verification belongs to the milestone-level
+gate, not to a task — unless the driver explicitly assigned a full-suite
+command *as* the task's own verification command, in which case running
+it is simply running the command you were given. PitWay does not enforce
+the targeted-while-implementing part in code; it is a protocol convention
+that keeps iteration fast, not a rule PitWay can check or block on.
