@@ -2,7 +2,7 @@
 schema_version: 1
 id: M022
 title: Agent Driver Format Research
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-21T19:24:33Z
 verification_approved_hash: sha256:2dcfa17a9c8cb348c2d68eb07a41a13b7b333aeeb2b6214b06d0caf59f63e1e5
