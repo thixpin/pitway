@@ -291,6 +291,134 @@ describe('milestone-review report', () => {
     const view = JSON.parse(lines[0]!) as { roles: Array<{ findings: unknown[] }> };
     expect(view.roles[0]!.findings).toEqual([]);
   });
+
+  it('renders every human-output permutation: pending role, superseded snapshot, clean review, target/unknown-target/conflict findings, and both conflict groups', async () => {
+    const id = await addDraftMilestone();
+    await run(
+      ['milestone-review', 'start', id, '--roles', 'developer,architect,qa,devops', '--json'],
+      root,
+    );
+
+    // developer re-records -> supersededCount 1, and its second snapshot
+    // carries three findings exercising the targets/unknownTargets/
+    // conflictsWith permutations side by side.
+    await run(
+      ['milestone-review', 'record', id, '--role', 'developer', '--file', writeFindingsFile('findings: []\n')],
+      root,
+    );
+    await run(
+      [
+        'milestone-review',
+        'record',
+        id,
+        '--role',
+        'developer',
+        '--file',
+        writeFindingsFile(`findings:
+  - severity: minor
+    finding: No targets and no declared conflict.
+    recommendation: Nothing to do.
+  - severity: major
+    finding: T001 write_scope may be too narrow.
+    targets: [T001]
+    recommendation: Widen it.
+  - severity: blocker
+    finding: Disagrees with the architect's approach.
+    targets: [T999]
+    recommendation: Reconcile before deciding.
+    conflicts_with: [architect]
+`),
+      ],
+      root,
+    );
+
+    // architect records once (supersededCount 0) targeting the same T001 ->
+    // a shared-target conflict with developer's major finding.
+    await run(
+      [
+        'milestone-review',
+        'record',
+        id,
+        '--role',
+        'architect',
+        '--file',
+        writeFindingsFile(`findings:
+  - severity: minor
+    finding: T001's design is fine actually.
+    targets: [T001]
+    recommendation: No change needed.
+`),
+      ],
+      root,
+    );
+
+    // qa records a clean (zero-finding) review.
+    await run(
+      ['milestone-review', 'record', id, '--role', 'qa', '--file', writeFindingsFile('findings: []\n')],
+      root,
+    );
+
+    // devops is selected but never records -> stays pending.
+
+    const { lines, error } = await run(['milestone-review', 'report', id], root);
+    expect(error).toBeUndefined();
+    const text = lines.join('\n');
+
+    expect(text).toContain('## devops — pending (not yet recorded)');
+    expect(text).toMatch(/## developer — recorded .+\(1 superseded snapshot\(s\)\)/);
+    expect(text).toMatch(/## architect — recorded (?!.*superseded)/);
+    expect(text).toContain('  (no findings -- a clean review)');
+    expect(text).toContain('[minor] No targets and no declared conflict.');
+    expect(text).toContain('[major] T001 write_scope may be too narrow. [t001]');
+    expect(text).toContain('[blocker] Disagrees with the architect\'s approach. [t999 — unknown: t999]');
+    expect(text).toContain('⚠ conflicts with: architect');
+    expect(text).toContain('Pending roles: devops');
+    expect(text).toContain('⚠ Shared-target disagreements:');
+    expect(text).toContain('t001:');
+    expect(text).toContain('⚠ Declared role disagreements:');
+    expect(text).toContain('developer vs architect: Disagrees with the architect\'s approach.');
+  });
+
+  it('renders a clean human report with no pending roles and no conflicts', async () => {
+    const id = await addDraftMilestone();
+    await run(['milestone-review', 'start', id, '--roles', 'product', '--json'], root);
+    await run(
+      ['milestone-review', 'record', id, '--role', 'product', '--file', writeFindingsFile('findings: []\n')],
+      root,
+    );
+
+    const { lines, error } = await run(['milestone-review', 'report', id], root);
+    expect(error).toBeUndefined();
+    const text = lines.join('\n');
+
+    expect(text).toContain('## product — recorded');
+    expect(text).toContain('  (no findings -- a clean review)');
+    expect(text).not.toContain('Pending roles:');
+    expect(text).not.toContain('Shared-target disagreements');
+    expect(text).not.toContain('Declared role disagreements');
+  });
+
+  it('falls back to process.cwd() when deps.root is omitted', async () => {
+    const id = await addDraftMilestone();
+    await run(['milestone-review', 'start', id, '--roles', 'developer', '--json'], root);
+    await run(
+      ['milestone-review', 'record', id, '--role', 'developer', '--file', writeFindingsFile('findings: []\n')],
+      root,
+    );
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerMilestoneReviewCommand(program, { write: (s) => lines.push(s) });
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    try {
+      await program.parseAsync(['node', 'pitway', 'milestone-review', 'report', id, '--json']);
+    } finally {
+      process.chdir(cwdBefore);
+    }
+    const view = JSON.parse(lines[0]!) as { milestone: string };
+    expect(view.milestone).toBe(id);
+  });
 });
 
 describe('pitway resume open-review discovery (AC006)', () => {

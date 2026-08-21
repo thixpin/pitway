@@ -247,6 +247,35 @@ describe('milestone-review decide', () => {
     expect(error!.message).toContain('no open review session');
   });
 
+  it('refuses an invalid --outcome value before touching any review state', async () => {
+    const id = await addDraftMilestone();
+    const { error } = await run(['milestone-review', 'decide', id, '--outcome', 'bogus'], root);
+    expect(error).toBeDefined();
+    expect(error!.message).toContain('--outcome must be one of');
+  });
+
+  it('falls back to process.cwd() when deps.root is omitted', async () => {
+    const id = await addDraftMilestone();
+    await run(['milestone-review', 'start', id, '--roles', 'developer', '--json'], root);
+    await run(
+      ['milestone-review', 'record', id, '--role', 'developer', '--file', writeFindingsFile('findings: []\n')],
+      root,
+    );
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerMilestoneReviewCommand(program, { write: (s) => lines.push(s) });
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    try {
+      await program.parseAsync(['node', 'pitway', 'milestone-review', 'decide', id, '--outcome', 'accepted', '--json']);
+    } finally {
+      process.chdir(cwdBefore);
+    }
+    const view = JSON.parse(lines[0]!) as { outcome: string };
+    expect(view.outcome).toBe('accepted');
+  });
+
   it('refuses against a terminal milestone', async () => {
     const id = seedTerminalMilestone('completed');
     const { error } = await run(['milestone-review', 'decide', id, '--outcome', 'rejected'], root);

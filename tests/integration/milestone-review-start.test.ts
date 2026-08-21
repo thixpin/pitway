@@ -201,6 +201,26 @@ describe('milestone-review start', () => {
     expect(error!.message).toContain('cancelled');
   });
 
+  it('falls back to process.cwd()/stdin/stdout when deps are entirely omitted, refusing without --roles off a non-TTY', async () => {
+    // No `root`/`input`/`output` deps at all -- the CLI action computes
+    // `deps.root ?? process.cwd()` and `deps.input ?? process.stdin` /
+    // `deps.output ?? process.stdout` before checking `input.isTTY`. This
+    // throws before ever touching the filesystem (root is never used for
+    // I/O on this path), so it is safe to exercise the real fallbacks
+    // without redirecting the process's cwd or stdio.
+    const program = buildCli();
+    const lines: string[] = [];
+    registerMilestoneReviewCommand(program, { write: (s) => lines.push(s) });
+    let error: Error | undefined;
+    try {
+      await program.parseAsync(['node', 'pitway', 'milestone-review', 'start', 'M001']);
+    } catch (e) {
+      error = e as Error;
+    }
+    expect(error).toBeDefined();
+    expect(error!.message).toContain('--roles');
+  });
+
   it('refuses a second open session for the same milestone, naming the still-open one', async () => {
     const id = await addDraftMilestone();
     const first = await run(

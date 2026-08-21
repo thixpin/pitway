@@ -14,7 +14,7 @@ tasks:
       refusal when --roles is omitted, and renderDecideHuman's
       revision_requested branch vs. accepted/rejected. Test-only changes
       expected; no production behavior change (AC002)."
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - src/cli/commands/milestone-review.ts reaches >=41/45 (>=90%) branch
@@ -45,9 +45,15 @@ tasks:
         tests/integration/milestone-review-record.test.ts
         tests/integration/milestone-review-report.test.ts
         tests/integration/milestone-review-start.test.ts
-    result: null
+    result:
+      summary: milestone-review.ts reached 43/45 (95.6%) branch coverage, up from
+        17/45 (37.8%) baseline -- exceeds the >=41/45 target. Test-only change.
+      evidence: Tests  60 passed (60) | Start at  01:40:34 | Duration  6.65s
+        (transform 2.20s, setup 0ms, import 3.51s, tests 32.53s, environment
+        1ms)
     attempts: 1
-    usage: null
+    usage:
+      total_tokens: 128263
   - id: T002
     name: task-verify.ts branch coverage
     objective: Bring src/cli/commands/task-verify.ts from 10/21 (47.6%) to >=90%
