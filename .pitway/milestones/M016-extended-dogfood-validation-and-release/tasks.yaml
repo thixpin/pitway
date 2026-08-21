@@ -28,7 +28,7 @@ tasks:
       out to live outside this task's declared write_scope -- if so, the
       standard contract-amendment stop-and-ask path applies, expected PitWay
       behavior, not a sign the contract was wrong."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - AC003
@@ -49,7 +49,16 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test
-    result: null
+    result:
+      summary: "[truncated] y under the same induced load, ruling out a PitWay defect
+        in init's git-work-tree detection. Applied a disclosed, evidence-backed
+        60s timeout (matching existing precedent in
+        parallel-worktrees-lifecycle.test.ts), not a retry. Verified against the
+        actual reproduction, not merely asserted."
+      evidence: Tests  1090 passed (1090) | Start at  09:16:28 | Duration  74.72s
+        (transform 3.98s, setup 0ms, import 14.70s, tests 496.28s, environment
+        7ms)
+    attempts: 1
     usage: null
   - id: T002
     name: Fix QuickChangeError identity split and requireQuickChange duplication
@@ -78,7 +87,7 @@ tasks:
       class), not only `run.ts`/`commit.ts`'s -- `promote.ts` is one of the four
       files this task touches and had no dedicated coverage naming it anywhere
       in the original draft."
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - AC004
@@ -104,6 +113,7 @@ tasks:
         tests/unit/quick-change-commit.test.ts
         tests/integration/quick-change.test.ts
     result: null
+    attempts: 2
     usage: null
   - id: T003
     name: Parallel dispatch and recovery dogfood evidence

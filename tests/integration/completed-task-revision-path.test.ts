@@ -117,6 +117,33 @@ afterEach(() => {
 });
 
 describe('completed-task-revision path (M007/T007/AC008)', () => {
+  // M016/T001: this test runs two full milestone lifecycles end to end --
+  // roughly 15 real CLI invocations (init, milestone-add/confirm x2,
+  // task-update x6, verify x2, milestone-complete x2), each spawning several
+  // real `git` subprocesses -- against real temp git repos, never mocked.
+  // Standalone, that finishes in well under a second. Diagnosed via the
+  // debugging skill (M016/T001): reproduced directly by running two full
+  // `vitest run` invocations concurrently (the same real-subprocess-load
+  // condition `task-verify`/`verify` create by nesting a full suite run
+  // inside itself, the shared trigger across M013/T008, M014 CT010, and
+  // M015/T011). Under that load this test failed every time with
+  // `Error: Test timed out in 5000ms` -- Vitest's default per-test
+  // timeout -- never with a thrown GitError or a logic assertion failure;
+  // several unrelated integration tests doing similarly heavy real-git-
+  // subprocess work timed out the same way under the same induced load.
+  // That rules out a PitWay defect in init's git-work-tree detection or
+  // file-system writes (a real defect would surface as a thrown error or a
+  // wrong result, not uniform timing-only failures across unrelated tests)
+  // and points at inherent OS-level contention when many real git child
+  // processes are spawned concurrently under load -- CPU/fork scheduling
+  // delays that legitimately push this test's real subprocess work past
+  // the default 5s budget without anything being logically wrong. The
+  // accommodation below is a one-time, evidence-backed timeout increase
+  // (60s, matching the existing precedent in
+  // tests/integration/parallel-worktrees-lifecycle.test.ts for other
+  // heavy real-subprocess lifecycle tests), not a retry: retrying would
+  // hide a real failure if one ever occurs, whereas a wider budget for
+  // work that is only ever slow, never wrong, does not.
   it('delivers corrective work as a new task in a subsequent milestone, never reopening the original', async () => {
     expect((await run(['init'], root)).error).toBeUndefined();
 
@@ -246,5 +273,5 @@ tasks:
     // A's commit was never rewritten: its own trailer/subject is unchanged,
     // and it remains a real ancestor of the final HEAD.
     expect(git(['merge-base', '--is-ancestor', shaAfterA, headSha], root)).toBe('');
-  });
+  }, 60000);
 });
