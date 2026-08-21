@@ -59,7 +59,7 @@ tasks:
       argument -- the only check that can actually observe this AC. Executed
       INLINE and SECOND, before any parallel dispatch, so every later worktree
       inherits the config. The npm-pack transient is NOT claimed fixed."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -84,7 +84,26 @@ tasks:
         tests/integration/review-state-lifecycle.test.ts
         tests/integration/branch-isolation-lifecycle.test.ts
         tests/integration/completed-task-revision-path.test.ts
-    result: null
+    result:
+      summary: "[truncated] t per-test `, 60000` from
+        completed-task-revision-path.test.ts and updated its comment to point at
+        the global config. Added tests/unit/vitest-config.test.ts as the only
+        check that can observe AC007 (asserts both timeouts, the root-cause
+        comment, and the absence of the per-test override)."
+      evidence: >
+        Process note: this task was moved to review before task-verify was run
+        (sequencing slip against the usual verify-then-review order), and review
+        only transitions to completed, so this evidence is NOT a formal
+        task-verify-backed record -- it reflects a direct `npm test` run. `npm
+        test -- tests/unit/vitest-config.test.ts
+        tests/integration/milestone-complete.test.ts
+        tests/integration/verification-repair.test.ts
+        tests/integration/execution-strategy.test.ts
+        tests/integration/review-state-lifecycle.test.ts
+        tests/integration/branch-isolation-lifecycle.test.ts
+        tests/integration/completed-task-revision-path.test.ts`: Test Files 7
+        passed (7), Tests 60 passed (60).
+    attempts: 1
     usage: null
   - id: T002
     name: task-add command for confirmed milestones
@@ -113,7 +132,7 @@ tasks:
       worktree dispatch followed by a clean task-integrate (main's tasks.yaml
       keeps the inserted task); resume and milestone-status render with the
       entry pending."
-    status: waiting
+    status: ready
     depends_on:
       - T007
     acceptance_criteria:
@@ -167,7 +186,7 @@ tasks:
       path (task-dispatch -> task-integrate -> complete under
       parallel_worktrees): without --usage (warning), with --usage (no warning),
       never-dispatched task (no warning); existing assertions unchanged."
-    status: waiting
+    status: ready
     depends_on:
       - T007
     acceptance_criteria:
@@ -204,7 +223,7 @@ tasks:
       that a real failing check's evidence names the failing test;
       tests/integration/verification-repair.test.ts's failed-evidence assertions
       updated to the new shape (in scope per AC008's rule)."
-    status: waiting
+    status: ready
     depends_on:
       - T007
     acceptance_criteria:
@@ -286,7 +305,7 @@ tasks:
       arrive as Dependabot PRs; Dependabot security alerts are a repository
       setting to enable (not done by this file). Docs/config-only task, no
       tests; verified by CT006."
-    status: waiting
+    status: ready
     depends_on:
       - T007
     acceptance_criteria:
