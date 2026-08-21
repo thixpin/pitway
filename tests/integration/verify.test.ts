@@ -2,7 +2,6 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
@@ -17,23 +16,24 @@ function git(args: string[], cwd: string): string {
 
 const commitCount = (cwd: string): number => Number(git(['rev-list', '--count', 'HEAD'], cwd).trim());
 
-// T002: recursion-guard.ts is a leaf module (zero imports, pure) so it can be
-// loaded directly by a plain `node` process via its real .ts path -- no
-// build step or TS loader required, and this is real T001 code, not a
-// reimplementation. Fixture scripts below import it by this absolute path to
-// reproduce run.ts's own guard check for real, from a genuinely separate
-// process that inherits PITWAY_VERIFY_GUARD the same way a recursively
-// spawned `pitway verify` command check would.
-const recursionGuardModulePath = fileURLToPath(
-  new URL('../../src/core/verification/recursion-guard.ts', import.meta.url),
-);
-
+// T002: recursion-guard.ts's evaluateRecursionGuard is a tiny, pure,
+// zero-dependency decision function. It's reproduced inline in the
+// generated script below rather than imported by its real .ts path, so
+// this fixture never depends on Node's native TypeScript-stripping support
+// -- absent before Node 22.6 and not what this project's own engines.node
+// (>=20) promises real users. Importing the .ts path directly used to work
+// here only because every local run happened to use a newer Node; the
+// first real run on genuine Node 20 (this project's actual CI) failed with
+// ERR_UNKNOWN_FILE_EXTENSION. The logic below must stay byte-identical to
+// recursion-guard.ts's own -- it's small and pure specifically so that's
+// easy to keep true by inspection.
+//
 // Builds a plain Node script that reproduces run.ts's exact guard-token
 // format (`<canonical-git-dir>#<milestoneId>`) for `gitDirCwd`, evaluates it
-// against the real (inherited) PITWAY_VERIFY_GUARD env var using the real
-// evaluateRecursionGuard, and reports the outcome on stdout/stderr with an
-// unambiguous marker -- exiting fast, never sleeping, so a refusal is
-// bounded-time by construction rather than by luck.
+// against the real (inherited) PITWAY_VERIFY_GUARD env var using the same
+// decision logic evaluateRecursionGuard implements, and reports the outcome
+// on stdout/stderr with an unambiguous marker -- exiting fast, never
+// sleeping, so a refusal is bounded-time by construction rather than by luck.
 //
 // Test-isolation hotfix: the marker is printed LAST, after the (potentially
 // long, unbounded-length) token data, not as a prefix. run.ts's evidence
@@ -47,7 +47,14 @@ const recursionGuardModulePath = fileURLToPath(
 function recursionCheckScript(gitDirCwd: string, milestoneId: string): string {
   return `
 import { execFileSync } from 'node:child_process';
-import { evaluateRecursionGuard } from ${JSON.stringify(recursionGuardModulePath)};
+const SEPARATOR = ',';
+function evaluateRecursionGuard(currentValue, candidateToken) {
+  const tokens = currentValue ? currentValue.split(SEPARATOR).filter((t) => t.length > 0) : [];
+  if (tokens.includes(candidateToken)) {
+    return { decision: 'refuse', token: candidateToken };
+  }
+  return { decision: 'extend', value: [...tokens, candidateToken].join(SEPARATOR) };
+}
 const gitDir = execFileSync('git', ['rev-parse', '--absolute-git-dir'], { cwd: ${JSON.stringify(gitDirCwd)} }).toString().trim();
 const token = gitDir + '#' + ${JSON.stringify(milestoneId)};
 const decision = evaluateRecursionGuard(process.env.PITWAY_VERIFY_GUARD, token);
