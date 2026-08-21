@@ -1,2 +1,139 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-21T17:23:25Z
+    evidence: Tests  22 passed (22) | Start at  00:22:52 | Duration  32.50s
+      (transform 267ms, setup 0ms, import 366ms, tests 32.05s, environment 0ms)
+    recorded_by: command
+    duration_ms: 33076
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-21T17:23:57Z
+    evidence: Tests  22 passed (22) | Start at  00:23:25 | Duration  32.06s
+      (transform 353ms, setup 0ms, import 517ms, tests 31.46s, environment 0ms)
+    recorded_by: command
+    duration_ms: 32396
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-21T17:24:30Z
+    evidence: Tests  22 passed (22) | Start at  00:23:57 | Duration  32.43s
+      (transform 253ms, setup 0ms, import 370ms, tests 31.97s, environment 0ms)
+    recorded_by: command
+    duration_ms: 32807
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-21T17:25:02Z
+    evidence: Tests  22 passed (22) | Start at  00:24:30 | Duration  31.60s
+      (transform 257ms, setup 0ms, import 374ms, tests 31.14s, environment 0ms)
+    recorded_by: command
+    duration_ms: 31983
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-21T17:25:34Z
+    evidence: Tests  71 passed (71) | Start at  00:25:02 | Duration  31.68s
+      (transform 363ms, setup 0ms, import 560ms, tests 39.76s, environment 0ms)
+    recorded_by: command
+    duration_ms: 32043
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-21T17:26:06Z
+    evidence: Tests  126 passed (126) | Start at  00:25:34 | Duration  32.29s
+      (transform 848ms, setup 0ms, import 1.22s, tests 37.32s, environment 0ms)
+    recorded_by: command
+    duration_ms: 32656
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-21T17:26:07Z
+    evidence: Tests  27 passed (27) | Start at  00:26:07 | Duration  206ms
+      (transform 19ms, setup 0ms, import 28ms, tests 46ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 572
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-21T17:26:13Z
+    evidence: Tests  104 passed (104) | Start at  00:26:07 | Duration  5.24s
+      (transform 360ms, setup 0ms, import 523ms, tests 5.16s, environment 0ms)
+    recorded_by: command
+    duration_ms: 5526
+    termination_reason: exited
+  - check: CT009
+    status: pass
+    at: 2026-08-21T17:26:13Z
+    evidence: Tests  3 passed (3) | Start at  00:26:13 | Duration  101ms (transform
+      16ms, setup 0ms, import 24ms, tests 3ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 424
+    termination_reason: exited
+  - check: CT010
+    status: pass
+    at: 2026-08-21T17:26:15Z
+    evidence: Tests  7 passed (7) | Start at  00:26:13 | Duration  2.15s (transform
+      223ms, setup 0ms, import 316ms, tests 1.75s, environment 0ms)
+    recorded_by: command
+    duration_ms: 2436
+    termination_reason: exited
+  - check: CT014
+    status: pass
+    at: 2026-08-21T17:28:05Z
+    evidence: Tests  1313 passed (1313) | Start at  00:26:16 | Duration  108.82s
+      (transform 3.53s, setup 0ms, import 15.90s, tests 728.21s, environment
+      13ms)
+    recorded_by: command
+    duration_ms: 109120
+    termination_reason: exited
+  - check: CT016
+    status: pass
+    at: 2026-08-21T17:28:05Z
+    evidence: Tests  27 passed (27) | Start at  00:28:05 | Duration  155ms
+      (transform 20ms, setup 0ms, import 29ms, tests 45ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 493
+    termination_reason: exited
+  - check: CT017
+    status: pass
+    at: 2026-08-21T17:28:50Z
+    evidence: Tests  51 passed (51) | Start at  00:28:05 | Duration  44.83s
+      (transform 282ms, setup 0ms, import 389ms, tests 44.35s, environment 0ms)
+    recorded_by: command
+    duration_ms: 45185
+    termination_reason: exited
+  - check: CT011
+    status: pass
+    at: 2026-08-21T17:29:03Z
+    evidence: "docs/evidence/M019/backlog-scalability.md exists, cites
+      loadBacklog/saveBacklog (store.ts:240-250), real data (4 items/66 lines
+      after 18 milestones), and reaches an explicit conclusion: no redesign
+      warranted at current or foreseeable scale. No production code change
+      made."
+    recorded_by: developer
+  - check: CT012
+    status: pass
+    at: 2026-08-21T17:29:03Z
+    evidence: "backlog show B001/B002/B003 each read status: promoted with
+      promoted_to naming M019/T003, M019/T004, M019/T005 respectively (confirmed
+      directly). backlog list --status pending shows only B004 (pre-existing)
+      and B005 (recorded during M019, disclosed separately) remaining."
+    recorded_by: developer
+  - check: CT013
+    status: pass
+    at: 2026-08-21T17:29:04Z
+    evidence: IMPLEMENTATION_PLAN.md command-surface count reads 25 (twenty-five
+      commands total); shipped-asset count reads 45 files; Bootstrap delivery
+      table includes M018's row; Revised Roadmap header/entry reflect M018
+      delivered plus a new M019 entry. Confirmed by direct inspection.
+    recorded_by: developer
+  - check: CT015
+    status: pass
+    at: 2026-08-21T17:29:04Z
+    evidence: docs/assets/workflow.mmd and workflow.svg carry the Backlog node /
+      Executing Tasks label edit; git show confirms both committed as part of
+      T006's own commit (0d0b0037), not as a separate standalone commit.
+    recorded_by: developer

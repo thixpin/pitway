@@ -2,7 +2,7 @@
 schema_version: 1
 id: M019
 title: Milestone Merge Workflow and Backlog Promotion
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-21T15:31:53Z
 verification_approved_hash: sha256:ec8b7797c7af177a618f318a81c7d178f137f61da74e9601ff7dc8d6755d7c92
