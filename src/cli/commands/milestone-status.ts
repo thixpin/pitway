@@ -192,6 +192,23 @@ export function buildProgressReportView(root: string, milestoneId: string): Prog
   };
 }
 
+// B005 (post-M019 quick-change qc-404ee3e9): the report's task list is a
+// table, matching renderTaskTable's own format below, with a Tokens column
+// added -- aligning the two task-list renderers on one shared table+usage
+// convention rather than leaving one as a table with no usage and the other
+// as usage-per-row with no table.
+function renderProgressReportTaskTable(tasks: ProgressReportView['tasks']): string[] {
+  const rows = tasks.map((t) => {
+    const execution = t.executionMode ?? '—';
+    return `| ${t.id} | ${t.label} | ${execution} | ${t.statusLabel} | ${formatTokenValue(t.tokens)} |`;
+  });
+  return [
+    '| Task | Label | Execution | Status | Tokens |',
+    '|------|-------|-----------|--------|--------|',
+    ...rows,
+  ];
+}
+
 export function renderProgressReportHuman(view: ProgressReportView): string {
   const lines = [
     `📊 Progress Report — ${view.title}`,
@@ -200,11 +217,9 @@ export function renderProgressReportHuman(view: ProgressReportView): string {
     `Tokens: ${formatTokenValue(view.tokenTotal)} (${view.missingUsageCount} task${view.missingUsageCount === 1 ? '' : 's'} missing usage)`,
     '',
     '🛠 Tasks',
+    '',
+    ...renderProgressReportTaskTable(view.tasks),
   ];
-  for (const t of view.tasks) {
-    const mode = t.executionMode !== null ? `  [${t.executionMode}]` : '';
-    lines.push(`  ${t.id}  ${t.label}${mode}  ${t.statusLabel}  ${formatTokenValue(t.tokens)}`);
-  }
   lines.push('');
   lines.push(`Critical path: ${view.criticalPath.length > 0 ? view.criticalPath.join(' → ') : '(none)'}`);
   lines.push(`Active: ${view.activeTask ?? '(none)'}`);

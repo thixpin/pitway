@@ -342,6 +342,12 @@ describe('pitway milestone-status --report (M013/T006)', () => {
     expect(output).not.toContain('driver_overhead');
     expect(output).toContain('Config schema');
     expect(output).toContain('✓ Completed · verified');
+    // B005 (qc-404ee3e9): the report's task list is a table with a Tokens
+    // column, aligned with plain milestone-status's own table format.
+    expect(output).toContain('| Task | Label | Execution | Status | Tokens |');
+    expect(output).toContain('| T001 | Config schema | — | ✓ Completed · verified | 100 |');
+    expect(output).toContain('| T002 | ');
+    expect(output).toContain('| N/A |');
     const lines = output.split('\n');
     expect(lines[lines.length - 1]).toMatch(/^🏎️ \d+% · ✅/);
   });
