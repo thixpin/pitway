@@ -135,3 +135,12 @@ describe('M015 milestone-review command doc ships', () => {
     expect(listClaudeAssets()).toContain('commands/milestone-review.md');
   });
 });
+
+// AC002/T002 (M017): asset discovery is dynamic -- this assertion pins
+// that the new task-add command doc actually ships, rather than
+// maintaining any hardcoded manifest.
+describe('M017 task-add command doc ships', () => {
+  it('lists the new command doc among shipped assets', () => {
+    expect(listClaudeAssets()).toContain('commands/task-add.md');
+  });
+});

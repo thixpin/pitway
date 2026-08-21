@@ -132,7 +132,7 @@ tasks:
       worktree dispatch followed by a clean task-integrate (main's tasks.yaml
       keeps the inserted task); resume and milestone-status render with the
       entry pending."
-    status: ready
+    status: completed
     depends_on:
       - T007
     acceptance_criteria:
@@ -171,7 +171,16 @@ tasks:
       detail: npm test -- tests/integration/task-add.test.ts
         tests/integration/cli.test.ts tests/unit/claude-assets.test.ts
         tests/integration/init.test.ts
-    result: null
+    result:
+      summary: "[truncated] ing task_amendment journal operation (no schema change) so
+        an open review session stales and an active auto-run authorization
+        invalidates for free; task-dispatch refuses on the pending entry until a
+        checkpoint commit folds it, while inline task-update <new> in_progress
+        works immediately."
+      evidence: Tests  93 passed (93) | Start at  12:47:09 | Duration  15.01s
+        (transform 813ms, setup 0ms, import 1.17s, tests 16.03s, environment
+        0ms)
+    attempts: 2
     usage: null
   - id: T003
     name: Completion-time usage warning for worktree-dispatched tasks
@@ -206,6 +215,7 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/integration/task-update.test.ts
     result: null
+    attempts: 1
     usage: null
   - id: T004
     name: Structured failure summary in verification evidence
@@ -254,6 +264,7 @@ tasks:
         tests/integration/verify.test.ts tests/integration/task-verify.test.ts
         tests/integration/verification-repair.test.ts
     result: null
+    attempts: 1
     usage: null
   - id: T005
     name: Shared CLI error handler and missing-state diagnostic
@@ -271,7 +282,7 @@ tasks:
       real-subprocess tests in tests/integration/build-bin.test.ts: a dir with
       no .pitway/ yields the friendly message, exit 1, no 'at ' frames; an
       ordinary refusal prints message only."
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:
@@ -322,6 +333,7 @@ tasks:
       strategy: manual
       detail: Reviewed against AC006 (CT006); no automated test owns this file.
     result: null
+    attempts: 1
     usage: null
   - id: T008
     name: Drafting write_scope rule and confirmed-milestone boundary docs
@@ -337,7 +349,7 @@ tasks:
       rule is the insertion path, remaining work is abandoned by cancelling
       tasks and completing, never by git reset). Docs-only; no semantics
       changed; verified by CT008."
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:
