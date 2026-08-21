@@ -253,6 +253,25 @@ export const journalMilestoneMergeSchema = z.strictObject({
   at: z.string().min(1),
 });
 
+// Tenth sibling member of the discriminated union (M021/T002, B007):
+// records one `backlog archive` outcome. Mirrors journalQuickChangeSchema's
+// own no-milestone-field precedent -- archiving finalizes an already fully
+// identified backlog item, never a milestone-attributed pending mutation, so
+// there is nothing here for an active milestone to misattribute. Like every
+// other sibling above, this is never referenced by a checkpoint marker and
+// never folded into a milestone commit -- there is no target state file for
+// resolveTargetPath to map it to, and derivePending's `kind === 'entry'`
+// filter already excludes it structurally. Append-only:
+// appendBacklogArchiveRecord is the sole writer (src/core/backlog/archive.ts)
+// and never mutates a prior record.
+export const journalBacklogArchiveSchema = z.strictObject({
+  kind: z.literal('backlog_archive'),
+  id: z.string().min(1),
+  target: z.string().min(1),
+  reason: z.string().min(1),
+  at: z.string().min(1),
+});
+
 export const journalRecordSchema = z.discriminatedUnion('kind', [
   journalEntrySchema,
   journalCheckpointSchema,
@@ -263,6 +282,7 @@ export const journalRecordSchema = z.discriminatedUnion('kind', [
   journalWorktreeIntegrateSchema,
   journalWorktreeDiscardSchema,
   journalMilestoneMergeSchema,
+  journalBacklogArchiveSchema,
 ]);
 
 export const journalFileSchema = z.strictObject({
@@ -285,6 +305,7 @@ export type JournalWorktreeDispatch = z.infer<typeof journalWorktreeDispatchSche
 export type JournalWorktreeIntegrate = z.infer<typeof journalWorktreeIntegrateSchema>;
 export type JournalWorktreeDiscard = z.infer<typeof journalWorktreeDiscardSchema>;
 export type JournalMilestoneMerge = z.infer<typeof journalMilestoneMergeSchema>;
+export type JournalBacklogArchive = z.infer<typeof journalBacklogArchiveSchema>;
 export type JournalRecord = z.infer<typeof journalRecordSchema>;
 export type JournalFile = z.infer<typeof journalFileSchema>;
 
@@ -476,6 +497,23 @@ export function appendMilestoneMergeRecord(
   const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
   if (!result.success) {
     throw new JournalError(`refusing to append invalid milestone_merge record: ${formatIssues(result.error)}`);
+  }
+  saveJournalFile(cwd, result.data);
+  return full;
+}
+
+// Appends a backlog_archive record -- a full, self-contained snapshot of one
+// `backlog archive` outcome, never a patch; same sibling-record discipline
+// as every appender above.
+export function appendBacklogArchiveRecord(
+  cwd: string,
+  record: Omit<JournalBacklogArchive, 'kind'>,
+): JournalBacklogArchive {
+  const file = loadJournalFile(cwd);
+  const full: JournalBacklogArchive = { kind: 'backlog_archive', ...record };
+  const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
+  if (!result.success) {
+    throw new JournalError(`refusing to append invalid backlog_archive record: ${formatIssues(result.error)}`);
   }
   saveJournalFile(cwd, result.data);
   return full;

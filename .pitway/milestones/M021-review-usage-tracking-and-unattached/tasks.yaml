@@ -68,7 +68,7 @@ tasks:
       unchanged (AC006-AC007). A real regression test reproduces B007's own
       finding directly, and proves add/promote still refuse identically to
       before (AC008)."
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - a new backlog_archive sibling journal kind exists (no milestone field),
@@ -89,9 +89,16 @@ tasks:
       strategy: command
       detail: npx vitest run tests/unit/journal.test.ts
         tests/integration/backlog.test.ts
-    result: null
+    result:
+      summary: B007 delivered -- backlog archive succeeds with no active milestone,
+        via a new milestone-less sibling journal kind. add/list/show/promote
+        completely unchanged.
+      evidence: Tests  84 passed (84) | Start at  02:13:11 | Duration  16.98s
+        (transform 356ms, setup 0ms, import 517ms, tests 25.97s, environment
+        0ms)
     attempts: 1
-    usage: null
+    usage:
+      total_tokens: 89367
   - id: T003
     name: Reconciliation and backlog promotion
     objective: "Reconcile IMPLEMENTATION_PLAN.md: section 4 (State Schema) documents
@@ -100,7 +107,7 @@ tasks:
       milestone-review record's new --usage flag. Then run pitway backlog
       promote B006 --task T001 and pitway backlog promote B007 --task T002,
       closing out both backlog items formally (AC009)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002

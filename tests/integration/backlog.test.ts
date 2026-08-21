@@ -210,7 +210,9 @@ describe('backlog add', () => {
 });
 
 describe('backlog: unconditional active-milestone journal attachment (AC004)', () => {
-  it('fails clearly with no active milestone (add/promote/archive)', async () => {
+  it('fails clearly with no active milestone (add/promote), but archive is unaffected (M021/T002, B007)', async () => {
+    addBacklogItem(root, { title: 'X', reason: 'Y' });
+
     await completeTaskT001();
     expect((await run(['verify'], root)).error).toBeUndefined();
     expect((await run(['milestone-complete', 'M001'], root)).error).toBeUndefined();
@@ -218,7 +220,13 @@ describe('backlog: unconditional active-milestone journal attachment (AC004)', (
     const expectedMessage = /no active milestone; run milestone-add or resume the active one first/;
     expect(() => addBacklogItem(root, { title: 'X', reason: 'Y' })).toThrowError(expectedMessage);
     expect(() => promoteBacklogItem(root, 'B001', { taskId: 'T001' })).toThrowError(expectedMessage);
-    expect(() => archiveBacklogItem(root, 'B001', 'reason')).toThrowError(expectedMessage);
+
+    // B007's own finding, reproduced directly: archive must succeed with no
+    // active milestone -- it finalizes an already fully identified item
+    // rather than creating new pending state, so add/promote's safety
+    // reasoning never applied to it.
+    expect(() => archiveBacklogItem(root, 'B001', 'reason')).not.toThrow();
+    expect(showBacklogItem(root, 'B001').status).toBe('archived');
   });
 
   it('a deliberately-supplied --milestone on promote never redirects journal attachment away from the active milestone', () => {
