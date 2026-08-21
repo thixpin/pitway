@@ -27,7 +27,7 @@ tasks:
       journalOperationTypeSchema entry, never checkpoint-eligible) plus
       appendMilestoneMergeRecord, and call it on both the success and
       already-merged paths (AC001, AC002, AC003, AC004, AC005, AC006, AC007)."
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - mergeMilestone refuses with a named error when the milestone's status is
@@ -78,6 +78,7 @@ tasks:
       detail: npm test -- tests/unit/journal.test.ts
         tests/integration/milestone-merge.test.ts
     result: null
+    attempts: 1
     usage: null
   - id: T002
     name: milestone-merge CLI command and shipped docs
@@ -197,7 +198,7 @@ tasks:
       place of the current raw 'id -- focus' line;
       parseSelection/promptForRoles's selection logic is unchanged. No checkbox
       or HTML markup; no ANSI bold by default (AC014, AC015, AC016)."
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - Every REVIEW_ROLES entry has a new label field, 3-8 words, distinct from
@@ -219,6 +220,7 @@ tasks:
       detail: npm test -- tests/unit/review-roles.test.ts
         tests/integration/milestone-review-interactive.test.ts
     result: null
+    attempts: 1
     usage: null
   - id: T005
     name: B003 -- backlog storage scalability investigation
@@ -228,7 +230,7 @@ tasks:
       usage -- a single-developer-in-the-loop, human-paced workflow tool -- and
       reach an explicit, justified conclusion. No production code change is made
       in this task regardless of the conclusion reached (AC017)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - docs/evidence/M019/backlog-scalability.md exists and reasons from the
@@ -243,8 +245,21 @@ tasks:
     verification:
       strategy: manual
       detail: developer/driver review per CT011's instruction
-    result: null
-    usage: null
+    result:
+      summary: |
+        Investigated .pitway/backlog.yaml's single-file whole-load/whole-save
+        design against PitWay's real single-developer, sequential-write usage;
+        concluded no redesign is warranted at current or foreseeable scale.
+      evidence: |
+        docs/evidence/M019/backlog-scalability.md, driver-reviewed: cites
+        loadBacklog/saveBacklog (store.ts:240-250), confirms every .pitway/
+        state file shares the same whole-file convention, cites real data (4
+        items/66 lines after 18 milestones), and reasons from PitWay's
+        sequential/no-multi-writer execution model. Explicit conclusion reached;
+        no production code change made.
+    attempts: 1
+    usage:
+      total_tokens: 65820
   - id: T006
     name: Backlog promotion dogfooding and roadmap reconciliation
     objective: "After this milestone is confirmed: run pitway backlog promote B001
