@@ -1,0 +1,61 @@
+schema_version: 1
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-21T19:44:09Z
+    evidence: git diff --name-only baseline..HEAD shows only docs/evidence/M022/*.md
+      plus the milestone's own tasks.yaml state updates. No src/ or tests/
+      change, no driver adapter implemented, no MVP-boundary code change.
+    recorded_by: developer
+  - check: CT002
+    status: pass
+    at: 2026-08-21T19:44:09Z
+    evidence: "claude-code.md (26 citations, grounded in this repo's own
+      src/integrations/claude/ assets plus code.claude.com docs) and opencode.md
+      (25 citations, opencode.ai) reviewed: all 8 dimension sections present in
+      each, every section cited. OpenCode's genuine
+      no-argument-passing-for-skills not-applicable stated explicitly."
+    recorded_by: developer
+  - check: CT003
+    status: pass
+    at: 2026-08-21T19:44:09Z
+    evidence: "codex.md (32 citations) and cursor.md (28 citations) reviewed: all 8
+      dimension sections present, every section cited; secondary-source claims
+      explicitly marked unverified; the .agents/skills vs .codex/skills conflict
+      surfaced rather than resolved by fiat."
+    recorded_by: developer
+  - check: CT004
+    status: pass
+    at: 2026-08-21T19:44:19Z
+    evidence: "github-copilot.md (38 citations, docs.github.com) and gemini-cli.md
+      (13 citations, official repo docs tree) reviewed: all 8 dimension sections
+      present, every section cited; thin spots disclosed (no generic args
+      placeholder in Copilot; Gemini trusted-folders existence-only, no
+      claims)."
+    recorded_by: developer
+  - check: CT005
+    status: pass
+    at: 2026-08-21T19:44:19Z
+    evidence: "aider.md (25 citations, 11 live aider.chat pages) reviewed: all 8
+      dimension sections present; the three genuine not-applicables (skills,
+      agents, extensible tools) stated with reasoning and nearest-analog
+      citations; no-MCP-in-mainline settled against the official release
+      HISTORY."
+    recorded_by: developer
+  - check: CT006
+    status: pass
+    at: 2026-08-21T19:44:19Z
+    evidence: comparison.md reviewed; worker spot-checked 8 claims against exact
+      per-tool source text (e.g. .agents/skills convention across
+      codex/gemini/cursor/copilot/opencode line refs; Claude Code
+      CLAUDE.md-not-AGENTS.md holdout; the four divergent permission
+      conflict-resolution semantics), one unsupported claim corrected before
+      commit. No new research at synthesis time.
+    recorded_by: developer
+  - check: CT007
+    status: pass
+    at: 2026-08-21T19:44:19Z
+    evidence: "Full milestone diff (9ee4d74..HEAD) reviewed: every changed path is
+      under docs/evidence/M022/ except the milestone's own .pitway tasks.yaml
+      state updates. No src/ or tests/ file touched."
+    recorded_by: developer

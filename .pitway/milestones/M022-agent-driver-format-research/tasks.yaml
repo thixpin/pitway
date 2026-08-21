@@ -1,0 +1,234 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: "Research: Claude Code + OpenCode"
+    objective: "Real, sourced research on how Claude Code and OpenCode each
+      represent: skills, commands, agents, rules/instructions, metadata,
+      arguments, tools, and permissions. Write docs/evidence/M022/claude-code.md
+      and docs/evidence/M022/opencode.md, one per tool, each covering all 8
+      dimensions (or an explicit 'not applicable' note per dimension where
+      genuinely true). Cite real documentation/source URLs -- never invent a
+      config shape or field name. For Claude Code, ground findings in this
+      repository's own src/integrations/claude/ assets
+      (skills/commands/agents.md files) as a real, first-party example, plus
+      official Anthropic documentation for anything not exercised locally. For
+      OpenCode, use real web research (its own docs/README/config schema)."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - claude-code.md and opencode.md each cover all 8 dimensions with real
+        citations
+      - Claude Code findings are grounded in this repo's own shipped assets plus
+        official docs; OpenCode findings cite real external sources
+      - no dimension is silently skipped; genuine non-applicability is stated
+        explicitly
+    write_scope:
+      - docs/evidence/M022/claude-code.md
+      - docs/evidence/M022/opencode.md
+    verification:
+      strategy: manual
+      detail: Manual review of docs/evidence/M022/claude-code.md and opencode.md for
+        real citations and 8-dimension coverage.
+    result:
+      summary: Claude Code and OpenCode researched across all 8 dimensions; Claude
+        Code grounded in this repo's own shipped assets plus official Anthropic
+        docs, OpenCode entirely from opencode.ai official docs.
+      evidence: "[truncated] ths with code.claude.com docs URLs) and opencode.md (25
+        citations, | opencode.ai) each carry all 8 dimension sections plus a
+        summary table. | Claude Code local grounding: skill/command frontmatter
+        shapes verified by | direct reads of
+        src/integrations/claude/skills/*/SKILL.md and | commands/*.md; grep
+        confirmed no local use of allowed-tools/model; | agents/permissions/MCP
+        dimensions explicitly marked docs-only (not | exercised locally).
+        OpenCode: directory-name ambiguity (agents/ and | commands/ plural vs
+        singular) settled by verbatim re-fetch before | shipping. One genuine
+        not-applicable recorded: OpenCode skills have no | argument-passing
+        mechanism (invocation is skill({name}) only). One | citation-integrity
+        fix during the worker's own verification pass: an | unverifiable
+        ~/.claude/commands/ personal path was removed rather than | shipped from
+        memory. | Manual verification per the declared strategy: all 16
+        dimension sections | present, each with at least one real citation."
+    attempts: 1
+    usage:
+      total_tokens: 123685
+  - id: T002
+    name: "Research: Codex + Cursor"
+    objective: "Real, sourced research on how Codex (OpenAI's CLI coding agent) and
+      Cursor each represent: skills, commands, agents, rules/instructions,
+      metadata, arguments, tools, and permissions. Write
+      docs/evidence/M022/codex.md and docs/evidence/M022/cursor.md, one per
+      tool, each covering all 8 dimensions (or an explicit 'not applicable' note
+      where genuinely true). Cite real documentation/source URLs -- never invent
+      a config shape or field name; use real web research."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - codex.md and cursor.md each cover all 8 dimensions with real citations
+      - no dimension is silently skipped; genuine non-applicability is stated
+        explicitly
+    write_scope:
+      - docs/evidence/M022/codex.md
+      - docs/evidence/M022/cursor.md
+    verification:
+      strategy: manual
+      detail: Manual review of docs/evidence/M022/codex.md and cursor.md for real
+        citations and 8-dimension coverage.
+    result:
+      summary: Codex and Cursor researched across all 8 dimensions from live official
+        docs; both evidence files written with per-section citations.
+      evidence: "[truncated] o | learn.chatgpt.com/docs, disclosed in the file header)
+        plus the repo's | own docs/config.md; Cursor from cursor.com/docs
+        (rules, skills, | subagents, permissions.json, CLI slash-commands, MCP,
+        changelog). | Two-tier sourcing enforced: search-snippet-only claims are
+        explicitly | marked secondary/unverified in the files rather than
+        presented as | fetched fact. | Notable findings for T005's synthesis:
+        Codex custom prompts officially | deprecated in favor of skills; a real
+        conflict between official docs | (.agents/skills chain) and third-party
+        guides (.codex/skills) is | deliberately surfaced, not smoothed over;
+        Cursor is folding custom | commands into skills and reads
+        .claude//.codex agent+skill dirs for | cross-tool compat; Codex has
+        $1-$9/$ARGUMENTS/named-KEY=value argument | substitution while no
+        equivalent placeholder scheme was found for | Cursor. | Manual
+        verification per the declared strategy: all 16 dimension sections |
+        present, each with at least one real citation."
+    attempts: 1
+    usage:
+      total_tokens: 88613
+  - id: T003
+    name: "Research: GitHub Copilot + Gemini CLI"
+    objective: "Real, sourced research on how GitHub Copilot (its CLI/agent mode and
+      custom-instructions surface) and Gemini CLI each represent: skills,
+      commands, agents, rules/instructions, metadata, arguments, tools, and
+      permissions. Write docs/evidence/M022/github-copilot.md and
+      docs/evidence/M022/gemini-cli.md, one per tool, each covering all 8
+      dimensions (or an explicit 'not applicable' note where genuinely true).
+      Cite real documentation/source URLs -- never invent a config shape or
+      field name; use real web research."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - github-copilot.md and gemini-cli.md each cover all 8 dimensions with
+        real citations
+      - no dimension is silently skipped; genuine non-applicability is stated
+        explicitly
+    write_scope:
+      - docs/evidence/M022/github-copilot.md
+      - docs/evidence/M022/gemini-cli.md
+    verification:
+      strategy: manual
+      detail: Manual review of docs/evidence/M022/github-copilot.md and gemini-cli.md
+        for real citations and 8-dimension coverage.
+    result:
+      summary: GitHub Copilot and Gemini CLI researched across all 8 dimensions from
+        live official sources; both evidence files written with per-section
+        citations.
+      evidence: "[truncated]  Gemini CLI sourced | from the official repo's docs tree
+        on main via raw.githubusercontent.com | (skills, custom-commands,
+        subagents, gemini-md, configuration, | policy-engine, MCP, extensions,
+        tools). | Notable cross-cutting finding for T005's synthesis: both tools
+        implement | the same Agent Skills open standard (SKILL.md with
+        name/description | frontmatter) and honor the cross-tool .agents/skills
+        convention; Copilot | even reads .claude/skills and CLAUDE.md/GEMINI.md;
+        Gemini CLI's | context.fileName makes its rules file renameable. |
+        Disclosed thin spots (never silently skipped): no generic args |
+        placeholder in Copilot; Gemini trusted-folders noted as existing in the
+        | docs tree but not fetched, no claims made. Two Copilot citations came
+        | from search-result snippets rather than full fetches, flagged by the |
+        worker for this manual review -- accepted: both are corroborating |
+        secondary cites, every load-bearing claim also carries a fully-fetched |
+        docs.github.com source."
+    attempts: 1
+    usage:
+      total_tokens: 78897
+  - id: T004
+    name: "Research: Aider"
+    objective: "Real, sourced research on how Aider represents: skills, commands,
+      agents, rules/instructions, metadata, arguments, tools, and permissions.
+      Write docs/evidence/M022/aider.md covering all 8 dimensions (or an
+      explicit 'not applicable' note where genuinely true). Cite real
+      documentation/source URLs -- never invent a config shape or field name;
+      use real web research."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - aider.md covers all 8 dimensions with real citations
+      - no dimension is silently skipped; genuine non-applicability is stated
+        explicitly
+    write_scope:
+      - docs/evidence/M022/aider.md
+    verification:
+      strategy: manual
+      detail: Manual review of docs/evidence/M022/aider.md for real citations and
+        8-dimension coverage.
+    result:
+      summary: Aider researched across all 8 dimensions from live official docs;
+        docs/evidence/M022/aider.md written with 25 real aider.chat citations.
+      evidence: "[truncated] y extensible tool-calling framework (no MCP in mainline |
+        through v0.86.1, settled against the official release HISTORY rather |
+        than conflicting third-party claims). Real representations: built-in |
+        slash commands; explicit-load conventions files (/read, --read, read:);
+        | model-scoped metadata (.aider.model.settings.yml, |
+        .aider.model.metadata.json); layered CLI-flag > AIDER_* env > |
+        .aider.conf.yml argument system; text-based edit formats instead of tool
+        | calls; confirmation-prompt permissions (--yes-always, |
+        --no-suggest-shell-commands, --read, --aiderignore, --dry-run). |
+        Sources consulted live: 11 aider.chat documentation pages (conventions,
+        | commands, modes, watch, lint-test, aider_conf, options, |
+        adv-model-settings, edit-formats, scripting, HISTORY). | Manual
+        verification per the task's declared strategy: every dimension | section
+        carries at least one real citation; the three not-applicable |
+        dimensions state absence with reasoning and nearest-analog citations."
+    attempts: 1
+    usage:
+      total_tokens: 54394
+  - id: T005
+    name: Synthesis comparison
+    objective: "Write docs/evidence/M022/comparison.md, grounded entirely in
+      T001-T004's own per-tool findings: identify capabilities common across
+      most/all 7 tools (candidates for a shared representation) and capabilities
+      that are genuinely driver-specific (candidates that would not generalize),
+      across all 8 dimensions. Every claim traces back to a specific tool's own
+      documented finding from T001-T004 -- no new research invented at synthesis
+      time. End with an explicit statement that no MVP-boundary decision
+      (canonical format, new driver, plugin architecture) is made here --
+      findings only, per AC001."
+    status: completed
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+    acceptance_criteria:
+      - comparison.md identifies common vs. driver-specific capabilities across
+        all 8 dimensions, each claim traceable to a specific per-tool finding
+      - comparison.md explicitly states no MVP-boundary decision is made by this
+        milestone
+    write_scope:
+      - docs/evidence/M022/comparison.md
+    verification:
+      strategy: manual
+      detail: Manual review of docs/evidence/M022/comparison.md, spot-check several
+        claims against the underlying per-tool documents.
+    result:
+      summary: comparison.md synthesized from the 7 per-tool evidence files across all
+        8 dimensions -- common vs. driver-specific capabilities, every claim
+        traced to a specific per-tool finding, closing with the AC001
+        no-decision statement.
+      evidence: "[truncated] at, new | driver adapter, plugin architecture, pitway
+        update). | Key convergences: Agent Skills SKILL.md standard 6/7 tools
+        (Aider N/A); | the .agents/skills cross-tool convention; commands
+        folding into skills in | 3 tools; MCP 6/7; permissions share only the
+        allow/ask/deny vocabulary, | never conflict-resolution semantics
+        (last-match-wins vs deny-wins vs | most-restrictive-wins vs
+        deny>ask>allow all coexist). | Conflicts/unverified flags carried
+        forward unresolved, per the task's own | rule: Codex .agents/skills vs
+        third-party .codex/skills, Cursor | ~/.cursor/commands and .cursorrules,
+        Codex apply_patch/spawn_agent, | Gemini trusted-folders, Copilot
+        prompt-files preview status. | Worker verification: 8 claims
+        spot-checked against exact per-tool source | text; one post-spot-check
+        correction (an unsupported \"originator\" claim | reworded to the
+        sourced \"follows and extends\"). | No new research performed at
+        synthesis time -- grounded entirely in | T001-T004's committed files."
+    attempts: 1
+    usage:
+      total_tokens: 104215
