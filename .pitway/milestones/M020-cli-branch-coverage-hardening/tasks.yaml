@@ -1,0 +1,242 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: milestone-review.ts branch coverage
+    objective: "Bring src/cli/commands/milestone-review.ts from 17/45 (37.8%) to
+      >=90% branch coverage via new test cases in the existing
+      tests/integration/milestone-review-*.test.ts files. Focus on
+      renderReportHuman's rendering permutations: a pending (not-yet-recorded)
+      role vs. a recorded one, supersededCount > 0 vs. 0, a role with zero
+      findings ('clean review' message) vs. one or more, a finding with targets
+      present/absent, unknownTargets present/absent within targets,
+      conflictsWith present/absent, non-empty sharedTargetConflicts, and
+      non-empty declaredConflicts. Also cover the `start` command's non-TTY
+      refusal when --roles is omitted, and renderDecideHuman's
+      revision_requested branch vs. accepted/rejected. Test-only changes
+      expected; no production behavior change (AC002)."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - src/cli/commands/milestone-review.ts reaches >=41/45 (>=90%) branch
+        coverage measured via a real vitest run --coverage
+      - renderReportHuman's pending-role, superseded-snapshot, zero-findings,
+        targets/unknownTargets/conflictsWith, and both conflict-group branches
+        are each covered by a real assertion on rendered output, not just
+        view-object shape
+      - the start command's non-TTY-without-roles refusal and
+        renderDecideHuman's revision_requested-vs-other branch are both covered
+      - no production behavior in milestone-review.ts changes; the file's diff
+        (if any) is test-support only
+    write_scope:
+      - src/cli/commands/milestone-review.ts
+      - tests/integration/milestone-review-brief.test.ts
+      - tests/integration/milestone-review-decide.test.ts
+      - tests/integration/milestone-review-interactive.test.ts
+      - tests/integration/milestone-review-lifecycle.test.ts
+      - tests/integration/milestone-review-record.test.ts
+      - tests/integration/milestone-review-report.test.ts
+      - tests/integration/milestone-review-start.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/milestone-review-brief.test.ts
+        tests/integration/milestone-review-decide.test.ts
+        tests/integration/milestone-review-interactive.test.ts
+        tests/integration/milestone-review-lifecycle.test.ts
+        tests/integration/milestone-review-record.test.ts
+        tests/integration/milestone-review-report.test.ts
+        tests/integration/milestone-review-start.test.ts
+    result:
+      summary: milestone-review.ts reached 43/45 (95.6%) branch coverage, up from
+        17/45 (37.8%) baseline -- exceeds the >=41/45 target. Test-only change.
+      evidence: Tests  60 passed (60) | Start at  01:40:34 | Duration  6.65s
+        (transform 2.20s, setup 0ms, import 3.51s, tests 32.53s, environment
+        1ms)
+    attempts: 1
+    usage:
+      total_tokens: 128263
+  - id: T002
+    name: task-verify.ts branch coverage
+    objective: Bring src/cli/commands/task-verify.ts from 10/21 (47.6%) to >=90%
+      branch coverage via new cases in tests/integration/task-verify.test.ts --
+      targeting real validation failures, state-transition refusals, and
+      command/tdd verification-strategy branches not yet exercised. Test-only
+      changes expected (AC003).
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - src/cli/commands/task-verify.ts reaches >=19/21 (>=90%) branch coverage
+        measured via a real vitest run --coverage
+      - each newly-covered branch corresponds to a real behavioral case
+        (documented in the test name/comment), not a line-padding assertion
+    write_scope:
+      - src/cli/commands/task-verify.ts
+      - tests/integration/task-verify.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/task-verify.test.ts
+    result:
+      summary: task-verify.ts reached 21/21 (100%) branch coverage, up from 10/21
+        (47.6%) baseline. Test-only change.
+      evidence: Tests  14 passed (14) | Start at  01:42:05 | Duration  11.61s
+        (transform 261ms, setup 0ms, import 354ms, tests 11.17s, environment
+        0ms)
+    attempts: 1
+    usage:
+      total_tokens: 121203
+  - id: T003
+    name: task-integrate.ts branch coverage
+    objective: Bring src/cli/commands/task-integrate.ts from 4/8 (50.0%) to >=90%
+      branch coverage (all 8 branches where practical) via new cases in
+      tests/integration/task-integrate.test.ts and
+      tests/integration/task-integrate-recovery.test.ts. If any branch proves
+      genuinely unreachable in-process, disclose it by name in completion
+      evidence rather than leaving it silently uncovered (AC004).
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - src/cli/commands/task-integrate.ts reaches 8/8 branch coverage measured
+        via a real vitest run --coverage, unless a specific branch is disclosed
+        as unreachable in-process -- in which case that named disclosure (not a
+        percentage) is the pass condition, and the remaining 7 branches are all
+        covered
+      - any disclosed-unreachable branch is named explicitly in the completion
+        evidence, with the reason it cannot be constructed in-process
+    write_scope:
+      - src/cli/commands/task-integrate.ts
+      - tests/integration/task-integrate.test.ts
+      - tests/integration/task-integrate-recovery.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/task-integrate.test.ts
+        tests/integration/task-integrate-recovery.test.ts
+    result:
+      summary: task-integrate.ts reached 8/8 (100%) branch coverage, up from 4/8 (50%)
+        baseline -- no branch proved unreachable. Test-only change.
+      evidence: Tests  19 passed (19) | Start at  01:41:20 | Duration  10.01s
+        (transform 641ms, setup 0ms, import 898ms, tests 18.84s, environment
+        0ms)
+    attempts: 1
+    usage:
+      total_tokens: 103401
+  - id: T004
+    name: verification-repair.ts branch coverage
+    objective: Bring src/cli/commands/verification-repair.ts from 6/13 (46.2%) to
+      >=90% branch coverage via new cases in
+      tests/integration/verification-repair.test.ts -- targeting real
+      recovery/repair-path branches, validation failures, and state-transition
+      refusals. Test-only changes expected (AC005).
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - src/cli/commands/verification-repair.ts reaches >=12/13 (>=90%) branch
+        coverage measured via a real vitest run --coverage
+      - each newly-covered branch corresponds to a real behavioral case, not a
+        line-padding assertion
+    write_scope:
+      - src/cli/commands/verification-repair.ts
+      - tests/integration/verification-repair.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/verification-repair.test.ts
+    result:
+      summary: verification-repair.ts reached 13/13 (100%) branch coverage, up from
+        6/13 (46.2%) baseline. Test-only change.
+      evidence: Tests  32 passed (32) | Start at  01:37:56 | Duration  38.81s
+        (transform 259ms, setup 0ms, import 355ms, tests 38.36s, environment
+        0ms)
+    attempts: 1
+    usage:
+      total_tokens: 69868
+  - id: T005
+    name: cli/index.ts error-boundary gap (AC006 decision)
+    objective: "Per AC006's presented-and-approved decision: add one new
+      real-subprocess test to tests/integration/build-bin.test.ts's 'the CLI
+      error boundary (real subprocess)' describe block, triggering a genuine
+      non-PitWay error (e.g. malformed .pitway/state.yaml causing a YAML parse
+      failure) and asserting the stack trace IS present in stderr -- the
+      printStack=true branch of renderCliError, currently untested by either
+      existing subprocess case (both assert no stack). No production code change
+      expected; if the developer instead approved the extract-and-refactor
+      alternative at confirm time, implement that instead and disclose the
+      deviation in completion evidence."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - a new real-subprocess test constructs a genuine non-PitWay error (not a
+        PitWay-authored refusal) and asserts renderCliError's printStack=true
+        path actually prints a stack trace to stderr
+      - src/cli/index.ts reaches a materially higher branch-coverage fraction
+        than the 4/10 (40%) baseline, recorded in completion evidence, without a
+        production refactor unless the developer explicitly chose that
+        alternative at confirm time
+    write_scope:
+      - tests/integration/build-bin.test.ts
+      - src/cli/index.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/build-bin.test.ts
+    result:
+      summary: Closed cli/index.ts's known error-boundary gap with one new
+        real-subprocess test; no production refactor (AC006 recommended option,
+        developer-approved).
+      evidence: Tests  48 passed (48) | Start at  01:36:48 | Duration  6.13s
+        (transform 15ms, setup 0ms, import 23ms, tests 6.03s, environment 0ms)
+    attempts: 1
+    usage:
+      total_tokens: 82740
+  - id: T006
+    name: Reconciliation, backlog closure, and dogfood finding
+    objective: Reconcile IMPLEMENTATION_PLAN.md against real repository state on
+      main (M019's own left-open Bootstrap-table catch-up, Revised Roadmap
+      M019-delivered wording, the two post-M019 quick-changes qc-7e6fb2a4 and
+      qc-404ee3e9 documented per the post-M016 precedent, the 7->8 ms-* alias
+      count/note fix, the 45->46 shipped-asset count fix for ms-merge.md). Then
+      run `backlog promote B004 --task T001` (disclosing the B004->T001-T005
+      one-to-many mapping in the promote's own recorded evidence) and `backlog
+      archive B005 --reason "resolved via quick-change qc-404ee3e9 (commit
+      3a297d9), not promoted into a milestone task"`. Finally, add a new backlog
+      item recording the archive-requires-active-milestone limitation as a
+      twice-recurred dogfood finding (AC007, AC008, AC009).
+    status: completed
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+      - T005
+    acceptance_criteria:
+      - IMPLEMENTATION_PLAN.md's Bootstrap table, Revised Roadmap section,
+        section 7 command/alias documentation, and section 9 asset count all
+        match real repository state
+      - backlog promote B004 --task T001 and backlog archive B005 both succeed;
+        pitway backlog list reflects the final state
+      - a new backlog item exists describing the archive/active-milestone
+        limitation as a recurring finding
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+      - .pitway/backlog.yaml
+    verification:
+      strategy: manual
+      detail: Manual review of the IMPLEMENTATION_PLAN.md diff plus backlog list
+        output after promote/archive/add.
+    result:
+      summary: IMPLEMENTATION_PLAN.md reconciled against real repository state on
+        main; B004 promoted, B005 archived, new backlog item filed for the
+        archive-active-milestone limitation. All AC007-AC010 satisfied.
+      evidence: "[truncated] ing the quick-change; updated the Status snapshot to name
+        both | post-M019 quick-change commits (cbe1a15, 3a297d9) and M020's own
+        | in-progress state; appended the standard top-of-file changelog
+        sentence | for this reconciliation. | Backlog: `pitway backlog promote
+        B004 --task T001` (disclosed one-to-many | mapping: B004 spans
+        T001-T005, promoted against T001 per its own stated | priority order).
+        `pitway backlog archive B005 --reason \"...\"` (already | resolved by
+        qc-404ee3e9/3a297d9). `pitway backlog add` filed B007 | recording the
+        archive-requires-active-milestone limitation as a | twice-recurred
+        dogfood finding (once post-M018, once post-M019). B006 |
+        (token-usage/cost tracking in milestone-review, filed mid-milestone via
+        | direct developer request, unrelated to B004/B005) confirmed present. |
+        Final `pitway backlog list`: B001-B004 promoted, B005 archived,
+        B006/B007 | pending. | AC010: npm run build clean; npm test -- 1338/1338
+        passed (86 files); | npx tsc --noEmit clean."
+    attempts: 1
+    usage: null

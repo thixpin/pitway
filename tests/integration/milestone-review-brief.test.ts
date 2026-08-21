@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
@@ -204,5 +204,51 @@ describe('milestone-review brief', () => {
     expect(error).toBeDefined();
     expect(error!.message).toContain('revised');
     expect(error!.message).toContain('rejected');
+  });
+
+  it('renders a task name inline in the human brief when the task has one', async () => {
+    const contractPath = join(root, 'contract.md');
+    const tasksPath = join(root, 'tasks.yaml');
+    writeFileSync(contractPath, CONTRACT_FIXTURE);
+    writeFileSync(tasksPath, TASKS_FIXTURE.replace('  - id: T001\n', '  - id: T001\n    name: Add the thing\n'));
+    const added = await run(
+      ['milestone-add', '--contract', contractPath, '--tasks', tasksPath, '--json'],
+      root,
+    );
+    expect(added.error).toBeUndefined();
+    unlinkSync(contractPath);
+    unlinkSync(tasksPath);
+    const id = (JSON.parse(added.lines[0]!) as { id: string }).id;
+
+    await run(['milestone-review', 'start', id, '--roles', 'developer', '--json'], root);
+    const { lines, error } = await run(['milestone-review', 'brief', id, '--role', 'developer'], root);
+    expect(error).toBeUndefined();
+    expect(lines.join('\n')).toContain('T001 — Add the thing: First task.');
+  });
+
+  it('falls back to console.log when deps.write is omitted', async () => {
+    const id = await addDraftMilestone();
+    await run(['milestone-review', 'start', id, '--roles', 'developer', '--json'], root);
+
+    const program = buildCli();
+    registerMilestoneReviewCommand(program, { root });
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    let callCount = 0;
+    try {
+      await program.parseAsync([
+        'node',
+        'pitway',
+        'milestone-review',
+        'brief',
+        id,
+        '--role',
+        'developer',
+        '--json',
+      ]);
+    } finally {
+      callCount = logSpy.mock.calls.length;
+      logSpy.mockRestore();
+    }
+    expect(callCount).toBeGreaterThan(0);
   });
 });

@@ -62,13 +62,15 @@ items:
       task-verify > task-integrate > verification-repair > cli/index, targeting
       >90% genuine Codecov coverage -- never superficial line-only tests, config
       changes to hide uncovered code, or unrelated refactors.
-    status: pending
+    status: promoted
     source:
       milestone: M018
       task: null
     created_at: 2026-08-21T14:35:13.758Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-21T18:46:07.290Z
+    promoted_to:
+      milestone: M020
+      task: T001
     archived_reason: null
   - id: B005
     title: Align milestone-status/progress-report table format with usage view
@@ -77,11 +79,55 @@ items:
       report still use the older row layout and don't follow that same table
       design. Align them (developer-flagged during M019 execution while
       reviewing milestone-status output).
-    status: pending
+    status: archived
     source:
       milestone: M019
       task: null
     created_at: 2026-08-21T17:01:18.814Z
+    resolved_at: 2026-08-21T18:46:12.221Z
+    promoted_to: null
+    archived_reason: Resolved directly via quick-change qc-404ee3e9 (commit
+      3a297d9), not promoted into a milestone task -- the report's task list now
+      shares the table+usage format with plain milestone-status.
+  - id: B006
+    title: Track token usage and cost in milestone reviews
+    reason: "pitway milestone-review has no usage-tracking mechanism: a dispatched
+      reviewer subagent's token usage (input/output/total, and estimated cost
+      where the provider reports it) is never recorded, unlike task-dispatch's
+      --usage MUST rule (M019/T007). Add usage capture to the review-session
+      schema and CLI (e.g. milestone-review record --usage <json>), with
+      per-role totals and a session-level rollup -- same design discipline as
+      task usage: measured only, never estimated, null when unavailable.
+      Developer's request also referenced 'per-task' totals; clarify at
+      investigation time whether that means per-reviewer-role (the natural
+      review-session equivalent) or also unifying with the existing M019/T007
+      per-task usage into one combined reporting view."
+    status: pending
+    source:
+      milestone: M020
+      task: null
+    created_at: 2026-08-21T18:08:57.064Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B007
+    title: backlog archive needs an active milestone, no override
+    reason: "pitway backlog archive <id> unconditionally requires
+      state.active_milestone to be non-null, the same M018-designed rule as
+      add/list/show/promote -- but archive is a pure terminal-status closure
+      with no risk of misattributing a pending mutation to a retired milestone
+      the way add's journal-attachment concern was. Hit twice for real: once
+      after M018 completed (a backlog item could not be archived standalone),
+      and again after M019 completed with qc-404ee3e9 resolving B005 outside any
+      milestone task -- the archive had to wait for M020's own active-milestone
+      window. Evaluate an --allow-no-active-milestone-style override (or
+      equivalent) for archive specifically, without weakening
+      add/list/show/promote's existing unconditional requirement."
+    status: pending
+    source:
+      milestone: M020
+      task: null
+    created_at: 2026-08-21T18:46:19.193Z
     resolved_at: null
     promoted_to: null
     archived_reason: null
