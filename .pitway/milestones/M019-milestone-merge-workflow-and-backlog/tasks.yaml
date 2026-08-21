@@ -1,0 +1,299 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: milestone-merge core (git safety, idempotency, journal)
+    objective: "Implement the core of pitway milestone-merge in
+      src/core/milestones/merge.ts: mergeMilestone(root, milestoneId, { target?
+      }). Read and resolve every needed piece of state (contract frontmatter,
+      base_branch as the target default, the completion commit SHA via
+      findCompletionCommit) from the CURRENT branch before any checkout runs;
+      refuse by name when the completion commit cannot be found in current
+      HEAD's history (wrong branch / detached HEAD) -- never a blanket
+      assertOnMilestoneBranch check, which would incorrectly reject the
+      legitimate idempotent re-run from the target branch post-merge. Refuse
+      (before mutation) unless status is completed, unless base_branch is
+      non-null, unless the working tree is clean, unless the resolved target
+      branch exists, unless the milestone's own source branch exists, and unless
+      MERGE_HEAD is absent (a distinct, actionable message for an interrupted
+      prior merge). Add checkoutBranch to src/git/branch.ts and a new
+      src/git/merge.ts (mergeBranches, abortMerge, isAncestor via git merge-base
+      --is-ancestor). Idempotency: short-circuit to 'already merged' when the
+      completion commit SHA is already an ancestor of the target branch. Wrap
+      the merge attempt in a try/finally that restores the original branch on
+      ANY thrown error, not only a conflict. On conflict: git merge --abort,
+      restore, refuse. On success: merge commit message 'merge: <id> <title>',
+      no PitWay trailer. Add a new sibling journal kind milestone_merge to
+      src/state/journal.ts's discriminated union (never a
+      journalOperationTypeSchema entry, never checkpoint-eligible) plus
+      appendMilestoneMergeRecord, and call it on both the success and
+      already-merged paths (AC001, AC002, AC003, AC004, AC005, AC006, AC007)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - mergeMilestone refuses with a named error when the milestone's status is
+        not completed, before any git command runs
+      - A test proves every state read (contract frontmatter, base_branch,
+        completion commit SHA) completes before the first git checkout call --
+        e.g. by asserting the resolved values are correct even when the target
+        branch's own .pitway/ directory is absent or stale
+      - "Wrong-branch / detached-HEAD: a test proves the command refuses by name
+        when the completion commit is unreachable from current HEAD (run from an
+        unrelated branch, or detached HEAD without the commit), and separately
+        proves the legitimate case succeeds -- a re-run from the target branch
+        after a successful merge, where the commit IS reachable via the target's
+        own ancestry"
+      - Defaults --target to contract.frontmatter.base_branch; refuses with a
+        distinct, named error when base_branch is null
+      - Refuses on a dirty working tree, when the resolved target branch does
+        not exist, and when the milestone's own source branch does not exist,
+        all before any checkout
+      - Refuses with a distinct, actionable message (not a generic dirty-tree
+        message) when MERGE_HEAD is already present at command start
+      - "On a merge conflict: git merge --abort is invoked, the original branch
+        is re-checked-out, and the command refuses -- a test asserts the
+        repository's branch and tree are unchanged after the refusal"
+      - A test proves the original branch is restored via try/finally after an
+        injected NON-conflict failure during the merge attempt, not only after a
+        conflict
+      - "Idempotency: a test proves that once the completion commit SHA is an
+        ancestor of the target branch, a second invocation reports 'already
+        merged' and creates no new commit"
+      - "A successful merge produces a commit on the target branch with message
+        'merge: <id> <title>' and no PitWay-Milestone/PitWay-Task trailer"
+      - journalRecordSchema gains a milestone_merge sibling kind
+        (id/milestone/targetBranch/mergeCommitSha/alreadyMerged/at);
+        appendMilestoneMergeRecord is called on every completed merge (success
+        or already-merged); a test proves it is never checkpoint-eligible
+        (excluded by derivePending's kind === 'entry' filter) and needs no
+        resolveTargetPath case
+    write_scope:
+      - src/git/branch.ts
+      - src/git/merge.ts
+      - src/core/milestones/merge.ts
+      - src/state/journal.ts
+      - tests/unit/journal.test.ts
+      - tests/integration/milestone-merge.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/journal.test.ts
+        tests/integration/milestone-merge.test.ts
+    result: null
+    usage: null
+  - id: T002
+    name: milestone-merge CLI command and shipped docs
+    objective: Wire pitway milestone-merge <id> [--target <branch>] in
+      src/cli/commands/milestone-merge.ts, registered in src/cli/index.ts,
+      following the existing milestone-* command file conventions (pitway_result
+      JSON envelope under --json, human-readable text otherwise, on every
+      success/already-merged/refusal path). Ship
+      src/integrations/claude/commands/milestone-merge.md (PitWay:-prefixed
+      description, mirrored into .claude/ by pitway init's existing
+      recursive-discovery copy -- no new copy-script logic); add a mention to
+      src/integrations/claude/protocol-driver.md naming milestone-merge as the
+      developer-invoked step after milestone-complete; document the command in
+      USAGE.md. Update tests/integration/cli.test.ts's ALL_COMMAND_NAMES and
+      'registers all N commands' count (24 -> 25) and
+      tests/integration/build-bin.test.ts's real-binary command list (AC001,
+      AC008, AC009).
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - pitway milestone-merge <id> [--target <branch>] is registered and
+        reachable; every success/already-merged/refusal path emits a
+        pitway_result-shaped envelope under --json and readable text otherwise
+      - tests/integration/cli.test.ts's ALL_COMMAND_NAMES includes
+        milestone-merge and the registered-command count reads 25
+      - tests/integration/build-bin.test.ts's real-compiled-binary command list
+        is updated identically
+      - src/integrations/claude/commands/milestone-merge.md exists with a
+        PitWay:-prefixed description and is picked up by pitway init's existing
+        asset discovery (tests/unit/claude-assets.test.ts)
+      - protocol-driver.md names milestone-merge as the step after
+        milestone-complete; USAGE.md documents the command and its --target
+        default
+    write_scope:
+      - src/cli/commands/milestone-merge.ts
+      - src/cli/index.ts
+      - src/integrations/claude/commands/milestone-merge.md
+      - src/integrations/claude/protocol-driver.md
+      - USAGE.md
+      - tests/integration/cli.test.ts
+      - tests/integration/build-bin.test.ts
+      - tests/integration/milestone-merge.test.ts
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/cli.test.ts
+        tests/integration/build-bin.test.ts
+        tests/integration/milestone-merge.test.ts
+        tests/unit/claude-assets.test.ts
+    result: null
+    usage: null
+  - id: T003
+    name: "B001 -- PitWay: description prefix and ms-* milestone aliases"
+    objective: "Prefix every PitWay-owned command doc's description frontmatter (all
+      files under src/integrations/claude/commands/, including
+      milestone-merge.md from T002) with 'PitWay: ', verbatim before the
+      existing text -- excluding the 6 vendored skills under
+      src/integrations/claude/skills/ (disclosed deviation, AC009). Add a native
+      Commander .alias('ms-<verb>') to the 7 commands in
+      src/cli/commands/milestone-add.ts, milestone-cancel.ts,
+      milestone-complete.ts, milestone-confirm.ts, milestone-list.ts,
+      milestone-review.ts, milestone-status.ts. Ship 7 new alias command docs
+      (ms-add.md, ms-cancel.md, ms-complete.md, ms-confirm.md, ms-list.md,
+      ms-review.md, ms-status.md) under src/integrations/claude/commands/, each
+      byte-identical in body to its canonical counterpart. Update
+      tests/integration/cli.test.ts and tests/integration/build-bin.test.ts for
+      the new aliases and tests/unit/claude-assets.test.ts for the 7 new shipped
+      files (AC009, AC010, AC011, AC012, AC013)."
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - "Every command doc under src/integrations/claude/commands/ (24 files
+        including T002's milestone-merge.md before this task's own aliases are
+        added; 31 once this task's 7 ms-*.md files exist -- the same test sweeps
+        in files this task itself creates) has a description frontmatter field
+        starting with 'PitWay: '; the 6 files under
+        src/integrations/claude/skills/ are unchanged -- a test asserts both
+        halves of this directly"
+      - pitway
+        ms-add|ms-cancel|ms-complete|ms-confirm|ms-list|ms-review|ms-status each
+        invoke identically to their milestone-* counterpart (including
+        milestone-review's start/brief/record/report/decide subcommands under
+        the ms-review alias); a test asserts each alias via Command.aliases()
+      - program.commands count / ALL_COMMAND_NAMES is unchanged by this task
+        (aliases add no new top-level entries) -- still 25 from T002
+      - Each of the 7 ms-*.md files is byte-identical in body to its canonical
+        milestone-*.md counterpart, asserted by a direct file-comparison test
+      - milestone-merge has no ms-merge alias; no task-* command gains an alias;
+        auto-run is unchanged -- a test proves the alias set is exactly the 7
+        named commands, no more
+    write_scope:
+      - src/integrations/claude/commands
+      - src/cli/commands/milestone-add.ts
+      - src/cli/commands/milestone-cancel.ts
+      - src/cli/commands/milestone-complete.ts
+      - src/cli/commands/milestone-confirm.ts
+      - src/cli/commands/milestone-list.ts
+      - src/cli/commands/milestone-review.ts
+      - src/cli/commands/milestone-status.ts
+      - tests/integration/cli.test.ts
+      - tests/integration/build-bin.test.ts
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/cli.test.ts
+        tests/integration/build-bin.test.ts tests/unit/claude-assets.test.ts
+    result: null
+    usage: null
+  - id: T004
+    name: B002 -- reviewer role selection display labels
+    objective: "Add a short (3-8 word) label field to each of the 9 REVIEW_ROLES
+      entries in src/core/reviews/roles.ts (additive, alongside the existing
+      id/focus -- focus itself is never edited). Update formatRoleList() in
+      src/cli/review-prompt.ts to render '<Capitalized Role Name>: <label>' in
+      place of the current raw 'id -- focus' line;
+      parseSelection/promptForRoles's selection logic is unchanged. No checkbox
+      or HTML markup; no ANSI bold by default (AC014, AC015, AC016)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Every REVIEW_ROLES entry has a new label field, 3-8 words, distinct from
+        and additional to its existing focus string; focus's own value is
+        byte-for-byte unchanged (a test diffs it against the current value)
+      - The 9 role ids are unchanged -- no role added, removed, or renamed
+      - "formatRoleList() renders each role as '<Role Name>: <label>' (role name
+        capitalized, colon separator), with no '[ ]' or '<b>' markup anywhere in
+        its output"
+      - promptForRoles/parseSelection's numeric-selection behavior is unchanged
+        by this task (same inputs still select the same roles)
+    write_scope:
+      - src/core/reviews/roles.ts
+      - src/cli/review-prompt.ts
+      - tests/unit/review-roles.test.ts
+      - tests/integration/milestone-review-interactive.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/review-roles.test.ts
+        tests/integration/milestone-review-interactive.test.ts
+    result: null
+    usage: null
+  - id: T005
+    name: B003 -- backlog storage scalability investigation
+    objective: "Write docs/evidence/M019/backlog-scalability.md: evaluate
+      .pitway/backlog.yaml's current single-file, whole-load/whole-save design
+      (loadBacklog/saveBacklog, src/state/store.ts) against realistic PitWay
+      usage -- a single-developer-in-the-loop, human-paced workflow tool -- and
+      reach an explicit, justified conclusion. No production code change is made
+      in this task regardless of the conclusion reached (AC017)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - docs/evidence/M019/backlog-scalability.md exists and reasons from the
+        current implementation (confirmed by inspection, cited directly) rather
+        than assumption
+      - The document reaches and justifies an explicit conclusion, honestly
+        stated even if it is 'no redesign is warranted at current/foreseeable
+        scale'
+      - No file outside docs/evidence/M019/ is modified by this task
+    write_scope:
+      - docs/evidence/M019/backlog-scalability.md
+    verification:
+      strategy: manual
+      detail: developer/driver review per CT011's instruction
+    result: null
+    usage: null
+  - id: T006
+    name: Backlog promotion dogfooding and roadmap reconciliation
+    objective: "After this milestone is confirmed: run pitway backlog promote B001
+      --task T003, backlog promote B002 --task T004, and backlog promote B003
+      --task T005 for real against the live .pitway/backlog.yaml -- the first
+      real exercise of backlog promote since M018 shipped it. These calls need
+      no .pitway/backlog.yaml entry in this task's write_scope: a pending
+      backlog_recording journal entry is already classified as an expected dirty
+      path by the existing, unmodified classifyDirtyPaths({ journalMilestone })
+      allowlist, mirroring M018's own precedent exactly -- no task in M018 ever
+      declared backlog.yaml in write_scope either. All three promote calls ride
+      along in this task's own single completion commit alongside its
+      IMPLEMENTATION_PLAN.md change; no dedicated commit is created for them.
+      Then reconcile IMPLEMENTATION_PLAN.md: the command-surface count (24 ->
+      25), the shipped-asset count for the 8 new docs (milestone-merge.md + 7
+      ms-*.md), the Bootstrap delivery table gaining M018's own row, and the
+      Revised Roadmap header/entry reflecting M018 delivered and M019. Also
+      reapply and commit the developer's own pre-existing
+      docs/assets/workflow.mmd/.svg edit (a Backlog node plus an 'Executing
+      Tasks' subgraph label, stashed before this milestone's confirmation so its
+      baseline commit could proceed on a clean tree) -- folded into this task's
+      write_scope and single completion commit rather than a separate standalone
+      commit, per explicit developer decision at confirm time (AC018, AC019,
+      AC020, AC021)."
+    status: waiting
+    depends_on:
+      - T002
+      - T003
+      - T004
+      - T005
+    acceptance_criteria:
+      - "pitway backlog show B001/B002/B003 each read status: promoted, with
+        promoted_to correctly naming M019 and T003/T004/T005 respectively"
+      - pitway backlog list --status pending shows only B004 remaining
+      - IMPLEMENTATION_PLAN.md's command-surface count reads 25
+      - IMPLEMENTATION_PLAN.md's shipped-asset count reflects the 8 new docs
+      - The Bootstrap delivery table includes M018's row
+      - The Revised Roadmap header/entry reflects M018 delivered and names M019
+      - Any other discovered drift between the document and this milestone's
+        actual delivery is corrected in this task, not left stale
+      - docs/assets/workflow.mmd/.svg carry the stashed Backlog-node/
+        Executing-Tasks-label edit, committed in this task's own commit
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+      - docs/assets/workflow.mmd
+      - docs/assets/workflow.svg
+    verification:
+      strategy: manual
+      detail: developer/driver review per CT012/CT013's instructions, plus a full npm
+        test run (CT014) confirming no regression across the whole suite
+    result: null
+    usage: null
