@@ -9,9 +9,14 @@ If the draft just has a mistake in it, use `milestone-add --replace <id>`
 instead — that corrects it in place under the same id without burning it.
 
 **Confirmed-milestone boundary**: `milestone-cancel` never applies once a
-milestone is `confirmed`/`in_progress` — the state machine has no
-`confirmed`/`in_progress -> cancelled` edge (`state-machine.ts`), by design.
-To abandon *remaining* work in an already-confirmed milestone: cancel the
+milestone is `confirmed`/`in_progress`, by design. `in_progress` genuinely
+has no `-> cancelled` edge in the state machine (`state-machine.ts`); a
+persisted `confirmed` status technically does list one, but `confirmed` is
+never an observable resting status in practice — `milestone-confirm`
+collapses `draft -> confirmed -> in_progress` into one persisted write, so
+there is no real window in which a milestone sits at `confirmed` for this
+command to act on. To abandon *remaining* work in an already-confirmed
+milestone: cancel the
 individual not-yet-started tasks (`task-update <id> cancelled`, valid from
 `planned`/`waiting`/`ready`) and complete the milestone with whatever
 required tasks are actually done. Never `git reset`/rewrite history to undo

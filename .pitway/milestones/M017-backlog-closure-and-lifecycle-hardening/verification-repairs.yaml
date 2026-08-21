@@ -12,3 +12,20 @@ records:
       annotation to match; no behavior change.
     approved_at: 2026-08-21T06:22:08Z
     status: committed
+  - id: VR002
+    files:
+      - src/integrations/claude/commands/milestone-cancel.md
+    checks:
+      - CT011
+    change_log: "CT008's own review caught an inaccuracy in milestone-cancel.md's
+      confirmed-milestone boundary text: it claimed the state machine has no
+      confirmed/in_progress -> cancelled edge at all, but state-machine.ts's
+      confirmed entry technically does list 'cancelled' -- only in_progress
+      genuinely lacks it. Corrected to state the precise distinction
+      (confirmed's edge exists on paper but confirmed is never an observable
+      resting status, since milestone-confirm collapses
+      draft->confirmed->in_progress into one write); no change to actual
+      behavior, docs-only. CT011 (tsc) is the attached command-type check since
+      this docs-only fix has no command-type check of its own to rerun."
+    approved_at: 2026-08-21T06:23:32Z
+    status: committed

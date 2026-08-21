@@ -76,3 +76,27 @@ results:
     recorded_by: command
     duration_ms: 947
     termination_reason: exited
+  - check: CT011
+    status: pass
+    at: 2026-08-21T06:22:24Z
+    evidence: (no output; exit 0)
+    recorded_by: command
+    duration_ms: 846
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-21T06:22:44Z
+    evidence: "Reviewed .github/dependabot.yml and README.md's Maintenance section
+      against AC006: weekly npm schedule (interval: weekly),
+      open-pull-requests-limit 5, dev-dependencies grouped into one PR
+      (groups.dev-dependencies), header comment states explicitly no auto-merge
+      is configured anywhere; README's security-alerts sentence phrases it as a
+      repository setting to enable, never as done. All elements present."
+    recorded_by: developer
+  - check: CT011
+    status: pass
+    at: 2026-08-21T06:23:37Z
+    evidence: (no output; exit 0)
+    recorded_by: command
+    duration_ms: 959
+    termination_reason: exited
