@@ -1,0 +1,96 @@
+schema_version: 1
+results:
+  - check: CT002
+    status: pass
+    at: 2026-08-21T02:24:45Z
+    evidence: "Inspected contract.md frontmatter: base_branch=main,
+      base_revision=6297ba2d701b75c62c99870b3c8ecddbd44af266. git log
+      b6eeba3~1..HEAD on pitway/M016-extended-dogfood-validation-and-release
+      shows exactly 5 commits (baseline + T001-T004), zero merge commits. main's
+      own tip remains exactly at base_revision (6297ba2), completely untouched.
+      First real, non-test git.branch_strategy: milestone dogfooding in this
+      repository's history."
+    recorded_by: developer
+  - check: CT003
+    status: pass
+    at: 2026-08-21T02:27:47Z
+    evidence: Tests  1 passed (1) | Start at  09:27:44 | Duration  2.62s (transform
+      279ms, setup 0ms, import 372ms, tests 2.16s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3094
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-21T02:27:57Z
+    evidence: Tests  60 passed (60) | Start at  09:27:47 | Duration  10.33s
+      (transform 484ms, setup 0ms, import 739ms, tests 19.74s, environment 0ms)
+    recorded_by: command
+    duration_ms: 10622
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-21T02:29:15Z
+    evidence: Tests  1093 passed (1093) | Start at  09:27:58 | Duration  76.45s
+      (transform 3.32s, setup 0ms, import 13.31s, tests 508.60s, environment
+      8ms)
+    recorded_by: command
+    duration_ms: 77478
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-21T02:30:37Z
+    evidence: Tests  1093 passed (1093) | Start at  09:29:15 | Duration  82.32s
+      (transform 3.11s, setup 0ms, import 13.34s, tests 550.75s, environment
+      9ms)
+    recorded_by: command
+    duration_ms: 82675
+    termination_reason: exited
+  - check: CT001
+    status: pass
+    at: 2026-08-21T02:31:01Z
+    evidence: "Read docs/evidence/M016-parallel-recovery-dogfood.md and the real
+      journal-record/git-log CLI outputs it quotes: T001/T002 confirmed
+      genuinely independent (disjoint write_scope, no depends_on edge); real
+      task-dispatch output shows both worktrees existing concurrently; git log
+      shows per-task trailer commits (T001 then T002) in ascending integration
+      order, zero merge commits; git branch --list confirms zero surviving
+      scaffolding branches; git worktree list confirms zero surviving worktrees.
+      Mainline history structurally indistinguishable from sequential, proven
+      against genuine dogfood use."
+    recorded_by: developer
+  - check: CT005
+    status: pass
+    at: 2026-08-21T02:31:02Z
+    evidence: "Read docs/evidence/M016-parallel-recovery-dogfood.md's AC005 section
+      against the checklist: real resume output quoted verbatim (not
+      paraphrased) for both the in-flight case and the post-task-discard case,
+      sourced from docs/evidence/M016-live-resume-capture.txt which the driver
+      captured at the actual moment each command ran; the simulated-crash scope
+      boundary is explicitly disclosed as narrower than a true crash simulation;
+      no claim in the document exceeds what the quoted evidence actually shows."
+    recorded_by: developer
+  - check: CT006
+    status: pass
+    at: 2026-08-21T02:31:14Z
+    evidence: "Read docs/evidence/M016-context-efficiency.md against AC006's
+      checklist: a real task-status --context --json bundle was measured (not
+      estimated) from T001's actual dispatch, confirming the mapped_ac_ids
+      filter carries exactly 1 of M016's 7 ACs; the M006 pre-fix figure is
+      compared byte-for-byte (28239 vs 4022 bytes, 89% vs 44% contractExcerpt
+      share); the delta is reported plainly without favorable framing; a genuine
+      correction to this milestone's own contract is disclosed (no M007/AC011
+      post-fix figure was ever actually recorded historically, checked directly
+      against the record)."
+    recorded_by: developer
+  - check: CT009
+    status: pass
+    at: 2026-08-21T02:31:14Z
+    evidence: "Diffed IMPLEMENTATION_PLAN.md against AC007's specific edit list: the
+      Bootstrap table's new M015 row present; the Revised Roadmap header/opening
+      paragraph moved to M015 delivered; the Backlog section's M011-findings
+      entry marked DELIVERED plus two new real entries added (write_scope gap
+      pattern 4th recurrence, milestone-confirm/reconcilePending gap); the
+      As-of-this-snapshot paragraph brought current through M015/M016; the
+      Status line updated. Each edit confirmed actually landed, not merely that
+      CT007's test/typecheck gate passed."
+    recorded_by: developer

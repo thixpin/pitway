@@ -1,14 +1,9 @@
 import { commitOrResume } from '../../git/commit-or-resume.js';
 import { checkWorkingTreeClean } from '../../git/safety.js';
 import { composeMessage, resolveChangeCommitSha } from '../../git/trailers.js';
-import {
-  appendQuickChangeRecord,
-  readJournal,
-  type JournalQuickChange,
-} from '../../state/journal.js';
+import { appendQuickChangeRecord, type JournalQuickChange } from '../../state/journal.js';
 import { listSafeManagedDirtyPaths } from '../../state/managed-init-paths.js';
-import { deriveQuickChangeState } from './create.js';
-import { QuickChangeError } from './run.js';
+import { QuickChangeError, requireQuickChange } from './create.js';
 
 // T004: lands an approved quick-change as one commit via commitOrResume,
 // exactly its declared scope, carrying a PitWay-Change: <change-id> trailer
@@ -21,14 +16,6 @@ export interface QuickChangeCommitView {
   id: string;
   outcome: 'committed' | 'already-committed';
   commit: string;
-}
-
-function requireQuickChange(root: string, changeId: string): JournalQuickChange {
-  const current = deriveQuickChangeState(readJournal(root), changeId);
-  if (current === undefined) {
-    throw new QuickChangeError(`unknown quick-change ${changeId}`);
-  }
-  return current;
 }
 
 function appendCommittedSnapshot(root: string, current: JournalQuickChange): void {

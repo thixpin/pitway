@@ -1,14 +1,10 @@
 import { createHash } from 'node:crypto';
-import {
-  appendQuickChangeRecord,
-  readJournal,
-  type JournalQuickChange,
-} from '../../state/journal.js';
+import { appendQuickChangeRecord } from '../../state/journal.js';
 import { DEFAULT_TIMEOUT_MS, executeCommand } from '../verification/process-exec.js';
 import { trimTail } from '../verification/text-trim.js';
-import { deriveQuickChangeState } from './create.js';
+import { QuickChangeError, requireQuickChange } from './create.js';
 
-export class QuickChangeError extends Error {}
+export { QuickChangeError };
 
 // T004: executes exactly the approved-and-hashed verification command from
 // an approved quick-change, refusing anything that doesn't match the
@@ -30,14 +26,6 @@ export interface QuickChangeRunView {
 function computeQuickChangeHash(scope: string[], verifyCommand: string): string {
   const canonical = JSON.stringify({ scope, verifyCommand });
   return `sha256:${createHash('sha256').update(canonical).digest('hex')}`;
-}
-
-function requireQuickChange(root: string, changeId: string): JournalQuickChange {
-  const current = deriveQuickChangeState(readJournal(root), changeId);
-  if (current === undefined) {
-    throw new QuickChangeError(`unknown quick-change ${changeId}`);
-  }
-  return current;
 }
 
 // run: approved-only. Recomputes the hash as a defensive integrity check --
