@@ -1,3 +1,8 @@
+---
+description: Run an in_progress task's approved verification command and persist evidence
+argument-hint: <id>
+---
+
 # task-verify
 
 Runs an `in_progress` task's own approved `command`/`tdd` verification

@@ -14,6 +14,7 @@ import { registerMilestoneReviewCommand } from './commands/milestone-review.js';
 import { registerMilestoneStatusCommand } from './commands/milestone-status.js';
 import { registerQuickChangeCommand } from './commands/quick-change.js';
 import { registerResumeCommand } from './commands/resume.js';
+import { registerTaskAddCommand } from './commands/task-add.js';
 import { registerTaskDispatchCommand } from './commands/task-dispatch.js';
 import { registerTaskDiscardCommand } from './commands/task-discard.js';
 import { registerTaskIntegrateCommand } from './commands/task-integrate.js';
@@ -26,6 +27,7 @@ import { registerVerificationRepairCommand } from './commands/verification-repai
 import { registerVerifyCommand } from './commands/verify.js';
 import { registerWriteMsArtifactsCommand } from './commands/write-ms-artifacts.js';
 import { installWorktreeGuard } from './worktree-guard.js';
+import { renderCliError } from './errors.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(here, '../../package.json'), 'utf8')) as {
@@ -61,6 +63,7 @@ export function registerAllCommands(program: Command, deps: CommandDeps = {}): v
   registerMilestoneStatusCommand(program, deps);
   registerQuickChangeCommand(program, deps);
   registerResumeCommand(program, deps);
+  registerTaskAddCommand(program, deps);
   registerTaskDispatchCommand(program, deps);
   registerTaskDiscardCommand(program, deps);
   registerTaskIntegrateCommand(program, deps);
@@ -87,9 +90,22 @@ const isMainModule =
 if (isMainModule) {
   const program = buildCli();
   registerAllCommands(program);
-  // M015/T002: async, not program.parse -- this milestone introduces the
-  // first async command action (T003's interactive role-selection prompt),
-  // and a sync parse would turn its refusal path into an unhandled
-  // rejection in the real binary.
-  await program.parseAsync(process.argv);
+  try {
+    // M015/T002: async, not program.parse -- this milestone introduces the
+    // first async command action (T003's interactive role-selection prompt),
+    // and a sync parse would turn its refusal path into an unhandled
+    // rejection in the real binary.
+    await program.parseAsync(process.argv);
+  } catch (error) {
+    // M017/T005 (AC003): the real binary's one error boundary -- without
+    // it, an action handler's rejection was an unhandled-rejection stack
+    // dump, not a clean CLI message. In-process tests never reach this
+    // (they call parseAsync directly and catch the raw error themselves).
+    const rendered = renderCliError(error);
+    process.stderr.write(`pitway: ${rendered.message}\n`);
+    if (rendered.printStack && error instanceof Error && error.stack !== undefined) {
+      process.stderr.write(`${error.stack}\n`);
+    }
+    process.exitCode = rendered.exitCode;
+  }
 }

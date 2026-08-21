@@ -345,3 +345,59 @@ describe('pitway task-update completion without any task-verify record', () => {
     );
   });
 });
+
+// M017/T004 (AC004): integration proof that a real failing task-verify
+// command's recorded evidence names the failing test -- own root/fixture
+// since the shared TASKS_FIXTURE's T001 command always passes.
+describe('pitway task-verify records a failure summary in evidence (AC004)', () => {
+  const FAILING_TASKS_FIXTURE = `schema_version: 1
+tasks:
+  - id: T001
+    objective: A task whose verification command fails.
+    status: planned
+    depends_on: []
+    acceptance_criteria:
+      - It works
+    write_scope:
+      - src/a.ts
+    verification:
+      strategy: command
+      detail: "node -e \\"console.log('FAIL src/a.test.ts > it works'); process.exit(1)\\""
+    result: null
+    usage: null
+`;
+
+  beforeEach(async () => {
+    root = mkdtempSync(join(tmpdir(), 'pitway-tver-fail-'));
+    scratch = mkdtempSync(join(tmpdir(), 'pitway-tver-fail-in-'));
+    git(['init', '-q'], root);
+    git(['config', 'user.email', 'test@example.com'], root);
+    git(['config', 'user.name', 'Test'], root);
+    writeFileSync(join(root, 'README.md'), 'seed\n');
+    git(['add', 'README.md'], root);
+    git(['commit', '-q', '-m', 'init'], root);
+    await run(['init', '--no-claude'], root);
+    const contract = join(root, 'draft-contract.md');
+    const tasksFile = join(root, 'draft-tasks.yaml');
+    writeFileSync(contract, CONTRACT_FIXTURE);
+    writeFileSync(tasksFile, FAILING_TASKS_FIXTURE);
+    const added = await run(['milestone-add', '--contract', contract, '--tasks', tasksFile], root);
+    expect(added.error).toBeUndefined();
+    rmSync(contract);
+    rmSync(tasksFile);
+    const confirmed = await run(['milestone-confirm', 'M001'], root);
+    expect(confirmed.error).toBeUndefined();
+  });
+
+  it("prefixes the recorded evidence with a failures: summary naming the failing test", async () => {
+    expect((await update(['T001', 'in_progress'])).error).toBeUndefined();
+    touchFile('src/a.ts', 'export const a = 1;\n');
+
+    const verified = await taskVerify(['T001']);
+    expect(verified.error).toBeUndefined();
+    const evidence = JSON.parse(verified.lines[0]!) as JournalTaskVerifyEvidence;
+    expect(evidence.exitCode).toBe(1);
+    expect(evidence.evidence.startsWith('failures: FAIL src/a.test.ts > it works\n')).toBe(true);
+    expect(evidence.evidence).toContain('FAIL src/a.test.ts > it works');
+  });
+});

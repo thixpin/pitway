@@ -9,6 +9,7 @@ import {
 import { computeVerificationHash } from '../contracts/verification-hash.js';
 import { resolveCanonicalGitDir } from '../../git/paths.js';
 import { trimTail } from './text-trim.js';
+import { summarizeFailure } from './failure-summary.js';
 import { evaluateRecursionGuard } from './recursion-guard.js';
 import { DEFAULT_TIMEOUT_MS, executeCommand, type TerminationReason } from './process-exec.js';
 
@@ -150,6 +151,26 @@ interface CommandCheckOutcome extends VerifyCheckOutcome {
   termination_reason: TerminationReason;
 }
 
+// M017/T004 (AC004): matches trimTail's own default cap -- the evidence
+// budget a failure summary and the tail-trimmed output now share, summary
+// first.
+const EVIDENCE_BUDGET = 200;
+
+// M017/T004 (AC004): ONLY on failure, prepends a `failures: <lines>`
+// summary ahead of the tail-trimmed output, the summary budgeted first
+// inside the SAME evidence budget trimTail already used -- one truncation
+// scheme, not two. A passing run's evidence, and a failing run whose output
+// matches no failure pattern, are byte-identical to before this task.
+function buildEvidence(combined: string, failed: boolean, emptyFallback: string): string {
+  const tail = trimTail(combined, { emptyFallback });
+  if (!failed) return tail;
+  const summaryLines = summarizeFailure(combined, EVIDENCE_BUDGET);
+  if (summaryLines.length === 0) return tail;
+  const header = `failures: ${summaryLines.join(' | ')}`;
+  const remainder = Math.max(0, EVIDENCE_BUDGET - header.length - 1);
+  return `${header}\n${trimTail(combined, { cap: remainder, emptyFallback })}`;
+}
+
 // AC001/AC007/T002: runs one command check through T001's timeout-bounded
 // executeCommand (per-check timeout_ms, falling back to the shared safe
 // default), trims evidence with the shared text-trim helper, and times the
@@ -164,9 +185,11 @@ function executeCommandCheck(root: string, check: CommandCheck): CommandCheckOut
   const duration_ms = Date.now() - start;
   const exitCode = result.exitCode;
   const status = result.terminationReason === 'exited' && exitCode === 0 ? 'pass' : 'fail';
-  const evidence = trimTail(`${result.stdout}${result.stderr}`, {
-    emptyFallback: emptyOutputFallback(exitCode, result.terminationReason),
-  });
+  const evidence = buildEvidence(
+    `${result.stdout}${result.stderr}`,
+    status === 'fail',
+    emptyOutputFallback(exitCode, result.terminationReason),
+  );
   return { check: check.id, status, evidence, duration_ms, termination_reason: result.terminationReason };
 }
 

@@ -1,3 +1,8 @@
+---
+description: Abandon a dispatched task's worktree without integrating
+argument-hint: <id>
+---
+
 # task-discard
 
 Abandons one dispatched task's worktree without integrating — the single

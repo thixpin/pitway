@@ -23,8 +23,14 @@ Pick the smallest that fits:
 - **`quick-change`** — a small, bounded fix against an already-completed
   milestone, one atomic commit, no architecture/schema/API/dependency/
   security/migration/multi-subsystem impact (`commands/quick-change.md`).
-- **One-task corrective milestone** — anything bigger than that single
-  bounded fix.
+- **`task-add`** — discovered work that belongs inside a `confirmed`/
+  `in_progress` milestone's own task graph, mid-flight, without a new
+  milestone (`commands/task-add.md`). This is the sanctioned insertion path
+  — `milestone-cancel` is deliberately the opposite (draft-only abandonment,
+  never an active-milestone tool; see `commands/milestone-cancel.md`'s
+  confirmed-milestone boundary).
+- **One-task corrective milestone** — anything bigger than a single bounded
+  fix, once the original milestone is already `completed`.
 - **Full milestone** — new capability, not a correction.
 
 A bug inside an *active* milestone's own scope uses none of these — it is
@@ -205,6 +211,39 @@ PitWay cannot itself verify:
   at either), so nothing mechanically stops completing with a review
   still open — doing so leaves the review record permanently unreadable
   against what actually shipped.
+
+## Drafting write_scope
+
+Before finalizing any task that changes a count, an enumerated list, or a
+persisted/rendered string shape (a new CLI command, a new shipped asset, a
+new completion-commit path, a new journal/schema field, a renamed error
+message another test matches verbatim) — grep for every assertion site that
+name/count/shape could touch and fold each one into the task's own
+`write_scope`, in the same task, not a follow-up. Missing one doesn't fail
+loudly at draft time; it surfaces later as an unrelated-looking test
+failure once the task actually runs (M017 itself lived this: `task-add`
+needed `tests/integration/cli.test.ts`'s registered-command count moved to
+23, `tests/unit/claude-assets.test.ts` and `tests/integration/init.test.ts`
+updated for the new shipped doc — all three, spelled out in AC002 itself
+precisely because a review caught the gap in an earlier draft).
+
+The assertion sites worth grepping, every time:
+
+- **Registered-command list**: `tests/integration/cli.test.ts`'s
+  `ALL_COMMAND_NAMES` and its "registers all N commands" count, and
+  `tests/integration/build-bin.test.ts`'s own (separately maintained) list
+  for the real compiled binary.
+- **Baseline/completion paths**: `src/git/baseline.ts`'s expected-baseline
+  set and `src/core/milestones/complete.ts`'s `completionPaths` — a new
+  per-milestone file needs both, or a legitimate write silently becomes
+  "unexpected dirt."
+- **Shipped-asset tests**: `tests/unit/claude-assets.test.ts` and
+  `tests/integration/init.test.ts`'s shipped-and-installed assertions for
+  any new `src/integrations/claude/**` doc.
+- **Any test asserting a changed string's exact content** — an error
+  message, a rendered human-mode line, a journal payload shape — grep its
+  literal text across `tests/**` before changing it, not after a failure
+  names the mismatch.
 
 ## Pre-dispatch conflict preflight
 

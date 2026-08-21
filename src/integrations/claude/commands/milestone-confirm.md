@@ -1,3 +1,8 @@
+---
+description: Confirm a draft milestone, or record an amended verification plan
+argument-hint: <id>
+---
+
 # milestone-confirm
 
 The human gate. Run this only after the full contract has been presented

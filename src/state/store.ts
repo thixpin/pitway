@@ -105,7 +105,10 @@ function readText(path: string): string {
   try {
     return readFileSync(path, 'utf8');
   } catch (error) {
-    throw new StateStoreError(`cannot read ${path}: ${(error as Error).message}`);
+    // M017/T005 (AC003): preserves the underlying error (e.g. ENOENT) as
+    // `cause` so a caller -- specifically src/cli/errors.ts -- can narrow on
+    // it without parsing this message string.
+    throw new StateStoreError(`cannot read ${path}: ${(error as Error).message}`, { cause: error });
   }
 }
 
@@ -287,7 +290,9 @@ export function readInputFile(path: string, label: string): string {
   try {
     return readFileSync(path, 'utf8');
   } catch (error) {
-    throw new StateStoreError(`cannot read ${label} file ${path}: ${(error as Error).message}`);
+    throw new StateStoreError(`cannot read ${label} file ${path}: ${(error as Error).message}`, {
+      cause: error,
+    });
   }
 }
 

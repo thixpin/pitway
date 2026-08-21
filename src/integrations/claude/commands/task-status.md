@@ -1,3 +1,8 @@
+---
+description: Show a task's status, or its minimal execution context
+argument-hint: <id>
+---
+
 # task-status
 
 Two distinct uses, gated by `--context`:

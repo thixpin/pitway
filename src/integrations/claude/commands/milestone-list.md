@@ -1,3 +1,7 @@
+---
+description: List every milestone with a concise one-line status
+---
+
 # milestone-list
 
 A one-line-per-milestone overview across the whole project. Use it when the

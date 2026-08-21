@@ -1,0 +1,131 @@
+schema_version: 1
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-21T06:15:25Z
+    evidence: Tests  37 passed (37) | Start at  13:15:01 | Duration  23.40s
+      (transform 350ms, setup 0ms, import 486ms, tests 22.79s, environment 0ms)
+    recorded_by: command
+    duration_ms: 23975
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-21T06:15:42Z
+    evidence: Tests  93 passed (93) | Start at  13:15:25 | Duration  17.20s
+      (transform 845ms, setup 0ms, import 1.26s, tests 18.36s, environment 0ms)
+    recorded_by: command
+    duration_ms: 17564
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-21T06:15:46Z
+    evidence: Tests  33 passed (33) | Start at  13:15:43 | Duration  3.51s
+      (transform 64ms, setup 0ms, import 142ms, tests 3.37s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3860
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-21T06:16:20Z
+    evidence: Tests  75 passed (75) | Start at  13:15:47 | Duration  33.24s
+      (transform 835ms, setup 0ms, import 1.18s, tests 55.31s, environment 0ms)
+    recorded_by: command
+    duration_ms: 33627
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-21T06:17:06Z
+    evidence: Tests  49 passed (49) | Start at  13:16:21 | Duration  44.70s
+      (transform 438ms, setup 0ms, import 685ms, tests 43.86s, environment 0ms)
+    recorded_by: command
+    duration_ms: 45994
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-21T06:17:42Z
+    evidence: Tests  60 passed (60) | Start at  13:17:06 | Duration  35.96s
+      (transform 1.76s, setup 0ms, import 2.98s, tests 69.97s, environment 1ms)
+    recorded_by: command
+    duration_ms: 36424
+    termination_reason: exited
+  - check: CT010
+    status: pass
+    at: 2026-08-21T06:19:26Z
+    evidence: Tests  1147 passed (1147) | Start at  13:17:43 | Duration  102.98s
+      (transform 4.31s, setup 0ms, import 19.53s, tests 682.27s, environment
+      46ms)
+    recorded_by: command
+    duration_ms: 103440
+    termination_reason: exited
+  - check: CT011
+    status: fail
+    at: 2026-08-21T06:19:27Z
+    evidence: >-
+      failures: tests/integration/task-update.test.ts(1053,13): error TS2339:
+      Property 'errLines
+
+      : error TS2339: Property 'errLines' does not exist on type '{ lines:
+      string[]; error?: Error | undefined; }'.
+    recorded_by: command
+    duration_ms: 911
+    termination_reason: exited
+  - check: CT011
+    status: pass
+    at: 2026-08-21T06:22:15Z
+    evidence: (no output; exit 0)
+    recorded_by: command
+    duration_ms: 947
+    termination_reason: exited
+  - check: CT011
+    status: pass
+    at: 2026-08-21T06:22:24Z
+    evidence: (no output; exit 0)
+    recorded_by: command
+    duration_ms: 846
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-21T06:22:44Z
+    evidence: "Reviewed .github/dependabot.yml and README.md's Maintenance section
+      against AC006: weekly npm schedule (interval: weekly),
+      open-pull-requests-limit 5, dev-dependencies grouped into one PR
+      (groups.dev-dependencies), header comment states explicitly no auto-merge
+      is configured anywhere; README's security-alerts sentence phrases it as a
+      repository setting to enable, never as done. All elements present."
+    recorded_by: developer
+  - check: CT011
+    status: pass
+    at: 2026-08-21T06:23:37Z
+    evidence: (no output; exit 0)
+    recorded_by: command
+    duration_ms: 959
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-21T06:23:45Z
+    evidence: "Reviewed protocol-driver.md's 'Drafting write_scope' section and the
+      confirmed-milestone-boundary text in protocol-driver.md ('Choosing a
+      correction mechanism') and commands/milestone-cancel.md against AC008.
+      Assertion sites named: registered-command list (cli.test.ts +
+      build-bin.test.ts), baseline/completionPaths, shipped-asset tests, and any
+      exact-string-content test -- all four present, including string-content
+      assertions. Boundary text matches actual behavior after a correction made
+      during this review (milestone-cancel.md overstated the state-machine gap;
+      corrected to the precise confirmed-is-never-observable distinction, landed
+      via VR002). task-add and its dispatch rule are named as the insertion path
+      in both docs; git reset is named as never the path in
+      milestone-cancel.md."
+    recorded_by: developer
+  - check: CT009
+    status: pass
+    at: 2026-08-21T06:24:08Z
+    evidence: "Diffed IMPLEMENTATION_PLAN.md against AC009's edit list: header
+      changelog entry added (M017/T009); SS7 command table gains the task-add
+      row and the count moves 22->23; SS9 asset count moves 35->36 with a new
+      'M017 additions' bullet; all 8 of the Backlog's open items marked
+      struck-through DELIVERED by M017/Txxx with the chosen direction recorded,
+      npm-pack.test.ts transient explicitly left open by name; M017's own
+      Bootstrap-table row confirmed absent (grep for '| M017 |' finds nothing);
+      Status snapshot's point-in-time marker and closing narrative updated for
+      M017."
+    recorded_by: developer

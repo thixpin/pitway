@@ -7,10 +7,12 @@ import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
+import { registerMilestoneReviewCommand } from '../../src/cli/commands/milestone-review.js';
+import { registerTaskDispatchCommand } from '../../src/cli/commands/task-dispatch.js';
 import { computeVerificationHash } from '../../src/core/contracts/verification-hash.js';
 import { derivePending } from '../../src/core/journal/operations.js';
 import { readJournal, reconcilePending, type JournalEntry } from '../../src/state/journal.js';
-import { loadContract, loadTasks } from '../../src/state/store.js';
+import { loadConfig, loadContract, loadTasks, saveConfig } from '../../src/state/store.js';
 import { listClaudeAssetDestinations } from '../../src/state/claude-assets.js';
 
 function git(args: string[], cwd: string): string {
@@ -752,5 +754,90 @@ describe('pitway milestone-confirm with branch_strategy: milestone (M012/T002)',
     expect(() =>
       git(['show-ref', '--verify', '--quiet', 'refs/heads/pitway/M001-confirmable-milestone'], root),
     ).toThrow();
+  });
+});
+
+// M017/T001 (AC001): the baseline commit is a checkpoint -- a journal-pending
+// entry whose target file it just committed must get its marker, or it stays
+// "pending" forever and blocks task-dispatch (found live in M016, whose own
+// pre-confirmation milestone-review left exactly such review_recording
+// entries). Uses its own write_scope fixture: the shared TASKS_FIXTURE's legacy
+// relevant_files tasks are never parallel-eligible, so task-dispatch would
+// refuse them for an unrelated reason.
+const PARALLEL_TASKS_FIXTURE = `schema_version: 1
+tasks:
+  - id: T001
+    name: First task
+    objective: First task.
+    status: planned
+    depends_on: []
+    acceptance_criteria:
+      - It works
+    context_files:
+      - src/a.ts
+    write_scope:
+      - src/a.ts
+    verification:
+      strategy: tdd
+      detail: npm test
+    result: null
+    usage: null
+`;
+
+describe('milestone-confirm reconciles pending journal entries after its baseline commit (M017/T001)', () => {
+  async function runExt(args: string[]): Promise<{ lines: string[]; error?: Error }> {
+    const program = buildCli();
+    const lines: string[] = [];
+    const deps = { root, write: (s: string) => lines.push(s) };
+    registerMilestoneAddCommand(program, deps);
+    registerMilestoneConfirmCommand(program, deps);
+    registerMilestoneReviewCommand(program, deps);
+    registerTaskDispatchCommand(program, deps);
+    try {
+      await program.parseAsync(['node', 'pitway', ...args]);
+      return { lines };
+    } catch (error) {
+      return { lines, error: error as Error };
+    }
+  }
+
+  const pendingFor = (milestone: string): JournalEntry[] =>
+    derivePending(readJournal(root)).filter((e) => e.milestone === milestone);
+
+  async function addParallelDraft(): Promise<void> {
+    saveConfig(root, { ...loadConfig(root), execution: { strategy: 'parallel_worktrees' } });
+    const contract = join(root, 'draft-contract.md');
+    const tasks = join(root, 'draft-tasks.yaml');
+    writeFileSync(contract, CONTRACT_FIXTURE);
+    writeFileSync(tasks, PARALLEL_TASKS_FIXTURE);
+    expect((await runExt(['milestone-add', '--contract', contract, '--tasks', tasks])).error).toBeUndefined();
+    rmSync(contract);
+    rmSync(tasks);
+  }
+
+  it('clears review_recording entries the baseline commit captured, so task-dispatch works immediately', async () => {
+    await addParallelDraft();
+    expect((await runExt(['milestone-review', 'start', 'M001', '--roles', 'qa'])).error).toBeUndefined();
+    expect(pendingFor('M001')).toHaveLength(1);
+
+    const confirmed = await runExt(['milestone-confirm', 'M001']);
+    expect(confirmed.error).toBeUndefined();
+    expect(headFiles(root)).toContain(`.pitway/milestones/${milestoneDirName('M001')}/reviews.yaml`);
+    expect(pendingFor('M001')).toHaveLength(0);
+
+    // The exact call that M016's first dispatch failed on.
+    expect((await runExt(['task-dispatch', 'T001'])).error).toBeUndefined();
+  });
+
+  it('leaves an entry pending when its target still differs from HEAD (byte-match semantics unchanged)', async () => {
+    await addParallelDraft();
+    expect((await runExt(['milestone-confirm', 'M001'])).error).toBeUndefined();
+    expect(pendingFor('M001')).toHaveLength(0);
+
+    // A review write AFTER the baseline: reviews.yaml on disk is not at HEAD.
+    expect((await runExt(['milestone-review', 'start', 'M001', '--roles', 'qa'])).error).toBeUndefined();
+    expect(pendingFor('M001')).toHaveLength(1);
+    expect(reconcilePending(root, 'M001')).toHaveLength(0);
+    expect(pendingFor('M001')).toHaveLength(1);
   });
 });

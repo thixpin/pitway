@@ -18,8 +18,11 @@ import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
+import { registerTaskDispatchCommand } from '../../src/cli/commands/task-dispatch.js';
+import { registerTaskIntegrateCommand } from '../../src/cli/commands/task-integrate.js';
 import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js';
-import { loadContract, loadTasks, saveTasks } from '../../src/state/store.js';
+import { loadConfig, loadContract, loadTasks, saveConfig, saveTasks } from '../../src/state/store.js';
+import { WORKTREES_DIR } from '../../src/git/worktree.js';
 import { deterministicBranchName } from '../../src/core/milestones/confirm.js';
 import type { Task } from '../../src/state/schemas.js';
 import { recordUsage } from '../../src/core/metrics/aggregate.js';
@@ -130,22 +133,34 @@ const RESULT_FIXTURE = `summary: Implemented the thing.
 evidence: npm test passed
 `;
 
-async function run(args: string[], cwd: string): Promise<{ lines: string[]; error?: Error }> {
+async function run(
+  args: string[],
+  cwd: string,
+): Promise<{ lines: string[]; errLines: string[]; error?: Error }> {
   const program = buildCli();
   const lines: string[] = [];
+  const errLines: string[] = [];
   registerInitCommand(program, { root: cwd, write: (s) => lines.push(s) });
   registerMilestoneAddCommand(program, { root: cwd, write: (s) => lines.push(s) });
   registerMilestoneConfirmCommand(program, { root: cwd, write: (s) => lines.push(s) });
-  registerTaskUpdateCommand(program, { root: cwd, write: (s) => lines.push(s) });
+  registerTaskUpdateCommand(program, {
+    root: cwd,
+    write: (s) => lines.push(s),
+    writeErr: (s) => errLines.push(s),
+  });
+  registerTaskDispatchCommand(program, { root: cwd, write: (s) => lines.push(s) });
+  registerTaskIntegrateCommand(program, { root: cwd, write: (s) => lines.push(s) });
   try {
     await program.parseAsync(['node', 'pitway', ...args]);
-    return { lines };
+    return { lines, errLines };
   } catch (error) {
-    return { lines, error: error as Error };
+    return { lines, errLines, error: error as Error };
   }
 }
 
-async function update(args: string[]): Promise<{ lines: string[]; error?: Error }> {
+async function update(
+  args: string[],
+): Promise<{ lines: string[]; errLines: string[]; error?: Error }> {
   return run(['task-update', ...args], root);
 }
 
@@ -951,5 +966,145 @@ describe('pitway task-update completion branch guard (M012/T003)', () => {
     expect(commitCount(root)).toBe(before);
     expect(stagedFiles(root)).toBe('');
     expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe('somewhere-else');
+  });
+});
+
+// M017/T003 (AC005): drives the REAL parallel_worktrees path (task-dispatch
+// -> task-integrate -> complete) rather than synthetically injecting a
+// worktree_dispatch journal record -- a self-contained sub-suite with its
+// own root/scratch and its own parallel-eligible (context_files/write_scope)
+// fixture, since the outer TASKS_FIXTURE's relevant_files-style tasks are
+// never parallel-dispatch eligible.
+describe('pitway task-update completion-time usage warning for worktree-dispatched tasks (AC005)', () => {
+  const PARALLEL_TASKS_FIXTURE = `schema_version: 1
+tasks:
+  - id: T001
+    name: Independent, parallel-eligible task
+    objective: Independent task, dispatched to a worktree.
+    status: planned
+    depends_on: []
+    acceptance_criteria:
+      - It works
+    context_files:
+      - src/a.ts
+    write_scope:
+      - src/a.ts
+    verification:
+      strategy: command
+      detail: node -e "console.log('1 passed')"
+    result: null
+    usage: null
+  - id: T002
+    name: Sequential comparison task
+    objective: A second task, completed inline, never dispatched.
+    status: planned
+    depends_on: []
+    acceptance_criteria:
+      - It works too
+    context_files:
+      - src/b.ts
+    write_scope:
+      - src/b.ts
+    verification:
+      strategy: command
+      detail: node -e "console.log('1 passed')"
+    result: null
+    usage: null
+`;
+
+  beforeEach(async () => {
+    root = mkdtempSync(join(tmpdir(), 'pitway-tupd-usage-'));
+    scratch = mkdtempSync(join(tmpdir(), 'pitway-tupd-usage-in-'));
+    git(['init', '-q'], root);
+    git(['config', 'user.email', 'test@example.com'], root);
+    git(['config', 'user.name', 'Test'], root);
+    writeFileSync(join(root, 'README.md'), 'seed\n');
+    git(['add', 'README.md'], root);
+    git(['commit', '-q', '-m', 'init'], root);
+    await run(['init', '--no-claude'], root);
+    // Enabled BEFORE milestone-add/confirm, matching
+    // parallel-worktrees-lifecycle.test.ts's makeRepo -- the dirty
+    // config.yaml rides the baseline commit rather than blocking the next
+    // task-update in_progress.
+    saveConfig(root, { ...loadConfig(root), execution: { strategy: 'parallel_worktrees' } });
+    const contract = join(root, 'draft-contract.md');
+    const tasks = join(root, 'draft-tasks.yaml');
+    writeFileSync(contract, CONTRACT_FIXTURE);
+    writeFileSync(tasks, PARALLEL_TASKS_FIXTURE);
+    const added = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
+    expect(added.error).toBeUndefined();
+    rmSync(contract);
+    rmSync(tasks);
+    const confirmed = await run(['milestone-confirm', 'M001'], root);
+    expect(confirmed.error).toBeUndefined();
+  });
+
+  async function dispatchAndIntegrate(id: string, rel: string): Promise<void> {
+    expect((await run(['task-dispatch', id], root)).error).toBeUndefined();
+    const worktree = join(root, WORKTREES_DIR, `M001-${id}`);
+    mkdirSync(join(worktree, 'src'), { recursive: true });
+    writeFileSync(join(worktree, rel), 'export const x = 1;\n');
+    git(['add', '-A'], worktree);
+    git(['commit', '-q', '-m', `worker: ${rel}`], worktree);
+    expect((await run(['task-integrate', id], root)).error).toBeUndefined();
+    expect((await update([id, 'review'])).error).toBeUndefined();
+  }
+
+  it('emits a one-line stderr warning naming the task, and usage stays null', async () => {
+    await dispatchAndIntegrate('T001', 'src/a.ts');
+    const { errLines, error } = await update(['T001', 'completed', ...completionFlags()]);
+    expect(error).toBeUndefined();
+    expect(errLines).toHaveLength(1);
+    expect(errLines[0]).toContain('T001');
+    expect(errLines[0]).toMatch(/N\/A/);
+    expect(task('T001').usage).toBeNull();
+  });
+
+  it('includes the additive usageWarning key in --json, and suppresses the stderr line', async () => {
+    await dispatchAndIntegrate('T001', 'src/a.ts');
+    const { lines, errLines, error } = await update([
+      'T001',
+      'completed',
+      ...completionFlags(),
+      '--json',
+    ]);
+    expect(error).toBeUndefined();
+    expect(errLines).toHaveLength(0);
+    const view = JSON.parse(lines[0]!) as { usageWarning: string | null };
+    expect(view.usageWarning).toContain('T001');
+  });
+
+  it('suppresses the warning entirely when --usage is supplied', async () => {
+    await dispatchAndIntegrate('T001', 'src/a.ts');
+    const { lines, errLines, error } = await update([
+      'T001',
+      'completed',
+      ...completionFlags(),
+      '--usage',
+      '{"total_tokens":42}',
+      '--json',
+    ]);
+    expect(error).toBeUndefined();
+    expect(errLines).toHaveLength(0);
+    const view = JSON.parse(lines[0]!) as { usageWarning: string | null };
+    expect(view.usageWarning).toBeNull();
+    expect(task('T001').usage).toEqual({ total_tokens: 42 });
+  });
+
+  it('never warns for a task that was never worktree-dispatched (inline completion)', async () => {
+    expect((await update(['T002', 'in_progress'])).error).toBeUndefined();
+    mkdirSync(join(root, 'src'), { recursive: true });
+    writeFileSync(join(root, 'src', 'b.ts'), 'export const b = 1;\n');
+    expect((await update(['T002', 'review'])).error).toBeUndefined();
+    const { lines, errLines, error } = await update([
+      'T002',
+      'completed',
+      ...completionFlags(),
+      '--json',
+    ]);
+    expect(error).toBeUndefined();
+    expect(errLines).toHaveLength(0);
+    const view = JSON.parse(lines[0]!) as { usageWarning: string | null };
+    expect(view.usageWarning).toBeNull();
   });
 });

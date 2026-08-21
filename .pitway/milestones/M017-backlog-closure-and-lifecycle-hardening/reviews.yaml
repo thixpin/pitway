@@ -1,0 +1,288 @@
+schema_version: 1
+sessions:
+  - id: rev-0e694bef5884
+    status: decided
+    created_at: 2026-08-21T04:02:46Z
+    roles:
+      - qa
+      - architect
+    content_hash: sha256:92ecb8a992e2eee4d6d29aa39c140e97e3c2ca3d8f09f66254783c7344be1024
+    findings:
+      - role: qa
+        recorded_at: 2026-08-21T04:05:04Z
+        findings:
+          - severity: major
+            finding: AC002's integration test list (ready/waiting outcomes, refusals,
+              journal entry, review staleness) never proves the inserted task is
+              actually dispatchable. task-add leaves a pending task_amendment
+              journal entry until the next checkpoint; pending entries are
+              exactly what blocked M016's first task-dispatch (AC001). If
+              task-dispatch refuses on any pending entry, a task inserted as the
+              only remaining ready task can never be dispatched (no other
+              completion commit will fold it), so the command could pass every
+              listed test and still be unusable for its primary purpose.
+            targets:
+              - ac002
+              - t002
+              - ct002
+            recommendation: "Add to task-add.test.ts: after task-add into an in_progress
+              milestone, task-dispatch of the new ready task succeeds (inline
+              and parallel_worktrees). State explicitly how a pending
+              task_amendment entry interacts with dispatch."
+          - severity: major
+            finding: AC002 enumerates accepted states (confirmed, in_progress) and refusals
+              (draft, completed, cancelled) but is silent on a milestone in
+              `review`. "Every refusal" tests therefore cannot cover it.
+              Inserting a ready task into a milestone already in review (all
+              tasks done, awaiting verification) has undefined consequences for
+              the milestone state machine (review -> in_progress is only on
+              failed verification).
+            targets:
+              - ac002
+              - t002
+            recommendation: "Specify behavior for `review` (recommend: refuse, pointing at
+              verify/milestone-complete) and add it to the refusal tests."
+          - severity: major
+            finding: T007 (global testTimeout) is parallel-eligible alongside T002-T006, all
+              of which run real-git integration suites in their own worktrees at
+              the same time. That concurrent-subprocess load is the exact root
+              cause M016/T001 recorded, and until T007 merges every other
+              worktree still runs on the 5000ms default (only
+              completed-task-revision-path has the per-file override). Parallel
+              dispatch of this milestone is therefore likely to reproduce the
+              flaky timeouts T007 exists to fix, producing false task-verify
+              failures and retries.
+            targets:
+              - t007
+              - t002
+              - t003
+              - t004
+              - t005
+              - ac007
+            recommendation: Run T007 inline immediately after T001 (or make T002-T006 depend
+              on T007) so the global timeout is on the integration branch before
+              parallel work starts.
+          - severity: major
+            finding: CT007 cannot observe AC007. Running six already-passing files together
+              passes whether or not vitest.config.ts exists, whether testTimeout
+              is 60000 or 5000, and whether the redundant per-file override was
+              removed; the failure it guards against is load-dependent and
+              nondeterministic. No check reads the config or the removed
+              override, so the AC can be marked done with no evidence the change
+              is in place or effective (e.g. if package.json's test script
+              bypasses the config).
+            targets:
+              - ac007
+              - ct007
+              - t007
+            recommendation: "Add a review check (or a small unit test) asserting
+              vitest.config.ts sets testTimeout: 60000 with the root-cause
+              comment, that vitest actually loads it, and that
+              completed-task-revision-path.test.ts has no per-file timeout."
+          - severity: major
+            finding: "AC003's missing-state mapping depends on StateStoreError carrying an
+              ENOENT cause for .pitway/state.yaml. src/state/store.ts is a
+              context file but not in T005's write_scope; if the error class
+              does not preserve `cause` (or wraps a different path), T005 must
+              either edit store.ts out of scope or fall back to message-string
+              sniffing. Also, AC003's \"programming errors still print the full
+              stack\" branch has no test: build-bin.test.ts only exercises the
+              two PitWay-error paths, and no unit test of renderCliError is
+              named in any write_scope."
+            targets:
+              - ac003
+              - t005
+              - ct003
+            recommendation: Confirm StateStoreError exposes the ENOENT cause (add
+              src/state/store.ts to T005 write_scope if not), and add
+              tests/unit/cli-errors.test.ts covering the non-PitWay-error stack
+              path; include it in CT003.
+          - severity: minor
+            finding: AC005 equates "has a worktree_dispatch journal record" with "was really
+              dispatched". Under the inline execution strategy a task is
+              dispatched to a subagent without (apparently) such a record, so a
+              really-dispatched inline task completed without --usage gets no
+              warning, and the test case "never-dispatched inline task (none)"
+              cannot distinguish inline-dispatched from never-dispatched. The
+              tests should also drive the real dispatch path rather than
+              hand-inserting a journal record, and must confirm the record is
+              still present at completion time (not folded by an intervening
+              checkpoint).
+            targets:
+              - ac005
+              - t003
+              - ct005
+            recommendation: Disclose that detection covers parallel_worktrees dispatch only
+              (or detect inline dispatch too), and make the warning tests use
+              real task-dispatch plus a checkpoint between dispatch and
+              completion.
+          - severity: minor
+            finding: "Asset count baseline is self-contradictory in AC002: \"(34 -> 36
+              counting AC008's none: assets 35 -> 36)\". AC009 then pins SS9 to
+              36. If the actual current count in
+              claude-assets.test.ts/init.test.ts is 34, T002 and T009 will
+              encode the wrong number and the plan will drift from the tests."
+            targets:
+              - ac002
+              - ac009
+              - t002
+              - t009
+            recommendation: State a single before/after count verified against the current
+              claude-assets.test.ts assertion before confirmation.
+          - severity: minor
+            finding: T009's task-level verification is "npm test && npx tsc --noEmit", and
+              CT010/CT011 run the same commands again at milestone verify. AC009
+              says the gates run "exactly once"; as drafted they run twice (~15
+              minutes each), and the project's own rule keeps the full suite as
+              a milestone-level gate only.
+            targets:
+              - ac009
+              - t009
+              - ct010
+              - ct011
+            recommendation: Make T009's task verification the CT009 review of
+              IMPLEMENTATION_PLAN.md only, and let CT010/CT011 be the single
+              full-suite/typecheck run.
+          - severity: minor
+            finding: AC001 names "both commit-producing paths" (fresh and resumed confirm)
+              but `milestone-confirm --amend` is also a write path used by
+              T002's own flow (Change Log entry before task-add). If amend
+              produces a commit or leaves journal entries, it is a third path
+              the regression test does not cover.
+            targets:
+              - ac001
+              - t001
+            recommendation: Confirm whether --amend commits; if so, add reconcilePending
+              there too and a test, or state why it is excluded.
+      - role: architect
+        recorded_at: 2026-08-21T04:05:12Z
+        findings:
+          - severity: major
+            finding: AC002 defines task-add only against main's tasks.yaml and never states
+              its interaction with tasks already dispatched into parallel
+              worktrees. A worktree carries the tasks.yaml snapshot from its
+              dispatch time; after task-add inserts Tnnn on main, that
+              worktree's eventual task-integrate must either re-derive
+              tasks.yaml from main's current state or git-merge a file that now
+              diverges in two places (the integrating task's status block and
+              the appended task). If integrate merges textually, the outcome is
+              a conflict or silent loss of the inserted task -- a new way for
+              milestone state and task state to disagree that decision 2 does
+              not address. Nothing in the T002 tests exercises task-add while a
+              worktree dispatch is live, and src/core/tasks/integrate.ts is not
+              in T002's context_files.
+            targets:
+              - ac002
+              - t002
+            recommendation: "Specify and test task-add with a live worktree_dispatch: either
+              refuse while any task is dispatched, or prove task-integrate
+              rebuilds tasks.yaml from main and add integrate.ts to T002
+              context."
+          - severity: major
+            finding: Reusing task_amendment (decision 3) means task-add leaves a pending
+              journal entry whose tasks.yaml target genuinely differs from HEAD
+              until the next checkpoint folds it. AC001 itself documents that
+              pending entries block task-dispatch under parallel_worktrees. So
+              the obvious sequence "task-add the missing task, then dispatch it"
+              is blocked until some other task's completion commit lands; if
+              every remaining task is already dispatched, the new task waits on
+              an unrelated integration. AC002 neither states this nor tests
+              dispatch-after-task-add, and the review-staleness test alone does
+              not surface it. This is pre-existing behaviour for task-amend, but
+              task-add makes it the primary path rather than an edge.
+            targets:
+              - ac002
+              - t002
+            recommendation: State the post-task-add dispatch rule explicitly and add a test
+              (task-add then task-dispatch under parallel_worktrees); if
+              blocked, document the required checkpoint or have task-add ride
+              the --amend commit.
+          - severity: minor
+            finding: Decision 3 is sound only if no consumer of task_amendment entries
+              dereferences the entry's task id against an earlier checkpoint. If
+              the entry shape carries task_id and anything (resume summary,
+              journal listing, dispatch staleness checks, recovery validation)
+              looks the task up, an insertion entry names a task that did not
+              exist at the checkpoint it is folded from. AC002 asserts
+              byte-match reconciliation is reused but does not require a
+              resume/recovery test with the task-add entry still pending.
+            targets:
+              - ac002
+              - t002
+            recommendation: "Add a test: task-add, leave the entry pending, run
+              resume/milestone-status and the next checkpoint fold; assert no
+              consumer assumes the amended task pre-existed."
+          - severity: minor
+            finding: "AC002's allowed states (confirmed, in_progress) silently exclude
+              `review`. A milestone whose tasks all completed and which sits in
+              review awaiting verification cannot receive a task; the only exit
+              is a failed verification (review -> in_progress). Also, depends_on
+              is validated for existence only: depending on a cancelled task
+              yields a task that is permanently waiting, which blocks
+              milestone-complete unless it is then cancelled. Both are
+              consistent with the unchanged state machine but should be stated
+              and tested as deliberate refusals rather than left implicit."
+            targets:
+              - ac002
+              - t002
+            recommendation: Enumerate `review` as a refusal with its message, and refuse
+              depends_on that names a cancelled task; cover both in
+              task-add.test.ts.
+          - severity: minor
+            finding: "Decision 7 is layering-clean (CLI importing Core/State error classes
+              is the allowed direction, bin-block-only keeps in-process tests
+              and any driver unaffected). Two implementation risks: (1) the
+              missing-state branch depends on StateStoreError preserving the
+              ENOENT cause and path, yet src/state/store.ts is only a context
+              file for T005, not write_scope -- if the cause is not preserved
+              the task cannot complete in scope; (2) errors raised by zod while
+              parsing task-add's --file (T002) or commander usage errors are not
+              PitWay classes and would still print stacks, undermining AC003's
+              promise that refusals never show a trace."
+            targets:
+              - ac003
+              - t005
+              - t002
+            recommendation: Confirm store.ts preserves the cause or add it to T005
+              write_scope; require T002 to wrap --file validation failures in a
+              project error class.
+          - severity: minor
+            finding: AC004 changes the evidence string shape for failed command checks. Any
+              existing test that asserts failed-run evidence equals/startsWith
+              the trimmed output (verification-repair, milestone-complete,
+              review lifecycle tests) would break, and only
+              verify.test.ts/task-verify.test.ts are in T004's write_scope --
+              the exact write_scope gap AC008 is meant to stop. Separately,
+              "summary budgeted first" needs a per-line and total cap on the
+              summary itself, or a single very long FAIL line can consume the
+              whole budget and leave no tail.
+            targets:
+              - ac004
+              - t004
+            recommendation: Grep tests/ for failed-evidence assertions before confirming and
+              add hits to T004 write_scope; cap summary lines/total within the
+              budget and test it.
+          - severity: minor
+            finding: Decision 6 sets testTimeout only. Vitest's hookTimeout (default
+              10000ms) governs beforeEach/afterEach that create real git repos
+              and worktrees, which is the same load-sensitive work; under
+              concurrent subprocess load it can fail with the same signature.
+              Also, T003/T004/T006/T007 dispatched in parallel worktrees run
+              their verifications concurrently while T007's config does not yet
+              exist in the other worktrees -- reproducing the exact load
+              condition AC007 fixes. Decision 1 (T001 inline first) is sound
+              provided the inline task-update in_progress path does not share
+              task-dispatch's pending-entry check; the contract implies but does
+              not state this.
+            targets:
+              - ac007
+              - t007
+              - t001
+            recommendation: Set hookTimeout alongside testTimeout; run T007 inline right
+              after T001 so parallel worktrees inherit it; state that inline
+              start ignores pending entries.
+    decision:
+      outcome: revision_requested
+      note: 16 QA+architect findings folded into the draft; see contract Change Log
+        2026-08-21.
+      decided_at: 2026-08-21T04:08:39Z

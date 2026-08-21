@@ -1,3 +1,8 @@
+---
+description: Transition a task's status; completion commits its files atomically
+argument-hint: <id> <status>
+---
+
 # task-update
 
 The only way a task's status ever changes, and the only way its completion

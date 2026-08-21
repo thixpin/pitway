@@ -1,3 +1,8 @@
+---
+description: Bounded small-fix workflow against an already-completed milestone
+argument-hint: <create|approve|run|commit|cancel|promote|status> [change-id]
+---
+
 # quick-change
 
 Use for a small, bounded fix against an already-completed milestone that

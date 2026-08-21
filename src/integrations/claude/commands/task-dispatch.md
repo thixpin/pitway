@@ -1,3 +1,8 @@
+---
+description: Prepare a parallel-eligible task for worktree execution
+argument-hint: <id>
+---
+
 # task-dispatch
 
 Prepares one parallel-eligible task for worktree execution under

@@ -89,7 +89,7 @@ describe('pitway milestone-status', () => {
     expect(view.tasks).toHaveLength(4);
   });
 
-  it('renders human output with per-task status labels and no percentages outside the racing footer', async () => {
+  it('renders human output with per-task status labels, a task table, and a progress-bar footer', async () => {
     const program = buildCli();
     const lines: string[] = [];
     registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
@@ -99,13 +99,93 @@ describe('pitway milestone-status', () => {
     expect(output).toContain('Test Milestone');
     expect(output).toContain('T001');
     expect(output).toContain('Completed');
-    // M013/AC004: the racing footer is the one sanctioned exception to the
-    // no-percentages rule (decision 5) -- everything above it stays free of
-    // any percentage.
-    const [body, footer] = output.split('\n\n🏎️');
-    expect(body).not.toContain('%');
-    expect(body).not.toMatch(/\b\d+%/);
-    expect(footer).toMatch(/^ \d+% ·/);
+    // UX quick-change: the summary header (Status/Progress/Baseline/Tokens)
+    // stays free of any percentage -- only the task table's own Progress
+    // column and the racing footer (now carrying a progress bar) are the
+    // sanctioned exceptions.
+    const header = output.split('\n\n')[0]!;
+    expect(header).not.toContain('%');
+    expect(output).toMatch(/\| Task \| Status \| Progress \| Execution \|/);
+    expect(output).toMatch(/🏎️ \[[█░]{20}\] \d+% · ✅/);
+  });
+
+  it("renders every task in the table, in the milestone's own order, with correct status/progress/execution", async () => {
+    const program = buildCli();
+    const lines: string[] = [];
+    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001']);
+
+    const rows = lines
+      .join('\n')
+      .split('\n')
+      .filter((l) => /^\| T\d{3} \|/.test(l));
+    // T001 completed, T002 in_progress (never dispatched -> inline), T003
+    // waiting (not started -> no execution mode), T004 cancelled (likewise)
+    // -- the beforeEach fixture's own tasks, in their declared order.
+    expect(rows).toEqual([
+      '| T001 | ✓ Completed | 100% | inline |',
+      '| T002 | ● In Progress | — | inline |',
+      '| T003 | ◌ Waiting | — | — |',
+      '| T004 | ✗ Cancelled | — | — |',
+    ]);
+  });
+
+  it('shows "worktree" execution for a task with a real worktree_integrate journal record', async () => {
+    const { appendWorktreeIntegrateRecord } = await import('../../src/state/journal.js');
+    appendWorktreeIntegrateRecord(root, {
+      id: 'wti-test',
+      dispatchId: 'wtd-test',
+      milestone: 'M001',
+      taskId: 'T002',
+      workerSha: 'a'.repeat(40),
+      at: new Date().toISOString(),
+    });
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001']);
+
+    expect(lines.join('\n')).toContain('| T002 | ● In Progress | — | worktree |');
+  });
+
+  it('shows "inline" execution for a dispatch that was later discarded and completed inline instead', async () => {
+    const { appendWorktreeDispatchRecord } = await import('../../src/state/journal.js');
+    // A dispatch attempt whose worktree_dispatch record survives in the
+    // append-only journal even though it was never integrated -- the real
+    // scenario this milestone's own execution hit live (M017/T002-T006).
+    appendWorktreeDispatchRecord(root, {
+      id: 'wtd-abandoned',
+      milestone: 'M001',
+      taskId: 'T002',
+      branch: 'pitway/task/M001-T002',
+      worktreePath: '.pitway-worktrees/M001-T002',
+      createdFrom: git(['rev-parse', 'HEAD'], root).trim(),
+      at: new Date().toISOString(),
+    });
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001']);
+
+    expect(lines.join('\n')).toContain('| T002 | ● In Progress | — | inline |');
+  });
+
+  it('renders the progress bar at the minimum band (10%, freshly confirmed) and clamps within 0-100%', async () => {
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [task({ id: 'T001', status: 'ready' }), task({ id: 'T002', status: 'waiting' })],
+    });
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001']);
+
+    const last = lines.join('\n').split('\n').at(-1)!;
+    // 10% of a 20-char bar rounds to 2 filled chars.
+    expect(last).toBe('🏎️ [██░░░░░░░░░░░░░░░░░░] 10% · ✅ 0/2 · Next: T001');
   });
 });
 
@@ -190,12 +270,17 @@ describe('pitway milestone-status racing footer (M013/T005)', () => {
       tasks: [task({ id: 'T001', status: 'completed' }), task({ id: 'T002', status: 'ready' })],
     });
 
+    // The --json footer field stays the plain, unmodified string
+    // computeRacingFooter produces -- machine interface unaffected by the
+    // human-mode progress-bar presentation change.
     const view = JSON.parse(await runStatus(['--json'])) as { footer: string | null };
     expect(view.footer).toBe('🏎️ 48% · ✅ 1/2 · Next: T002');
 
     const output = await runStatus();
     const lines = output.split('\n');
-    expect(lines[lines.length - 1]).toBe('🏎️ 48% · ✅ 1/2 · Next: T002');
+    // The printed human-mode line splices a progress bar between the icon
+    // and the percentage; semantic content (percent/count/next) unchanged.
+    expect(lines[lines.length - 1]).toBe('🏎️ [██████████░░░░░░░░░░] 48% · ✅ 1/2 · Next: T002');
   });
 });
 
@@ -290,7 +375,7 @@ describe('pitway milestone-status footer output separation (M014 driver-output d
     const output = await runStatus();
     const lines = output.split('\n');
     const last = lines[lines.length - 1]!;
-    expect(last).toBe('🏎️ 48% · ✅ 1/2 · Next: T002 · task-dispatch command');
+    expect(last).toBe('🏎️ [██████████░░░░░░░░░░] 48% · ✅ 1/2 · Next: T002 · task-dispatch command');
     expect(lines[lines.length - 2]).toBe('');
     expect(lines.filter((l) => /\d+% · ✅ \d+\/\d+/.test(l))).toEqual([last]);
   });
@@ -311,7 +396,7 @@ describe('pitway milestone-status footer output separation (M014 driver-output d
     const output = await runStatus();
     const lines = output.split('\n');
     const last = lines[lines.length - 1]!;
-    expect(last).toBe('🏁 100% · ✅ 2/2 · Complete');
+    expect(last).toBe('🏁 [████████████████████] 100% · ✅ 2/2 · Complete');
     expect(lines[lines.length - 2]).toBe('');
     expect(lines.filter((l) => /\d+% · ✅ \d+\/\d+/.test(l))).toEqual([last]);
   });

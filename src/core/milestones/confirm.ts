@@ -6,7 +6,7 @@ import { checkWorkingTreeClean } from '../../git/safety.js';
 import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
 import { listSafeManagedDirtyPaths } from '../../state/managed-init-paths.js';
 import { parseContractFile, serializeContractFile } from '../../state/contract-file.js';
-import { appendJournalEntry, readJournal } from '../../state/journal.js';
+import { appendJournalEntry, readJournal, reconcilePending } from '../../state/journal.js';
 import {
   loadConfig,
   loadContract,
@@ -172,6 +172,13 @@ function runConfirm(root: string, milestoneId: string, contract: ContractFile): 
       paths: expectedPaths,
       ...(baseRevision !== null ? { since: baseRevision } : {}),
     });
+    // M017/T001 (AC001): the baseline commit is a checkpoint like any
+    // other -- a journal-pending entry whose target it just committed (e.g.
+    // a pre-confirmation review session's reviews.yaml writes) must get its
+    // marker here, or it stays "pending" forever and blocks task-dispatch
+    // (found live in M016). Same byte-match semantics as task-update/
+    // milestone-complete; entries whose target differs from HEAD stay pending.
+    reconcilePending(root, milestoneId);
     return {
       id: milestoneId,
       operation: 'confirm',
@@ -231,6 +238,7 @@ function runConfirm(root: string, milestoneId: string, contract: ContractFile): 
       paths: expectedPaths,
       ...(contract.frontmatter.base_revision != null ? { since: contract.frontmatter.base_revision } : {}),
     });
+    reconcilePending(root, milestoneId);
     return {
       id: milestoneId,
       operation: 'confirm',

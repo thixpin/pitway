@@ -137,12 +137,12 @@ describe('completed-task-revision path (M007/T007/AC008)', () => {
   // and points at inherent OS-level contention when many real git child
   // processes are spawned concurrently under load -- CPU/fork scheduling
   // delays that legitimately push this test's real subprocess work past
-  // the default 5s budget without anything being logically wrong. The
-  // accommodation below is a one-time, evidence-backed timeout increase
-  // (60s, matching the existing precedent in
-  // tests/integration/parallel-worktrees-lifecycle.test.ts for other
-  // heavy real-subprocess lifecycle tests), not a retry: retrying would
-  // hide a real failure if one ever occurs, whereas a wider budget for
+  // the default 5s budget without anything being logically wrong. Per
+  // M017/T007 this is no longer a per-test override here: the 60s budget is
+  // now the project-wide default (vitest.config.ts's testTimeout/
+  // hookTimeout), so every heavy real-subprocess test gets the same
+  // accommodation from one authoritative value, not a retry -- retrying
+  // would hide a real failure if one ever occurs, whereas a wider budget for
   // work that is only ever slow, never wrong, does not.
   it('delivers corrective work as a new task in a subsequent milestone, never reopening the original', async () => {
     expect((await run(['init'], root)).error).toBeUndefined();
@@ -273,5 +273,5 @@ tasks:
     // A's commit was never rewritten: its own trailer/subject is unchanged,
     // and it remains a real ancestor of the final HEAD.
     expect(git(['merge-base', '--is-ancestor', shaAfterA, headSha], root)).toBe('');
-  }, 60000);
+  });
 });
