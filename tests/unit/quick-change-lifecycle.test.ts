@@ -11,6 +11,9 @@ import {
   QuickChangeError,
   readAllQuickChanges,
 } from '../../src/core/quick-change/create.js';
+import { commitQuickChange } from '../../src/core/quick-change/commit.js';
+import { promoteQuickChange } from '../../src/core/quick-change/promote.js';
+import { runQuickChange } from '../../src/core/quick-change/run.js';
 import { readJournal } from '../../src/state/journal.js';
 import { loadState, saveState } from '../../src/state/store.js';
 
@@ -243,6 +246,29 @@ describe('cancelQuickChange', () => {
     });
     cancelQuickChange(repo, created.id);
     expect(() => cancelQuickChange(repo, created.id)).toThrow(QuickChangeError);
+  });
+});
+
+describe('QuickChangeError identity across lifecycle modules', () => {
+  // Regression for the M016/AC004 defect: QuickChangeError was declared as
+  // two textually-identical but distinct classes (create.ts and run.ts each
+  // `export class QuickChangeError extends Error {}`), with commit.ts
+  // importing run.ts's class and promote.ts importing create.ts's -- so an
+  // `instanceof QuickChangeError` check written against one site's import
+  // silently failed to catch an error thrown by the other's code path. Now
+  // that run.ts/commit.ts/promote.ts all import the single class create.ts
+  // exports (rather than redeclaring or cross-importing it), an error thrown
+  // by any of them passes `instanceof` the same canonical class.
+  it('an unknown-id error thrown by run.ts is instanceof the same class create.ts throws', () => {
+    expect(() => runQuickChange(repo, 'qc-does-not-exist')).toThrow(QuickChangeError);
+  });
+
+  it('an unknown-id error thrown by commit.ts is instanceof the same class create.ts throws', () => {
+    expect(() => commitQuickChange(repo, 'qc-does-not-exist')).toThrow(QuickChangeError);
+  });
+
+  it('an unknown-id error thrown by promote.ts is instanceof the same class create.ts throws', () => {
+    expect(() => promoteQuickChange(repo, 'qc-does-not-exist')).toThrow(QuickChangeError);
   });
 });
 

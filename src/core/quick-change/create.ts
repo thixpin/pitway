@@ -194,7 +194,11 @@ export function createQuickChange(
   return toView(record);
 }
 
-function requireQuickChange(root: string, changeId: string): JournalQuickChange {
+// Shared by run.ts/commit.ts/promote.ts (previously byte-identical copies in
+// each of those files) -- exported here so every quick-change lifecycle
+// module resolves an id through the exact same lookup, and every "unknown
+// quick-change" error they throw is the exact same QuickChangeError class.
+export function requireQuickChange(root: string, changeId: string): JournalQuickChange {
   const current = deriveQuickChangeState(readJournal(root), changeId);
   if (current === undefined) {
     throw new QuickChangeError(`unknown quick-change ${changeId}`);

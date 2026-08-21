@@ -1,6 +1,5 @@
-import { readJournal, appendQuickChangeRecord, type JournalQuickChange } from '../../state/journal.js';
-import { deriveQuickChangeState } from './create.js';
-import { QuickChangeError } from './create.js';
+import { appendQuickChangeRecord } from '../../state/journal.js';
+import { QuickChangeError, requireQuickChange } from './create.js';
 
 // T005: converts a still-open quick-change into a milestone draft
 // candidate. No CLI surface is registered from this module (see
@@ -13,14 +12,6 @@ export interface QuickChangePromoteView {
   status: 'promoted';
   objective: string;
   scope: string[];
-}
-
-function requireQuickChange(root: string, changeId: string): JournalQuickChange {
-  const current = deriveQuickChangeState(readJournal(root), changeId);
-  if (current === undefined) {
-    throw new QuickChangeError(`unknown quick-change ${changeId}`);
-  }
-  return current;
 }
 
 // promote: valid only from draft or approved (before commit) -- never from

@@ -87,7 +87,7 @@ tasks:
       class), not only `run.ts`/`commit.ts`'s -- `promote.ts` is one of the four
       files this task touches and had no dedicated coverage naming it anywhere
       in the original draft."
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - AC004
@@ -112,7 +112,15 @@ tasks:
       detail: npm test -- tests/unit/quick-change-lifecycle.test.ts
         tests/unit/quick-change-commit.test.ts
         tests/integration/quick-change.test.ts
-    result: null
+    result:
+      summary: "[truncated] ommit.ts, and promote.ts are all instanceof the same class
+        -- a currently-impossible check before this fix. Zero behavior change:
+        every pre-existing test passes unmodified. A real RED-check (git-free
+        file swap) confirmed the new tests fail for the right reason before the
+        fix, pass after."
+      evidence: Tests  60 passed (60) | Start at  09:18:09 | Duration  10.25s
+        (transform 468ms, setup 0ms, import 703ms, tests 19.77s, environment
+        0ms)
     attempts: 2
     usage: null
   - id: T003
@@ -140,7 +148,7 @@ tasks:
       working tree) -- that narrower case stays covered only by M014's existing
       synthetic tests. Docs-only task: no src/ changes; verified by
       CT001/CT005's own review checks."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002
