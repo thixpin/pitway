@@ -1,0 +1,111 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: "B006: review usage tracking"
+    objective: "Add nullable usage: taskUsageSchema to reviewFindingsSnapshotSchema
+      (src/state/schemas.ts), reusing the existing taskUsageSchema type
+      verbatim. Add an optional --usage <json> flag to milestone-review record
+      (src/cli/commands/milestone-review.ts), parsed the same way task-update's
+      --usage is -- a measured figure only, never estimated; attach it to the
+      recorded snapshot (src/core/reviews/record.ts). milestone-review report
+      (src/core/reviews/report.ts + src/cli/commands/milestone-review.ts's
+      renderReportHuman) gains a per-role usage line (when present) and a
+      session-level total, mirroring the existing Tokens: X (N tasks N/A)
+      convention -- a role with null usage disclosed as missing, never treated
+      as zero. Tokens only: no dollar-cost field, estimate, or price table
+      anywhere (AC001-AC004). dispatch.md/protocol-driver.md gain a small
+      addition instructing the driver to pass --usage when recording a
+      dispatched reviewer's findings, mirroring the existing task-dispatch MUST
+      rule (AC005)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - reviewFindingsSnapshotSchema gains a nullable usage field reusing
+        taskUsageSchema; every pre-existing reviews.yaml parses unchanged
+      - milestone-review record accepts an optional --usage <json> flag, parsed
+        like task-update's, never estimated, attached to the snapshot
+      - milestone-review report renders per-role usage (when present) and a
+        session-level total; a role with null usage is disclosed as missing
+      - no dollar-cost field, estimate, or price table exists anywhere in the
+        diff
+      - dispatch.md and protocol-driver.md document the new --usage MUST-pass
+        instruction for recording a dispatched reviewer
+    write_scope:
+      - src/state/schemas.ts
+      - src/core/reviews/record.ts
+      - src/core/reviews/report.ts
+      - src/cli/commands/milestone-review.ts
+      - src/integrations/claude/dispatch.md
+      - src/integrations/claude/protocol-driver.md
+      - tests/unit/schemas.test.ts
+      - tests/integration/milestone-review-record.test.ts
+      - tests/integration/milestone-review-report.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/schemas.test.ts
+        tests/integration/milestone-review-record.test.ts
+        tests/integration/milestone-review-report.test.ts
+    result: null
+    usage: null
+  - id: T002
+    name: "B007: backlog archive without an active milestone"
+    objective: "Add a new sibling journal record kind, backlog_archive
+      (src/state/journal.ts), mirroring journalQuickChangeSchema's own
+      no-milestone-field precedent: fields id, target (archived backlog item's
+      id), reason, at. Add appendBacklogArchiveRecord alongside the other
+      sibling appenders; add the new kind to journalRecordSchema's discriminated
+      union. archiveBacklogItem (src/core/backlog/archive.ts) drops its
+      resolveActiveMilestoneStrict call and calls the new appender instead of
+      appendJournalEntry -- backlog archive <id> --reason <text> now succeeds
+      with state.active_milestone: null. add/list/show/promote are completely
+      unchanged (AC006-AC007). A real regression test reproduces B007's own
+      finding directly, and proves add/promote still refuse identically to
+      before (AC008)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - a new backlog_archive sibling journal kind exists (no milestone field),
+        added to journalRecordSchema's union, with a matching
+        appendBacklogArchiveRecord function
+      - archiveBacklogItem no longer calls resolveActiveMilestoneStrict and
+        succeeds with state.active_milestone null
+      - add/list/show/promote are byte-for-byte unchanged and still refuse with
+        no active milestone
+      - a real regression test proves backlog archive succeeds with no active
+        milestone, and a second test proves add/promote still refuse
+    write_scope:
+      - src/state/journal.ts
+      - src/core/backlog/archive.ts
+      - tests/unit/journal.test.ts
+      - tests/integration/backlog.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/journal.test.ts
+        tests/integration/backlog.test.ts
+    result: null
+    usage: null
+  - id: T003
+    name: Reconciliation and backlog promotion
+    objective: "Reconcile IMPLEMENTATION_PLAN.md: section 4 (State Schema) documents
+      the new usage field on a review findings snapshot and the new
+      backlog_archive journal kind; section 7 (CLI Commands) documents
+      milestone-review record's new --usage flag. Then run pitway backlog
+      promote B006 --task T001 and pitway backlog promote B007 --task T002,
+      closing out both backlog items formally (AC009)."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+    acceptance_criteria:
+      - IMPLEMENTATION_PLAN.md sections 4 and 7 document both new capabilities
+        accurately against the real implementation
+      - backlog promote B006 --task T001 and backlog promote B007 --task T002
+        both succeed; pitway backlog list reflects promoted status
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+    verification:
+      strategy: manual
+      detail: Manual review of the IMPLEMENTATION_PLAN.md diff plus backlog list
+        output after both promotions.
+    result: null
+    usage: null
