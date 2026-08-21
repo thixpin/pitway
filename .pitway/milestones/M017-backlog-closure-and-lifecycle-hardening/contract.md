@@ -2,7 +2,7 @@
 schema_version: 1
 id: M017
 title: Backlog Closure and Lifecycle Hardening
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-21T04:12:39Z
 verification_approved_hash: sha256:f64177bf31d5904d8855683630843b2fc9ce7b89bf01676934157a52e88da581

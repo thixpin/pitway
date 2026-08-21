@@ -100,3 +100,32 @@ results:
     recorded_by: command
     duration_ms: 959
     termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-21T06:23:45Z
+    evidence: "Reviewed protocol-driver.md's 'Drafting write_scope' section and the
+      confirmed-milestone-boundary text in protocol-driver.md ('Choosing a
+      correction mechanism') and commands/milestone-cancel.md against AC008.
+      Assertion sites named: registered-command list (cli.test.ts +
+      build-bin.test.ts), baseline/completionPaths, shipped-asset tests, and any
+      exact-string-content test -- all four present, including string-content
+      assertions. Boundary text matches actual behavior after a correction made
+      during this review (milestone-cancel.md overstated the state-machine gap;
+      corrected to the precise confirmed-is-never-observable distinction, landed
+      via VR002). task-add and its dispatch rule are named as the insertion path
+      in both docs; git reset is named as never the path in
+      milestone-cancel.md."
+    recorded_by: developer
+  - check: CT009
+    status: pass
+    at: 2026-08-21T06:24:08Z
+    evidence: "Diffed IMPLEMENTATION_PLAN.md against AC009's edit list: header
+      changelog entry added (M017/T009); SS7 command table gains the task-add
+      row and the count moves 22->23; SS9 asset count moves 35->36 with a new
+      'M017 additions' bullet; all 8 of the Backlog's open items marked
+      struck-through DELIVERED by M017/Txxx with the chosen direction recorded,
+      npm-pack.test.ts transient explicitly left open by name; M017's own
+      Bootstrap-table row confirmed absent (grep for '| M017 |' finds nothing);
+      Status snapshot's point-in-time marker and closing narrative updated for
+      M017."
+    recorded_by: developer
