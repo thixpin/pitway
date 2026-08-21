@@ -107,7 +107,7 @@ tasks:
       tests/integration/verification-repair.test.ts -- targeting real
       recovery/repair-path branches, validation failures, and state-transition
       refusals. Test-only changes expected (AC005).
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - src/cli/commands/verification-repair.ts reaches >=12/13 (>=90%) branch
@@ -120,9 +120,15 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/integration/verification-repair.test.ts
-    result: null
+    result:
+      summary: verification-repair.ts reached 13/13 (100%) branch coverage, up from
+        6/13 (46.2%) baseline. Test-only change.
+      evidence: Tests  32 passed (32) | Start at  01:37:56 | Duration  38.81s
+        (transform 259ms, setup 0ms, import 355ms, tests 38.36s, environment
+        0ms)
     attempts: 1
-    usage: null
+    usage:
+      total_tokens: 69868
   - id: T005
     name: cli/index.ts error-boundary gap (AC006 decision)
     objective: "Per AC006's presented-and-approved decision: add one new

@@ -269,6 +269,16 @@ describe('pitway verification-repair approve validation', () => {
     expect(repairs().records).toHaveLength(0);
   });
 
+  it('requires --change-log', async () => {
+    await readyForRepair();
+    const { error } = await run(
+      ['verification-repair', 'approve', 'M001', '--file', 'repair-target.txt', '--check', 'CT001', '--json'],
+      root,
+    );
+    expect(error?.message).toMatch(/--change-log/);
+    expect(repairs().records).toHaveLength(0);
+  });
+
   it('rejects a --check id that is not a command-type check', async () => {
     await readyForRepair();
     const { error } = await approve(['repair-target.txt'], ['CT002']);
@@ -572,5 +582,77 @@ describe('pitway verification-repair structurally refuses reserved targets', () 
     const { error } = await approve(['repair-target.txt', tasksYamlPath()], ['CT001']);
     expect(error?.message).toMatch(/tasks\.yaml/);
     expect(repairs().records).toHaveLength(0);
+  });
+});
+
+// CommandDeps.root/write both fall back (process.cwd() / console.log) when
+// omitted -- real behavior no other describe block exercises, since every
+// other test explicitly supplies both via run()'s deps. Also the only place
+// exercising the two human-readable (non --json) renderCommitHuman branches:
+// every commitRepair() call above passes --json, so neither the
+// "committed" nor the "already-committed" human sentence is ever produced
+// elsewhere.
+describe('pitway verification-repair CLI wiring (deps.root/deps.write fallbacks, human-readable output)', () => {
+  async function runWithDefaultDeps(args: string[]): Promise<{ lines: string[]; error?: Error }> {
+    const program = buildCli();
+    const lines: string[] = [];
+    const originalLog = console.log;
+    console.log = ((line: string) => lines.push(line)) as typeof console.log;
+    registerVerificationRepairCommand(program, {});
+    try {
+      await program.parseAsync(['node', 'pitway', ...args]);
+      return { lines };
+    } catch (error) {
+      return { lines, error: error as Error };
+    } finally {
+      console.log = originalLog;
+    }
+  }
+
+  it('defaults deps.root to process.cwd() and deps.write to console.log, rendering both commit outcomes as human-readable text', async () => {
+    await readyForRepair();
+    const originalCwd = process.cwd();
+    process.chdir(root);
+    try {
+      const approved = await runWithDefaultDeps([
+        'verification-repair',
+        'approve',
+        'M001',
+        '--file',
+        'repair-target.txt',
+        '--check',
+        'CT001',
+        '--change-log',
+        'Fix it via default deps.',
+      ]);
+      expect(approved.error).toBeUndefined();
+      expect(approved.lines[0]).toMatch(/Approved verification repair VR001 for M001/);
+
+      writeFileSync(join(root, 'repair-target.txt'), 'FIXED default deps\n');
+      const committed = await runWithDefaultDeps(['verification-repair', 'commit', 'M001', 'VR001']);
+      expect(committed.error).toBeUndefined();
+      expect(committed.lines[0]).toMatch(/^🔧 Committed verification repair VR001 for M001 at /);
+
+      const again = await runWithDefaultDeps(['verification-repair', 'commit', 'M001', 'VR001']);
+      expect(again.error).toBeUndefined();
+      expect(again.lines[0]).toMatch(/^🔧 Verification repair VR001 already committed at /);
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it('defaults deps.root to process.cwd() for cancel and renders human-readable output', async () => {
+    await readyForRepair();
+    await approve(['repair-target.txt'], ['CT001'], 'Investigate via default deps.');
+    const originalCwd = process.cwd();
+    process.chdir(root);
+    try {
+      const cancelled = await runWithDefaultDeps(['verification-repair', 'cancel', 'M001', 'VR001']);
+      expect(cancelled.error).toBeUndefined();
+      expect(cancelled.lines[0]).toBe('🔧 Cancelled verification repair VR001 for M001.');
+      expect(repairs().records[0]!.status).toBe('cancelled');
+    } finally {
+      process.chdir(originalCwd);
+    }
   });
 });
