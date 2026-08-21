@@ -1,2 +1,85 @@
 schema_version: 1
-results: []
+results:
+  - check: CT002
+    status: pass
+    at: 2026-08-21T18:49:07Z
+    evidence: Tests  60 passed (60) | Start at  01:49:00 | Duration  6.57s
+      (transform 2.20s, setup 0ms, import 3.56s, tests 32.45s, environment 1ms)
+    recorded_by: command
+    duration_ms: 7228
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-21T18:49:19Z
+    evidence: Tests  14 passed (14) | Start at  01:49:07 | Duration  11.53s
+      (transform 237ms, setup 0ms, import 331ms, tests 11.13s, environment 0ms)
+    recorded_by: command
+    duration_ms: 11907
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-21T18:49:29Z
+    evidence: Tests  19 passed (19) | Start at  01:49:19 | Duration  9.72s
+      (transform 503ms, setup 0ms, import 714ms, tests 18.47s, environment 0ms)
+    recorded_by: command
+    duration_ms: 10097
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-21T18:50:04Z
+    evidence: Tests  32 passed (32) | Start at  01:49:29 | Duration  35.34s
+      (transform 247ms, setup 0ms, import 344ms, tests 34.92s, environment 0ms)
+    recorded_by: command
+    duration_ms: 35775
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-21T18:50:11Z
+    evidence: Tests  48 passed (48) | Start at  01:50:05 | Duration  5.80s
+      (transform 15ms, setup 0ms, import 23ms, tests 5.69s, environment 0ms)
+    recorded_by: command
+    duration_ms: 6346
+    termination_reason: exited
+  - check: CT010
+    status: pass
+    at: 2026-08-21T18:51:53Z
+    evidence: Tests  1338 passed (1338) | Start at  01:50:11 | Duration  100.83s
+      (transform 3.70s, setup 0ms, import 14.43s, tests 677.83s, environment
+      8ms)
+    recorded_by: command
+    duration_ms: 102290
+    termination_reason: exited
+  - check: CT001
+    status: pass
+    at: 2026-08-21T18:52:03Z
+    evidence: "Before/after branch coverage recorded from real vitest run
+      --coverage: milestone-review.ts 17/45 -> 43/45 (95.6%); task-verify.ts
+      10/21 -> 21/21 (100%); task-integrate.ts 4/8 -> 8/8 (100%, no unreachable
+      branch needed); verification-repair.ts 6/13 -> 13/13 (100%); cli/index.ts
+      4/10 baseline (no measurable delta -- V8 coverage does not instrument the
+      real-subprocess execution build-bin.test.ts exercises, disclosed in T005's
+      own evidence)."
+    recorded_by: developer
+  - check: CT007
+    status: pass
+    at: 2026-08-21T18:52:12Z
+    evidence: "IMPLEMENTATION_PLAN.md diff reviewed against real repository state
+      (T006 commit 7fa7bb0): M019 Bootstrap row added in correct order after
+      M018; Revised Roadmap header bumped M018->M019 delivered; ms-merge
+      alias/asset-count corrections match actual qc-7e6fb2a4 state (46 files, 8
+      aliases confirmed via find); Status snapshot names both post-M019
+      quick-change commits and M020's own in-progress state."
+    recorded_by: developer
+  - check: CT008
+    status: pass
+    at: 2026-08-21T18:52:12Z
+    evidence: "backlog promote B004 --task T001 and backlog archive B005 both
+      succeeded (T006 commit 7fa7bb0). pitway backlog list confirms: B001-B004
+      promoted, B005 archived, B006/B007 pending."
+    recorded_by: developer
+  - check: CT009
+    status: pass
+    at: 2026-08-21T18:52:12Z
+    evidence: New backlog item B007 ('backlog archive needs an active milestone, no
+      override') present via pitway backlog list, filed as part of T006.
+    recorded_by: developer

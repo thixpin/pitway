@@ -2,7 +2,7 @@
 schema_version: 1
 id: M020
 title: CLI Branch Coverage Hardening
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-21T18:27:08Z
 verification_approved_hash: sha256:3aeaad46f4630a10566bf419c1a524ef383b25a22752fa7838cac60d816c604a
