@@ -13,7 +13,7 @@ tasks:
       (skills/commands/agents.md files) as a real, first-party example, plus
       official Anthropic documentation for anything not exercised locally. For
       OpenCode, use real web research (its own docs/README/config schema)."
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - claude-code.md and opencode.md each cover all 8 dimensions with real
@@ -29,9 +29,28 @@ tasks:
       strategy: manual
       detail: Manual review of docs/evidence/M022/claude-code.md and opencode.md for
         real citations and 8-dimension coverage.
-    result: null
+    result:
+      summary: Claude Code and OpenCode researched across all 8 dimensions; Claude
+        Code grounded in this repo's own shipped assets plus official Anthropic
+        docs, OpenCode entirely from opencode.ai official docs.
+      evidence: "[truncated] ths with code.claude.com docs URLs) and opencode.md (25
+        citations, | opencode.ai) each carry all 8 dimension sections plus a
+        summary table. | Claude Code local grounding: skill/command frontmatter
+        shapes verified by | direct reads of
+        src/integrations/claude/skills/*/SKILL.md and | commands/*.md; grep
+        confirmed no local use of allowed-tools/model; | agents/permissions/MCP
+        dimensions explicitly marked docs-only (not | exercised locally).
+        OpenCode: directory-name ambiguity (agents/ and | commands/ plural vs
+        singular) settled by verbatim re-fetch before | shipping. One genuine
+        not-applicable recorded: OpenCode skills have no | argument-passing
+        mechanism (invocation is skill({name}) only). One | citation-integrity
+        fix during the worker's own verification pass: an | unverifiable
+        ~/.claude/commands/ personal path was removed rather than | shipped from
+        memory. | Manual verification per the declared strategy: all 16
+        dimension sections | present, each with at least one real citation."
     attempts: 1
-    usage: null
+    usage:
+      total_tokens: 123685
   - id: T002
     name: "Research: Codex + Cursor"
     objective: "Real, sourced research on how Codex (OpenAI's CLI coding agent) and
