@@ -20,5 +20,13 @@ export default defineConfig({
     // ever occurs.
     testTimeout: 60000,
     hookTimeout: 60000,
+    // `npm run test:coverage` only -- plain `npm test` (every task/quick-
+    // change verify command, every CI step) stays exactly as fast as
+    // before; coverage instrumentation is opt-in, never the default.
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      include: ['src/**/*.ts'],
+    },
   },
 });

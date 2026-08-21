@@ -1,0 +1,43 @@
+name: Test
+
+# Runs the full suite with coverage on every push to main and every PR, and
+# uploads the coverage report to Codecov -- the source the README's coverage
+# badge reflects. Separate from publish.yml (release-only, tag/manual-
+# triggered) and codeql.yml (security scanning) -- this is the one that
+# actually exercises the repo on ordinary day-to-day pushes.
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
