@@ -207,4 +207,45 @@ describe('classifyDirtyPaths', () => {
     expect(result.expected).toEqual(['src/thing.ts']);
     expect(result.unexpected).toEqual([]);
   });
+
+  // M018/T002 (AC005): a pending backlog_recording entry's root-level
+  // target (.pitway/backlog.yaml, not nested under any milestone
+  // directory) is classified expected through the exact same generic
+  // journalMilestone allowlist as a milestone-nested target like
+  // usage.yaml above -- no code change to classifyDirtyPaths was needed
+  // for this.
+  it('classifies the root-level .pitway/backlog.yaml as expected via a pending backlog_recording entry', () => {
+    mkdirSync(join(repo, '.pitway', 'milestones', 'M018'), { recursive: true });
+    writeFileSync(join(repo, '.pitway', 'backlog.yaml'), 'schema_version: 1\nitems: []\n');
+
+    appendJournalEntry(repo, {
+      milestone: 'M018',
+      type: 'backlog_recording',
+      operationId: 'op-backlog-1',
+      payload: {},
+    });
+
+    const relTarget = resolveTargetPath({ type: 'backlog_recording' }, 'M018');
+    expect(relTarget).toBe('.pitway/backlog.yaml');
+    const result = classifyDirtyPaths(repo, { journalMilestone: 'M018' });
+    expect(result.expected).toContain(relTarget);
+    expect(result.unexpected).not.toContain(relTarget);
+  });
+
+  it('does not classify .pitway/backlog.yaml as expected for an unrelated journalMilestone', () => {
+    mkdirSync(join(repo, '.pitway', 'milestones', 'M018'), { recursive: true });
+    writeFileSync(join(repo, '.pitway', 'backlog.yaml'), 'schema_version: 1\nitems: []\n');
+
+    appendJournalEntry(repo, {
+      milestone: 'M018',
+      type: 'backlog_recording',
+      operationId: 'op-backlog-2',
+      payload: {},
+    });
+
+    const relTarget = resolveTargetPath({ type: 'backlog_recording' }, 'M018');
+    const result = classifyDirtyPaths(repo, { journalMilestone: 'M019' });
+    expect(result.unexpected).toContain(relTarget);
+    expect(result.expected).not.toContain(relTarget);
+  });
 });

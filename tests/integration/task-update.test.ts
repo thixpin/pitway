@@ -26,6 +26,7 @@ import { WORKTREES_DIR } from '../../src/git/worktree.js';
 import { deterministicBranchName } from '../../src/core/milestones/confirm.js';
 import type { Task } from '../../src/state/schemas.js';
 import { recordUsage } from '../../src/core/metrics/aggregate.js';
+import { addBacklogItem } from '../../src/core/backlog/add.js';
 import { derivePending } from '../../src/core/journal/operations.js';
 import {
   appendJournalEntry,
@@ -656,6 +657,36 @@ describe('pitway task-update completion folds in pending journal entries (M005 T
     // is never captured by it — reconcilePending is safe to call regardless,
     // and correctly leaves a genuinely-still-pending entry alone.
     expect(derivePending(readJournal(root)).filter((e) => e.type === 'usage_recording')).toHaveLength(1);
+  });
+});
+
+// M018/T002 (AC005): a pending backlog_recording entry (root-level
+// .pitway/backlog.yaml, not milestone-nested) is folded into a task's own
+// completion commit exactly the same way a pending usage_recording is
+// above -- no code change to task-update's clean-tree check was needed.
+describe('pitway task-update completion folds in a pending backlog_recording entry (M018/T002)', () => {
+  it('recognizes an already-materialized pending backlog.yaml as expected-dirty, commits it alongside the completion, and reconciles the checkpoint marker', async () => {
+    await inReview();
+    addBacklogItem(root, { title: 'Discovered mid-task', reason: 'Out of scope for T001.' });
+    expect(git(['status', '--porcelain'], root)).toMatch(/backlog\.yaml/);
+    expect(derivePending(readJournal(root)).filter((e) => e.type === 'backlog_recording')).toHaveLength(1);
+
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(headFiles(root)).toEqual([tasksPath(), '.pitway/backlog.yaml', 'src/a.ts'].sort());
+    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+
+    expect(derivePending(readJournal(root)).filter((e) => e.type === 'backlog_recording')).toHaveLength(0);
+  });
+
+  it('adding a backlog item while T001 is in_progress does not break task-update in_progress -> review -> completed', async () => {
+    await update(['T001', 'in_progress']);
+    addBacklogItem(root, { title: 'Discovered mid-task', reason: 'Out of scope for T001.' });
+    await update(['T001', 'review']);
+
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(derivePending(readJournal(root)).filter((e) => e.type === 'backlog_recording')).toHaveLength(0);
   });
 });
 

@@ -81,7 +81,7 @@ tasks:
       state.active_milestone) -> saveBacklog, mirroring task-add.ts's own write
       ordering exactly -- no dedicated commit, no new git primitive (AC001,
       AC002, AC003, AC004, AC005)."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -135,7 +135,16 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/unit/backlog-state.test.ts
         tests/unit/git-safety.test.ts tests/integration/backlog.test.ts
-    result: null
+    result:
+      summary: "[truncated] . promote's --task is required, --milestone defaults to
+        the active milestone, both mean the promotion target only; promote never
+        creates a task/milestone. archive has no milestone/task parameter. Write
+        ordering mirrors task-add.ts (appendJournalEntry -> saveBacklog), no
+        dedicated commit."
+      evidence: Tests  50 passed (50) | Start at  21:16:21 | Duration  16.05s
+        (transform 380ms, setup 0ms, import 558ms, tests 18.00s, environment
+        0ms)
+    attempts: 1
     usage: null
   - id: T003
     name: Backlog CLI command family
@@ -150,7 +159,7 @@ tasks:
       tests/integration/cli.test.ts's ALL_COMMAND_NAMES and 'registers all N
       commands' count (23 -> 24) and tests/integration/build-bin.test.ts's
       separately-maintained real-binary command list (AC006)."
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:
