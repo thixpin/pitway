@@ -29,6 +29,12 @@ Pick the smallest that fits:
   — `milestone-cancel` is deliberately the opposite (draft-only abandonment,
   never an active-milestone tool; see `commands/milestone-cancel.md`'s
   confirmed-milestone boundary).
+- **`backlog`** — discovered work that does **not** belong inside the
+  current milestone's own task graph at all (out of scope, not just
+  out of sequence) — capture it and keep going, promote it into planned
+  work later (`commands/backlog.md`). Requires an active milestone exactly
+  like `task-add` does; unlike `task-add`, it never mutates `tasks.yaml`
+  or `contract.md`, so it carries no scope-growth risk to review.
 - **One-task corrective milestone** — anything bigger than a single bounded
   fix, once the original milestone is already `completed`.
 - **Full milestone** — new capability, not a correction.

@@ -208,6 +208,33 @@ confirmed work. To abandon remaining work in an active milestone, cancel its
 not-yet-started tasks (`pitway task-update <id> cancelled`) and complete
 with whatever's actually done.
 
+## Deferring Out-of-Scope Work
+
+Discovered something unrelated to what you're currently working on?
+`backlog` captures it without expanding the current task or milestone's
+scope — requires an active milestone, no global backlog:
+
+```bash
+# Capture it and keep going -- --milestone/--task here are source
+# annotation only (defaults to the active milestone, no task):
+pitway backlog add --title "Short label" --reason "Why this was deferred."
+
+pitway backlog list                 # or --status pending|promoted|archived
+pitway backlog show B001
+
+# Later, once the real task/milestone already exists -- promote never
+# creates one itself, --task/--milestone here mean the target only:
+pitway backlog promote B001 --task T004
+
+# Or close it out without acting on it:
+pitway backlog archive B001 --reason "No longer relevant."
+```
+
+`.pitway/backlog.yaml` is the authoritative backlog state, committed
+alongside whatever commit the active milestone's workflow next produces —
+never a dedicated commit, and never a reason a task's own clean-tree check
+fails.
+
 ## Fixing an Already-Completed Milestone
 
 `quick-change` is the bounded, small-fix path against a milestone that's
@@ -261,6 +288,7 @@ they're for:
 | Human gates | `milestone-confirm`, `milestone-complete` |
 | Task execution | `task-update`, `task-verify` |
 | Mid-flight correction | `task-add`, `task-amend` |
+| Deferred work | `backlog` |
 | Parallel execution | `task-dispatch`, `task-integrate`, `task-discard` |
 | Verification | `verify`, `verification-repair` |
 | Milestone review | `milestone-review` |

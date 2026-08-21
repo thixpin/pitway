@@ -243,7 +243,7 @@ tasks:
       milestone exactly like task-add does; document the five subcommands in
       USAGE.md. Update every shipped-asset assertion this new file touches
       (AC008).
-    status: ready
+    status: completed
     depends_on:
       - T003
     acceptance_criteria:
@@ -256,9 +256,8 @@ tasks:
       - tests/unit/claude-assets.test.ts and tests/integration/init.test.ts are
         updated for the new shipped asset and installed-file count
     write_scope:
-      - .claude/commands/backlog.md
       - src/integrations/claude/commands/backlog.md
-      - .claude/protocol-driver.md
+      - src/integrations/claude/protocol-driver.md
       - USAGE.md
       - tests/unit/claude-assets.test.ts
       - tests/integration/init.test.ts
@@ -266,7 +265,15 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/unit/claude-assets.test.ts
         tests/integration/init.test.ts
-    result: null
+    result:
+      summary: "[truncated] med the gitignored .claude/protocol-driver.md instead of
+        its real source, and separately named the gitignored
+        .claude/commands/backlog.md itself (task-verify correctly refuses a
+        git-ignored declared path) -- both fixed via task-amend with disclosed
+        Change Log entries before verification."
+      evidence: Tests  38 passed (38) | Start at  21:34:29 | Duration  1.85s
+        (transform 286ms, setup 0ms, import 394ms, tests 1.43s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T006
     name: Roadmap reconciliation
@@ -279,7 +286,7 @@ tasks:
       explicit redirect note naming pitway backlog add/list as the live
       authoritative source going forward, without migrating or deleting its
       existing frozen entries (AC009)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002
