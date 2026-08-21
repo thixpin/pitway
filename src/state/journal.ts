@@ -230,6 +230,29 @@ export const journalWorktreeDiscardSchema = z.strictObject({
   at: z.string().min(1),
 });
 
+// Ninth sibling member of the discriminated union (M019/T001): records one
+// `pitway milestone-merge` outcome -- a successful merge or an idempotent
+// already-merged short-circuit. Like auto_run/quick_change/worktree_*, this
+// is never referenced by a checkpoint marker and never folded into a
+// milestone commit -- there is no target state file for resolveTargetPath
+// to map it to, and derivePending's `kind === 'entry'` filter already
+// excludes it structurally. Append-only: every completed invocation (either
+// outcome) appends its own full record via appendMilestoneMergeRecord;
+// src/core/milestones/merge.ts is the sole writer. mergeCommitSha is the
+// created merge commit's SHA on the success path, or the already-satisfying
+// ancestor SHA (the milestone's completion commit) on the already-merged
+// path -- never null either way, since a completion commit always exists by
+// the time a merge is attempted.
+export const journalMilestoneMergeSchema = z.strictObject({
+  kind: z.literal('milestone_merge'),
+  id: z.string().min(1),
+  milestone: journalMilestoneId,
+  targetBranch: z.string().min(1),
+  mergeCommitSha: z.string().min(1),
+  alreadyMerged: z.boolean(),
+  at: z.string().min(1),
+});
+
 export const journalRecordSchema = z.discriminatedUnion('kind', [
   journalEntrySchema,
   journalCheckpointSchema,
@@ -239,6 +262,7 @@ export const journalRecordSchema = z.discriminatedUnion('kind', [
   journalWorktreeDispatchSchema,
   journalWorktreeIntegrateSchema,
   journalWorktreeDiscardSchema,
+  journalMilestoneMergeSchema,
 ]);
 
 export const journalFileSchema = z.strictObject({
@@ -260,6 +284,7 @@ export type JournalTaskVerifyEvidence = z.infer<typeof journalTaskVerifyEvidence
 export type JournalWorktreeDispatch = z.infer<typeof journalWorktreeDispatchSchema>;
 export type JournalWorktreeIntegrate = z.infer<typeof journalWorktreeIntegrateSchema>;
 export type JournalWorktreeDiscard = z.infer<typeof journalWorktreeDiscardSchema>;
+export type JournalMilestoneMerge = z.infer<typeof journalMilestoneMergeSchema>;
 export type JournalRecord = z.infer<typeof journalRecordSchema>;
 export type JournalFile = z.infer<typeof journalFileSchema>;
 
@@ -434,6 +459,23 @@ export function appendWorktreeDiscardRecord(
   const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
   if (!result.success) {
     throw new JournalError(`refusing to append invalid worktree_discard record: ${formatIssues(result.error)}`);
+  }
+  saveJournalFile(cwd, result.data);
+  return full;
+}
+
+// Appends a milestone_merge record -- a full, self-contained snapshot of one
+// merge outcome, never a patch; same sibling-record discipline as every
+// appender above.
+export function appendMilestoneMergeRecord(
+  cwd: string,
+  record: Omit<JournalMilestoneMerge, 'kind'>,
+): JournalMilestoneMerge {
+  const file = loadJournalFile(cwd);
+  const full: JournalMilestoneMerge = { kind: 'milestone_merge', ...record };
+  const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
+  if (!result.success) {
+    throw new JournalError(`refusing to append invalid milestone_merge record: ${formatIssues(result.error)}`);
   }
   saveJournalFile(cwd, result.data);
   return full;

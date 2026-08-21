@@ -27,7 +27,7 @@ tasks:
       journalOperationTypeSchema entry, never checkpoint-eligible) plus
       appendMilestoneMergeRecord, and call it on both the success and
       already-merged paths (AC001, AC002, AC003, AC004, AC005, AC006, AC007)."
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - mergeMilestone refuses with a named error when the milestone's status is
@@ -77,9 +77,19 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/unit/journal.test.ts
         tests/integration/milestone-merge.test.ts
-    result: null
+    result:
+      summary: "[truncated] ) with | checkoutBranch (src/git/branch.ts) and new
+        src/git/merge.ts |
+        (mergeBranches/abortMerge/isAncestor/isMergeInProgress); added the |
+        milestone_merge sibling journal kind + appendMilestoneMergeRecord. |
+        Covers AC001-AC007 including every architect/devops review-driven |
+        refinement."
+      evidence: Tests  66 passed (66) | Start at  23:19:45 | Duration  25.87s
+        (transform 364ms, setup 0ms, import 524ms, tests 34.35s, environment
+        0ms)
     attempts: 1
-    usage: null
+    usage:
+      total_tokens: 197195
   - id: T002
     name: milestone-merge CLI command and shipped docs
     objective: Wire pitway milestone-merge <id> [--target <branch>] in
@@ -96,7 +106,7 @@ tasks:
       'registers all N commands' count (24 -> 25) and
       tests/integration/build-bin.test.ts's real-binary command list (AC001,
       AC008, AC009).
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
