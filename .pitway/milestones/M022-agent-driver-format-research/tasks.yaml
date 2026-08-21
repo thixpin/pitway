@@ -60,7 +60,7 @@ tasks:
       tool, each covering all 8 dimensions (or an explicit 'not applicable' note
       where genuinely true). Cite real documentation/source URLs -- never invent
       a config shape or field name; use real web research."
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - codex.md and cursor.md each cover all 8 dimensions with real citations
@@ -73,9 +73,27 @@ tasks:
       strategy: manual
       detail: Manual review of docs/evidence/M022/codex.md and cursor.md for real
         citations and 8-dimension coverage.
-    result: null
+    result:
+      summary: Codex and Cursor researched across all 8 dimensions from live official
+        docs; both evidence files written with per-section citations.
+      evidence: "[truncated] o | learn.chatgpt.com/docs, disclosed in the file header)
+        plus the repo's | own docs/config.md; Cursor from cursor.com/docs
+        (rules, skills, | subagents, permissions.json, CLI slash-commands, MCP,
+        changelog). | Two-tier sourcing enforced: search-snippet-only claims are
+        explicitly | marked secondary/unverified in the files rather than
+        presented as | fetched fact. | Notable findings for T005's synthesis:
+        Codex custom prompts officially | deprecated in favor of skills; a real
+        conflict between official docs | (.agents/skills chain) and third-party
+        guides (.codex/skills) is | deliberately surfaced, not smoothed over;
+        Cursor is folding custom | commands into skills and reads
+        .claude//.codex agent+skill dirs for | cross-tool compat; Codex has
+        $1-$9/$ARGUMENTS/named-KEY=value argument | substitution while no
+        equivalent placeholder scheme was found for | Cursor. | Manual
+        verification per the declared strategy: all 16 dimension sections |
+        present, each with at least one real citation."
     attempts: 1
-    usage: null
+    usage:
+      total_tokens: 88613
   - id: T003
     name: "Research: GitHub Copilot + Gemini CLI"
     objective: "Real, sourced research on how GitHub Copilot (its CLI/agent mode and
@@ -174,7 +192,7 @@ tasks:
       time. End with an explicit statement that no MVP-boundary decision
       (canonical format, new driver, plugin architecture) is made here --
       findings only, per AC001."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002
