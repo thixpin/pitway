@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/thixpin/pitway#readme",
   "bin": {
-    "pitway": "./dist/cli/index.js"
+    "pitway": "dist/cli/index.js"
   },
   "files": [
     "dist",
@@ -28,7 +28,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node scripts/copy-claude-assets.mjs",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-claude-assets.mjs && node scripts/make-bin-executable.mjs",
     "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
