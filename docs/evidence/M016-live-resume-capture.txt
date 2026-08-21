@@ -1,0 +1,64 @@
+M016 design decision 6: live `pitway resume` output captured by the driver
+during T001/T002's own real dispatch window, verbatim, at the moment each
+command actually ran -- not reconstructed afterward. Referenced by
+docs/evidence/M016-parallel-recovery-dogfood.md.
+
+=== Capture 1: both T001 and T002 in flight (immediately after both were
+    dispatched via `task-dispatch`, before either was integrated) ===
+
+🏁 Resuming M016 — Extended Dogfood Validation and Release Readiness
+Contract: in_progress
+Branch: pitway/M016-extended-dogfood-validation-and-release (tracked, checked out)
+
+🛠 Tasks
+  T001  Harden the nested-full-suite init flake  ● In Progress
+  T002  Fix QuickChangeError identity split and requireQuickChange duplication  ● In Progress
+  T003  Parallel dispatch and recovery dogfood evidence  ◌ Waiting
+  T004  Context-efficiency evidence under the expanded surface  ◌ Waiting
+  T005  Plan reconciliation, branch-strategy evidence, and milestone gates  ◌ Waiting
+
+Ready: (none)
+Waiting: T003, T004, T005
+Blocked: (none)
+In progress: T001, T002
+
+Continue: T001
+
+🏎️ Dispatched worktrees
+  T001  pitway/task/M016-T001  /Users/thixpin/project/thixpin/pitway/.pitway-worktrees/M016-T001
+  T002  pitway/task/M016-T002  /Users/thixpin/project/thixpin/pitway/.pitway-worktrees/M016-T002
+
+🏎️ 10% · ✅ 0/5 · Next: T001 · Harden the nested-full-suite init flake
+
+=== Capture 2: immediately after `task-discard T002` (the sanctioned
+    abandonment path exercised for real -- see the narrative doc for why
+    T002 specifically was used rather than a separate scratch task) ===
+
+🏁 Resuming M016 — Extended Dogfood Validation and Release Readiness
+Contract: in_progress
+Branch: pitway/M016-extended-dogfood-validation-and-release (tracked, checked out)
+
+🛠 Tasks
+  T001  Harden the nested-full-suite init flake  ● In Progress
+  T002  Fix QuickChangeError identity split and requireQuickChange duplication  ✗ Failed
+  T003  Parallel dispatch and recovery dogfood evidence  ◌ Waiting
+  T004  Context-efficiency evidence under the expanded surface  ◌ Waiting
+  T005  Plan reconciliation, branch-strategy evidence, and milestone gates  ◌ Waiting
+
+Ready: (none)
+Waiting: T003, T004, T005
+Blocked: (none)
+In progress: T001
+
+Continue: T001
+
+🏎️ Dispatched worktrees
+  T001  pitway/task/M016-T001  /Users/thixpin/project/thixpin/pitway/.pitway-worktrees/M016-T001
+
+🏎️ 10% · ✅ 0/5 · Next: T001 · Harden the nested-full-suite init flake
+
+=== task-discard's own CLI output at the moment it ran ===
+
+🔧 Discarded T002's dispatch (wtd-b74128dff87a): worktree removed, task is
+now failed (failed → ready allows re-dispatch). Discarded work is
+unrecoverable through PitWay.

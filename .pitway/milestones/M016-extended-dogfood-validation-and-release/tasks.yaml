@@ -148,7 +148,7 @@ tasks:
       working tree) -- that narrower case stays covered only by M014's existing
       synthetic tests. Docs-only task: no src/ changes; verified by
       CT001/CT005's own review checks."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -168,7 +168,16 @@ tasks:
       strategy: manual
       detail: Reviewed against AC001/AC005's checklists (CT001, CT005); no automated
         test owns dogfood-narrative evidence.
-    result: null
+    result:
+      summary: "[truncated] ate scratch task for AC005 wasn't possible; adapted by
+        discarding and re-dispatching T002 itself as the real abandonment-path
+        demonstration. Live resume output captured verbatim at both moments
+        (in-flight, post-discard) in docs/evidence/M016-live-resume-capture.txt
+        per design decision 6."
+      evidence: Manual review against AC001/AC005's checklists (this task's own
+        declared strategy; verified by CT001/CT005's own milestone-level review
+        checks). No automated test owns dogfood-narrative evidence.
+    attempts: 1
     usage: null
   - id: T004
     name: Context-efficiency evidence under the expanded surface
@@ -183,7 +192,7 @@ tasks:
       larger, smaller, or unchanged -- never framed favorably. Write
       `docs/evidence/M016-context-efficiency.md`. Docs-only task: no src/
       changes; verified by CT006's own review check."
-    status: waiting
+    status: ready
     depends_on:
       - T003
     acceptance_criteria:
