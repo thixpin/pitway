@@ -240,7 +240,7 @@ tasks:
       perform CT002/CT005/CT006 personally where practical. Then run the
       milestone-level gates exactly once: full `npm test` and `npx tsc
       --noEmit`."
-    status: ready
+    status: completed
     depends_on:
       - T004
     acceptance_criteria:
@@ -256,5 +256,14 @@ tasks:
     verification:
       strategy: command
       detail: npm test && npx tsc --noEmit
-    result: null
+    result:
+      summary: "[truncated] ping at M014; Status line updated. AC002's branch-strategy
+        evidence inspected manually (contract frontmatter base_branch=main,
+        base_revision=6297ba2; git log proves exactly this milestone's 5 commits
+        atop base_revision, zero merge commits, main's own tip untouched) and
+        recorded as CT002."
+      evidence: Tests  1093 passed (1093) | Start at  09:25:23 | Duration  73.56s
+        (transform 3.11s, setup 0ms, import 12.62s, tests 490.77s, environment
+        8ms)
+    attempts: 1
     usage: null
