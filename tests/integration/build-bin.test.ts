@@ -137,4 +137,50 @@ describe('build produces a real, spawnable dist/ binary (M008/T001/AC001)', () =
       expect(statSync(installedAsset).isFile()).toBe(true);
     });
   });
+
+  // M017/T005 (AC003): the CLI's error boundary, only observable via a real
+  // subprocess -- an in-process test never hits the unhandled-rejection
+  // path this replaces.
+  describe('the CLI error boundary (real subprocess)', () => {
+    function runExpectingFailure(args: string[], cwd: string): { status: number; stderr: string } {
+      try {
+        execFileSync('node', [distEntry, ...args], { cwd, stdio: 'pipe' });
+        throw new Error('expected the subprocess to exit non-zero');
+      } catch (error) {
+        const e = error as { status: number | null; stderr: Buffer };
+        return { status: e.status ?? -1, stderr: e.stderr.toString() };
+      }
+    }
+
+    it('a directory with no .pitway/ yields the actionable missing-state message, exit 1, no stack frames', () => {
+      const bareRepo = mkdtempSync(join(tmpdir(), 'pitway-build-bin-bare-'));
+      try {
+        git(['init', '-q'], bareRepo);
+        const { status, stderr } = runExpectingFailure(['resume'], bareRepo);
+        expect(status).toBe(1);
+        expect(stderr).toContain('pitway:');
+        expect(stderr).toMatch(/pitway init/);
+        expect(stderr).toMatch(/\.pitway\//);
+        expect(stderr).not.toMatch(/^\s*at /m);
+      } finally {
+        rmSync(bareRepo, { recursive: true, force: true });
+      }
+    });
+
+    it('an ordinary refusal in a real repo prints the message only, no stack frames', () => {
+      const initedRepo = mkdtempSync(join(tmpdir(), 'pitway-build-bin-refusal-'));
+      try {
+        git(['init', '-q'], initedRepo);
+        git(['config', 'user.email', 'test@example.com'], initedRepo);
+        git(['config', 'user.name', 'Test'], initedRepo);
+        execFileSync('node', [distEntry, 'init'], { cwd: initedRepo, stdio: 'pipe' });
+        const { status, stderr } = runExpectingFailure(['milestone-confirm', 'M001'], initedRepo);
+        expect(status).toBe(1);
+        expect(stderr.trim()).toBe(stderr.split('\n')[0]!.trim());
+        expect(stderr).not.toMatch(/^\s*at /m);
+      } finally {
+        rmSync(initedRepo, { recursive: true, force: true });
+      }
+    });
+  });
 });

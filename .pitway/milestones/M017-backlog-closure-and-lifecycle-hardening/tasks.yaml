@@ -298,7 +298,7 @@ tasks:
       real-subprocess tests in tests/integration/build-bin.test.ts: a dir with
       no .pitway/ yields the friendly message, exit 1, no 'at ' frames; an
       ordinary refusal prints message only."
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -321,7 +321,15 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/unit/cli-errors.test.ts
         tests/integration/build-bin.test.ts
-    result: null
+    result:
+      summary: "[truncated] age. src/cli/index.ts's main-module block wraps parseAsync
+        in try/catch, printing \"pitway: <message>\" to stderr and setting exit
+        1 -- replacing what was previously an unhandled-rejection stack dump in
+        the real binary. In-process tests are unaffected (they catch the raw
+        error themselves)."
+      evidence: Tests  33 passed (33) | Start at  13:04:10 | Duration  3.48s
+        (transform 72ms, setup 0ms, import 134ms, tests 3.36s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T006
     name: Dependabot configuration and maintenance note
