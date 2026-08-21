@@ -1,5 +1,5 @@
 ---
-description: Write a drafted contract and task plan to an explicit destination
+description: PitWay: Write a drafted contract and task plan to an explicit destination
 ---
 
 # write-ms-artifacts

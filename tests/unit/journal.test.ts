@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   appendCheckpointMarker,
   appendJournalEntry,
+  appendMilestoneMergeRecord,
   appendQuickChangeRecord,
   appendTaskVerifyEvidenceRecord,
   appendWorktreeDispatchRecord,
@@ -815,6 +816,68 @@ describe('worktree_discard records (M014/T008)', () => {
       appendWorktreeDiscardRecord(repo, {
         ...baseDiscard,
         reason: '',
+      }),
+    ).toThrow(JournalError);
+    expect(readJournal(repo)).toHaveLength(0);
+  });
+});
+
+// M019/T001: milestone_merge -- ninth sibling record kind, same discipline
+// as every sibling above: append-only, derivePending-excluded,
+// git-invisible, no resolveTargetPath case needed.
+describe('milestone_merge records (M019/T001)', () => {
+  const baseMerge = {
+    id: 'mm-1',
+    milestone: 'M014',
+    targetBranch: 'main',
+    mergeCommitSha: 'a'.repeat(40),
+    alreadyMerged: false,
+    at: '2026-08-21T00:00:00Z',
+  };
+
+  it('appends a milestone_merge record and reads it back', () => {
+    const record = appendMilestoneMergeRecord(repo, baseMerge);
+    expect(record.kind).toBe('milestone_merge');
+    const all = readJournal(repo);
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({
+      kind: 'milestone_merge',
+      id: 'mm-1',
+      milestone: 'M014',
+      targetBranch: 'main',
+      alreadyMerged: false,
+    });
+  });
+
+  it('accepts an already-merged record (alreadyMerged: true)', () => {
+    const record = appendMilestoneMergeRecord(repo, { ...baseMerge, alreadyMerged: true });
+    expect(record.alreadyMerged).toBe(true);
+  });
+
+  it('is excluded from derivePending like every sibling record kind', () => {
+    appendMilestoneMergeRecord(repo, baseMerge);
+    appendJournalEntry(repo, {
+      milestone: 'M014',
+      type: 'usage_recording',
+      operationId: 'op-1',
+      payload: {},
+    });
+    const pending = derivePending(readJournal(repo));
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.operationId).toBe('op-1');
+  });
+
+  it('never appears in git status', () => {
+    appendMilestoneMergeRecord(repo, baseMerge);
+    expect(git(['status', '--porcelain'], repo).trim()).toBe('');
+  });
+
+  it('rejects a record missing required fields, appending nothing', () => {
+    expect(() =>
+      appendMilestoneMergeRecord(repo, {
+        ...baseMerge,
+        // Runtime-invalid milestone id (zod regex), type-valid string.
+        milestone: 'X1',
       }),
     ).toThrow(JournalError);
     expect(readJournal(repo)).toHaveLength(0);

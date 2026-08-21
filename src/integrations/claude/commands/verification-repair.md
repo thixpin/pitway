@@ -1,5 +1,5 @@
 ---
-description: Bounded, approve-before-edit correction after every task is done
+description: PitWay: Bounded, approve-before-edit correction after every task is done
 argument-hint: <approve|commit|cancel> <milestone> [vr-id]
 ---
 

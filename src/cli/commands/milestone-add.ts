@@ -26,6 +26,7 @@ export function registerMilestoneAddCommand(program: Command, deps: CommandDeps 
   const write = deps.write ?? ((line: string) => console.log(line));
   program
     .command('milestone-add')
+    .alias('ms-add')
     .description('Create the next milestone from a drafted contract and task plan.')
     .requiredOption('--contract <path>', 'path to the drafted contract markdown file')
     .requiredOption('--tasks <path>', 'path to the drafted tasks YAML file')

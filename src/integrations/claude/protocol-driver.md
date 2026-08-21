@@ -102,6 +102,17 @@ its report via `pitway task-update`. The worker never calls `pitway`;
 inline, you call `pitway` yourself exactly as a worker's report would have
 driven you to.
 
+**Runtime usage propagation is a MUST, not a suggestion** (M019/AC022/T007):
+whenever a dispatched worker/subagent's own tool result reports runtime
+usage, extract it and pass it via `--usage` on the completing
+`task-update` call (`dispatch.md` step 8) — a driver-integration
+requirement, not documentation-only prose, and one any future driver
+adapter inherits as part of PitWay's provider-agnostic Agent Interface
+(`IMPLEMENTATION_PLAN.md` §8). Never estimate, derive, or fabricate a
+figure when none was reported; inline execution has no task-scoped figure
+to extract, so its `usage` correctly stays `null`/`N/A` (§12, decision 8)
+— this rule closes the propagation gap, it does not touch that boundary.
+
 **An empty or non-standard worker report is never completion evidence**
 (M006/T002: a report fired while its own backgrounded verification was
 still running). Even when the diff later proves correct: read the diff and
@@ -296,6 +307,11 @@ implied by "keep going," never inferred from a subagent's report:
 - **`milestone-confirm`** (and `--amend`): only after the full contract
   has been presented and the developer said yes to it in this
   conversation. Never confirm a milestone the developer hasn't seen.
+- **`milestone-merge`**: the developer-invoked step after
+  `milestone-complete`, under `branch_strategy: milestone` — merges the
+  completed milestone's own branch into its target branch
+  (`commands/milestone-merge.md`). Not run automatically as part of
+  completion; wait for the developer to ask for it.
 - **Scope changes**: on a conflict with the confirmed contract, stop work,
   propose the change as a contract amendment (append-only Change Log
   entry), and wait for approval before `milestone-confirm --amend` or

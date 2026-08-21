@@ -1,5 +1,5 @@
 ---
-description: Capture out-of-scope work discovered mid-task, without expanding current scope
+description: PitWay: Capture out-of-scope work discovered mid-task, without expanding current scope
 argument-hint: <add|list|show|promote|archive> [id]
 ---
 

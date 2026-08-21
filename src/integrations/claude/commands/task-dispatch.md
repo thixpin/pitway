@@ -1,5 +1,5 @@
 ---
-description: Prepare a parallel-eligible task for worktree execution
+description: PitWay: Prepare a parallel-eligible task for worktree execution
 argument-hint: <id>
 ---
 

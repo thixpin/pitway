@@ -1,5 +1,5 @@
 ---
-description: Run approved command checks, or record a manual/review result
+description: PitWay: Run approved command checks, or record a manual/review result
 argument-hint: [id]
 ---
 

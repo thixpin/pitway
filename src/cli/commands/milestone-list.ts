@@ -35,6 +35,7 @@ export function registerMilestoneListCommand(program: Command, deps: CommandDeps
   const write = deps.write ?? ((line: string) => console.log(line));
   program
     .command('milestone-list')
+    .alias('ms-list')
     .description('List every milestone with a concise one-line status.')
     .option('--json', 'output machine-readable JSON')
     .action((options: { json?: boolean }) => {

@@ -1,5 +1,5 @@
 ---
-description: Transition a task's status; completion commits its files atomically
+description: PitWay: Transition a task's status; completion commits its files atomically
 argument-hint: <id> <status>
 ---
 
@@ -15,6 +15,12 @@ see `../coordination.md`), `review` once a worker reports done, `completed
 commit its files atomically, `blocked`/`failed` when a worker couldn't
 proceed. `--result`'s `summary`/`evidence` are capped on the way in — see
 `../report-format.md`.
+
+`--usage <json>` accumulates measured token usage onto the task — a MUST
+when completing a dispatched worker's task and its tool result reported
+usage (`../dispatch.md` step 8, `../protocol-driver.md` "Dispatch
+discipline"); never estimated or supplied for inline work with no runtime
+figure available.
 
 See `../protocol-driver.md` and `../dispatch.md`. Run
 `pitway task-update --help` for flags.

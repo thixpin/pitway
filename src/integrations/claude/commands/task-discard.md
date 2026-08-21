@@ -1,5 +1,5 @@
 ---
-description: Abandon a dispatched task's worktree without integrating
+description: PitWay: Abandon a dispatched task's worktree without integrating
 argument-hint: <id>
 ---
 

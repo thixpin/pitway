@@ -1,0 +1,166 @@
+schema_version: 1
+sessions:
+  - id: rev-41930528ad65
+    status: decided
+    created_at: 2026-08-21T15:14:14Z
+    roles:
+      - architect
+      - devops
+    content_hash: sha256:91f89050d69fb0ffefcc78b1fa9d174c3a4e37077ba6346c39739531f291b2a9
+    findings:
+      - role: architect
+        recorded_at: 2026-08-21T15:22:22Z
+        findings:
+          - severity: major
+            finding: "AC002/AC004 (T001) never specify a wrong-branch refusal, yet the
+              contract's References section claims `assertOnMilestoneBranch` is
+              reused. `findCompletionCommit` resolves the completion commit via
+              `since..HEAD` on the CURRENTLY checked-out branch — correct when
+              run from the milestone's own branch, but silently returns
+              `undefined` (ambiguous error, not a named \"wrong branch\"
+              refusal) if run from an unrelated third branch. A blanket
+              `assertOnMilestoneBranch` call would be wrong too: AC005's
+              idempotency design explicitly anchors on the completion SHA (not
+              branch tip) because the milestone branch may already be deleted,
+              and a re-run from the target branch post-merge is a legitimate,
+              working case (the completion commit is in target's ancestry, so
+              `since..HEAD` still finds it there) that a blanket branch
+              assertion would break."
+            targets:
+              - ac002
+              - ac004
+              - ac005
+              - t001
+            recommendation: Add a named refusal for "completion commit not reachable from
+              current HEAD" (the real wrong-branch symptom), or scope
+              assertOnMilestoneBranch to the not-yet-merged path only; reconcile
+              the References bullet that currently claims it's reused as-is.
+          - severity: minor
+            finding: "T003's acceptance criterion states \"Every command doc under
+              src/integrations/claude/commands/ (19 files, including
+              milestone-merge.md)\" — this count is wrong on every reading.
+              Verified by inspection: the directory currently holds 23 .md
+              files, becomes 24 after T002 adds milestone-merge.md, and 31 after
+              T003 itself adds the 7 ms-*.md aliases (which the same \"starts
+              with PitWay:\" test sweeps in per AC010)."
+            targets:
+              - ac009
+              - t003
+            recommendation: Correct T003's AC text to the right count for the point in the
+              sequence it's asserting at (24 pre-alias-creation, 31 once the 7
+              ms-*.md files exist) before implementation.
+      - role: devops
+        recorded_at: 2026-08-21T15:22:23Z
+        findings:
+          - severity: major
+            finding: >
+              AC004 enumerates 3 pre-mutation git-safety refusals (dirty tree,
+              missing target branch, merge conflict) but omits a check that the
+              milestone's own source branch still exists at merge time. A
+              milestone branch deleted before the first milestone-merge run
+              would hit a raw, unhandled git error instead of a clean, named
+              PitWay refusal.
+            targets:
+              - ac004
+              - t001
+            recommendation: >
+              Add an explicit branchExists check on the resolved
+              source/milestone branch before merging, with a named refusal,
+              mirroring the existing target-branch check.
+          - severity: major
+            finding: >
+              AC004's conflict-abort path restores "the original branch", but no
+              AC or test addresses invocation from a detached HEAD or from a
+              branch other than the milestone's own -- AC002 only proves success
+              from the natural starting position (the milestone's own branch).
+              "Restore original branch" is undefined when there is no named
+              branch to return to.
+            targets:
+              - ac002
+              - ac004
+              - t001
+            recommendation: >
+              Add a named refusal (or explicitly document the behavior) for
+              detached-HEAD / wrong-starting-branch invocation, backed by a
+              test.
+          - severity: major
+            finding: >
+              T006's write_scope lists only IMPLEMENTATION_PLAN.md, but its
+              objective runs `backlog promote` 3 times against the live,
+              git-committed .pitway/backlog.yaml. The contract doesn't disclose
+              whether this rides along via the existing M018
+              classifyDirtyPaths/reconcilePending journal-allowlist mechanism
+              (no write_scope entry needed) or requires one.
+            targets:
+              - t006
+              - ac018
+            recommendation: >
+              State explicitly whether backlog promote's .pitway/backlog.yaml
+              changes ride along in T006's own completion commit via the
+              existing M018 mechanism, or require a write_scope change.
+          - severity: minor
+            finding: >
+              Restoration to the original branch is guaranteed only for the 3
+              enumerated failure modes. No AC guarantees restore-on-refusal for
+              an unexpected git error during the merge itself (lock file, I/O
+              error, etc.).
+            targets:
+              - ac004
+              - t001
+            recommendation: >
+              Wrap the merge attempt in a try/finally that restores the original
+              branch on any thrown error, not only the 3 named cases.
+          - severity: minor
+            finding: >
+              If killed during `git merge` itself (before PitWay's
+              conflict-abort logic runs), the repo is left with MERGE_HEAD set
+              and conflicted files. A retry would likely be refused by
+              checkWorkingTreeClean as "dirty tree", but a generic message
+              wouldn't tell the operator this is a recoverable interrupted-merge
+              state needing `git merge --abort`.
+            targets:
+              - ac004
+              - t001
+            recommendation: >
+              Detect MERGE_HEAD specifically and emit a distinct, actionable
+              message pointing at manual `git merge --abort` recovery.
+          - severity: minor
+            finding: >
+              If a failure leaves the tree checked out on the target branch, a
+              retry invokes milestone-merge from a branch that isn't the
+              milestone's own -- a case AC002's test doesn't cover.
+            targets:
+              - ac002
+              - t001
+            recommendation: >
+              Add a test/AC for milestone-merge invoked from a non-milestone,
+              non-target branch, verifying either correct resolution or a clear
+              refusal.
+          - severity: minor
+            finding: >
+              AC010's 7 ms-*.md aliases rely solely on a byte-for-byte parity
+              test with no generation/build tooling. That test only catches
+              drift when its containing suite runs.
+            targets:
+              - ac010
+              - t003
+            recommendation: >
+              Document in protocol-driver.md that any edit to a file under
+              src/integrations/claude/commands/ must re-run
+              claude-assets.test.ts in that same task before completion.
+          - severity: minor
+            finding: >
+              AC007's mergeCommitSha field holds the completion commit's own SHA
+              (not an actual merge commit) on the already-merged path.
+              Documented but the field name doesn't signal the distinction.
+            targets:
+              - ac007
+            recommendation: |
+              Low priority -- alreadyMerged already disambiguates this.
+    decision:
+      outcome: revision_requested
+      note: "Architect + devops converged on the same gap: AC002/AC004 branch-state
+        handling. Fixing: unreachable-completion-commit refusal, source-branch
+        check, try/finally restore, MERGE_HEAD detection, retry test, T006
+        write_scope disclosure, T003 file-count fix."
+      decided_at: 2026-08-21T15:23:11Z

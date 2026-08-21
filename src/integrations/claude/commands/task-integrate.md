@@ -1,5 +1,5 @@
 ---
-description: Apply a dispatched task's worktree commit to the main tree
+description: PitWay: Apply a dispatched task's worktree commit to the main tree
 argument-hint: <id>
 ---
 

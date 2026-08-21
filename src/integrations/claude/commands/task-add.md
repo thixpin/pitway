@@ -1,5 +1,5 @@
 ---
-description: Insert one new task into a confirmed or in_progress milestone
+description: PitWay: Insert one new task into a confirmed or in_progress milestone
 argument-hint: <milestone-id>
 ---
 

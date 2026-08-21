@@ -26,6 +26,14 @@ export function createAndCheckoutBranch(cwd: string, name: string): void {
   git(['checkout', '-b', name], cwd);
 }
 
+// Checks out an already-existing branch -- never creates one (see
+// createAndCheckoutBranch for that). Added for milestone-merge (M019/T001),
+// which switches to the resolved target branch only after every state read
+// and safety check has already passed.
+export function checkoutBranch(cwd: string, name: string): void {
+  git(['checkout', name], cwd);
+}
+
 // AC003/T003 (M012): the one shared guard, wired into every commit-producing
 // operation for an active milestone-strategy milestone. A no-op when no
 // branch is tracked (main strategy, or an untracked milestone) -- callers

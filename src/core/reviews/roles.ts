@@ -6,6 +6,7 @@ export class ReviewRoleError extends Error {}
 export interface ReviewRole {
   id: string;
   focus: string;
+  label: string;
 }
 
 // AC001: nine built-in roles as registry data, engineering vocabulary ids.
@@ -22,42 +23,51 @@ export const REVIEW_ROLES: readonly ReviewRole[] = [
     id: 'developer',
     focus:
       'task granularity, implementation feasibility, write_scope accuracy, testability, implementation edge cases',
+    label: 'Implementation feasibility and task granularity',
   },
   {
     id: 'architect',
     focus: 'layering, dependencies, invariants, state/concurrency, design consistency, agent-agnosticism',
+    label: 'System design & architecture',
   },
   {
     id: 'devops',
     focus:
       'CI/CD, Git/branching, deployment, rollback, infrastructure, observability, operational safety, failure recovery, permissions, automation and release risk',
+    label: 'Release, rollback & operational safety',
   },
   {
     id: 'qa',
     focus:
       'test strategy and tier coverage, verification-check quality and AC-to-check mapping, edge/failure/regression cases, evidence quality',
+    label: 'Test coverage & verification quality',
   },
   {
     id: 'product',
     focus: 'requirement coverage, scope, acceptance criteria, product behavior',
+    label: 'Requirement scope & acceptance criteria',
   },
   {
     id: 'business',
     focus: 'business value, operational impact, cost, risk and priority',
+    label: 'Business value, cost & priority',
   },
   {
     id: 'business-analyst',
     focus:
       'requirement elicitation and traceability, acceptance-criteria completeness/testability/measurability, requirement-to-contract scope alignment, process fit',
+    label: 'Requirement elicitation & traceability',
   },
   {
     id: 'ui-ux',
     focus:
       "interface and interaction design of the delivered surfaces -- for PitWay's CLI: command ergonomics, output readability and consistency, terminology, error-message clarity and actionability",
+    label: 'Interface design & interaction clarity',
   },
   {
     id: 'user',
     focus: 'usability, clarity, workflow experience and user-facing behavior',
+    label: 'Usability & user-facing clarity',
   },
 ] as const;
 

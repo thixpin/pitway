@@ -1,5 +1,5 @@
 ---
-description: Show a task's status, or its minimal execution context
+description: PitWay: Show a task's status, or its minimal execution context
 argument-hint: <id>
 ---
 

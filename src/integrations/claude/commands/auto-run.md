@@ -1,5 +1,5 @@
 ---
-description: Manage auto-run authorization for automatic task continuation
+description: PitWay: Manage auto-run authorization for automatic task continuation
 argument-hint: <enable|disable|status> [milestone-id]
 ---
 
