@@ -95,6 +95,16 @@ const FAILING_CHECKS = `  - id: CT001
     instruction: Check the docs.
 `;
 
+// M017/T004 (AC004): a failure whose output actually matches
+// summarizeFailure's Vitest-style pattern, unlike FAILING_CHECKS's plain
+// "boom" (deliberately chosen there to prove the byte-identical
+// no-match path stays untouched).
+const FAILING_CHECKS_WITH_SUMMARY = `  - id: CT001
+    criterion: AC001
+    type: command
+    command: node -e "console.log('FAIL src/x.test.ts > it fails'); process.exit(1)"
+`;
+
 const makeContract = (verification: string): string => `---
 schema_version: 1
 id: M999
@@ -307,6 +317,17 @@ describe('pitway verify command checks (AC002)', () => {
       ['CT002', 'fail'],
     ]);
     expect(recorded[1]!.evidence).toContain('boom');
+  });
+
+  it("prefixes a failing check's evidence with a failures: summary naming the failing test (AC004)", async () => {
+    await confirmed(FAILING_CHECKS_WITH_SUMMARY);
+    const { error } = await run(['verify'], root);
+    expect(error).toBeUndefined();
+
+    const recorded = results();
+    expect(recorded[0]!.status).toBe('fail');
+    expect(recorded[0]!.evidence.startsWith('failures: FAIL src/x.test.ts > it fails\n')).toBe(true);
+    expect(recorded[0]!.evidence).toContain('FAIL src/x.test.ts > it fails');
   });
 
   it('caps evidence at 200 characters', async () => {

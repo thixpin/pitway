@@ -241,7 +241,7 @@ tasks:
       that a real failing check's evidence names the failing test;
       tests/integration/verification-repair.test.ts's failed-evidence assertions
       updated to the new shape (in scope per AC008's rule)."
-    status: ready
+    status: completed
     depends_on:
       - T007
     acceptance_criteria:
@@ -271,8 +271,16 @@ tasks:
       detail: npm test -- tests/unit/failure-summary.test.ts
         tests/integration/verify.test.ts tests/integration/task-verify.test.ts
         tests/integration/verification-repair.test.ts
-    result: null
-    attempts: 1
+    result:
+      summary: "[truncated] he same 200-char evidence cap trimTail already used; a
+        passing run's evidence, and a failing run whose output matches nothing,
+        stay byte-identical. verification-repair.test.ts's existing
+        failing-check fixture produces empty output, so its evidence is
+        unaffected -- verified, not modified."
+      evidence: Tests  75 passed (75) | Start at  12:58:57 | Duration  34.35s
+        (transform 928ms, setup 0ms, import 1.30s, tests 56.69s, environment
+        0ms)
+    attempts: 2
     usage: null
   - id: T005
     name: Shared CLI error handler and missing-state diagnostic
