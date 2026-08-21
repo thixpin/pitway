@@ -32,38 +32,9 @@ The result: agents move fast, and the engineering process stays in control of wh
 
 ## How It Works
 
-```mermaid
-flowchart TD
+![PitWay workflow: Requirement to Milestone to Contract to Milestone Review to Human Approval to Task Graph, then TDD to Task Verification to Task Commit repeating, then Final Full Test to Milestone Complete](./docs/assets/workflow.svg)
 
-    subgraph PLAN[" "]
-        direction LR
-        A["📋<br/>Requirement"] --> B["🏁<br/>Milestone"]
-        B --> C["📜<br/>Contract"]
-        C --> R["⚖️<br/>Milestone Review"]
-        R -. 🔄 .-> C
-    end
-
-    PLAN --> D{{"🚦<br/>Human Approval"}}
-    D --> E["📝<br/>Task Graph"]
-
-    subgraph EXECUTE[" "]
-        direction LR
-        F["🛠<br/>TDD"]
-        F --> G["⏱️<br/>Task Verification"]
-        G --> H["🏎️<br/>Task Commit"]
-    end
-
-    EXECUTE --> I["🧪<br/>Final Full Test"] 
-    I --> J["🏆<br/>Milestone Complete"]
-
-
-    G -. 🔄 .-> F
-    E --> EXECUTE
-    I -. 🔄 .-> EXECUTE
-
-    style PLAN fill:none,stroke:#333,stroke-width:2px
-    style EXECUTE fill:none,stroke:#333,stroke-width:2px
-```
+<sub>Source: [`docs/assets/workflow.mmd`](./docs/assets/workflow.mmd) (Mermaid) — rendered to SVG so it displays on npmjs.com too, which doesn't render Mermaid.</sub>
 
 **Workflow Lifecycle:**
 
@@ -110,11 +81,14 @@ Run the following for the full, authoritative CLI command surface and available 
 pitway --help
 ```
 
+For a hands-on walkthrough of the whole workflow — drafting a contract, confirming a milestone, working a task through to completion — see [USAGE.md](./USAGE.md).
+
 ---
 
 ## Commands & Integration
 
 - **Command Reference:** Run `pitway --help` for the full, authoritative CLI command surface and available flags.
+- **Usage Guide:** See [USAGE.md](./USAGE.md) for a hands-on walkthrough — installation, your first milestone end to end, inspecting state, mid-flight corrections, and a full command reference table.
 - **Claude Code:** `pitway init` installs PitWay's commands as real Claude Code slash commands (`.claude/commands/*.md`, each carrying `description`/`argument-hint` metadata for the `/` picker), alongside the driver protocol documents that explain how and when to use them.
 
 ---

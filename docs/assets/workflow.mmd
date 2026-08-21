@@ -1,0 +1,30 @@
+flowchart TD
+
+    subgraph PLAN[" "]
+        direction LR
+        A["📋<br/>Requirement"] --> B["🏁<br/>Milestone"]
+        B --> C["📜<br/>Contract"]
+        C --> R["⚖️<br/>Milestone Review"]
+        R -. 🔄 .-> C
+    end
+
+    PLAN --> D{{"🚦<br/>Human Approval"}}
+    D --> E["📝<br/>Task Graph"]
+
+    subgraph EXECUTE[" "]
+        direction LR
+        F["🛠<br/>TDD"]
+        F --> G["⏱️<br/>Task Verification"]
+        G --> H["🏎️<br/>Task Commit"]
+    end
+
+    EXECUTE --> I["🧪<br/>Final Full Test"]
+    I --> J["🏆<br/>Milestone Complete"]
+
+
+    G -. 🔄 .-> F
+    E --> EXECUTE
+    I -. 🔄 .-> EXECUTE
+
+    style PLAN fill:none,stroke:#333,stroke-width:2px
+    style EXECUTE fill:none,stroke:#333,stroke-width:2px
