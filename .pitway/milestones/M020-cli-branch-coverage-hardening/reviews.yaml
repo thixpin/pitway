@@ -1,0 +1,123 @@
+schema_version: 1
+sessions:
+  - id: rev-15904c51c1d4
+    status: decided
+    created_at: 2026-08-21T18:05:38Z
+    roles:
+      - developer
+      - architect
+    content_hash: sha256:33ac958dc8f5efd0a8c2d2265fbd8995cfc7794b2dd664fa9dcde6eeb75b063d
+    findings:
+      - role: developer
+        recorded_at: 2026-08-21T18:07:20Z
+        findings:
+          - severity: blocker
+            finding: T006's write_scope lists only IMPLEMENTATION_PLAN.md, but the task's
+              objective requires running `backlog promote B004 --task T001`,
+              `backlog archive B005 --reason ...`, and adding a new backlog item
+              (AC008/AC009). All three backlog subcommands mutate the backlog
+              state store under .pitway/ (per the project's Core->State Store
+              rule, every CLI mutation writes to a .pitway/ file), which is not
+              declared in write_scope. As scoped, T006 cannot complete its own
+              objective without writing outside its declared write_scope, which
+              is a genuine contract-boundary conflict per the "never silently
+              expand scope" rule.
+            targets:
+              - t006
+              - ac008
+              - ac009
+            recommendation: Add the backlog state file (e.g. .pitway/backlog.yaml) to T006's
+              write_scope before confirmation so the promote/archive/add
+              commands and the atomic completion commit are within declared
+              scope.
+          - severity: major
+            finding: "AC006/T005 explicitly names two possible outcomes to be decided at
+              confirm time: (recommended) a test-only subprocess test, or
+              (alternative) extracting a separately-testable runCli() from
+              src/cli/index.ts. T005's write_scope only includes
+              tests/integration/build-bin.test.ts. If the developer instead
+              approves the extract-and-refactor alternative, T005 would need to
+              modify src/cli/index.ts, which is outside its declared write_scope
+              -- the task as currently scoped can only execute the recommended
+              path."
+            targets:
+              - t005
+              - ac006
+            recommendation: Either add src/cli/index.ts to T005's write_scope as a
+              conditional entry, or state explicitly that choosing the
+              extract-and-refactor alternative at confirm time requires a
+              write_scope amendment before T005 starts.
+          - severity: minor
+            finding: T001's enumerated rendering-permutation list (pending/recorded role,
+              superseded count, zero-findings,
+              targets/unknownTargets/conflictsWith, sharedTargetConflicts,
+              declaredConflicts, start's non-TTY refusal, decide's
+              revision_requested branch) is thorough but its sufficiency to
+              reach the specific >=41/45 branch target is unverified until a
+              real `vitest run --coverage` is executed -- some of
+              milestone-review.ts's 45 branches may sit in code paths not named
+              in this list (e.g. other CLI option-parsing or error-handling
+              branches).
+            targets:
+              - t001
+              - ac002
+            recommendation: During T001 execution, if the enumerated scenarios don't reach
+              41/45, inspect the remaining uncovered BRDA lines directly and add
+              targeted cases rather than treating the enumerated list as
+              exhaustive by construction.
+      - role: architect
+        recorded_at: 2026-08-21T18:08:10Z
+        findings:
+          - severity: major
+            finding: AC004's disclosed-unreachable-branch exception is numerically
+              unsatisfiable alongside its own >=90% threshold. task-integrate.ts
+              has 8 total branches, so 90% requires >=8/8 (7/8 = 87.5% < 90%).
+              If a branch is genuinely unreachable in-process and disclosed by
+              name (the exception AC004 explicitly allows), the file can only
+              reach 7/8, which fails the stated >=90% bar. The AC does not say
+              whether a named disclosure overrides the percentage requirement or
+              whether AC004 is then simply not met. T003 restates the same
+              ambiguity verbatim.
+            targets:
+              - ac004
+              - t003
+            recommendation: Clarify at confirm time whether a disclosed-unreachable branch
+              satisfies AC004 despite <90%, or whether AC004 is scoped down to
+              "8/8 unless a specific branch is proven unreachable, in which case
+              disclosure alone (not a percentage) is the pass condition."
+          - severity: minor
+            finding: T006 bundles three semantically distinct changes --
+              IMPLEMENTATION_PLAN.md reconciliation (AC007), backlog promote
+              (AC008), and backlog archive+add (AC008/AC009) -- into a single
+              task with one manual verification and one atomic commit. A problem
+              found in one part (e.g. an inaccurate roadmap edit) blocks
+              completion of the unrelated backlog lifecycle closure, and vice
+              versa, even though they have no functional dependency on each
+              other.
+            targets:
+              - t006
+              - ac007
+              - ac008
+              - ac009
+            recommendation: "Optional: consider splitting doc reconciliation from backlog
+              promote/archive/add into separate tasks for cleaner rollback
+              granularity; not blocking given all are small, low-risk changes."
+          - severity: minor
+            finding: T006's write_scope lists only IMPLEMENTATION_PLAN.md, but the task's
+              objective also runs `backlog promote`, `backlog archive`, and adds
+              a new backlog item -- all of which mutate .pitway/backlog.yaml.
+              That state-file impact isn't declared in write_scope, even though
+              the commit rule requires "code + same-task state update" together.
+            targets:
+              - t006
+            recommendation: Confirm whether CLI-driven state mutations (backlog
+              promote/archive/add) are conventionally exempt from write_scope
+              declaration; if not, declare .pitway/backlog.yaml explicitly to
+              avoid an unscoped-write refusal at task completion.
+    decision:
+      outcome: revision_requested
+      note: T006 write_scope missing .pitway/backlog.yaml (blocker+minor); T005
+        write_scope missing src/cli/index.ts for AC006's alternative path
+        (major); AC004's 90% threshold mathematically unsatisfiable against 8
+        total branches (major). All three fixed via milestone-add --replace.
+      decided_at: 2026-08-21T18:22:22Z
