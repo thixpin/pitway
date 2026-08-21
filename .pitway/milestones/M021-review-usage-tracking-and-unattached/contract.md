@@ -2,7 +2,7 @@
 schema_version: 1
 id: M021
 title: Review Usage Tracking and Unattached Backlog Archive
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-21T19:05:01Z
 verification_approved_hash: sha256:f359558cc19e957e92d14dc59bf711f41970c4dd97ed78858422d38465dc0a39

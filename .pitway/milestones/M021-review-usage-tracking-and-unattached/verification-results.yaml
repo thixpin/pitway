@@ -1,2 +1,83 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-21T19:17:17Z
+    evidence: Tests  105 passed (105) | Start at  02:17:17 | Duration  222ms
+      (transform 47ms, setup 0ms, import 95ms, tests 39ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 799
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-21T19:17:22Z
+    evidence: Tests  12 passed (12) | Start at  02:17:18 | Duration  3.73s
+      (transform 248ms, setup 0ms, import 346ms, tests 3.30s, environment 0ms)
+    recorded_by: command
+    duration_ms: 4102
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-21T19:17:27Z
+    evidence: Tests  14 passed (14) | Start at  02:17:22 | Duration  4.97s
+      (transform 234ms, setup 0ms, import 326ms, tests 4.56s, environment 0ms)
+    recorded_by: command
+    duration_ms: 5401
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-21T19:17:37Z
+    evidence: Tests  54 passed (54) | Start at  02:17:27 | Duration  9.79s
+      (transform 66ms, setup 0ms, import 118ms, tests 9.60s, environment 0ms)
+    recorded_by: command
+    duration_ms: 10181
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-21T19:17:55Z
+    evidence: Tests  30 passed (30) | Start at  02:17:38 | Duration  17.09s
+      (transform 251ms, setup 0ms, import 367ms, tests 16.64s, environment 0ms)
+    recorded_by: command
+    duration_ms: 17612
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-21T19:18:12Z
+    evidence: Tests  30 passed (30) | Start at  02:17:55 | Duration  16.85s
+      (transform 260ms, setup 0ms, import 380ms, tests 16.38s, environment 0ms)
+    recorded_by: command
+    duration_ms: 17364
+    termination_reason: exited
+  - check: CT010
+    status: pass
+    at: 2026-08-21T19:19:57Z
+    evidence: Tests  1355 passed (1355) | Start at  02:18:13 | Duration  103.27s
+      (transform 3.53s, setup 0ms, import 14.67s, tests 695.16s, environment
+      8ms)
+    recorded_by: command
+    duration_ms: 104878
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-21T19:20:08Z
+    evidence: "Diff reviewed: no dollar-cost field, estimate, or price table
+      anywhere in src/state/schemas.ts, src/core/reviews/*, or
+      src/cli/commands/milestone-review.ts. Tokens only, confirmed by both the
+      worker's own grep and direct review of the diff."
+    recorded_by: developer
+  - check: CT005
+    status: pass
+    at: 2026-08-21T19:20:08Z
+    evidence: src/integrations/claude/dispatch.md and protocol-driver.md both carry
+      the new review-usage MUST instruction, confirmed by direct file read
+      (dispatch.md 'The same MUST rule applies to a dispatched reviewer's
+      findings' paragraph; protocol-driver.md 'Runtime usage propagation applies
+      here too' paragraph).
+    recorded_by: developer
+  - check: CT009
+    status: pass
+    at: 2026-08-21T19:20:08Z
+    evidence: IMPLEMENTATION_PLAN.md diff reviewed (sections 4 and 7, top-of-file
+      changelog). backlog promote B006 --task T001 and B007 --task T002 both
+      succeeded; pitway backlog list confirms both promoted.
+    recorded_by: developer
