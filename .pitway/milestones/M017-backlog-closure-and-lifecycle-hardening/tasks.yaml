@@ -425,7 +425,7 @@ tasks:
       DELIVERED with the chosen direction, npm-pack transient left open; M017's
       own Bootstrap row omitted; Status snapshot). The milestone-level gates run
       once, as CT010/CT011 at verify time -- not as this task's own check."
-    status: ready
+    status: completed
     depends_on:
       - T003
       - T004
@@ -445,5 +445,19 @@ tasks:
       strategy: manual
       detail: Reviewed against AC009 (CT009); the full-suite and typecheck gates are
         CT010/CT011 at milestone verification.
-    result: null
+    result:
+      summary: "[truncated] livered\" (the post-M016-merge quick-change had left this
+        stale) and gains a new M017 roadmap-entry bullet; the Status snapshot's
+        point-in-time marker and closing paragraph updated for M017. M017's own
+        Bootstrap-table row correctly omitted, per the established
+        self-referential discipline."
+      evidence: >
+        Docs-only, no automated test owns this prose (verified by CT009 review;
+        the full-suite/typecheck gates are CT010/CT011 at milestone
+        verification, not this task's own check). Change confined to
+        IMPLEMENTATION_PLAN.md (T009's declared write_scope). Markdown syntax
+        balance checked (strikethrough/backtick pair counts both even); every
+        command-count, asset-count, and Backlog claim cross-checked against the
+        actual M017 diffs from T001-T008.
+    attempts: 1
     usage: null
