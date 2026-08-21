@@ -8,6 +8,7 @@ import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneCompleteCommand } from '../../src/cli/commands/milestone-complete.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
+import { registerMilestoneMergeCommand } from '../../src/cli/commands/milestone-merge.js';
 import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js';
 import { registerVerifyCommand } from '../../src/cli/commands/verify.js';
 import { deterministicBranchName } from '../../src/core/milestones/confirm.js';
@@ -91,6 +92,7 @@ async function run(args: string[], cwd: string): Promise<{ lines: string[]; erro
   registerMilestoneAddCommand(program, { root: cwd, write: (s) => lines.push(s) });
   registerMilestoneConfirmCommand(program, { root: cwd, write: (s) => lines.push(s) });
   registerMilestoneCompleteCommand(program, { root: cwd, write: (s) => lines.push(s) });
+  registerMilestoneMergeCommand(program, { root: cwd, write: (s) => lines.push(s) });
   registerTaskUpdateCommand(program, { root: cwd, write: (s) => lines.push(s) });
   registerVerifyCommand(program, { root: cwd, write: (s) => lines.push(s) });
   try {
@@ -415,5 +417,64 @@ describe('mergeMilestone journal record (AC007)', () => {
     // sibling-record discipline as worktree_dispatch/auto_run/quick_change.
     expect(derivePending(readJournal(root))).toHaveLength(0);
     expect(git(['status', '--porcelain'], root).trim()).toBe('');
+  });
+});
+
+// AC001/AC008/T002: the CLI wiring itself -- reachable via `pitway
+// milestone-merge <id> [--target <branch>]`, emitting the mergeMilestone
+// view as a JSON envelope under --json and readable text otherwise, on
+// every path (success, already-merged, refusal).
+describe('milestone-merge CLI command (AC001, AC008)', () => {
+  it('--json emits the merge view on a successful merge', async () => {
+    const { originalBranch } = await buildCompletedMilestone();
+    const { lines, error } = await run(['milestone-merge', 'M001', '--json'], root);
+
+    expect(error).toBeUndefined();
+    const view = JSON.parse(lines[0]!) as { id: string; target: string; outcome: string; commit: string };
+    expect(view).toMatchObject({ id: 'M001', target: originalBranch, outcome: 'merged' });
+    expect(view.commit).toMatch(/^[0-9a-f]{40}$/);
+  });
+
+  it('renders readable text on a successful merge without --json', async () => {
+    await buildCompletedMilestone();
+    const { lines, error } = await run(['milestone-merge', 'M001'], root);
+
+    expect(error).toBeUndefined();
+    expect(lines.join('')).toMatch(/Merged M001/);
+  });
+
+  it('--json emits outcome already-merged on a re-run, human text otherwise', async () => {
+    await buildCompletedMilestone();
+    expect((await run(['milestone-merge', 'M001'], root)).error).toBeUndefined();
+
+    const jsonRun = await run(['milestone-merge', 'M001', '--json'], root);
+    expect(jsonRun.error).toBeUndefined();
+    expect(JSON.parse(jsonRun.lines[0]!)).toMatchObject({ outcome: 'already-merged' });
+
+    const textRun = await run(['milestone-merge', 'M001'], root);
+    expect(textRun.error).toBeUndefined();
+    expect(textRun.lines.join('')).toMatch(/already merged/);
+  });
+
+  it('respects an explicit --target branch', async () => {
+    const { originalBranch } = await buildCompletedMilestone();
+    git(['checkout', '-b', 'release', originalBranch], root);
+    git(['checkout', deterministicBranchName('M001', MILESTONE_TITLE)], root);
+
+    const { lines, error } = await run(['milestone-merge', 'M001', '--target', 'release', '--json'], root);
+
+    expect(error).toBeUndefined();
+    expect(JSON.parse(lines[0]!)).toMatchObject({ target: 'release', outcome: 'merged' });
+  });
+
+  it('refuses a not-yet-completed milestone -- readable error, no crash, tree unchanged', async () => {
+    setBranchStrategy('milestone');
+    await addMilestone();
+    expect((await run(['milestone-confirm', 'M001'], root)).error).toBeUndefined();
+
+    const { error } = await run(['milestone-merge', 'M001'], root);
+
+    expect(error).toBeInstanceOf(MilestoneMergeError);
+    expect(error?.message).toMatch(/status is "in_progress"/);
   });
 });

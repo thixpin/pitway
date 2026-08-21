@@ -154,6 +154,15 @@ describe('M018 backlog command doc ships', () => {
   });
 });
 
+// AC004/T002 (M019): asset discovery is dynamic -- this assertion pins
+// that the new milestone-merge command doc actually ships, rather than
+// maintaining any hardcoded manifest.
+describe('M019 milestone-merge command doc ships', () => {
+  it('lists the new command doc among shipped assets', () => {
+    expect(listClaudeAssets()).toContain('commands/milestone-merge.md');
+  });
+});
+
 // M019/AC022/T007: a documentation-presence check for the driver-integration
 // MUST-requirement itself -- PitWay cannot verify a driver actually follows
 // its own protocol docs, but it CAN verify the instruction text is still

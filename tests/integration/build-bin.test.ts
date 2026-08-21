@@ -27,6 +27,7 @@ const ALL_COMMAND_NAMES = [
   'milestone-complete',
   'milestone-confirm',
   'milestone-list',
+  'milestone-merge',
   'milestone-review',
   'milestone-status',
   'quick-change',

@@ -161,6 +161,20 @@ pitway milestone-complete M001  # requires every task done + every check passing
 `milestone-complete` is the other mandatory gate — it refuses until
 everything is actually green.
 
+### 6. Merge the milestone branch
+
+Under `branch_strategy: milestone`, once the milestone is `completed`:
+
+```bash
+pitway milestone-merge M001                   # merges into the milestone's base_branch
+pitway milestone-merge M001 --target release  # or an explicit target branch
+```
+
+`--target` defaults to the milestone's own `base_branch`. Re-running it is
+a safe, idempotent no-op once the merge has already landed. This is not run
+automatically by `milestone-complete` — invoke it yourself when you're
+ready to integrate the branch.
+
 ## Inspecting State
 
 ```bash
@@ -285,7 +299,7 @@ they're for:
 | Setup | `init` |
 | Orientation | `resume`, `milestone-list`, `milestone-status`, `task-status` |
 | Drafting | `milestone-add`, `write-ms-artifacts` |
-| Human gates | `milestone-confirm`, `milestone-complete` |
+| Human gates | `milestone-confirm`, `milestone-complete`, `milestone-merge` |
 | Task execution | `task-update`, `task-verify` |
 | Mid-flight correction | `task-add`, `task-amend` |
 | Deferred work | `backlog` |

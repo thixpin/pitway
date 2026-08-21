@@ -11,6 +11,7 @@ import { registerMilestoneCancelCommand } from './commands/milestone-cancel.js';
 import { registerMilestoneCompleteCommand } from './commands/milestone-complete.js';
 import { registerMilestoneConfirmCommand } from './commands/milestone-confirm.js';
 import { registerMilestoneListCommand } from './commands/milestone-list.js';
+import { registerMilestoneMergeCommand } from './commands/milestone-merge.js';
 import { registerMilestoneReviewCommand } from './commands/milestone-review.js';
 import { registerMilestoneStatusCommand } from './commands/milestone-status.js';
 import { registerQuickChangeCommand } from './commands/quick-change.js';
@@ -61,6 +62,7 @@ export function registerAllCommands(program: Command, deps: CommandDeps = {}): v
   registerMilestoneCompleteCommand(program, deps);
   registerMilestoneConfirmCommand(program, deps);
   registerMilestoneListCommand(program, deps);
+  registerMilestoneMergeCommand(program, deps);
   registerMilestoneReviewCommand(program, deps);
   registerMilestoneStatusCommand(program, deps);
   registerQuickChangeCommand(program, deps);

@@ -106,7 +106,7 @@ tasks:
       'registers all N commands' count (24 -> 25) and
       tests/integration/build-bin.test.ts's real-binary command list (AC001,
       AC008, AC009).
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -139,8 +139,18 @@ tasks:
         tests/integration/build-bin.test.ts
         tests/integration/milestone-merge.test.ts
         tests/unit/claude-assets.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "[truncated]  <id> [--target <branch>] into the CLI |
+        (src/cli/commands/milestone-merge.ts), mirroring existing milestone-* |
+        conventions (generic error boundary, pitway_result envelope). Shipped |
+        its command doc, updated USAGE.md/protocol-driver.md, and updated |
+        registered-command counts (24->25)."
+      evidence: Tests  116 passed (116) | Start at  23:57:13 | Duration  32.42s
+        (transform 775ms, setup 0ms, import 1.08s, tests 36.89s, environment
+        0ms)
+    attempts: 1
+    usage:
+      total_tokens: 113117
   - id: T003
     name: "B001 -- PitWay: description prefix and ms-* milestone aliases"
     objective: "Prefix every PitWay-owned command doc's description frontmatter (all
@@ -158,7 +168,7 @@ tasks:
       tests/integration/cli.test.ts and tests/integration/build-bin.test.ts for
       the new aliases and tests/unit/claude-assets.test.ts for the 7 new shipped
       files (AC009, AC010, AC011, AC012, AC013)."
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:

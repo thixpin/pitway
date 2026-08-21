@@ -307,6 +307,11 @@ implied by "keep going," never inferred from a subagent's report:
 - **`milestone-confirm`** (and `--amend`): only after the full contract
   has been presented and the developer said yes to it in this
   conversation. Never confirm a milestone the developer hasn't seen.
+- **`milestone-merge`**: the developer-invoked step after
+  `milestone-complete`, under `branch_strategy: milestone` — merges the
+  completed milestone's own branch into its target branch
+  (`commands/milestone-merge.md`). Not run automatically as part of
+  completion; wait for the developer to ask for it.
 - **Scope changes**: on a conflict with the confirmed contract, stop work,
   propose the change as a contract amendment (append-only Change Log
   entry), and wait for approval before `milestone-confirm --amend` or
