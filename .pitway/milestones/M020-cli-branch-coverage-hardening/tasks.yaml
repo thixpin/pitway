@@ -14,7 +14,7 @@ tasks:
       refusal when --roles is omitted, and renderDecideHuman's
       revision_requested branch vs. accepted/rejected. Test-only changes
       expected; no production behavior change (AC002)."
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - src/cli/commands/milestone-review.ts reaches >=41/45 (>=90%) branch
@@ -46,6 +46,7 @@ tasks:
         tests/integration/milestone-review-report.test.ts
         tests/integration/milestone-review-start.test.ts
     result: null
+    attempts: 1
     usage: null
   - id: T002
     name: task-verify.ts branch coverage
@@ -54,7 +55,7 @@ tasks:
       targeting real validation failures, state-transition refusals, and
       command/tdd verification-strategy branches not yet exercised. Test-only
       changes expected (AC003).
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - src/cli/commands/task-verify.ts reaches >=19/21 (>=90%) branch coverage
@@ -68,6 +69,7 @@ tasks:
       strategy: command
       detail: npx vitest run tests/integration/task-verify.test.ts
     result: null
+    attempts: 1
     usage: null
   - id: T003
     name: task-integrate.ts branch coverage
@@ -77,7 +79,7 @@ tasks:
       tests/integration/task-integrate-recovery.test.ts. If any branch proves
       genuinely unreachable in-process, disclose it by name in completion
       evidence rather than leaving it silently uncovered (AC004).
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - src/cli/commands/task-integrate.ts reaches 8/8 branch coverage measured
@@ -96,6 +98,7 @@ tasks:
       detail: npx vitest run tests/integration/task-integrate.test.ts
         tests/integration/task-integrate-recovery.test.ts
     result: null
+    attempts: 1
     usage: null
   - id: T004
     name: verification-repair.ts branch coverage
@@ -104,7 +107,7 @@ tasks:
       tests/integration/verification-repair.test.ts -- targeting real
       recovery/repair-path branches, validation failures, and state-transition
       refusals. Test-only changes expected (AC005).
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - src/cli/commands/verification-repair.ts reaches >=12/13 (>=90%) branch
@@ -118,6 +121,7 @@ tasks:
       strategy: command
       detail: npx vitest run tests/integration/verification-repair.test.ts
     result: null
+    attempts: 1
     usage: null
   - id: T005
     name: cli/index.ts error-boundary gap (AC006 decision)
@@ -131,7 +135,7 @@ tasks:
       expected; if the developer instead approved the extract-and-refactor
       alternative at confirm time, implement that instead and disclose the
       deviation in completion evidence."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - a new real-subprocess test constructs a genuine non-PitWay error (not a
@@ -147,8 +151,15 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/integration/build-bin.test.ts
-    result: null
-    usage: null
+    result:
+      summary: Closed cli/index.ts's known error-boundary gap with one new
+        real-subprocess test; no production refactor (AC006 recommended option,
+        developer-approved).
+      evidence: Tests  48 passed (48) | Start at  01:36:48 | Duration  6.13s
+        (transform 15ms, setup 0ms, import 23ms, tests 6.03s, environment 0ms)
+    attempts: 1
+    usage:
+      total_tokens: 82740
   - id: T006
     name: Reconciliation, backlog closure, and dogfood finding
     objective: Reconcile IMPLEMENTATION_PLAN.md against real repository state on

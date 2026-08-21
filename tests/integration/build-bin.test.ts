@@ -224,5 +224,31 @@ describe('build produces a real, spawnable dist/ binary (M008/T001/AC001)', () =
         rmSync(initedRepo, { recursive: true, force: true });
       }
     });
+
+    // M020/T005 (AC006): renderCliError's other branch -- error.ts's
+    // isPitwayError narrows only on constructor.name, so any thrown error
+    // whose class is literally the builtin `Error` (rather than one of
+    // PitWay's dedicated `*Error` subclasses, e.g. StateStoreError) is
+    // classified as "unexpected" and keeps its stack. task-status's
+    // resolveActiveMilestone does exactly this (`throw new Error('no active
+    // milestone; run milestone-add first')`) -- confirmed the intuitive
+    // alternative (malformed .pitway/state.yaml) does NOT hit this branch,
+    // since state/store.ts's loadYaml always wraps a YAML parse failure in
+    // StateStoreError, which isPitwayError treats as PitWay-authored.
+    it('a genuine non-PitWay error (a bare `Error`, not a dedicated PitWay error class) DOES print a stack trace', () => {
+      const initedRepo = mkdtempSync(join(tmpdir(), 'pitway-build-bin-stack-'));
+      try {
+        git(['init', '-q'], initedRepo);
+        git(['config', 'user.email', 'test@example.com'], initedRepo);
+        git(['config', 'user.name', 'Test'], initedRepo);
+        execFileSync('node', [distEntry, 'init'], { cwd: initedRepo, stdio: 'pipe' });
+        const { status, stderr } = runExpectingFailure(['task-status', 'T001'], initedRepo);
+        expect(status).toBe(1);
+        expect(stderr).toContain('pitway: no active milestone; run milestone-add first');
+        expect(stderr).toMatch(/^\s*at /m);
+      } finally {
+        rmSync(initedRepo, { recursive: true, force: true });
+      }
+    });
   });
 });
