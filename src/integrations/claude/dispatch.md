@@ -1,133 +1,88 @@
 # Dispatch
 
-This is the driver-facing detail behind `protocol-driver.md`'s "dispatch
-discipline" summary: how a task actually gets handed to a worker, and what
-PitWay does and does not guarantee once it has been. It also covers
-**whether** to dispatch at all — inline execution is a first-class option,
-not a fallback.
+How a task is handed to a worker, what PitWay guarantees once it has been,
+and whether to dispatch at all — inline execution is a first-class
+option, not a fallback.
 
-## Choosing inline vs. sub-agent dispatch (M007/AC010)
+## Inline vs. sub-agent dispatch (M007/AC010)
 
-**Inline is the default** for documentation, review/manual work, localized
-fixes, and small-scope tasks. `verification.strategy: tdd` alone is
-**not** a reason to dispatch — a task can produce real test code and still
-be small and well-understood enough to execute inline.
+**Inline is the default** for documentation, review/manual work,
+localized fixes, and small-scope tasks. `verification.strategy: tdd` alone
+is never a reason to dispatch.
 
-**Dispatch to a sub-agent when it provides a material isolation or
-concurrency benefit**: an independently bounded multi-file implementation,
-cross-subsystem work, disjoint parallel-ready scope, or a context-heavy
-investigation that benefits from a separate, focused context rather than
-crowding the driver's own. Weigh the task's expected effort against
-observed sub-agent startup overhead (measured at roughly 32K tokens for
-even a trivial single-file task, M007/T001) — avoid dispatch when that
-overhead is disproportionate to the work.
+**Dispatch when it gives a material isolation or concurrency benefit**: an
+independently bounded multi-file implementation, cross-subsystem work,
+disjoint parallel-ready scope, or a context-heavy investigation better
+served by a separate focused context. Weigh expected effort against the
+measured sub-agent startup overhead (~32K tokens even for a trivial
+single-file task, M007/T001).
 
-**A contract-mandated sub-agent dispatch is never overridden** by this
-rule — if a task or contract explicitly requires dispatch (e.g. for
-independent-review integrity), that requirement stands regardless of size
-or strategy.
+**A contract-mandated dispatch is never overridden** by this rule. **You
+choose autonomously**: record the mode and a brief rationale before
+starting the task; don't ask the developer per task unless the choice is
+materially ambiguous.
 
-**The driver chooses autonomously.** Record the selected mode and a brief
-rationale before starting the task; do not ask the developer per task
-unless the choice is materially ambiguous.
+## The dispatch sequence
 
-## The dispatch sequence (once you've chosen to dispatch)
+1. Confirm the task is `ready` (`pitway resume` / `pitway task-status
+   <id>`). Never dispatch a task PitWay hasn't marked ready.
+2. `pitway task-update <id> in_progress`.
+3. `pitway task-status <id> --context --json` — the *only* task-specific
+   material a worker receives (no milestone history, no sibling detail
+   beyond each dependency's result summary already in the bundle). The
+   `required_skills` gate fires here: a declared skill missing at
+   `.claude/skills/<name>/SKILL.md` refuses and names it — treat that as
+   blocking; never dispatch without the bundle. The gate proves only that
+   PitWay's managed installation is present, not that your harness loads
+   it.
+4. Dispatch a worker with exactly two things: `protocol-worker.md` and the
+   bundle. Nothing else.
+5. Take a fresh git snapshot only *after* the worker completes
+   (`coordination.md`). Review the diff and write_scope yourself against
+   the worker's report before anything else.
+6. While still `in_progress`, `pitway task-verify <id>` for the formal,
+   journaled verification record (`commands/task-verify.md`). It replaces
+   the ad hoc rerun, never the diff review in step 5.
+7. `pitway task-update <id> review`.
+8. `pitway task-update <id> completed --result <file> --message <file>`
+   (or `blocked`/`failed` as the report warrants). You run this, never
+   the worker; the task-verify record is picked up automatically.
 
-1. Confirm the task is actually ready: `pitway resume` or
-   `pitway task-status <id>`. Never dispatch a task PitWay hasn't marked
-   `ready`.
-2. Start it: `pitway task-update <id> in_progress`.
-3. Pull its context bundle: `pitway task-status <id> --context --json`. This
-   is the *only* task-specific material a worker should receive — no
-   milestone history, no sibling task detail beyond each dependency's
-   concise result summary already folded into the bundle. This is also
-   where a task's declared `required_skills` gate fires: if a declared
-   skill is not installed at `.claude/skills/<name>/SKILL.md`, this call
-   refuses and names the missing skill. Treat that refusal exactly like any
-   other blocking refusal — do not proceed to dispatch a worker on a task
-   whose context bundle you could not retrieve. This gate proves only that
-   PitWay's own managed skill installation is present at the conventional
-   path; it does not and cannot prove that your harness actually loads the
-   skill once dispatched.
-4. Dispatch a worker using your own tooling (whatever subagent/sub-session
-   mechanism your harness provides), handing it exactly two things: the
-   fixed text in `protocol-worker.md`, and the bundle from step 3. Nothing
-   else.
-5. Take a fresh git snapshot only *after* the worker completes — never
-   trust one taken before or during dispatch. See `coordination.md`. Review
-   the diff and write_scope yourself against the worker's report before
-   doing anything else.
-6. While the task is still `in_progress`, run `pitway task-verify <id>` to
-   produce a formal, journaled verification record — see
-   `commands/task-verify.md`. This replaces an ad hoc independent
-   rerun-and-eyeball of the verification command; it does not replace the
-   diff review in step 5, which still happens first.
-7. Move the task to review: `pitway task-update <id> review`.
-8. Persist what the worker reported: `pitway task-update <id> completed
-   --result <file> --message <file>` (or `blocked` / `failed`, as the
-   report warrants). You run this, not the worker. No `--evidence` flag is
-   needed — the task-verify record from step 6 is picked up automatically.
+## What "bounded" means
 
-## What "bounded" actually means
+PitWay bounds the **supplied bundle** — provably minimal, built by
+`src/core/tasks/context-bundle.ts` from the task's declared fields and
+nothing else. It does **not** bound the worker's **total context**:
+whatever the harness injects (system prompt, tool definitions, skills,
+project memory, inherited conversation state) is outside PitWay's control
+and verification. Never represent a worker as context-isolated beyond the
+bundle itself.
 
-PitWay bounds the **supplied bundle** — the task-context JSON handed to the
-worker in step 4 is provably minimal, built by
-`src/core/tasks/context-bundle.ts` from the task's own declared fields and
-nothing else.
+**No runtime read-enforcement exists.** `context_files` names what a
+worker is expected to read; nothing in PitWay prevents reads outside it
+(advisory-only by decision, M008 — see `IMPLEMENTATION_PLAN.md` §8).
 
-PitWay does **not** bound, and makes no claim to bound, the worker's
-**total context**. Whatever your harness injects on top of that bundle —
-system prompt, tool definitions, skills, project memory, prior conversation
-state a sub-session happens to inherit — is outside PitWay's control and
-outside what PitWay can verify. Do not represent a dispatched worker as
-context-isolated beyond the bundle itself; it isn't, and PitWay has no way
-to make it so.
+## Write scope is enforced, on both ends
 
-Likewise, **no runtime read-enforcement exists.** A task's `context_files`
-names what a worker is expected to read; nothing in PitWay's code prevents
-a worker from reading a file outside that list, and no such enforcement is
-built by this milestone. Whether and how to build actual read enforcement
-is an explicit **M007** decision, not something this protocol pretends is
-already handled.
-
-## Write scope stays enforced, on both ends
-
-Unlike the read side, the *write* boundary is real and mechanically
-checked in two places:
-
-- Before dispatch (or any time you want to sanity-check a planned write
-  set), `checkWriteScope(writePaths, task)` in
-  `src/core/tasks/write-scope-check.ts` compares a structured list of paths
-  against the task's declared `write_scope` (or legacy `relevant_files`)
-  and names anything outside it. It is write-only — it says nothing about
-  `context_files` or any read boundary.
-- At completion, `pitway task-update <id> completed` independently refuses
-  to commit if the working tree carries any dirty path outside that same
-  boundary. A worker that ignored its write scope simply cannot complete
-  the task; the commit is refused with the offending paths named.
+- Before dispatch (or any time): `checkWriteScope(writePaths, task)` in
+  `src/core/tasks/write-scope-check.ts` names every path outside the
+  declared `write_scope` (or legacy `relevant_files`). Write-only; it says
+  nothing about reads.
+- At completion: `pitway task-update <id> completed` refuses to commit if
+  any dirty path lies outside that boundary, naming the offenders. A
+  worker that ignored its write scope cannot complete the task.
 
 ## Parallel dispatch (worktree mode)
 
-Under `execution.strategy: parallel_worktrees` the dispatch contract above
-gains a worktree flavor: `pitway task-dispatch <id>` (instead of a plain
-`task-update <id> in_progress`) both transitions the task and creates its
-temporary worktree + scaffolding branch, refusing when the task isn't
+Under `execution.strategy: parallel_worktrees`, `pitway task-dispatch
+<id>` replaces step 2: it transitions the task and creates its temporary
+worktree + scaffolding branch, refusing when the task isn't
 parallel-eligible (dependency relation or write-scope overlap with any
-`in_progress` task, inline ones included), when the tree is dirty, or when
-a journal-pending amendment would hand the worker a stale contract.
-
-The bundle is still gathered at the main root (`task-status <id> --context
---json`) and passed to the worker — never derived inside the worktree,
-whose committed `.pitway/` copy is stale transport. Add the assigned
-worktree path and scaffolding branch to the dispatch envelope; the worker
-follows `protocol-worker.md`'s worktree section (commit locally, report
-the branch HEAD SHA, everything else unchanged).
-
-On report: integrate one task at a time in ascending task id
-(`task-integrate <id>`), then the unchanged authoritative sequence —
-`task-verify <id>` in the main tree, `review`, `completed`. Worker-side
-checks are advisory; only the main-tree run records evidence. Abandon a
-dispatch with `task-discard <id> --reason <text>` (task becomes `failed`,
-then `ready` re-allows dispatch); `pitway resume` names every crash
-residue read-only. See `commands/task-dispatch.md`,
-`commands/task-integrate.md`, `commands/task-discard.md`.
+`in_progress` task, inline ones included), the tree is dirty, or a
+journal-pending amendment would hand the worker a stale contract. Step 3
+is unchanged — the bundle is always gathered at the main root; add the
+assigned worktree path and branch to the envelope, and the worker follows
+`protocol-worker.md`'s worktree section. On report: `task-integrate <id>`
+one task at a time in ascending task id, then steps 5–8 unchanged in the
+main tree (worker-side checks are advisory). Full sequence, recovery, and
+`task-discard`: `protocol-driver.md` "Parallel dispatch".
