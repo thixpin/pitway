@@ -384,7 +384,7 @@ tasks:
       rule is the insertion path, remaining work is abandoned by cancelling
       tasks and completing, never by git reset). Docs-only; no semantics
       changed; verified by CT008."
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -402,7 +402,21 @@ tasks:
     verification:
       strategy: manual
       detail: Reviewed against AC008 (CT008); no automated test owns this prose.
-    result: null
+    result:
+      summary: "[truncated] d (cancel is draft-only by design, no state-machine edge
+        for confirmed/ in_progress; task-add is the insertion path; abandon
+        remaining work by cancelling tasks and completing, never git reset) and
+        cross-referenced both mechanisms in protocol-driver.md's \"Choosing a
+        correction mechanism\"."
+      evidence: >
+        Docs-only, no automated test owns this prose (verified by CT008 review).
+        Both edits confined to their declared write_scope
+        (src/integrations/claude/protocol-driver.md,
+        src/integrations/claude/commands/milestone-cancel.md); content checked
+        against src/core/milestones/state-machine.ts (no confirmed/in_progress
+        -> cancelled edge) and src/core/milestones/cancel.ts (draft-only
+        refusal).
+    attempts: 1
     usage: null
   - id: T009
     name: Plan reconciliation
@@ -411,7 +425,7 @@ tasks:
       DELIVERED with the chosen direction, npm-pack transient left open; M017's
       own Bootstrap row omitted; Status snapshot). The milestone-level gates run
       once, as CT010/CT011 at verify time -- not as this task's own check."
-    status: waiting
+    status: ready
     depends_on:
       - T003
       - T004
