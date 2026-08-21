@@ -1,1 +1,5 @@
 schema_version: 1
+git:
+  branch_strategy: milestone
+execution:
+  strategy: parallel_worktrees

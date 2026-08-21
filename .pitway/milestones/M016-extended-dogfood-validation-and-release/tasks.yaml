@@ -1,0 +1,224 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Harden the nested-full-suite init flake
+    objective: "Diagnose and harden the flake in
+      `tests/integration/completed-task-revision-path.test.ts`'s line-121
+      `pitway init` assertion (recurred M013/T008, M014 CT010, M015/T011 --
+      passes standalone every time, fails only when the full suite runs nested
+      inside `task-verify`/`verify` under real system load). Use the `debugging`
+      skill to narrow the actual failure mode under load (a real reproduction,
+      not guesswork) before deciding the fix. If the root cause is a genuine
+      PitWay defect (e.g. a resource-contention or timing issue in `init`'s
+      git-work-tree detection or file-system writes under concurrent subprocess
+      load), fix it for real in the affected code path. If the cause proves to
+      be inherent to spawning many real git subprocesses concurrently under load
+      rather than a PitWay defect, apply a disclosed, evidence-backed test-level
+      accommodation (never a bare retry-until-green) and document the reasoning
+      inline. Either way, prove the fix against a real reproduction of the
+      failure condition. QA-caught gap, fixed at drafting: this task's own
+      declared verification is deliberately the FULL suite, not just its own
+      test file -- a standalone single-file run always passes regardless of
+      whether the fix works (that is the flake's own defining symptom), so it
+      can never prove anything about this task specifically. Running the full
+      suite means `task-verify T001` genuinely nests a full run inside itself,
+      reproducing one of the two historically documented trigger contexts for
+      real. Anticipated risk, disclosed: the true root cause is unknown at task
+      start (that is the point of using the debugging skill first) and may turn
+      out to live outside this task's declared write_scope -- if so, the
+      standard contract-amendment stop-and-ask path applies, expected PitWay
+      behavior, not a sign the contract was wrong."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC003
+    context_files:
+      - tests/integration/completed-task-revision-path.test.ts
+      - src/cli/commands/init.ts
+      - src/git/safety.ts
+      - src/git/exec.ts
+    write_scope:
+      - tests/integration/completed-task-revision-path.test.ts
+      - src/cli/commands/init.ts
+      - src/git/safety.ts
+      - src/git/exec.ts
+    mapped_ac_ids:
+      - AC003
+    required_skills:
+      - debugging
+    verification:
+      strategy: tdd
+      detail: npm test
+    result: null
+    usage: null
+  - id: T002
+    name: Fix QuickChangeError identity split and requireQuickChange duplication
+    objective: "Fix both remaining M011 dogfood findings plus the related defect
+      this milestone's own drafting found: `QuickChangeError` is currently
+      declared as two distinct classes -- `create.ts:14` and `run.ts:11` each
+      `export class QuickChangeError extends Error {}` -- with `commit.ts`
+      importing/re-exporting `run.ts`'s class and `promote.ts` importing
+      `create.ts`'s, so an `instanceof QuickChangeError` check written against
+      one site's import silently fails to catch an error thrown by the other's
+      code path. Unify to exactly one canonical class (in `create.ts`, since
+      `run.ts`/`commit.ts` already depend on `create.ts` for
+      `deriveQuickChangeState`) and update `run.ts`/`commit.ts` to import it
+      instead of redeclaring. Consolidate the byte-identical
+      `requireQuickChange` helper -- duplicated in FOUR files (`create.ts:197`,
+      `run.ts:35`, `commit.ts:26`, `promote.ts:18`, not just the three the
+      original M011 finding named) -- to a single shared implementation in
+      `create.ts`, imported by the other three. Zero behavior change: every
+      existing quick-change test passes unmodified. Add one new regression test
+      in `tests/unit/quick-change-lifecycle.test.ts` proving an error thrown by
+      `run.ts`/`commit.ts` code now passes `instanceof` the same class
+      `create.ts`'s own errors do -- the currently-impossible check this fix
+      makes possible. QA-caught gap, fixed at drafting: this new test explicitly
+      covers `promote.ts`'s own error identity too (an unknown `promote` change
+      id thrown as `QuickChangeError`, asserted `instanceof` the same unified
+      class), not only `run.ts`/`commit.ts`'s -- `promote.ts` is one of the four
+      files this task touches and had no dedicated coverage naming it anywhere
+      in the original draft."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC004
+    context_files:
+      - src/core/quick-change/create.ts
+      - src/core/quick-change/run.ts
+      - src/core/quick-change/commit.ts
+      - src/core/quick-change/promote.ts
+      - tests/unit/quick-change-lifecycle.test.ts
+      - tests/unit/quick-change-commit.test.ts
+      - tests/integration/quick-change.test.ts
+    write_scope:
+      - src/core/quick-change/create.ts
+      - src/core/quick-change/run.ts
+      - src/core/quick-change/commit.ts
+      - src/core/quick-change/promote.ts
+      - tests/unit/quick-change-lifecycle.test.ts
+    mapped_ac_ids:
+      - AC004
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/quick-change-lifecycle.test.ts
+        tests/unit/quick-change-commit.test.ts
+        tests/integration/quick-change.test.ts
+    result: null
+    usage: null
+  - id: T003
+    name: Parallel dispatch and recovery dogfood evidence
+    objective: "Document the real parallel-dispatch and recovery evidence for
+      AC001/AC005, produced by how T001 and T002 above were actually executed
+      (dispatched concurrently via `task-dispatch` under a real
+      `execution.strategy: parallel_worktrees` opt-in, each into its own
+      worktree, integrated one at a time via `task-integrate`) -- quote the real
+      `worktree_dispatch`/`worktree_integrate` journal records and the resulting
+      `git log` proving per-task trailer commits in integration order, zero
+      merge commits, zero surviving scaffolding. Quote the live `resume` output
+      the driver captured to `docs/evidence/M016-live-resume-capture.txt` during
+      T001/T002's own dispatch window (design decision 6) -- a genuine
+      contemporaneous record, never a post-hoc reconstruction (QA-caught gap,
+      fixed at drafting). Separately, dispatch one additional, genuinely
+      disposable scratch task (a trivial placeholder task added to and removed
+      from this milestone's own draft for exactly this purpose, or an
+      equivalently safe throwaway), observe `pitway resume` report it as an
+      active dispatch, then abandon it via `task-discard` -- quote the real
+      before/after `resume` output and the discard's own journal record. Write
+      `docs/evidence/M016-parallel-recovery-dogfood.md` documenting both,
+      explicitly disclosing that this does not simulate an actual process crash
+      mid-dispatch (not safely reproducible against this repository's own real
+      working tree) -- that narrower case stays covered only by M014's existing
+      synthetic tests. Docs-only task: no src/ changes; verified by
+      CT001/CT005's own review checks."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+    acceptance_criteria:
+      - AC001
+      - AC005
+    context_files:
+      - docs/evidence/M016-parallel-recovery-dogfood.md
+      - docs/evidence/M016-live-resume-capture.txt
+    write_scope:
+      - docs/evidence/M016-parallel-recovery-dogfood.md
+      - docs/evidence/M016-live-resume-capture.txt
+    mapped_ac_ids:
+      - AC001
+      - AC005
+    verification:
+      strategy: manual
+      detail: Reviewed against AC001/AC005's checklists (CT001, CT005); no automated
+        test owns dogfood-narrative evidence.
+    result: null
+    usage: null
+  - id: T004
+    name: Context-efficiency evidence under the expanded surface
+    objective: "Record honest context-efficiency evidence under the now-expanded
+      surface (22 commands, 35 Claude assets), following M006's own
+      evidence-file precedent (`docs/evidence/M006-context-efficiency.md`) and
+      its honesty register: measure a real `task-status <id> --context --json`
+      bundle for a representative task in this milestone's own execution (no new
+      measurement mechanism -- reuse the bundle exactly as delivered), compare
+      byte-for-byte against the M006 baseline figure and the M007/AC011
+      post-`mapped_ac_ids`-fix figure, and report the actual delta plainly --
+      larger, smaller, or unchanged -- never framed favorably. Write
+      `docs/evidence/M016-context-efficiency.md`. Docs-only task: no src/
+      changes; verified by CT006's own review check."
+    status: waiting
+    depends_on:
+      - T003
+    acceptance_criteria:
+      - AC006
+    context_files:
+      - docs/evidence/M016-context-efficiency.md
+      - docs/evidence/M006-context-efficiency.md
+    write_scope:
+      - docs/evidence/M016-context-efficiency.md
+    mapped_ac_ids:
+      - AC006
+    verification:
+      strategy: manual
+      detail: Reviewed against AC006's checklist (CT006); no automated test owns this
+        evidence document.
+    result: null
+    usage: null
+  - id: T005
+    name: Plan reconciliation, branch-strategy evidence, and milestone gates
+    objective: "Reconcile `IMPLEMENTATION_PLAN.md` per AC007: the Bootstrap delivery
+      table gains M015's row (M016's own row left for the next reconciliation);
+      the Revised Roadmap header and opening sequencing paragraph move from
+      'M014 delivered' to 'M015 delivered'; the Backlog / Pending Candidates
+      section marks the M011 findings entry DELIVERED (AC004) and gains two new
+      real entries -- the write_scope/ stale-test-assertion gap pattern
+      recurring a fourth time (M012/M013/M014/M015), and the 'As of this
+      snapshot' narrative paragraph's own staleness, corrected in the same pass
+      rather than merely flagged; the Status line reflects M016's actual
+      delivery. QA-caught gap, fixed at drafting: these specific edits are what
+      CT009's own review check verifies -- CT007's test/typecheck gate alone
+      never proved the prose was actually reconciled. Before running
+      `milestone-complete`, manually inspect this milestone's own committed
+      `contract.md` frontmatter (`base_branch`/`base_revision`) and the actual
+      branch's git log against its base for AC002's merge-ready evidence, and
+      record CT002 accordingly -- per design decision 7, have the developer
+      perform CT002/CT005/CT006 personally where practical. Then run the
+      milestone-level gates exactly once: full `npm test` and `npx tsc
+      --noEmit`."
+    status: waiting
+    depends_on:
+      - T004
+    acceptance_criteria:
+      - AC002
+      - AC007
+    context_files:
+      - IMPLEMENTATION_PLAN.md
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+    mapped_ac_ids:
+      - AC002
+      - AC007
+    verification:
+      strategy: command
+      detail: npm test && npx tsc --noEmit
+    result: null
+    usage: null
