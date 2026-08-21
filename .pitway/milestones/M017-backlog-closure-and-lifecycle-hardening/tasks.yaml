@@ -332,7 +332,7 @@ tasks:
       arrive as Dependabot PRs; Dependabot security alerts are a repository
       setting to enable (not done by this file). Docs/config-only task, no
       tests; verified by CT006."
-    status: ready
+    status: completed
     depends_on:
       - T007
     acceptance_criteria:
@@ -348,8 +348,19 @@ tasks:
     verification:
       strategy: manual
       detail: Reviewed against AC006 (CT006); no automated test owns this file.
-    result: null
-    attempts: 1
+    result:
+      summary: '[truncated] quests-limit 5, dev-dependencies grouped into one PR,
+        header comment stating no auto-merge is configured anywhere) and a
+        README.md "Maintenance" section stating dependency updates arrive as
+        Dependabot PRs and that security alerts are a repository setting to
+        enable, not done by this file.'
+      evidence: >
+        Docs/config-only task, no automated test owns it (verified by CT006
+        review). .github/dependabot.yml parses as valid YAML with the exact
+        fields AC006 requires; README.md's new Maintenance section sits between
+        Dogfooding & Verification and License, matching the file's existing
+        heading/separator style.
+    attempts: 2
     usage: null
   - id: T008
     name: Drafting write_scope rule and confirmed-milestone boundary docs

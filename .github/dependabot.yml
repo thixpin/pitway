@@ -1,0 +1,14 @@
+# M017/T006 (AC006): dependency-update PRs only -- this file configures
+# NOTHING beyond opening PRs. No auto-merge is configured anywhere in this
+# file or elsewhere in the repository; every PR here requires ordinary
+# human review before merge, exactly like any other PR.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      dev-dependencies:
+        dependency-type: "development"

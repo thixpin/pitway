@@ -151,6 +151,12 @@ All project claims are bounded strictly by evidence that survives a fresh clone:
 
 ---
 
+## Maintenance
+
+Dependency updates arrive as [Dependabot](https://docs.github.com/en/code-security/dependabot) pull requests (weekly, grouped dev-dependencies, no auto-merge — see `.github/dependabot.yml`). Dependabot security alerts are a repository setting, not something this file turns on: enable them under **Settings → Code security** if you want them.
+
+---
+
 > **There is a way to build with agents. This is PitWay.**
 
 ## License
