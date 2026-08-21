@@ -1,3 +1,8 @@
+---
+description: Insert one new task into a confirmed or in_progress milestone
+argument-hint: <milestone-id>
+---
+
 # task-add
 
 Use to insert one new task into a `confirmed` or `in_progress` milestone —

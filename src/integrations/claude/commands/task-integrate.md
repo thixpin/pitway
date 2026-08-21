@@ -1,3 +1,8 @@
+---
+description: Apply a dispatched task's worktree commit to the main tree
+argument-hint: <id>
+---
+
 # task-integrate
 
 Integrates one dispatched task's worktree commits back into the main tree,

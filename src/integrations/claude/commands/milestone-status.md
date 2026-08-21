@@ -1,3 +1,8 @@
+---
+description: Show a milestone's status, contract, progress, and tasks
+argument-hint: <id>
+---
+
 # milestone-status
 
 Use this to orient on one milestone: its contract, progress, and the

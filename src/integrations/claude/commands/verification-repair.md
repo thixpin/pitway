@@ -1,3 +1,8 @@
+---
+description: Bounded, approve-before-edit correction after every task is done
+argument-hint: <approve|commit|cancel> <milestone> [vr-id]
+---
+
 # verification-repair
 
 Use only for the exact narrow window M008's `6f8b5e6` exception covered:

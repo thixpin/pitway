@@ -1,3 +1,8 @@
+---
+description: Manage auto-run authorization for automatic task continuation
+argument-hint: <enable|disable|status> [milestone-id]
+---
+
 # auto-run
 
 Manages auto-run *authorization* only — it never dispatches, executes, or

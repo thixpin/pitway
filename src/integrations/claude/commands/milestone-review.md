@@ -1,3 +1,8 @@
+---
+description: Role-based milestone review workflow (start/brief/record/report/decide)
+argument-hint: <start|brief|record|report|decide> <id>
+---
+
 # milestone-review
 
 A role-based review workflow: PitWay manages review **state** (sessions,

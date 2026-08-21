@@ -1,3 +1,7 @@
+---
+description: Reconstruct workflow state from .pitway/ and recommend the next task
+---
+
 # resume
 
 Run this first in any session where you're not already certain what

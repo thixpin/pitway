@@ -1,3 +1,8 @@
+---
+description: Complete an in_progress milestone once every task and check has passed
+argument-hint: <id>
+---
+
 # milestone-complete
 
 The terminal step: run it once every task is `completed` and every

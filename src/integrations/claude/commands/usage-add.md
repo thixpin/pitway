@@ -1,3 +1,8 @@
+---
+description: Accumulate measured planning or qa token usage onto a milestone
+argument-hint: <id>
+---
+
 # usage-add
 
 Records measured token usage — never estimated — onto a milestone's

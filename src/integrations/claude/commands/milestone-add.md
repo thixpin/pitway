@@ -1,3 +1,7 @@
+---
+description: Create the next milestone from a drafted contract and task plan
+---
+
 # milestone-add
 
 Call this once a requirement has been broken down into a drafted contract

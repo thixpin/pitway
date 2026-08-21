@@ -1,3 +1,8 @@
+---
+description: Run approved command checks, or record a manual/review result
+argument-hint: [id]
+---
+
 # verify
 
 Runs the milestone's approved `command` checks and records the results;

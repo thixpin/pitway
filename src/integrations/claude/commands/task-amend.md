@@ -1,3 +1,8 @@
+---
+description: Amend a task's objective, scope, or verification definition
+argument-hint: <task-id>
+---
+
 # task-amend
 
 Use when a task's own definition needs to change mid-flight — its

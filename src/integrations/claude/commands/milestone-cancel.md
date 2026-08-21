@@ -1,3 +1,8 @@
+---
+description: Permanently abandon a draft milestone; the id is never reused
+argument-hint: <id>
+---
+
 # milestone-cancel
 
 Use to permanently abandon a draft milestone — genuine abandonment, not a

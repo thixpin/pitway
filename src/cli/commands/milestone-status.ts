@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { loadContract, loadTasks, loadUsage } from '../../state/store.js';
+import { readJournal } from '../../state/journal.js';
 import { computeMilestoneProgress, type MilestoneProgress } from '../../core/milestones/progress.js';
 import { computeRacingFooter, resolveNextTask } from '../../core/milestones/footer.js';
 import { computeWorkloadPercentage } from '../../core/milestones/workload.js';
@@ -12,6 +13,30 @@ import { renderOutput } from '../output.js';
 import { taskStatusLabel } from '../format.js';
 import type { MilestoneStatus, Task, TaskStatus, UsageFile } from '../../state/schemas.js';
 
+// UX-only (Claude Code command-discoverability quick-change): execution mode
+// is read-only, derived from the journal's own worktree_integrate records —
+// no new tracking, no new data source. Deliberately NOT a bare
+// worktree_dispatch check: a dispatch later abandoned via task-discard
+// leaves its worktree_dispatch record in the append-only journal forever,
+// even though the task's real completed work landed entirely inline
+// afterward (observed live: M017/T002-T006's first dispatch attempt failed
+// and was discarded, then completed inline) -- worktree_integrate only
+// exists for work that actually landed from a worktree. null for a task
+// that hasn't reached in_progress yet (dispatch cannot have happened).
+const NOT_YET_STARTED = new Set<TaskStatus>(['planned', 'waiting', 'ready', 'cancelled']);
+
+function resolveExecutionMode(
+  root: string,
+  milestoneId: string,
+  task: Task,
+): 'inline' | 'worktree' | null {
+  if (NOT_YET_STARTED.has(task.status)) return null;
+  const integrated = readJournal(root).some(
+    (r) => r.kind === 'worktree_integrate' && r.milestone === milestoneId && r.taskId === task.id,
+  );
+  return integrated ? 'worktree' : 'inline';
+}
+
 export interface MilestoneStatusView {
   id: string;
   title: string;
@@ -19,9 +44,13 @@ export interface MilestoneStatusView {
   progress: MilestoneProgress;
   baselineSha: string | null;
   aggregate: UsageAggregate;
-  tasks: Array<{ id: string; status: TaskStatus }>;
+  tasks: Array<{ id: string; status: TaskStatus; executionMode: 'inline' | 'worktree' | null }>;
   // AC004 (M013): null before milestone-confirm has run.
   footer: string | null;
+  // UX-only additive field: the same percentage computeRacingFooter already
+  // embeds in `footer`, exposed separately so the human renderer can draw a
+  // progress bar without re-deriving it a second way.
+  workloadPercent: number;
 }
 
 export function buildMilestoneStatusView(root: string, milestoneId: string): MilestoneStatusView {
@@ -39,8 +68,13 @@ export function buildMilestoneStatusView(root: string, milestoneId: string): Mil
     progress,
     baselineSha: resolveCommitSha(root, { milestone: milestoneId, ...(since !== undefined ? { since } : {}) }) ?? null,
     aggregate: aggregateUsage(tasksFile.tasks, loadUsage(root, milestoneId)),
-    tasks: tasksFile.tasks.map((t) => ({ id: t.id, status: t.status })),
+    tasks: tasksFile.tasks.map((t) => ({
+      id: t.id,
+      status: t.status,
+      executionMode: resolveExecutionMode(root, milestoneId, t),
+    })),
     footer: computeRacingFooter(contract.frontmatter.status, progress, verificationPassed, tasksFile.tasks),
+    workloadPercent: computeWorkloadPercentage(contract.frontmatter.status, progress, verificationPassed),
   };
 }
 
@@ -200,6 +234,33 @@ function renderAggregate(aggregate: UsageAggregate): string {
   return `${formatTokens(aggregate.totalTokens)}${suffix}`;
 }
 
+// UX-only: a fixed-width, no-color bar purely representing the same
+// percentage `footer`/`workloadPercent` already carry — never a second
+// progress calculation.
+const PROGRESS_BAR_WIDTH = 20;
+
+function renderProgressBar(percent: number): string {
+  const clamped = Math.min(100, Math.max(0, percent));
+  const filled = Math.round((clamped / 100) * PROGRESS_BAR_WIDTH);
+  return `[${'█'.repeat(filled)}${'░'.repeat(PROGRESS_BAR_WIDTH - filled)}]`;
+}
+
+// Splices the bar between the footer's leading icon and its percentage —
+// e.g. "🏎️ 77% · ..." becomes "🏎️ [███████████████░░░░░] 77% · ...". A pure
+// string transform of the exact footer computeRacingFooter already
+// produced; never re-derives the percent, count, or next-gate text.
+function withProgressBar(footer: string, percent: number): string {
+  return footer.replace(/^(\S+) /, `$1 ${renderProgressBar(percent)} `);
+}
+
+function renderTaskTable(tasks: MilestoneStatusView['tasks']): string[] {
+  const rows = tasks.map((t) => {
+    const progress = t.status === 'completed' ? '100%' : '—';
+    return `| ${t.id} | ${taskStatusLabel(t.status)} | ${progress} | ${t.executionMode ?? '—'} |`;
+  });
+  return ['| Task | Status | Progress | Execution |', '|------|--------|----------|-----------|', ...rows];
+}
+
 export function renderMilestoneStatusHuman(view: MilestoneStatusView): string {
   const lines = [
     `🏁 Milestone ${view.id} — ${view.title}`,
@@ -209,12 +270,9 @@ export function renderMilestoneStatusHuman(view: MilestoneStatusView): string {
     `Baseline: ${view.baselineSha ?? 'N/A'}`,
     `Tokens: ${renderAggregate(view.aggregate)}`,
     '',
-    '🛠 Tasks',
+    ...renderTaskTable(view.tasks),
   ];
-  for (const t of view.tasks) {
-    lines.push(`  ${t.id}  ${taskStatusLabel(t.status)}`);
-  }
-  if (view.footer !== null) lines.push('', view.footer);
+  if (view.footer !== null) lines.push('', withProgressBar(view.footer, view.workloadPercent));
   return lines.join('\n');
 }
 

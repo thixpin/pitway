@@ -1,3 +1,7 @@
+---
+description: Write a drafted contract and task plan to an explicit destination
+---
+
 # write-ms-artifacts
 
 Writes a drafted contract and task plan out as plain files to an explicit
