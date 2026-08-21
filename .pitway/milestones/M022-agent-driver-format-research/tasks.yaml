@@ -67,7 +67,7 @@ tasks:
       dimensions (or an explicit 'not applicable' note where genuinely true).
       Cite real documentation/source URLs -- never invent a config shape or
       field name; use real web research."
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - github-copilot.md and gemini-cli.md each cover all 8 dimensions with
@@ -81,9 +81,28 @@ tasks:
       strategy: manual
       detail: Manual review of docs/evidence/M022/github-copilot.md and gemini-cli.md
         for real citations and 8-dimension coverage.
-    result: null
+    result:
+      summary: GitHub Copilot and Gemini CLI researched across all 8 dimensions from
+        live official sources; both evidence files written with per-section
+        citations.
+      evidence: "[truncated]  Gemini CLI sourced | from the official repo's docs tree
+        on main via raw.githubusercontent.com | (skills, custom-commands,
+        subagents, gemini-md, configuration, | policy-engine, MCP, extensions,
+        tools). | Notable cross-cutting finding for T005's synthesis: both tools
+        implement | the same Agent Skills open standard (SKILL.md with
+        name/description | frontmatter) and honor the cross-tool .agents/skills
+        convention; Copilot | even reads .claude/skills and CLAUDE.md/GEMINI.md;
+        Gemini CLI's | context.fileName makes its rules file renameable. |
+        Disclosed thin spots (never silently skipped): no generic args |
+        placeholder in Copilot; Gemini trusted-folders noted as existing in the
+        | docs tree but not fetched, no claims made. Two Copilot citations came
+        | from search-result snippets rather than full fetches, flagged by the |
+        worker for this manual review -- accepted: both are corroborating |
+        secondary cites, every load-bearing claim also carries a fully-fetched |
+        docs.github.com source."
     attempts: 1
-    usage: null
+    usage:
+      total_tokens: 78897
   - id: T004
     name: "Research: Aider"
     objective: "Real, sourced research on how Aider represents: skills, commands,
