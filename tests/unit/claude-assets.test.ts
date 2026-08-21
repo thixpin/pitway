@@ -144,3 +144,12 @@ describe('M017 task-add command doc ships', () => {
     expect(listClaudeAssets()).toContain('commands/task-add.md');
   });
 });
+
+// AC008/T005 (M018): asset discovery is dynamic -- this assertion pins
+// that the new backlog command doc actually ships, rather than
+// maintaining any hardcoded manifest.
+describe('M018 backlog command doc ships', () => {
+  it('lists the new command doc among shipped assets', () => {
+    expect(listClaudeAssets()).toContain('commands/backlog.md');
+  });
+});

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { saveContract, saveState, saveTasks, saveVerificationResults } from '../../src/state/store.js';
+import { saveBacklog, saveContract, saveState, saveTasks, saveVerificationResults } from '../../src/state/store.js';
 import { buildCli } from '../../src/cli/index.js';
 import { registerResumeCommand } from '../../src/cli/commands/resume.js';
 import { deterministicBranchName } from '../../src/core/milestones/confirm.js';
@@ -236,6 +236,77 @@ describe('pitway resume', () => {
     registerResumeCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
     await humanProgram.parseAsync(['node', 'pitway', 'resume']);
     expect(humanLines.join('\n')).toMatch(/Branch mismatch: expected .* — switch manually/);
+  });
+});
+
+// M018/T004 (AC007): pendingBacklogItems mirrors pendingQuickChanges's own
+// coverage exactly -- present in both --json and human output, and
+// unaffected by which milestone is active (root-level, not milestone-scoped).
+describe('pitway resume pendingBacklogItems (M018/T004)', () => {
+  it('omits the block when no backlog items are pending, in both --json and human output', async () => {
+    saveState(root, { schema_version: 1, active_milestone: null, milestones: [] });
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(lines.join('\n'));
+    expect(view.pendingBacklogItems).toEqual([]);
+
+    const humanLines: string[] = [];
+    const humanProgram = buildCli();
+    registerResumeCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
+    await humanProgram.parseAsync(['node', 'pitway', 'resume']);
+    expect(humanLines.join('\n')).not.toContain('Pending backlog items');
+  });
+
+  it('lists pending items (id/title only) and excludes promoted/archived ones, in both --json and human output', async () => {
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    saveContract(root, 'M001', { frontmatter: frontmatter('in_progress'), body: '\n' });
+    saveTasks(root, 'M001', { schema_version: 1, tasks: [task({ id: 'T001', status: 'ready' })] });
+    saveBacklog(root, {
+      schema_version: 1,
+      items: [
+        {
+          id: 'B001',
+          title: 'Pending one',
+          reason: 'r',
+          status: 'pending',
+          source: { milestone: 'M001', task: null },
+          created_at: '2026-08-21T00:00:00Z',
+          resolved_at: null,
+          promoted_to: null,
+          archived_reason: null,
+        },
+        {
+          id: 'B002',
+          title: 'Already archived',
+          reason: 'r',
+          status: 'archived',
+          source: { milestone: 'M001', task: null },
+          created_at: '2026-08-21T00:00:00Z',
+          resolved_at: '2026-08-21T01:00:00Z',
+          promoted_to: null,
+          archived_reason: 'no longer relevant',
+        },
+      ],
+    });
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(lines.join('\n'));
+    expect(view.pendingBacklogItems).toEqual([{ id: 'B001', title: 'Pending one' }]);
+
+    const humanLines: string[] = [];
+    const humanProgram = buildCli();
+    registerResumeCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
+    await humanProgram.parseAsync(['node', 'pitway', 'resume']);
+    const human = humanLines.join('\n');
+    expect(human).toContain('Pending backlog items (1)');
+    expect(human).toContain('B001');
+    expect(human).not.toContain('B002');
   });
 });
 

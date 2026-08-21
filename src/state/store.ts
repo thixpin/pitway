@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { parse, stringify } from 'yaml';
 import type { ZodType } from 'zod';
 import {
+  backlogFileSchema,
   configSchema,
   reviewsFileSchema,
   stateSchema,
@@ -10,6 +11,8 @@ import {
   usageFileSchema,
   verificationRepairsFileSchema,
   verificationResultsSchema,
+  type BacklogFile,
+  type BacklogItem,
   type PitwayConfig,
   type PitwayState,
   type ReviewsFile,
@@ -226,6 +229,35 @@ export function loadReviews(root: string, milestoneId: string): ReviewsFile {
 
 export function saveReviews(root: string, milestoneId: string, reviews: ReviewsFile): void {
   saveYaml(milestonePath(root, milestoneId, 'reviews.yaml'), reviewsFileSchema, reviews);
+}
+
+// M018/T001 (AC001): root-level, non-milestone-scoped -- mirrors
+// loadState/saveState's pattern, not loadTasks/loadReviews's per-milestone-
+// directory pattern, since a backlog item's lifetime is not bound to any
+// one milestone's directory. Absent-file tolerance mirrors
+// loadVerificationRepairs/loadReviews: never part of `pitway init`'s
+// scaffold, lazily created by the first `backlog add`.
+export function loadBacklog(root: string): BacklogFile {
+  const path = pitwayPath(root, 'backlog.yaml');
+  if (!existsSync(path)) {
+    return { schema_version: 1, items: [] };
+  }
+  return loadYaml(path, backlogFileSchema);
+}
+
+export function saveBacklog(root: string, backlog: BacklogFile): void {
+  saveYaml(pitwayPath(root, 'backlog.yaml'), backlogFileSchema, backlog);
+}
+
+// In-memory max+1 scan of the currently-loaded items array, mirroring
+// nextSequentialTaskId's idiom (src/core/tasks/add.ts) -- never a
+// directory scan, since backlog has no one-file-per-item layout.
+export function nextBacklogId(items: BacklogItem[]): string {
+  const max = items.reduce((acc, item) => {
+    const match = /^B(\d{3})$/.exec(item.id);
+    return match ? Math.max(acc, Number(match[1])) : acc;
+  }, 0);
+  return `B${String(max + 1).padStart(3, '0')}`;
 }
 
 export function loadUsage(root: string, milestoneId: string): UsageFile {

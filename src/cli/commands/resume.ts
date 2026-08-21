@@ -6,6 +6,7 @@ import { computeRacingFooter, resolveNextTask } from '../../core/milestones/foot
 import { allChecksPassed, computeLatestCheckResults } from '../../core/verification/status.js';
 import { loadConfig, loadContract, loadReviews, loadState, loadTasks } from '../../state/store.js';
 import { deriveQuickChangeState, readAllQuickChanges } from '../../core/quick-change/create.js';
+import { listBacklogItems } from '../../core/backlog/list.js';
 import { deriveLiveDispatches } from '../../core/tasks/dispatch.js';
 import { deriveLatestFindingsByRole } from '../../core/reviews/roles.js';
 import { listTaskWorktrees } from '../../git/worktree.js';
@@ -20,6 +21,14 @@ export interface PendingQuickChange {
   id: string;
   status: JournalQuickChangeStatus;
   objective: string;
+}
+
+// M018/T004 (AC007): mirrors PendingQuickChange's shape/rendering exactly.
+// Computed independent of the active milestone (like pendingQuickChanges)
+// since a backlog item's own lifetime is not bound to any one milestone.
+export interface PendingBacklogItem {
+  id: string;
+  title: string;
 }
 
 // AC004/T004 (M012): present only when the active milestone tracks a branch
@@ -62,6 +71,7 @@ export interface ResumeView {
   inProgress: string[];
   nextTask: string | null;
   pendingQuickChanges: PendingQuickChange[];
+  pendingBacklogItems: PendingBacklogItem[];
   branch?: ResumeBranchView;
   // AC008 (M014): null for sequential repositories (key always present) --
   // human output there is byte-identical to before.
@@ -120,6 +130,10 @@ function derivePendingQuickChanges(root: string): PendingQuickChange[] {
     }
   }
   return pending;
+}
+
+function derivePendingBacklogItems(root: string): PendingBacklogItem[] {
+  return listBacklogItems(root, 'pending').map((item) => ({ id: item.id, title: item.title }));
 }
 
 // Journal records carry the path as the dispatcher wrote it while git's
@@ -198,6 +212,7 @@ function buildParallelView(root: string, milestoneId: string, tasks: Task[]): Pa
 // deterministically, with no other prioritization in MVP.
 export function buildResumeView(root: string): ResumeView {
   const pendingQuickChanges = derivePendingQuickChanges(root);
+  const pendingBacklogItems = derivePendingBacklogItems(root);
   const state = loadState(root);
   if (!state.active_milestone) {
     return {
@@ -211,6 +226,7 @@ export function buildResumeView(root: string): ResumeView {
       inProgress: [],
       nextTask: null,
       pendingQuickChanges,
+      pendingBacklogItems,
       parallel: null,
       footer: null,
     };
@@ -271,6 +287,7 @@ export function buildResumeView(root: string): ResumeView {
     inProgress,
     nextTask: resolveNextTask(tasksFile.tasks),
     pendingQuickChanges,
+    pendingBacklogItems,
     ...(branch ? { branch } : {}),
     parallel,
     footer,
@@ -287,15 +304,26 @@ function renderPendingQuickChangesHuman(pending: PendingQuickChange[]): string[]
   return lines;
 }
 
+function renderPendingBacklogItemsHuman(pending: PendingBacklogItem[]): string[] {
+  if (pending.length === 0) return [];
+  const lines = [`🔧 Pending backlog items (${pending.length})`];
+  for (const item of pending) {
+    lines.push(`  ${item.id}  ${item.title}`);
+  }
+  return lines;
+}
+
 // The human-readable text output alone, with zero extra commands, must show
 // a pending quick-change exists (AC003) -- so the pending-quick-change block
 // is appended in both branches below, not gated behind an active milestone.
 export function renderResumeHuman(view: ResumeView): string {
   const quickChangeLines = renderPendingQuickChangesHuman(view.pendingQuickChanges);
+  const backlogLines = renderPendingBacklogItemsHuman(view.pendingBacklogItems);
 
   if (!view.activeMilestone) {
     const lines = ['No active milestone. Run milestone-add to start one.'];
     if (quickChangeLines.length > 0) lines.push('', ...quickChangeLines);
+    if (backlogLines.length > 0) lines.push('', ...backlogLines);
     return lines.join('\n');
   }
 
@@ -342,6 +370,7 @@ export function renderResumeHuman(view: ResumeView): string {
     }
   }
   if (quickChangeLines.length > 0) lines.push('', ...quickChangeLines);
+  if (backlogLines.length > 0) lines.push('', ...backlogLines);
   if (view.openReview !== undefined) {
     lines.push(
       '',

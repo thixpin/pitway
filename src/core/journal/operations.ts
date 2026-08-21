@@ -65,5 +65,10 @@ export function resolveTargetPath(
       return `.pitway/milestones/${milestoneDir}/tasks.yaml`;
     case 'review_recording':
       return `.pitway/milestones/${milestoneDir}/reviews.yaml`;
+    // M018/T001 (AC003): root-level, not milestone-nested -- milestoneDir
+    // is unused on this branch, since .pitway/backlog.yaml is a shared
+    // authoritative file, not owned by any one milestone's directory.
+    case 'backlog_recording':
+      return '.pitway/backlog.yaml';
   }
 }

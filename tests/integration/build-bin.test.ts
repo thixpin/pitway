@@ -20,6 +20,7 @@ const distEntry = join(repoRoot, 'dist', 'cli', 'index.js');
 
 const ALL_COMMAND_NAMES = [
   'auto-run',
+  'backlog',
   'init',
   'milestone-add',
   'milestone-cancel',
@@ -96,6 +97,17 @@ describe('build produces a real, spawnable dist/ binary (M008/T001/AC001)', () =
       'registers and reaches "auto-run %s" via --help',
       (subcommand) => {
         const output = execFileSync('node', [distEntry, 'auto-run', subcommand, '--help'], {
+          cwd: repoRoot,
+          stdio: 'pipe',
+        }).toString();
+        expect(output).toContain(subcommand);
+      },
+    );
+
+    it.each(['add', 'list', 'show', 'promote', 'archive'])(
+      'registers and reaches "backlog %s" via --help',
+      (subcommand) => {
+        const output = execFileSync('node', [distEntry, 'backlog', subcommand, '--help'], {
           cwd: repoRoot,
           stdio: 'pipe',
         }).toString();

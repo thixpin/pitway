@@ -29,6 +29,13 @@ export const journalOperationTypeSchema = z.enum([
   // or amendment -- materialized immediately, checkpointed on the next
   // qualifying commit via resolveTargetPath's reviews.yaml case below.
   'review_recording',
+  // M018/T001 (AC003): every backlog mutation (add/promote/archive) is
+  // journal-backed exactly like a task_amendment -- reused across all
+  // three mutations the same way task_amendment is reused by both
+  // task-add and task-amend. Always attached to state.active_milestone
+  // (never an override; see M018's AC004) and checkpointed via
+  // resolveTargetPath's root-level '.pitway/backlog.yaml' case below.
+  'backlog_recording',
 ]);
 
 export const journalEntrySchema = z.strictObject({
