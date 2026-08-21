@@ -286,7 +286,7 @@ tasks:
       explicit redirect note naming pitway backlog add/list as the live
       authoritative source going forward, without migrating or deleting its
       existing frozen entries (AC009)."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -313,5 +313,17 @@ tasks:
       strategy: manual
       detail: developer/driver review per CT009's instruction, plus a full npm test
         run (CT010) confirming no regression across the whole suite
-    result: null
+    result:
+      summary: "[truncated]  -- B001 (ms-* milestone command aliases), B002
+        (reviewer-selection UX formatting), B003 (backlog storage scalability),
+        B004 (CLI test-coverage investigation) -- each a genuine developer
+        request that arrived mid-flight and was kept explicitly out of M018's
+        own scope rather than absorbed."
+      evidence: "npx tsc --noEmit clean; full npm test: 84 files / 1240 tests passed
+        (CT010); manual review per CT009's instruction confirms the
+        command-surface count reads 24, the Bootstrap delivery table correctly
+        omits M018's own row, and the Backlog / Pending Candidates section
+        carries the redirect note without migrating or deleting its existing
+        frozen entries."
+    attempts: 1
     usage: null
