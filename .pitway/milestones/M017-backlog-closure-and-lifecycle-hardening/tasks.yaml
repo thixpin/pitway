@@ -1,0 +1,360 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Reconcile pending journal entries at milestone-confirm
+    objective: "Per AC001: in src/core/milestones/confirm.ts call
+      reconcilePending(root, milestoneId) after createBaselineCommit in BOTH
+      commit-producing paths (fresh confirm and resumed confirm), mirroring
+      task-update's completion path and milestone-complete; --amend is not a
+      site (it never commits). Regression test in
+      tests/integration/milestone-confirm.test.ts: open a milestone-review
+      session on a draft (producing pending review_recording entries), confirm,
+      assert derivePending(readJournal) has zero entries for the milestone and
+      that task-dispatch then succeeds under execution.strategy:
+      parallel_worktrees; control: an entry whose target differs from HEAD stays
+      pending. Executed INLINE and FIRST (decision 1): this milestone's own
+      pre-confirmation review leaves exactly such entries pending; inline
+      task-update in_progress is not blocked by them, and this task's own
+      completion commit clears them."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AC001
+    context_files:
+      - src/core/milestones/confirm.ts
+      - src/state/journal.ts
+      - src/core/tasks/update.ts
+      - src/core/tasks/dispatch.ts
+      - tests/integration/milestone-confirm.test.ts
+    write_scope:
+      - src/core/milestones/confirm.ts
+      - tests/integration/milestone-confirm.test.ts
+    mapped_ac_ids:
+      - AC001
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/milestone-confirm.test.ts
+    result: null
+    usage: null
+  - id: T007
+    name: Global test and hook timeouts for load-sensitive tests
+    objective: "Per AC007 and decision 6: create vitest.config.ts with testTimeout:
+      60000 and hookTimeout: 60000 and a comment carrying M016/T001's root-cause
+      evidence (default per-test budget vs heavy real-git-subprocess workloads
+      under concurrent load; a timeout is a ceiling, not a wait); remove the
+      now-redundant per-test 60000 from
+      tests/integration/completed-task-revision-path.test.ts so there is one
+      authoritative value. Add tests/unit/vitest-config.test.ts asserting the
+      config exports both timeouts at 60000 with the root-cause comment present
+      and that completed-task-revision-path.test.ts carries no per-test timeout
+      argument -- the only check that can actually observe this AC. Executed
+      INLINE and SECOND, before any parallel dispatch, so every later worktree
+      inherits the config. The npm-pack transient is NOT claimed fixed."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - AC007
+    context_files:
+      - vitest.config.ts
+      - tests/unit/vitest-config.test.ts
+      - tests/integration/completed-task-revision-path.test.ts
+      - package.json
+    write_scope:
+      - vitest.config.ts
+      - tests/unit/vitest-config.test.ts
+      - tests/integration/completed-task-revision-path.test.ts
+    mapped_ac_ids:
+      - AC007
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/vitest-config.test.ts
+        tests/integration/milestone-complete.test.ts
+        tests/integration/verification-repair.test.ts
+        tests/integration/execution-strategy.test.ts
+        tests/integration/review-state-lifecycle.test.ts
+        tests/integration/branch-isolation-lifecycle.test.ts
+        tests/integration/completed-task-revision-path.test.ts
+    result: null
+    usage: null
+  - id: T002
+    name: task-add command for confirmed milestones
+    objective: "Per AC002 and decisions 2-3: src/core/tasks/add.ts (addTask: load
+      contract; refuse draft -> milestone-add --replace, review ->
+      verify/milestone-complete, completed/cancelled; assertChangeLogEntry as
+      task-amend does; parse one task definition from --file via taskSchema
+      minus execution fields, wrapping every validation failure incl. zod's in
+      TaskAddError via formatIssues; require name; require id == next sequential
+      Tnnn; require every depends_on to name an existing, non-cancelled task;
+      derive status via resolveReadyTasks; append a task_amendment journal entry
+      with target = the new task id; materialize immediately).
+      src/cli/commands/task-add.ts registered in src/cli/index.ts;
+      src/integrations/claude/commands/task-add.md asset documenting the
+      dispatch rule. Update tests/integration/cli.test.ts's registered-command
+      list AND test name to 23; add shipped-and-installed assertions for
+      commands/task-add.md to tests/unit/claude-assets.test.ts and
+      tests/integration/init.test.ts -- all IN THIS TASK. Integration tests
+      (tests/integration/task-add.test.ts): ready and waiting outcomes; each
+      refusal (draft, review, completed, cancelled, no Change Log, wrong id,
+      cancelled dependency, execution fields present, missing name); the journal
+      entry and its materialization; review-session staleness; auto-run
+      invalidation; inline task-update in_progress on the new task succeeds
+      immediately; task-dispatch refuses while the entry is pending then
+      succeeds after a sibling's completion commit; task-add during a live
+      worktree dispatch followed by a clean task-integrate (main's tasks.yaml
+      keeps the inserted task); resume and milestone-status render with the
+      entry pending."
+    status: waiting
+    depends_on:
+      - T007
+    acceptance_criteria:
+      - AC002
+    context_files:
+      - src/core/tasks/add.ts
+      - src/core/tasks/amend.ts
+      - src/core/tasks/dependencies.ts
+      - src/core/tasks/integrate.ts
+      - src/core/journal/auto-run.ts
+      - src/state/schemas.ts
+      - src/state/store.ts
+      - src/core/journal/operations.ts
+      - src/cli/commands/task-add.ts
+      - src/cli/commands/task-amend.ts
+      - src/cli/index.ts
+      - src/integrations/claude/commands/task-add.md
+      - src/integrations/claude/commands/task-amend.md
+      - tests/integration/task-add.test.ts
+      - tests/integration/cli.test.ts
+      - tests/unit/claude-assets.test.ts
+      - tests/integration/init.test.ts
+    write_scope:
+      - src/core/tasks/add.ts
+      - src/cli/commands/task-add.ts
+      - src/cli/index.ts
+      - src/integrations/claude/commands/task-add.md
+      - tests/integration/task-add.test.ts
+      - tests/integration/cli.test.ts
+      - tests/unit/claude-assets.test.ts
+      - tests/integration/init.test.ts
+    mapped_ac_ids:
+      - AC002
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/task-add.test.ts
+        tests/integration/cli.test.ts tests/unit/claude-assets.test.ts
+        tests/integration/init.test.ts
+    result: null
+    usage: null
+  - id: T003
+    name: Completion-time usage warning for worktree-dispatched tasks
+    objective: "Per AC005 and decision 4: in src/core/tasks/update.ts's completion
+      path, when the task has at least one worktree_dispatch journal record and
+      inputs.usage is undefined, set an additive usageWarning string on
+      TaskUpdateView (null otherwise) naming the task and stating usage stays
+      null -> N/A; src/cli/commands/task-update.ts prints it to stderr as one
+      line in human mode and includes the additive key in --json. Never
+      estimates, never refuses; inline dispatches are disclosed as undetectable.
+      Integration tests in tests/integration/task-update.test.ts drive the REAL
+      path (task-dispatch -> task-integrate -> complete under
+      parallel_worktrees): without --usage (warning), with --usage (no warning),
+      never-dispatched task (no warning); existing assertions unchanged."
+    status: waiting
+    depends_on:
+      - T007
+    acceptance_criteria:
+      - AC005
+    context_files:
+      - src/core/tasks/update.ts
+      - src/core/tasks/dispatch.ts
+      - src/cli/commands/task-update.ts
+      - tests/integration/task-update.test.ts
+    write_scope:
+      - src/core/tasks/update.ts
+      - src/cli/commands/task-update.ts
+      - tests/integration/task-update.test.ts
+    mapped_ac_ids:
+      - AC005
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/task-update.test.ts
+    result: null
+    usage: null
+  - id: T004
+    name: Structured failure summary in verification evidence
+    objective: "Per AC004 and decision 5: pure summarizeFailure(output, budget) in
+      src/core/verification/failure-summary.ts (up to five lines: Vitest 'FAIL
+      <file> > <name>' and '×' lines, first 'AssertionError:'/'Error:' lines,
+      generic fallback /\\b(FAIL|ERR|Error)\\b/; each line capped at 200 chars,
+      total at 40% of budget; empty array when nothing matches). In
+      src/core/verification/run.ts and src/core/tasks/verify.ts, ONLY when the
+      run failed, evidence becomes 'failures: <lines>' + newline +
+      trimTail(output) with the summary budgeted first inside the existing cap;
+      passing evidence byte-identical. Unit tests
+      (tests/unit/failure-summary.test.ts) incl. both caps; integration proof in
+      tests/integration/verify.test.ts and tests/integration/task-verify.test.ts
+      that a real failing check's evidence names the failing test;
+      tests/integration/verification-repair.test.ts's failed-evidence assertions
+      updated to the new shape (in scope per AC008's rule)."
+    status: waiting
+    depends_on:
+      - T007
+    acceptance_criteria:
+      - AC004
+    context_files:
+      - src/core/verification/failure-summary.ts
+      - src/core/verification/run.ts
+      - src/core/verification/text-trim.ts
+      - src/core/verification/process-exec.ts
+      - src/core/tasks/verify.ts
+      - tests/unit/failure-summary.test.ts
+      - tests/integration/verify.test.ts
+      - tests/integration/task-verify.test.ts
+      - tests/integration/verification-repair.test.ts
+    write_scope:
+      - src/core/verification/failure-summary.ts
+      - src/core/verification/run.ts
+      - src/core/tasks/verify.ts
+      - tests/unit/failure-summary.test.ts
+      - tests/integration/verify.test.ts
+      - tests/integration/task-verify.test.ts
+      - tests/integration/verification-repair.test.ts
+    mapped_ac_ids:
+      - AC004
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/failure-summary.test.ts
+        tests/integration/verify.test.ts tests/integration/task-verify.test.ts
+        tests/integration/verification-repair.test.ts
+    result: null
+    usage: null
+  - id: T005
+    name: Shared CLI error handler and missing-state diagnostic
+    objective: "Per AC003 and decision 7: src/state/store.ts's readText (and
+      readInputFile) preserve the underlying error as `cause` (new
+      StateStoreError(message, { cause: error })). src/cli/errors.ts exports
+      renderCliError(error) -> { message, exitCode, printStack } narrowing to
+      PitWay's own error classes (StateStoreError and the Core *Error classes;
+      everything else keeps its stack) and mapping a StateStoreError whose cause
+      is ENOENT on .pitway/state.yaml to the actionable missing-state message
+      (run pitway init in a repository root, or check out the branch that
+      carries .pitway/). src/cli/index.ts's main-module block wraps parseAsync:
+      print 'pitway: <message>' to stderr and exit 1. In-process tests
+      untouched. tests/unit/cli-errors.test.ts covers the three branches;
+      real-subprocess tests in tests/integration/build-bin.test.ts: a dir with
+      no .pitway/ yields the friendly message, exit 1, no 'at ' frames; an
+      ordinary refusal prints message only."
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - AC003
+    context_files:
+      - src/cli/errors.ts
+      - src/cli/index.ts
+      - src/state/store.ts
+      - tests/unit/cli-errors.test.ts
+      - tests/integration/build-bin.test.ts
+    write_scope:
+      - src/cli/errors.ts
+      - src/cli/index.ts
+      - src/state/store.ts
+      - tests/unit/cli-errors.test.ts
+      - tests/integration/build-bin.test.ts
+    mapped_ac_ids:
+      - AC003
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/unit/cli-errors.test.ts
+        tests/integration/build-bin.test.ts
+    result: null
+    usage: null
+  - id: T006
+    name: Dependabot configuration and maintenance note
+    objective: "Per AC006: create .github/dependabot.yml (package-ecosystem npm,
+      directory /, schedule weekly, open-pull-requests-limit 5, a groups entry
+      bundling dev-dependencies; no auto-merge anywhere, stated in a header
+      comment) and add a short README.md 'Maintenance' note: dependency updates
+      arrive as Dependabot PRs; Dependabot security alerts are a repository
+      setting to enable (not done by this file). Docs/config-only task, no
+      tests; verified by CT006."
+    status: waiting
+    depends_on:
+      - T007
+    acceptance_criteria:
+      - AC006
+    context_files:
+      - .github/dependabot.yml
+      - README.md
+    write_scope:
+      - .github/dependabot.yml
+      - README.md
+    mapped_ac_ids:
+      - AC006
+    verification:
+      strategy: manual
+      detail: Reviewed against AC006 (CT006); no automated test owns this file.
+    result: null
+    usage: null
+  - id: T008
+    name: Drafting write_scope rule and confirmed-milestone boundary docs
+    objective: "Per AC008 and decision 2: add a 'Drafting write_scope' rule to
+      src/integrations/claude/protocol-driver.md naming the assertion sites to
+      grep (registered-command list, baseline paths, asset tests,
+      completionPaths, and any test asserting a changed string's content) before
+      finalizing any task that changes a count, enumerated list, or
+      persisted/rendered string shape; document the confirmed-milestone boundary
+      in src/integrations/claude/commands/milestone-cancel.md and
+      protocol-driver.md's 'Choosing a correction mechanism' (cancellation
+      draft-only by design, state machine unchanged, task-add with its dispatch
+      rule is the insertion path, remaining work is abandoned by cancelling
+      tasks and completing, never by git reset). Docs-only; no semantics
+      changed; verified by CT008."
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - AC008
+    context_files:
+      - src/integrations/claude/protocol-driver.md
+      - src/integrations/claude/commands/milestone-cancel.md
+      - src/core/milestones/state-machine.ts
+      - src/core/milestones/cancel.ts
+    write_scope:
+      - src/integrations/claude/protocol-driver.md
+      - src/integrations/claude/commands/milestone-cancel.md
+    mapped_ac_ids:
+      - AC008
+    verification:
+      strategy: manual
+      detail: Reviewed against AC008 (CT008); no automated test owns this prose.
+    result: null
+    usage: null
+  - id: T009
+    name: Plan reconciliation
+    objective: "Per AC009: reconcile IMPLEMENTATION_PLAN.md (header entry; SS7 -> 23
+      with a task-add row; SS9 -> 36 with an M017 bullet; Backlog entries marked
+      DELIVERED with the chosen direction, npm-pack transient left open; M017's
+      own Bootstrap row omitted; Status snapshot). The milestone-level gates run
+      once, as CT010/CT011 at verify time -- not as this task's own check."
+    status: waiting
+    depends_on:
+      - T003
+      - T004
+      - T005
+      - T006
+      - T008
+    acceptance_criteria:
+      - AC009
+    context_files:
+      - IMPLEMENTATION_PLAN.md
+      - src/cli/index.ts
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+    mapped_ac_ids:
+      - AC009
+    verification:
+      strategy: manual
+      detail: Reviewed against AC009 (CT009); the full-suite and typecheck gates are
+        CT010/CT011 at milestone verification.
+    result: null
+    usage: null
