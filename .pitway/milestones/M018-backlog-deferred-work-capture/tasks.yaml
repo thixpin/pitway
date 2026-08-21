@@ -203,7 +203,7 @@ tasks:
       (src/cli/commands/resume.ts) -- additive only, no change to resume's
       existing recommendation logic. Update every exact-shape --json assertion
       this additive key touches (AC007)."
-    status: ready
+    status: completed
     depends_on:
       - T003
     acceptance_criteria:
@@ -222,7 +222,15 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/integration/resume.test.ts
         tests/integration/fresh-session-resume.test.ts
-    result: null
+    result:
+      summary: "[truncated] ting recommendation logic. Extended
+        tests/integration/resume.test.ts and fresh-session-resume.test.ts; the
+        latter now records a real backlog item mid-task via the CLI and proves
+        it survives a fresh, independently-constructed resume read after riding
+        along in T001's own completion commit."
+      evidence: Tests  15 passed (15) | Start at  21:29:13 | Duration  2.88s
+        (transform 625ms, setup 0ms, import 915ms, tests 3.57s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T005
     name: Backlog docs and shipped Claude assets

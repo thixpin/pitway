@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
+import { registerBacklogCommand } from '../../src/cli/commands/backlog.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
@@ -105,6 +106,7 @@ async function run(args: string[], cwd: string): Promise<{ lines: string[]; erro
   const program = buildCli();
   const lines: string[] = [];
   const deps = { root: cwd, write: (s: string) => lines.push(s) };
+  registerBacklogCommand(program, deps);
   registerInitCommand(program, deps);
   registerMilestoneAddCommand(program, deps);
   registerMilestoneConfirmCommand(program, deps);
@@ -159,6 +161,15 @@ describe('fresh-session resume (M007/T001/AC001)', () => {
     expect((await run(['milestone-confirm', 'M001'], root)).error).toBeUndefined();
     expect((await run(['task-update', 'T001', 'in_progress'], root)).error).toBeUndefined();
 
+    // M018/T004: a backlog item added mid-task, riding along in T001's own
+    // completion commit below (AC005) -- proves pendingBacklogItems survives
+    // a fresh, independently-constructed resume read, same discipline as
+    // every other field this test proves.
+    expect(
+      (await run(['backlog', 'add', '--title', 'Discovered mid-task', '--reason', 'Out of scope.'], root))
+        .error,
+    ).toBeUndefined();
+
     mkdirSync(join(root, 'src'), { recursive: true });
     writeFileSync(join(root, 'src', 'greeter.ts'), 'export const greet = (): string => "hi";\n');
     expect((await run(['task-update', 'T001', 'review'], root)).error).toBeUndefined();
@@ -190,6 +201,7 @@ describe('fresh-session resume (M007/T001/AC001)', () => {
       tasks: Array<{ id: string; name: string | null; status: string }>;
       ready: string[];
       nextTask: string | null;
+      pendingBacklogItems: Array<{ id: string; title: string }>;
     };
     expect(resumeView.activeMilestone).toBe('M001');
     expect(resumeView.contractStatus).toBe('in_progress');
@@ -201,6 +213,9 @@ describe('fresh-session resume (M007/T001/AC001)', () => {
     ]);
     expect(resumeView.ready).toEqual(['T002']);
     expect(resumeView.nextTask).toBe('T002');
+    // M018/T004: the backlog item added mid-task above, folded into T001's
+    // own completion commit, still reads back correctly from a fresh process.
+    expect(resumeView.pendingBacklogItems).toEqual([{ id: 'B001', title: 'Discovered mid-task' }]);
 
     const milestoneStatus = await run(['milestone-status', 'M001', '--json'], root);
     expect(milestoneStatus.error).toBeUndefined();
