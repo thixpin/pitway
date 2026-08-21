@@ -197,7 +197,7 @@ tasks:
       3a297d9), not promoted into a milestone task"`. Finally, add a new backlog
       item recording the archive-requires-active-milestone limitation as a
       twice-recurred dogfood finding (AC007, AC008, AC009).
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -219,5 +219,24 @@ tasks:
       strategy: manual
       detail: Manual review of the IMPLEMENTATION_PLAN.md diff plus backlog list
         output after promote/archive/add.
-    result: null
+    result:
+      summary: IMPLEMENTATION_PLAN.md reconciled against real repository state on
+        main; B004 promoted, B005 archived, new backlog item filed for the
+        archive-active-milestone limitation. All AC007-AC010 satisfied.
+      evidence: "[truncated] ing the quick-change; updated the Status snapshot to name
+        both | post-M019 quick-change commits (cbe1a15, 3a297d9) and M020's own
+        | in-progress state; appended the standard top-of-file changelog
+        sentence | for this reconciliation. | Backlog: `pitway backlog promote
+        B004 --task T001` (disclosed one-to-many | mapping: B004 spans
+        T001-T005, promoted against T001 per its own stated | priority order).
+        `pitway backlog archive B005 --reason \"...\"` (already | resolved by
+        qc-404ee3e9/3a297d9). `pitway backlog add` filed B007 | recording the
+        archive-requires-active-milestone limitation as a | twice-recurred
+        dogfood finding (once post-M018, once post-M019). B006 |
+        (token-usage/cost tracking in milestone-review, filed mid-milestone via
+        | direct developer request, unrelated to B004/B005) confirmed present. |
+        Final `pitway backlog list`: B001-B004 promoted, B005 archived,
+        B006/B007 | pending. | AC010: npm run build clean; npm test -- 1338/1338
+        passed (86 files); | npx tsc --noEmit clean."
+    attempts: 1
     usage: null
