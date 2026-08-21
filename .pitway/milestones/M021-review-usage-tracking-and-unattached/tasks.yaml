@@ -17,7 +17,7 @@ tasks:
       addition instructing the driver to pass --usage when recording a
       dispatched reviewer's findings, mirroring the existing task-dispatch MUST
       rule (AC005)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - reviewFindingsSnapshotSchema gains a nullable usage field reusing
@@ -45,8 +45,15 @@ tasks:
       detail: npx vitest run tests/unit/schemas.test.ts
         tests/integration/milestone-review-record.test.ts
         tests/integration/milestone-review-report.test.ts
-    result: null
-    usage: null
+    result:
+      summary: B006 delivered -- nullable usage tracking on review findings snapshots,
+        a --usage flag on milestone-review record, per-role/session-level usage
+        disclosure on report, driver-doc MUST-instruction. Tokens only, no cost.
+      evidence: Tests  131 passed (131) | Start at  02:12:25 | Duration  5.98s
+        (transform 630ms, setup 0ms, import 911ms, tests 9.06s, environment 0ms)
+    attempts: 1
+    usage:
+      total_tokens: 146166
   - id: T002
     name: "B007: backlog archive without an active milestone"
     objective: "Add a new sibling journal record kind, backlog_archive
@@ -61,7 +68,7 @@ tasks:
       unchanged (AC006-AC007). A real regression test reproduces B007's own
       finding directly, and proves add/promote still refuse identically to
       before (AC008)."
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - a new backlog_archive sibling journal kind exists (no milestone field),
@@ -83,6 +90,7 @@ tasks:
       detail: npx vitest run tests/unit/journal.test.ts
         tests/integration/backlog.test.ts
     result: null
+    attempts: 1
     usage: null
   - id: T003
     name: Reconciliation and backlog promotion

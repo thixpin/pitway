@@ -347,10 +347,16 @@ export const reviewFindingEntrySchema = z.strictObject({
 // snapshots accumulate in a session's `findings[]`; a later snapshot for the
 // same role supersedes the prior one only in DERIVATION (see
 // deriveLatestFindingsByRole), never by mutating or removing it.
+// AC001 (M021/B006): additive-optional -- reuses taskUsageSchema verbatim
+// (no new schema type). Absent on every reviews.yaml written before this
+// milestone, treated identically to null by every consumer; a fresh
+// recording always writes it explicitly (present, possibly null) rather
+// than leaving it absent.
 export const reviewFindingsSnapshotSchema = z.strictObject({
   role: reviewRoleIdSchema,
   recorded_at: isoTimestamp,
   findings: z.array(reviewFindingEntrySchema),
+  usage: taskUsageSchema.optional(),
 });
 
 export const reviewDecisionSchema = z.strictObject({

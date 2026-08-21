@@ -421,6 +421,79 @@ describe('milestone-review report', () => {
   });
 });
 
+// M021/AC003 (B006): per-role usage (when present) and a session-level
+// total, mirroring the Tokens: X (N tasks N/A) missing-disclosure
+// convention -- a recorded role with null usage is disclosed as missing,
+// never treated as zero or silently omitted; a pending role is never
+// counted toward the usage total at all.
+describe('milestone-review report usage disclosure', () => {
+  async function seedThreeRoles(): Promise<string> {
+    const id = await addDraftMilestone();
+    await run(
+      ['milestone-review', 'start', id, '--roles', 'developer,architect,qa', '--json'],
+      root,
+    );
+    await run(
+      [
+        'milestone-review',
+        'record',
+        id,
+        '--role',
+        'developer',
+        '--file',
+        writeFindingsFile('findings: []\n'),
+        '--usage',
+        '{"total_tokens": 250}',
+      ],
+      root,
+    );
+    // architect recorded but never supplied --usage.
+    await run(
+      ['milestone-review', 'record', id, '--role', 'architect', '--file', writeFindingsFile('findings: []\n')],
+      root,
+    );
+    // qa never records at all -- stays pending.
+    return id;
+  }
+
+  it('reports per-role usage and a session total in the JSON view', async () => {
+    const id = await seedThreeRoles();
+    const { lines, error } = await run(['milestone-review', 'report', id, '--json'], root);
+    expect(error).toBeUndefined();
+    const view = JSON.parse(lines[0]!) as {
+      roles: Array<{ role: string; recorded: boolean; usage: { total_tokens: number } | null }>;
+      usage: { totalTokens: number | null; missingRoles: number };
+    };
+
+    const developer = view.roles.find((r) => r.role === 'developer')!;
+    const architect = view.roles.find((r) => r.role === 'architect')!;
+    const qa = view.roles.find((r) => r.role === 'qa')!;
+    expect(developer.usage).toEqual({ total_tokens: 250 });
+    expect(architect.recorded).toBe(true);
+    expect(architect.usage).toBeNull();
+    expect(qa.recorded).toBe(false);
+    expect(qa.usage).toBeNull();
+
+    // Only developer's measured 250 counts; architect (recorded, null) is
+    // disclosed via missingRoles, never blended into the total; qa
+    // (pending) isn't counted at all.
+    expect(view.usage).toEqual({ totalTokens: 250, missingRoles: 1 });
+  });
+
+  it('renders per-role usage lines and a session-level total in the human report', async () => {
+    const id = await seedThreeRoles();
+    const { lines, error } = await run(['milestone-review', 'report', id], root);
+    expect(error).toBeUndefined();
+    const text = lines.join('\n');
+
+    expect(text).toContain('Usage: 250 (1 role missing usage)');
+    expect(text).toContain('  Usage: 250 tokens');
+    expect(text).toContain('  Usage: N/A');
+    expect(text).not.toContain('$');
+    expect(text.toLowerCase()).not.toContain('cost');
+  });
+});
+
 describe('pitway resume open-review discovery (AC006)', () => {
   it('is absent when no review session is open', async () => {
     const id = await addDraftMilestone();
