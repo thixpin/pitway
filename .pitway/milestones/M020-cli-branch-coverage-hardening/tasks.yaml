@@ -61,7 +61,7 @@ tasks:
       targeting real validation failures, state-transition refusals, and
       command/tdd verification-strategy branches not yet exercised. Test-only
       changes expected (AC003).
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - src/cli/commands/task-verify.ts reaches >=19/21 (>=90%) branch coverage
@@ -74,9 +74,15 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/integration/task-verify.test.ts
-    result: null
+    result:
+      summary: task-verify.ts reached 21/21 (100%) branch coverage, up from 10/21
+        (47.6%) baseline. Test-only change.
+      evidence: Tests  14 passed (14) | Start at  01:42:05 | Duration  11.61s
+        (transform 261ms, setup 0ms, import 354ms, tests 11.17s, environment
+        0ms)
     attempts: 1
-    usage: null
+    usage:
+      total_tokens: 121203
   - id: T003
     name: task-integrate.ts branch coverage
     objective: Bring src/cli/commands/task-integrate.ts from 4/8 (50.0%) to >=90%
@@ -191,7 +197,7 @@ tasks:
       3a297d9), not promoted into a milestone task"`. Finally, add a new backlog
       item recording the archive-requires-active-milestone limitation as a
       twice-recurred dogfood finding (AC007, AC008, AC009).
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002

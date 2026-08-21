@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
@@ -81,6 +81,32 @@ tasks:
       detail: A developer confirms this manually.
     result: null
     usage: null
+  - id: T003
+    objective: Task whose command reports a passCount-only summary line.
+    status: planned
+    depends_on: []
+    acceptance_criteria:
+      - It works
+    write_scope:
+      - src/c.ts
+    verification:
+      strategy: command
+      detail: "node -e \\"console.log('Tests  3 passed (3)'); process.exit(0)\\""
+    result: null
+    usage: null
+  - id: T004
+    objective: Task whose command reports a failCount-only summary line and fails.
+    status: planned
+    depends_on: []
+    acceptance_criteria:
+      - It works
+    write_scope:
+      - src/d.ts
+    verification:
+      strategy: command
+      detail: "node -e \\"console.log('Tests  2 failed (2)'); process.exit(1)\\""
+    result: null
+    usage: null
 `;
 
 function milestoneDirName(id: string): string {
@@ -126,6 +152,12 @@ async function update(args: string[]): Promise<{ lines: string[]; error?: Error 
 
 async function taskVerify(args: string[]): Promise<{ lines: string[]; error?: Error }> {
   return run(['task-verify', ...args, '--json'], root);
+}
+
+// Human-format (non --json) invocation -- the only path that renders
+// through renderTaskVerifyHuman's icon/counts/typecheck branches.
+async function taskVerifyHuman(args: string[]): Promise<{ lines: string[]; error?: Error }> {
+  return run(['task-verify', ...args], root);
 }
 
 const task = (id: string): Task => {
@@ -399,5 +431,89 @@ tasks:
     expect(evidence.exitCode).toBe(1);
     expect(evidence.evidence.startsWith('failures: FAIL src/a.test.ts > it works\n')).toBe(true);
     expect(evidence.evidence).toContain('FAIL src/a.test.ts > it works');
+  });
+});
+
+// M020/T002 (AC003): renderTaskVerifyHuman's own branches only render on the
+// human (non --json) output path -- these cases drive each real permutation
+// (pass/fail icon, counts present/absent/partial, typecheck present/absent)
+// through the real CLI, never by importing the unexported renderer directly.
+describe('pitway task-verify human-readable rendering (renderTaskVerifyHuman branches)', () => {
+  it('renders a passing icon with no counts and no typecheck note', async () => {
+    await update(['T001', 'in_progress']);
+    touchFile('src/a.ts', 'export const a = 1;\n');
+
+    const { error, lines } = await taskVerifyHuman(['T001']);
+    expect(error).toBeUndefined();
+    expect(lines[0]).toMatch(/✅ pass/);
+    expect(lines[0]).not.toMatch(/passed,/);
+    expect(lines[0]).not.toContain('typecheck');
+  });
+
+  it('renders a passCount-only summary on a passing run', async () => {
+    await update(['T003', 'in_progress']);
+    touchFile('src/c.ts', 'export const c = 1;\n');
+
+    const { error, lines } = await taskVerifyHuman(['T003']);
+    expect(error).toBeUndefined();
+    expect(lines[0]).toMatch(/✅ pass/);
+    expect(lines[0]).toContain('(3 passed, 0 failed)');
+  });
+
+  it('renders a failCount-only summary on a failing run', async () => {
+    await update(['T004', 'in_progress']);
+    touchFile('src/d.ts', 'export const d = 1;\n');
+
+    const { error, lines } = await taskVerifyHuman(['T004']);
+    expect(error).toBeUndefined();
+    expect(lines[0]).toMatch(/❌ fail/);
+    expect(lines[0]).toContain('(0 passed, 2 failed)');
+  });
+
+  it('appends a typecheck note, passing or failing, alongside the run result', async () => {
+    await update(['T001', 'in_progress']);
+    touchFile('src/a.ts', 'export const a = 1;\n');
+
+    const passing = await taskVerifyHuman(['T001', '--typecheck', 'node -e "process.exit(0)"']);
+    expect(passing.error).toBeUndefined();
+    expect(passing.lines[0]).toMatch(/typecheck ✅ pass/);
+
+    const failing = await taskVerifyHuman(['T001', '--typecheck', 'node -e "process.exit(1)"']);
+    expect(failing.error).toBeUndefined();
+    expect(failing.lines[0]).toMatch(/typecheck ❌ fail/);
+  });
+});
+
+// M020/T002 (AC003): registerTaskVerifyCommand's own CommandDeps defaults
+// (deps.write ?? console.log, deps.root ?? process.cwd()) are only reached
+// when a caller registers the command with no overrides at all -- the real
+// shape a bare `pitway task-verify` invocation takes outside this test
+// file's harness. process.chdir into the fixture root keeps this from ever
+// touching the real repository's own .pitway/ state.
+describe('pitway task-verify default CommandDeps fallbacks', () => {
+  it('falls back to console.log and process.cwd() when no overrides are given', async () => {
+    await update(['T001', 'in_progress']);
+    touchFile('src/a.ts', 'export const a = 1;\n');
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerTaskVerifyCommand(program);
+      await program.parseAsync(['node', 'pitway', 'task-verify', 'T001']);
+    } catch (error) {
+      caught = error;
+    } finally {
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+
+    expect(caught).toBeUndefined();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.[0]).toMatch(/✅ pass/);
   });
 });
