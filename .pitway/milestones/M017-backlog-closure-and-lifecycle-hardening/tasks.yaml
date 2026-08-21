@@ -195,7 +195,7 @@ tasks:
       path (task-dispatch -> task-integrate -> complete under
       parallel_worktrees): without --usage (warning), with --usage (no warning),
       never-dispatched task (no warning); existing assertions unchanged."
-    status: ready
+    status: completed
     depends_on:
       - T007
     acceptance_criteria:
@@ -214,8 +214,16 @@ tasks:
     verification:
       strategy: tdd
       detail: npm test -- tests/integration/task-update.test.ts
-    result: null
-    attempts: 1
+    result:
+      summary: "[truncated] sk and states usage stays null -> N/A; otherwise null. CLI
+        prints it to stderr as one line in human mode only; --json always
+        carries the additive key. Detection only -- never estimates, never
+        refuses; an inline sub-agent dispatch leaves no journal record and is
+        disclosed as undetectable."
+      evidence: Tests  49 passed (49) | Start at  12:52:31 | Duration  45.13s
+        (transform 277ms, setup 0ms, import 385ms, tests 44.65s, environment
+        0ms)
+    attempts: 2
     usage: null
   - id: T004
     name: Structured failure summary in verification evidence

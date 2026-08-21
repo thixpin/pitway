@@ -68,6 +68,12 @@ export interface TaskUpdateView {
   attempts: number | null;
   outcome: 'updated' | 'committed' | 'already-committed';
   commit: string | null;
+  // M017/T003 (AC005): additive -- non-null only on a fresh completion of a
+  // task that was worktree-dispatched at least once and received no
+  // --usage. Detection only (never estimated); an inline sub-agent dispatch
+  // leaves no journal record, so it is indistinguishable from driver-
+  // executed work and never warns.
+  usageWarning: string | null;
 }
 
 const resultSchema = z.strictObject({
@@ -376,6 +382,27 @@ function findCompletionCommit(
   return sha;
 }
 
+// M017/T003 (AC005): fresh-completion-only detection -- a task with no
+// worktree_dispatch record at all (never dispatched, or an inline sub-agent
+// dispatch that leaves none) never warns; supplying --usage always
+// suppresses it regardless of dispatch history.
+function computeUsageWarning(
+  root: string,
+  milestoneId: string,
+  taskId: string,
+  usageProvided: boolean,
+): string | null {
+  if (usageProvided) return null;
+  const wasWorktreeDispatched = readJournal(root).some(
+    (r) => r.kind === 'worktree_dispatch' && r.milestone === milestoneId && r.taskId === taskId,
+  );
+  if (!wasWorktreeDispatched) return null;
+  return (
+    `${taskId} was completed after a worktree dispatch with no --usage supplied; ` +
+    `its usage stays null -> N/A (detection only, never estimated)`
+  );
+}
+
 function completeTask(
   root: string,
   milestoneId: string,
@@ -417,7 +444,14 @@ function completeTask(
       // actually captured a pending journal entry — reconcilePending derives
       // that from HEAD's content itself.
       reconcilePending(root, milestoneId);
-      return { id: task.id, status: 'completed', attempts, outcome: 'already-committed', commit: existing };
+      return {
+        id: task.id,
+        status: 'completed',
+        attempts,
+        outcome: 'already-committed',
+        commit: existing,
+        usageWarning: null,
+      };
     }
     if (inputs.messagePath === undefined) {
       throw new TaskUpdateError(
@@ -432,7 +466,14 @@ function completeTask(
       message: composeMessage(readInput(inputs.messagePath, 'message'), trailers),
     });
     reconcilePending(root, milestoneId);
-    return { id: task.id, status: 'completed', attempts, outcome: committed.outcome, commit: committed.sha };
+    return {
+      id: task.id,
+      status: 'completed',
+      attempts,
+      outcome: committed.outcome,
+      commit: committed.sha,
+      usageWarning: null,
+    };
   }
 
   // AC013: the pure state machine gates completion before anything else.
@@ -489,7 +530,15 @@ function completeTask(
     message: composeMessage(message, trailers),
   });
   reconcilePending(root, milestoneId);
-  return { id: task.id, status: 'completed', attempts, outcome: committed.outcome, commit: committed.sha };
+  const usageWarning = computeUsageWarning(root, milestoneId, task.id, inputs.usage !== undefined);
+  return {
+    id: task.id,
+    status: 'completed',
+    attempts,
+    outcome: committed.outcome,
+    commit: committed.sha,
+    usageWarning,
+  };
 }
 
 export function updateTask(
@@ -555,5 +604,6 @@ export function updateTask(
     attempts: updated.attempts ?? null,
     outcome: 'updated',
     commit: null,
+    usageWarning: null,
   };
 }

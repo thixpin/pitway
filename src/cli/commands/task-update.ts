@@ -15,10 +15,15 @@ function renderTaskUpdateHuman(view: TaskUpdateView): string {
 export interface CommandDeps {
   root?: string;
   write?: (line: string) => void;
+  // M017/T003 (AC005): a fresh completion's usageWarning prints here, one
+  // line, human mode only -- stderr so it never pollutes --json stdout or a
+  // human-mode result any caller might parse.
+  writeErr?: (line: string) => void;
 }
 
 export function registerTaskUpdateCommand(program: Command, deps: CommandDeps = {}): void {
   const write = deps.write ?? ((line: string) => console.log(line));
+  const writeErr = deps.writeErr ?? ((line: string) => console.error(line));
   program
     .command('task-update <id> <status>')
     .description("Transition a task's status; completion commits its files atomically.")
@@ -44,6 +49,9 @@ export function registerTaskUpdateCommand(program: Command, deps: CommandDeps = 
           evidenceId: options.evidence,
         });
         write(renderOutput(view, { json: options.json }, renderTaskUpdateHuman));
+        if (!options.json && view.usageWarning !== null) {
+          writeErr(view.usageWarning);
+        }
       },
     );
 }
