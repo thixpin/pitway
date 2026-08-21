@@ -36,7 +36,11 @@ jobs:
         run: npm ci
 
       - name: Update npm (Trusted Publishing/OIDC needs npm >= 11.5.1)
-        run: npm install -g npm@latest
+        # Pinned to the 11.x line, not @latest: npm 12 requires Node
+        # >=22.22.2/24.15.0/26, which this Node 20 runner doesn't have, and
+        # broke this exact step. npm 11.5.1's own engine requirement
+        # (^20.17.0 || >=22.9.0) is compatible with Node 20.
+        run: npm install -g npm@^11.5.1
 
       - name: Verify the pushed tag matches package.json's version
         if: github.event_name == 'push'
