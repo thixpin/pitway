@@ -85,7 +85,7 @@ tasks:
       tests/integration/task-integrate-recovery.test.ts. If any branch proves
       genuinely unreachable in-process, disclose it by name in completion
       evidence rather than leaving it silently uncovered (AC004).
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - src/cli/commands/task-integrate.ts reaches 8/8 branch coverage measured
@@ -103,9 +103,15 @@ tasks:
       strategy: command
       detail: npx vitest run tests/integration/task-integrate.test.ts
         tests/integration/task-integrate-recovery.test.ts
-    result: null
+    result:
+      summary: task-integrate.ts reached 8/8 (100%) branch coverage, up from 4/8 (50%)
+        baseline -- no branch proved unreachable. Test-only change.
+      evidence: Tests  19 passed (19) | Start at  01:41:20 | Duration  10.01s
+        (transform 641ms, setup 0ms, import 898ms, tests 18.84s, environment
+        0ms)
     attempts: 1
-    usage: null
+    usage:
+      total_tokens: 103401
   - id: T004
     name: verification-repair.ts branch coverage
     objective: Bring src/cli/commands/verification-repair.ts from 6/13 (46.2%) to

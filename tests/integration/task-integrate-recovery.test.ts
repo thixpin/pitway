@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
@@ -221,5 +221,78 @@ describe('task-integrate CLI + crash recovery (M014/T007)', () => {
     expect(head).toContain('PitWay-Task: T001');
     const committed = git(['show', '--name-only', '--format='], root);
     expect(committed).toContain('src/a.ts');
+  });
+
+  it('renders the default-outcome human message (no --json)', async () => {
+    const dispatched = dispatchTask(root, 'T001');
+    setupWorktreeSrc(dispatched.worktreePath);
+    workerCommit(dispatched.worktreePath, 'export const a = 1;\n');
+
+    const result = await run(['task-integrate', 'T001']);
+    expect(result.error).toBeUndefined();
+    const text = result.lines.join('\n');
+    expect(text).toContain('Integrated T001');
+    expect(text).toContain('task-verify T001');
+  });
+
+  it("renders the 'recovered' human message (no --json)", async () => {
+    const dispatched = dispatchTask(root, 'T001');
+    setupWorktreeSrc(dispatched.worktreePath);
+    const workerSha = workerCommit(dispatched.worktreePath, 'export const a = 1;\n');
+
+    const diff = computeRangeDiff(root, dispatched.createdFrom, workerSha);
+    applyDiff(root, diff);
+
+    const result = await run(['task-integrate', 'T001']);
+    expect(result.error).toBeUndefined();
+    const text = result.lines.join('\n');
+    expect(text).toContain('was already applied (crash-window re-run)');
+  });
+
+  it("renders the 'cleanup-completed' human message (no --json)", async () => {
+    const dispatched = dispatchTask(root, 'T001');
+    setupWorktreeSrc(dispatched.worktreePath);
+    const workerSha = workerCommit(dispatched.worktreePath, 'export const a = 1;\n');
+
+    const diff = computeRangeDiff(root, dispatched.createdFrom, workerSha);
+    applyDiff(root, diff);
+    appendWorktreeIntegrateRecord(root, {
+      id: 'wti-crash-human',
+      dispatchId: dispatched.dispatchId,
+      milestone: 'M001',
+      taskId: 'T001',
+      workerSha,
+      at: '2026-08-20T00:00:00Z',
+    });
+
+    const result = await run(['task-integrate', 'T001']);
+    expect(result.error).toBeUndefined();
+    const text = result.lines.join('\n');
+    expect(text).toContain('integration was already recorded');
+  });
+
+  it('falls back to console.log and process.cwd() when write/root deps are omitted', async () => {
+    const dispatched = dispatchTask(root, 'T001');
+    setupWorktreeSrc(dispatched.worktreePath);
+    workerCommit(dispatched.worktreePath, 'export const a = 1;\n');
+
+    const program = buildCli();
+    registerTaskIntegrateCommand(program);
+    const originalCwd = process.cwd();
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    let calls: unknown[][];
+    try {
+      process.chdir(root);
+      await program.parseAsync(['node', 'pitway', 'task-integrate', 'T001', '--json']);
+    } finally {
+      process.chdir(originalCwd);
+      // mockRestore() also clears recorded calls (vitest v4), so capture
+      // them before restoring.
+      calls = logSpy.mock.calls;
+      logSpy.mockRestore();
+    }
+    expect(calls).toHaveLength(1);
+    const view = JSON.parse(calls[0]![0] as string) as Record<string, unknown>;
+    expect(view.outcome).toBe('integrated');
   });
 });
