@@ -1,0 +1,90 @@
+schema_version: 1
+sessions:
+  - id: rev-b1e1d2ed8657
+    status: decided
+    created_at: 2026-08-21T13:36:41Z
+    roles:
+      - architect
+    content_hash: sha256:7d413ee7a90050df09ce29f4567e0c2198b65d58935975a5197c7e87a9859adf
+    findings:
+      - role: architect
+        recorded_at: 2026-08-21T13:45:39Z
+        findings:
+          - severity: major
+            finding: "backlog add's [--milestone <id>] [--task <id>] and backlog promote's
+              required --milestone <id> are each specified to serve two distinct
+              roles the contract never disambiguates: resolveActiveMilestone's
+              journal-attachment override (AC004, \"reusing task-amend's exact
+              pattern\") vs. source.milestone/task (AC001, add) vs.
+              promoted_to.milestone/task (AC002, promote). In the common no-flag
+              backlog add case, source stays null even though the active
+              milestone/task context is known, undermining AC001's \"preserved
+              source context\" goal. It is unclear whether one flag is meant to
+              fill both roles or whether two are needed."
+            targets:
+              - ac001
+              - ac002
+              - ac004
+              - ac006
+              - t002
+              - t003
+            recommendation: Default source to the active milestone/task automatically on
+              add; give promote's promoted_to-target flag a name/role distinct
+              from any journal-attachment override.
+          - severity: major
+            finding: .pitway/backlog.yaml is the first journal-backed target file not
+              exclusively owned by the milestone its entry is attributed to
+              (every other resolveTargetPath case maps into that milestone's own
+              directory). classifyDirtyPaths/reconcilePending match pending
+              entries by exact milestone equality. AC004 permits attaching a
+              backlog mutation to any milestone via --milestone override with no
+              status gating, including an already-completed/cancelled one
+              (accidental promote-into-not-yet-active is blocked by
+              createMilestone's single-active-milestone invariant, but a
+              deliberate/mistaken override to a retired milestone is not). If
+              that happens, backlog.yaml's uncommitted content becomes a dirty
+              path no other milestone's check recognizes as expected, blocking
+              that milestone's task-update/milestone-complete with no built-in
+              repair path.
+            targets:
+              - ac004
+              - ac005
+              - t002
+            recommendation: Restrict backlog-mutation journal attachment to the current
+              active milestone only; drop or validate the --milestone override
+              given backlog.yaml's shared, non-exclusive target status.
+          - severity: minor
+            finding: reconcilePending (journal.ts:466-474) and classifyDirtyPaths
+              (safety.ts:98-103) both call resolveMilestoneDirName(cwd,
+              milestone) unconditionally before resolveTargetPath, and skip ALL
+              pending entries for that milestone if it throws -- even though a
+              backlog_recording entry's target (.pitway/backlog.yaml) doesn't
+              actually need milestoneDir. A milestone-dir resolution failure
+              would needlessly block backlog reconciliation/classification
+              alongside the milestone-scoped types that genuinely depend on it.
+            targets:
+              - ac003
+              - ac005
+              - t001
+              - t002
+            recommendation: Disclose this coupling as an accepted limitation in the
+              contract's Design Decisions, or special-case root-level target
+              types to skip the dir-resolution dependency.
+          - severity: minor
+            finding: AC006's literal CLI grammar for `pitway backlog archive <id> --reason
+              <text>` lists no --milestone override flag, while AC004 claims
+              "every backlog mutation" (add/promote/archive) supports an
+              explicit --milestone override via resolveActiveMilestone.
+            targets:
+              - ac004
+              - ac006
+              - t003
+            recommendation: "Reconcile AC006's grammar with AC004 before task-writing: add
+              the flag to archive's documented grammar, or narrow AC004's
+              claim."
+    decision:
+      outcome: revision_requested
+      note: Collapse milestone-attachment override into unconditional
+        state.active_milestone; separate journal attachment from
+        source/promotion-target metadata. Applying via milestone-add --replace.
+      decided_at: 2026-08-21T13:49:28Z
