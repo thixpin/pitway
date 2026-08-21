@@ -1,5 +1,5 @@
 import { loadContract, loadReviews, loadTasks } from '../../state/store.js';
-import type { ReviewFindingEntry, ReviewFindingsSnapshot, ReviewSession } from '../../state/schemas.js';
+import type { ReviewFindingEntry, ReviewFindingsSnapshot, ReviewSession, TaskUsage } from '../../state/schemas.js';
 import { deriveLatestFindingsByRole } from './roles.js';
 
 export class ReviewReportError extends Error {}
@@ -27,6 +27,21 @@ export interface ReviewReportRoleView {
   recordedAt: string | null;
   supersededCount: number;
   findings: ReviewReportFindingView[];
+  // AC003 (M021/B006): the recorded snapshot's usage, verbatim -- null for
+  // a pending (not yet recorded) role, and null (never zero) when the role
+  // was recorded without --usage. Tokens only, no cost derivation.
+  usage: TaskUsage;
+}
+
+// AC003: session-level total, summed across every recorded role's latest
+// snapshot's usage only -- pending roles are never counted here (they're
+// already surfaced via pendingRoles). Mirrors the Tokens: X (N tasks N/A)
+// missing-disclosure convention: null total means nothing at all was
+// measured; missingRoles counts recorded roles whose usage is null,
+// disclosed explicitly, never treated as zero or silently omitted.
+export interface ReviewReportUsageView {
+  totalTokens: number | null;
+  missingRoles: number;
 }
 
 export interface ReviewReportSharedTargetConflictView {
@@ -48,6 +63,7 @@ export interface ReviewReportView {
   pendingRoles: string[];
   sharedTargetConflicts: ReviewReportSharedTargetConflictView[];
   declaredConflicts: ReviewReportDeclaredConflictView[];
+  usage: ReviewReportUsageView;
   // AC006: Core never semantically reconciles -- this text states, as view
   // data, that reconciliation belongs to the developer/driver and that a
   // recorded finding is reviewer opinion-evidence, never proof requiring
@@ -80,6 +96,25 @@ function toFindingView(entry: ReviewFindingEntry, knownIds: Set<string>): Review
 function countSuperseded(findings: ReviewFindingsSnapshot[], role: string): number {
   const count = findings.filter((f) => f.role === role).length;
   return count > 0 ? count - 1 : 0;
+}
+
+// AC003: honest aggregation, mirroring aggregateUsage's own shape
+// (src/core/metrics/aggregate.ts) -- recorded roles without measured usage
+// contribute nothing and are counted instead; nothing is estimated.
+function computeUsageSummary(roles: ReviewReportRoleView[]): ReviewReportUsageView {
+  let total = 0;
+  let measured = false;
+  let missingRoles = 0;
+  for (const role of roles) {
+    if (!role.recorded) continue;
+    if (role.usage === null) {
+      missingRoles += 1;
+    } else {
+      total += role.usage.total_tokens;
+      measured = true;
+    }
+  }
+  return { totalTokens: measured ? total : null, missingRoles };
 }
 
 // AC006: derived mechanically as (a) declared conflicts_with pairs and (b)
@@ -142,6 +177,7 @@ export function buildReviewReport(root: string, milestoneId: string): ReviewRepo
       recordedAt: snapshot?.recorded_at ?? null,
       supersededCount: countSuperseded(session.findings, role),
       findings: snapshot === undefined ? [] : sortFindings(snapshot.findings).map((f) => toFindingView(f, knownIds)),
+      usage: snapshot?.usage ?? null,
     };
   });
 
@@ -155,6 +191,7 @@ export function buildReviewReport(root: string, milestoneId: string): ReviewRepo
     pendingRoles,
     sharedTargetConflicts: shared,
     declaredConflicts: declared,
+    usage: computeUsageSummary(roles),
     honesty: HONESTY_LINES,
   };
 }

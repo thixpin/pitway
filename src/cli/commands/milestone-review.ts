@@ -47,11 +47,21 @@ function renderRecordHuman(view: RecordReviewView): string {
   return `📜 Recorded ${view.findingsCount} finding(s) for role "${view.role}" on session ${view.sessionId} (${view.milestone}).`;
 }
 
+// Mirrors src/cli/commands/milestone-status.ts's own formatTokens/
+// formatTokenValue -- kept as a local, module-private duplicate rather
+// than a cross-module import (this codebase's established precedent for
+// small rendering helpers; see normalizeRepoRelativePath's comment in
+// src/core/tasks/update.ts). Tokens only, never a dollar-cost figure.
+const formatTokens = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+const formatTokenValue = (n: number | null): string => (n === null ? 'N/A' : formatTokens(n));
+
 // Human rendering lives here, per the codebase's zero-rendering-in-Core
 // convention -- report.ts builds the view only.
 function renderReportHuman(view: ReviewReportView): string {
+  const missingRoles = view.usage.missingRoles;
   const lines = [
     `📜 Review report — ${view.milestone} (session ${view.sessionId}, ${view.status})`,
+    `Usage: ${formatTokenValue(view.usage.totalTokens)} (${missingRoles} role${missingRoles === 1 ? '' : 's'} missing usage)`,
     '',
   ];
 
@@ -63,6 +73,9 @@ function renderReportHuman(view: ReviewReportView): string {
     }
     const superseded = role.supersededCount > 0 ? ` (${role.supersededCount} superseded snapshot(s))` : '';
     lines.push(`## ${role.role} — recorded ${role.recordedAt}${superseded}`);
+    lines.push(
+      `  Usage: ${role.usage !== null ? `${formatTokens(role.usage.total_tokens)} tokens` : 'N/A'}`,
+    );
     if (role.findings.length === 0) {
       lines.push('  (no findings -- a clean review)');
     }
@@ -170,10 +183,15 @@ export function registerMilestoneReviewCommand(program: Command, deps: CommandDe
     )
     .requiredOption('--role <role>', 'the role recording findings (must be part of the open session)')
     .requiredOption('--file <path>', 'path to a YAML file with a top-level findings[] list')
+    .option('--usage <json>', 'measured token usage JSON to attach to this role\'s recorded snapshot')
     .option('--json', 'output machine-readable JSON')
-    .action((id: string, options: { role: string; file: string; json?: boolean }) => {
+    .action((id: string, options: { role: string; file: string; usage?: string; json?: boolean }) => {
       const root = deps.root ?? process.cwd();
-      const view = recordReviewFindings(root, id, { role: options.role, filePath: options.file });
+      const view = recordReviewFindings(root, id, {
+        role: options.role,
+        filePath: options.file,
+        usage: options.usage,
+      });
       write(renderOutput(view, { json: options.json }, renderRecordHuman));
     });
 

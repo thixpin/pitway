@@ -8,6 +8,8 @@ import {
   resolveExecutionStrategy,
   contractFrontmatterSchema,
   resolveBranchStrategy,
+  reviewFindingsSnapshotSchema,
+  reviewsFileSchema,
   stateSchema,
   taskSchema,
   tasksFileSchema,
@@ -789,5 +791,89 @@ describe('backlog item schema (M018/T001)', () => {
 
   it('backlogFileSchema accepts an empty items array', () => {
     expect(backlogFileSchema.safeParse({ schema_version: 1, items: [] }).success).toBe(true);
+  });
+});
+
+// M021/AC001 (B006): reviewFindingsSnapshotSchema gains a nullable `usage`
+// field reusing taskUsageSchema verbatim -- additive-optional, so every
+// reviews.yaml written before this milestone (no `usage` key at all) still
+// parses unchanged.
+describe('reviewFindingsSnapshotSchema usage field (M021/AC001)', () => {
+  const baseSnapshot = {
+    role: 'developer',
+    recorded_at: '2026-08-21T00:00:00Z',
+    findings: [],
+  };
+
+  it('accepts a snapshot with no usage key at all -- the pre-existing shape', () => {
+    const result = reviewFindingsSnapshotSchema.safeParse(baseSnapshot);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.usage).toBeUndefined();
+    }
+  });
+
+  it('accepts a snapshot with usage explicitly null', () => {
+    const result = reviewFindingsSnapshotSchema.safeParse({ ...baseSnapshot, usage: null });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.usage).toBeNull();
+    }
+  });
+
+  it('accepts a snapshot with a well-formed measured usage object', () => {
+    const usage = { input_tokens: 100, output_tokens: 50, total_tokens: 150 };
+    const result = reviewFindingsSnapshotSchema.safeParse({ ...baseSnapshot, usage });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.usage).toEqual(usage);
+    }
+  });
+
+  it('rejects a malformed usage object, naming the offending field', () => {
+    const result = reviewFindingsSnapshotSchema.safeParse({
+      ...baseSnapshot,
+      usage: { total_tokens: -5 },
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const paths = result.error.issues.map((issue) => issue.path);
+      expect(paths.some((path) => path.includes('total_tokens'))).toBe(true);
+    }
+  });
+
+  it('rejects an unknown extra field inside usage (strictObject, reused verbatim)', () => {
+    const result = reviewFindingsSnapshotSchema.safeParse({
+      ...baseSnapshot,
+      usage: { total_tokens: 10, cost_usd: 0.05 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('reviewsFileSchema round-trips a session whose findings snapshots predate this field', () => {
+    const legacyFile = {
+      schema_version: 1,
+      sessions: [
+        {
+          id: 'rev-1eaac1e5',
+          status: 'decided',
+          created_at: '2026-08-20T00:00:00Z',
+          roles: ['developer'],
+          content_hash: 'sha256:' + 'a'.repeat(64),
+          findings: [
+            {
+              role: 'developer',
+              recorded_at: '2026-08-20T01:00:00Z',
+              findings: [],
+              // no `usage` key -- exactly what every reviews.yaml written
+              // before this milestone looks like on disk.
+            },
+          ],
+          decision: null,
+        },
+      ],
+    };
+    const result = reviewsFileSchema.safeParse(legacyFile);
+    expect(result.success).toBe(true);
   });
 });

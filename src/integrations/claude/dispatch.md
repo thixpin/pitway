@@ -57,6 +57,14 @@ materially ambiguous.
    `null`. Never estimate, derive, or fabricate a number when none was
    reported.
 
+**The same MUST rule applies to a dispatched reviewer's findings** (M021):
+when a dispatched reviewer subagent's own tool result reports runtime
+usage, extract it and pass it as `--usage '{"total_tokens": N, ...}'` on
+the `milestone-review record <id> --role <role> --file <path>` call that
+records those findings (`protocol-driver.md` "Milestone review") — never
+estimate, derive, or fabricate a figure when none was reported; omitting
+`--usage` correctly leaves that role's recorded usage `null`.
+
 ## What "bounded" means
 
 PitWay bounds the **supplied bundle** — provably minimal, built by

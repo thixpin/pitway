@@ -265,3 +265,81 @@ describe('milestone-review record', () => {
     expect(error!.message).toContain('revised');
   });
 });
+
+// M021/AC002 (B006): --usage mirrors task-update's own --usage parsing
+// shape verbatim -- a measured figure only, never estimated. Omitting it
+// leaves the recorded snapshot's usage null.
+describe('milestone-review record --usage', () => {
+  it('attaches a well-formed --usage figure to the recorded snapshot', async () => {
+    const id = await addDraftMilestone();
+    await run(['milestone-review', 'start', id, '--roles', 'developer', '--json'], root);
+    const file = writeFindingsFile('findings: []\n');
+
+    const { error } = await run(
+      [
+        'milestone-review',
+        'record',
+        id,
+        '--role',
+        'developer',
+        '--file',
+        file,
+        '--usage',
+        '{"input_tokens": 100, "output_tokens": 50, "total_tokens": 150}',
+      ],
+      root,
+    );
+    expect(error).toBeUndefined();
+
+    const reviews = loadReviews(root, id);
+    const snapshot = reviews.sessions[0]!.findings[0]!;
+    expect(snapshot.usage).toEqual({ input_tokens: 100, output_tokens: 50, total_tokens: 150 });
+  });
+
+  it('leaves usage null when --usage is omitted, exactly like an inline task today', async () => {
+    const id = await addDraftMilestone();
+    await run(['milestone-review', 'start', id, '--roles', 'developer', '--json'], root);
+    const file = writeFindingsFile('findings: []\n');
+
+    await run(['milestone-review', 'record', id, '--role', 'developer', '--file', file], root);
+
+    const reviews = loadReviews(root, id);
+    expect(reviews.sessions[0]!.findings[0]!.usage).toBeNull();
+  });
+
+  it('refuses malformed --usage JSON, naming the issue', async () => {
+    const id = await addDraftMilestone();
+    await run(['milestone-review', 'start', id, '--roles', 'developer', '--json'], root);
+    const file = writeFindingsFile('findings: []\n');
+
+    const { error } = await run(
+      ['milestone-review', 'record', id, '--role', 'developer', '--file', file, '--usage', 'not-json'],
+      root,
+    );
+    expect(error).toBeDefined();
+    expect(error!.message).toContain('invalid --usage JSON');
+  });
+
+  it('refuses a --usage figure with a negative token count, never estimating a substitute', async () => {
+    const id = await addDraftMilestone();
+    await run(['milestone-review', 'start', id, '--roles', 'developer', '--json'], root);
+    const file = writeFindingsFile('findings: []\n');
+
+    const { error } = await run(
+      [
+        'milestone-review',
+        'record',
+        id,
+        '--role',
+        'developer',
+        '--file',
+        file,
+        '--usage',
+        '{"total_tokens": -1}',
+      ],
+      root,
+    );
+    expect(error).toBeDefined();
+    expect(error!.message).toContain('invalid --usage');
+  });
+});

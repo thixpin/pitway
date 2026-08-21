@@ -203,6 +203,13 @@ roles with the developer; one reviewer subagent per role, given only its
 `brief --json` envelope; record findings verbatim; present the report; the
 developer decides).
 
+**Runtime usage propagation applies here too** (M021/AC005): when a
+dispatched reviewer subagent's own tool result reports runtime usage, pass
+it via `--usage` on the `milestone-review record` call that records that
+role's findings — the same MUST rule as `dispatch.md`'s task-completion
+propagation (Dispatch discipline, above), never estimated or derived when
+none was reported; omitting it correctly leaves that role's usage `null`.
+
 Disclosures, in the same advisory-honesty register as every capability
 PitWay cannot itself verify:
 

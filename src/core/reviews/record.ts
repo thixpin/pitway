@@ -5,8 +5,10 @@ import { loadContract, loadReviews, readInputFile, saveReviews } from '../../sta
 import { formatIssues } from '../../state/contract-file.js';
 import {
   reviewRecordInputSchema,
+  taskUsageSchema,
   type ReviewFindingEntry,
   type ReviewFindingsSnapshot,
+  type TaskUsage,
 } from '../../state/schemas.js';
 import { computeCurrentReviewContentHash } from './session.js';
 
@@ -15,6 +17,11 @@ export class ReviewRecordError extends Error {}
 export interface RecordReviewFindingsInputs {
   role: string;
   filePath: string;
+  // Measured token usage as a JSON string: {input_tokens?, output_tokens?, total_tokens}.
+  // Mirrors src/core/tasks/update.ts's parseUsageInput shape verbatim (its
+  // own module-local duplication precedent, not a cross-module import) --
+  // a measured figure only, never estimated. Omitted leaves usage null.
+  usage?: string;
 }
 
 export interface RecordReviewView {
@@ -37,6 +44,20 @@ function normalizeFindings(findings: ReviewFindingEntry[]): ReviewFindingEntry[]
   return findings.map((f) =>
     f.targets === undefined ? f : { ...f, targets: f.targets.map((t) => t.trim().toLowerCase()) },
   );
+}
+
+function parseUsageInput(text: string): TaskUsage {
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch (error) {
+    throw new ReviewRecordError(`invalid --usage JSON: ${(error as Error).message}`);
+  }
+  const parsed = taskUsageSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new ReviewRecordError(`invalid --usage: ${formatIssues(parsed.error)}`);
+  }
+  return parsed.data;
 }
 
 function parseFindingsFile(path: string): ReviewFindingEntry[] {
@@ -93,8 +114,9 @@ export function recordReviewFindings(
   }
 
   const findings = parseFindingsFile(inputs.filePath);
+  const usage = inputs.usage === undefined ? null : parseUsageInput(inputs.usage);
   const recordedAt = nowIso();
-  const snapshot: ReviewFindingsSnapshot = { role: inputs.role, recorded_at: recordedAt, findings };
+  const snapshot: ReviewFindingsSnapshot = { role: inputs.role, recorded_at: recordedAt, findings, usage };
 
   appendJournalEntry(root, {
     milestone: milestoneId,

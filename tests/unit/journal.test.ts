@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  appendBacklogArchiveRecord,
   appendCheckpointMarker,
   appendJournalEntry,
   appendMilestoneMergeRecord,
@@ -878,6 +879,66 @@ describe('milestone_merge records (M019/T001)', () => {
         ...baseMerge,
         // Runtime-invalid milestone id (zod regex), type-valid string.
         milestone: 'X1',
+      }),
+    ).toThrow(JournalError);
+    expect(readJournal(repo)).toHaveLength(0);
+  });
+});
+
+// M021/T002 (AC006/B007): backlog_archive -- tenth sibling record kind,
+// mirroring quick_change's own no-milestone-field precedent. Same
+// discipline as every sibling above: append-only, derivePending-excluded,
+// git-invisible, no resolveTargetPath case needed.
+describe('backlog_archive records (M021/T002, B007)', () => {
+  const baseArchive = {
+    id: 'ba-1',
+    target: 'B001',
+    reason: 'No longer relevant.',
+    at: '2026-08-22T00:00:00Z',
+  };
+
+  it('appends a backlog_archive record and reads it back', () => {
+    const record = appendBacklogArchiveRecord(repo, baseArchive);
+    expect(record.kind).toBe('backlog_archive');
+    const all = readJournal(repo);
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({
+      kind: 'backlog_archive',
+      id: 'ba-1',
+      target: 'B001',
+      reason: 'No longer relevant.',
+    });
+  });
+
+  it('carries no milestone field, like quick_change', () => {
+    const record = appendBacklogArchiveRecord(repo, baseArchive);
+    expect(record).not.toHaveProperty('milestone');
+  });
+
+  it('is excluded from derivePending like every sibling record kind', () => {
+    appendBacklogArchiveRecord(repo, baseArchive);
+    appendJournalEntry(repo, {
+      milestone: 'M014',
+      type: 'usage_recording',
+      operationId: 'op-1',
+      payload: {},
+    });
+    const pending = derivePending(readJournal(repo));
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.operationId).toBe('op-1');
+  });
+
+  it('never appears in git status', () => {
+    appendBacklogArchiveRecord(repo, baseArchive);
+    expect(git(['status', '--porcelain'], repo).trim()).toBe('');
+  });
+
+  it('rejects a record missing required fields, appending nothing', () => {
+    expect(() =>
+      appendBacklogArchiveRecord(repo, {
+        ...baseArchive,
+        // Runtime-invalid: empty target.
+        target: '',
       }),
     ).toThrow(JournalError);
     expect(readJournal(repo)).toHaveLength(0);

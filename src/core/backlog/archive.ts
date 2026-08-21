@@ -1,6 +1,6 @@
-import { createHash } from 'node:crypto';
-import { appendJournalEntry } from '../../state/journal.js';
-import { BacklogError, resolveActiveMilestoneStrict } from './add.js';
+import { randomBytes } from 'node:crypto';
+import { appendBacklogArchiveRecord } from '../../state/journal.js';
+import { BacklogError } from './add.js';
 import { transitionBacklogItem } from './state-machine.js';
 import { loadBacklog, saveBacklog } from '../../state/store.js';
 
@@ -11,16 +11,23 @@ export interface BacklogArchiveView {
   status: 'archived';
 }
 
-// backlog archive (AC002, AC004): deliberately no --milestone/--task
-// parameter -- archiving names no other milestone/task, and journal
-// attachment is never flag-controlled (always the active milestone).
+function generateArchiveId(): string {
+  return `ba-${randomBytes(6).toString('hex')}`;
+}
+
+// backlog archive (AC002, AC004, M021/T002 B007): deliberately no
+// --milestone/--task parameter -- archiving names no other milestone/task.
+// Unlike add/promote, archive never requires an active milestone: it
+// finalizes an already fully identified existing item rather than creating
+// new pending state, so M018's shared-non-exclusive-journal-target safety
+// reasoning never applied to it. Journal-backed via the dedicated
+// backlog_archive sibling record kind (no milestone field), never
+// appendJournalEntry/backlog_recording.
 export function archiveBacklogItem(root: string, id: string, reason: string): BacklogArchiveView {
   const trimmedReason = reason.trim();
   if (trimmedReason.length === 0) {
     throw new BacklogError('backlog archive requires a non-empty --reason');
   }
-
-  const activeMilestone = resolveActiveMilestoneStrict(root);
 
   const backlog = loadBacklog(root);
   const current = backlog.items.find((item) => item.id === id);
@@ -36,16 +43,11 @@ export function archiveBacklogItem(root: string, id: string, reason: string): Ba
     archived_reason: trimmedReason,
   };
 
-  const operationId = createHash('sha256')
-    .update(JSON.stringify({ milestone: activeMilestone, id, operation: 'archive', trimmedReason }))
-    .digest('hex');
-
-  appendJournalEntry(root, {
-    milestone: activeMilestone,
-    type: 'backlog_recording',
-    operationId,
+  appendBacklogArchiveRecord(root, {
+    id: generateArchiveId(),
     target: id,
-    payload: { operation: 'archive', item: updated },
+    reason: trimmedReason,
+    at: updated.resolved_at,
   });
   saveBacklog(root, {
     schema_version: backlog.schema_version,
