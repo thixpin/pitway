@@ -5,7 +5,7 @@ title: Milestone Merge Workflow and Backlog Promotion
 status: in_progress
 requirement: null
 confirmed_at: 2026-08-21T15:31:53Z
-verification_approved_hash: sha256:d633122c4b4daf232a0f30e90348074e05eeac7f7cf7cf85abbdfaa1eff59735
+verification_approved_hash: sha256:ec8b7797c7af177a618f318a81c7d178f137f61da74e9601ff7dc8d6755d7c92
 base_branch: main
 base_revision: d4fda5f54c2afb61bbbf1b6f3c202ff1568f7426
 acceptance_criteria:
@@ -219,6 +219,53 @@ acceptance_criteria:
       committed as part of T006's single completion commit rather than as a
       separate standalone commit. No further content change is made to the
       diagram beyond what the developer had already drafted."
+  - id: AC022
+    text: "A driver-agnostic, MUST-level integration requirement is established:
+      when a dispatched worker/subagent returns runtime-reported usage (e.g. an
+      Agent-tool-style dispatch result carrying token counts), the driver MUST
+      extract it and pass it to `task-update <id> completed --usage <json>`.
+      Confirmed by a dedicated pre-task investigation (not assumed): the
+      usage-persistence pipeline (`taskUsageSchema`, the `--usage` CLI flag,
+      `parseUsageInput`, `accumulateUsage`, `aggregateUsage`) is already fully
+      correct and tested — the defect is that no driver-facing document ever
+      instructed this extraction/propagation step, even though a real,
+      runtime-reported figure is already available at the exact point a
+      worktree-dispatched worker's Agent-tool call returns. This is documented
+      as part of PitWay's provider-agnostic Agent Interface design
+      (`IMPLEMENTATION_PLAN.md` §8 Agent Interface / §12 Token Accounting
+      Strategy), not solely as Claude-specific prose, so that any future driver
+      adapter (a hypothetical OpenCode adapter, still deferred per §15) inherits
+      the same obligation before it can be considered a compliant PitWay driver
+      integration. `src/integrations/claude/dispatch.md`'s worktree-dispatch
+      completion step and `src/integrations/claude/ protocol-driver.md` are
+      updated with the concrete, MUST-level Claude instruction, cross-referenced
+      from `src/integrations/claude/commands/ task-update.md`."
+  - id: AC023
+    text: "The existing 'never estimate, fabricate, or silently discard
+      runtime-reported usage' principle (decision 8) is restated, not weakened
+      or reinterpreted: when no task-scoped runtime usage is available (fully
+      inline execution with no subagent dispatched, or a dispatched worker that
+      itself reports none), `usage` MUST remain `null` / render `N/A` — AC022
+      does not attempt to close that inherent, previously-disclosed gap, and no
+      estimation/derivation is introduced for it. No change is made to
+      `taskUsageSchema`, the `--usage` CLI flag, `parseUsageInput`,
+      `accumulateUsage`, `aggregateUsage`, or any other part of the existing
+      usage schema/persistence/aggregation/CLI contract — preserved verbatim,
+      per the investigation's own finding that this layer is already correct.
+      Regression tests: (1) `tests/integration/task-update.test.ts` proves a
+      real `--usage` value supplied at the worktree-dispatch completion path
+      (`task-dispatch` → work → `task-integrate` → `task-update completed
+      --usage`) persists correctly end-to-end — the exact path AC022's
+      instruction targets, not yet asserted by any existing test; (2) a test
+      proves that when no `--usage` is supplied at completion (including a fully
+      inline, non-dispatched completion), `usage` remains `null`, never
+      defaulted; (3) a test proves `accumulateUsage`/`parseUsageInput` never
+      coerce a missing/absent usage field to `0` or otherwise estimate it; (4) a
+      documentation-presence test (extending `tests/unit/claude-assets.test.ts`)
+      asserts `dispatch.md`/ `protocol-driver.md` literally contain the
+      MUST-level `--usage` propagation instruction, so a future doc edit cannot
+      silently drop it — the only enforcement mechanism available for a
+      protocol-level, not code-level, requirement."
 verification:
   - id: CT001
     criterion: AC001
@@ -295,6 +342,14 @@ verification:
     instruction: Confirm docs/assets/workflow.mmd and docs/assets/workflow.svg carry
       the Backlog node / Executing Tasks label edit and were committed as part
       of T006, not as a separate standalone commit.
+  - id: CT016
+    criterion: AC022
+    type: command
+    command: npm test -- tests/unit/claude-assets.test.ts
+  - id: CT017
+    criterion: AC023
+    type: command
+    command: npm test -- tests/integration/task-update.test.ts
 ---
 
 # Contract — M019: Milestone Merge Workflow and Backlog Promotion
@@ -308,7 +363,13 @@ close out the backlog items surfaced during M018's own execution: command
 discoverability (`ms-*` aliases + standardized `PitWay:` description
 prefix), reviewer-selection UX (concise, colon-separated role labels), and a
 documented scalability review of `.pitway/backlog.yaml`'s single-file
-design. This is also the first real exercise of `backlog promote`.
+design. This is also the first real exercise of `backlog promote`. Also
+establishes a driver-agnostic runtime-usage-propagation requirement (T007,
+inserted highest-priority): a dedicated pre-task investigation confirmed
+PitWay's usage schema/persistence/aggregation is already correct, and the
+only real gap is that no driver protocol document ever instructed the
+extraction/forwarding step for a dispatched worker's already-available,
+runtime-reported usage figure.
 
 ## Scope
 
@@ -328,6 +389,10 @@ design. This is also the first real exercise of `backlog promote`.
   (AC018–AC020).
 - Fold in the developer's own pre-existing `workflow.mmd`/`.svg` diagram
   edit, discovered as a confirm-time dirty-tree blocker (AC021).
+- T007 (highest-priority, inserted at the top of this milestone's task
+  graph): a driver-agnostic, MUST-level usage-propagation requirement, with
+  no change to the existing usage schema/persistence/aggregation/CLI
+  contract (AC022–AC023).
 
 ## Invariants
 
@@ -341,6 +406,9 @@ design. This is also the first real exercise of `backlog promote`.
 4. `focus` on any `REVIEW_ROLES` entry is never modified by this milestone.
 5. `.pitway/backlog.yaml`'s schema and lifecycle (from M018) are unmodified
    by this milestone; only its promote path is exercised.
+6. `usage: null` remains a valid, honest state whenever no task-scoped
+   runtime usage is available — T007 closes a propagation gap, never
+   introduces estimation, defaulting, or fabrication.
 
 ## Non-Goals
 
@@ -367,6 +435,18 @@ design. This is also the first real exercise of `backlog promote`.
 - Re-opening or amending M001–M018's contracts or completed task history.
 - Any change to `branch_strategy`/`execution.strategy` or the parallel-
   worktree lifecycle itself.
+- **No change to `taskUsageSchema`, the `--usage` CLI flag, or the
+  accumulation/aggregation logic.** T007 is a protocol/documentation
+  requirement plus regression tests confirming the existing mechanism —
+  never a rewrite of it.
+- **No attempt to make inline (non-dispatched) task usage measurable.**
+  Disclosed, unchanged limitation — `usage` stays `null` there by design,
+  not something this milestone tries to solve.
+- **No code-level enforcement of the driver-protocol MUST rule.** PitWay
+  cannot compel a driver to follow its own documentation; the
+  documentation-presence test (AC023) is the only mechanically-checkable
+  proxy available, matching the existing, disclosed "testing discipline:
+  guidance, not enforcement" precedent (`report-format.md`).
 
 ## Design Decisions
 
@@ -431,6 +511,19 @@ design. This is also the first real exercise of `backlog promote`.
   completion commit alongside its `IMPLEMENTATION_PLAN.md` change; no
   dedicated commit is created for them, and no code change is needed to
   make this true.
+- **T007's "highest-priority, inserted at the top" is a procedural/driver
+  discipline, not a state-machine-enforced blocking dependency — disclosed
+  limitation, verified by inspection before drafting.** `task-add`
+  (`src/core/tasks/add.ts`) always assigns a new task the next sequential
+  id with `depends_on` referencing only already-existing tasks; `task-amend`
+  (`src/core/tasks/amend.ts`)'s `AMENDABLE_FIELDS` explicitly excludes
+  `depends_on` ("identity, status, dependency graph, and execution history
+  stay immutable"). There is no sanctioned mechanism, post-confirm, to make
+  T001/T004/T005 (already `ready`, unstarted) depend on a newly-added T007.
+  T007 is therefore added with `depends_on: []`, made "first" by its own
+  objective explicitly instructing the driver to complete it before
+  dispatching any other M019 task, not by a hard gate. This is the honest
+  ceiling of what `task-add`'s design permits, not an oversight.
 
 ## References
 
@@ -451,6 +544,15 @@ design. This is also the first real exercise of `backlog promote`.
   modifying.
 - Git log `3ddff06` (M016 manual merge), `d4fda5f` (M018 manual merge) —
   confirmed trailer-free merge-commit-message precedent for AC006.
+- Pre-task investigation confirming the usage-persistence pipeline is
+  already correct and identifying the driver-protocol propagation gap
+  AC022/AC023/T007 close: `src/state/schemas.ts` (`taskUsageSchema`),
+  `src/cli/commands/task-update.ts` / `src/core/tasks/update.ts`
+  (`parseUsageInput`, `accumulateUsage`, `computeUsageWarning`),
+  `src/core/metrics/aggregate.ts` (`aggregateUsage`),
+  `src/integrations/claude/dispatch.md` / `protocol-driver.md` /
+  `report-format.md` (the docs found silent on `--usage`), and
+  `IMPLEMENTATION_PLAN.md` §12 (Token Accounting Strategy, decision 8).
 
 ## Change Log
 
@@ -468,5 +570,14 @@ design. This is also the first real exercise of `backlog promote`.
   dirty-tree blocker (`docs/assets/workflow.mmd`/`.svg`, a pre-existing
   developer edit). Per explicit developer decision, folded into T006's
   scope rather than committed separately — stashed before the baseline
-  commit, reapplied and committed as part of T006. Still draft, not
-  confirmed.
+  commit, reapplied and committed as part of T006.
+- Amended post-confirm: added AC022/AC023 and T007, a driver-agnostic
+  MUST-level runtime-usage-propagation requirement, per explicit developer
+  instruction following a dedicated investigation that found the
+  usage-persistence pipeline already correct and the real gap to be a
+  missing driver-protocol instruction. T007 is inserted at the top of the
+  task graph by developer request; `depends_on: []` per the disclosed
+  `task-add`/`task-amend` tooling constraint (see Design Decisions) — its
+  "first" priority is a driver-discipline instruction in its own
+  objective, not a state-machine-enforced dependency. No change to the
+  existing usage schema/persistence/aggregation/CLI contract.

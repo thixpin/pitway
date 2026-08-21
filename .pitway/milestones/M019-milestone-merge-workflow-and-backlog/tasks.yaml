@@ -297,3 +297,75 @@ tasks:
         test run (CT014) confirming no regression across the whole suite
     result: null
     usage: null
+  - id: T007
+    name: Driver runtime usage-propagation contract
+    objective: "Establish a driver-agnostic, MUST-level integration requirement:
+      when a dispatched worker/subagent returns runtime-reported usage (an
+      Agent-tool-style dispatch result carrying token counts), the driver MUST
+      extract it and pass it to task-update <id> completed --usage <json>. A
+      dedicated pre-task investigation confirmed the usage-persistence pipeline
+      (taskUsageSchema, the --usage CLI flag, parseUsageInput, accumulateUsage,
+      aggregateUsage) is already correct -- this task changes NONE of it. The
+      gap is that no driver-facing document ever instructed the
+      extraction/propagation step. Update IMPLEMENTATION_PLAN.md section 8
+      (Agent Interface) / section 12 (Token Accounting Strategy) with the
+      provider-agnostic statement of this requirement (so a future driver
+      adapter, e.g. a hypothetical OpenCode adapter, inherits the same
+      obligation), and update src/integrations/claude/dispatch.md's
+      worktree-dispatch completion step plus
+      src/integrations/claude/protocol-driver.md with the concrete Claude
+      instruction, cross-referenced from
+      src/integrations/claude/commands/task-update.md. Explicitly preserve: when
+      no task-scoped runtime usage is available (fully inline execution, or a
+      worker reporting none), usage MUST remain null/N/A -- never estimated,
+      fabricated, or defaulted to zero. This task is inserted at the top of
+      M019's task graph with depends_on: [] (task-add/task-amend have no
+      sanctioned mechanism to retroactively gate already-ready T001/T004/T005 on
+      a newly-added task -- disclosed in the contract's Design Decisions); its
+      priority is a driver-discipline instruction: complete this task before
+      dispatching any other M019 task (AC022, AC023)."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - IMPLEMENTATION_PLAN.md section 8/section 12 state the usage-propagation
+        requirement as a provider-agnostic driver obligation, not
+        Claude-specific prose only
+      - src/integrations/claude/dispatch.md's worktree-dispatch completion step
+        explicitly instructs the driver to extract a dispatched worker's
+        reported usage and pass it via task-update completed --usage <json>
+      - src/integrations/claude/protocol-driver.md states the same MUST-level
+        rule; src/integrations/claude/commands/task-update.md cross-references
+        it
+      - No change is made to taskUsageSchema, the --usage CLI flag,
+        parseUsageInput, accumulateUsage, or aggregateUsage
+      - A test proves a real --usage value supplied at the worktree-dispatch
+        completion path (task-dispatch -> work -> task-integrate -> task-update
+        completed --usage) persists correctly end-to-end
+      - A test proves usage remains null when no --usage is supplied at
+        completion, including for a fully inline (non-dispatched) completion
+      - A test proves accumulateUsage/parseUsageInput never coerce a
+        missing/absent usage field to 0 or otherwise estimate it
+      - A documentation-presence test asserts dispatch.md/protocol-driver.md
+        literally contain the MUST-level --usage propagation instruction
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+      - src/integrations/claude/dispatch.md
+      - src/integrations/claude/protocol-driver.md
+      - src/integrations/claude/commands/task-update.md
+      - tests/integration/task-update.test.ts
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: tdd
+      detail: npm test -- tests/integration/task-update.test.ts
+        tests/unit/claude-assets.test.ts
+    result:
+      summary: "[truncated] ss a dispatched | worker's runtime usage via task-update
+        completed --usage. Updated | IMPLEMENTATION_PLAN.md, dispatch.md,
+        protocol-driver.md, task-update.md. | No usage schema/aggregation
+        change. Regression reqs 1-3 already covered | by pre-existing tests;
+        added a new doc-presence test."
+      evidence: Tests  67 passed (67) | Start at  23:00:16 | Duration  44.94s
+        (transform 305ms, setup 0ms, import 413ms, tests 44.51s, environment
+        0ms)
+    attempts: 1
+    usage: null

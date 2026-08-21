@@ -153,3 +153,23 @@ describe('M018 backlog command doc ships', () => {
     expect(listClaudeAssets()).toContain('commands/backlog.md');
   });
 });
+
+// M019/AC022/T007: a documentation-presence check for the driver-integration
+// MUST-requirement itself -- PitWay cannot verify a driver actually follows
+// its own protocol docs, but it CAN verify the instruction text is still
+// present, so a future doc edit can't silently drop it. Narrow contains-
+// checks only (not verbatim sentences), so a future wording tweak doesn't
+// break this test.
+describe('M019 driver usage-propagation MUST instruction is documented', () => {
+  it('dispatch.md instructs the driver to pass --usage on a dispatched task completion', () => {
+    const text = shippedContent('dispatch.md').toString('utf8');
+    expect(text).toContain('--usage');
+    expect(text).toMatch(/MUST/);
+  });
+
+  it('protocol-driver.md states the usage-propagation rule as a MUST', () => {
+    const text = shippedContent('protocol-driver.md').toString('utf8');
+    expect(text).toContain('--usage');
+    expect(text).toMatch(/MUST/);
+  });
+});

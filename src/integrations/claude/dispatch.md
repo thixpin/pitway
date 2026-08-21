@@ -47,6 +47,15 @@ materially ambiguous.
 8. `pitway task-update <id> completed --result <file> --message <file>`
    (or `blocked`/`failed` as the report warrants). You run this, never
    the worker; the task-verify record is picked up automatically.
+   **When the task was dispatched to a worker/subagent (step 4) and that
+   dispatch's own tool result reports runtime usage** (a token-count
+   figure the harness attaches to the dispatch result), extract it and
+   pass it as `--usage '{"total_tokens": N, ...}'` on this same call — a
+   MUST, not optional (`protocol-driver.md` "Dispatch discipline",
+   `IMPLEMENTATION_PLAN.md` §8/§12). Inline execution has no such figure
+   to extract; leave `--usage` unset there — `usage` correctly stays
+   `null`. Never estimate, derive, or fabricate a number when none was
+   reported.
 
 ## What "bounded" means
 
@@ -84,5 +93,8 @@ is unchanged — the bundle is always gathered at the main root; add the
 assigned worktree path and branch to the envelope, and the worker follows
 `protocol-worker.md`'s worktree section. On report: `task-integrate <id>`
 one task at a time in ascending task id, then steps 5–8 unchanged in the
-main tree (worker-side checks are advisory). Full sequence, recovery, and
-`task-discard`: `protocol-driver.md` "Parallel dispatch".
+main tree (worker-side checks are advisory) — step 8's usage-propagation
+MUST rule applies identically here: extract the dispatched worker's own
+tool-result usage, not anything the worktree itself carries. Full
+sequence, recovery, and `task-discard`: `protocol-driver.md` "Parallel
+dispatch".
