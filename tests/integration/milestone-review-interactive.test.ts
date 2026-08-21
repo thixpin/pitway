@@ -146,6 +146,24 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
+describe('promptForRoles role list rendering (AC015/AC016)', () => {
+  it('renders each role as "<Capitalized Role Name>: <label>" with no checkbox or HTML markup', async () => {
+    const { input, output, getOutput } = makeStreams(true);
+    const promise = promptForRoles({ input, output });
+    await waitFor(getOutput, '> ');
+    input.write('1\n');
+    await promise;
+    const rendered = getOutput();
+    expect(rendered).toContain('1. Developer: ');
+    expect(rendered).toContain('2. Architect: ');
+    expect(rendered).toContain('7. Business Analyst: ');
+    expect(rendered).toContain('8. Ui Ux: ');
+    expect(rendered).not.toContain('[ ]');
+    expect(rendered).not.toContain('<b>');
+    expect(rendered).not.toMatch(/\d+\. \S+ -- /);
+  });
+});
+
 describe('promptForRoles (unit-level, injected streams)', () => {
   it('accepts a valid comma-separated selection', async () => {
     const { input, output, getOutput } = makeStreams(true);

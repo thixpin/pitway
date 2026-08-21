@@ -198,7 +198,7 @@ tasks:
       place of the current raw 'id -- focus' line;
       parseSelection/promptForRoles's selection logic is unchanged. No checkbox
       or HTML markup; no ANSI bold by default (AC014, AC015, AC016)."
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Every REVIEW_ROLES entry has a new label field, 3-8 words, distinct from
@@ -219,9 +219,17 @@ tasks:
       strategy: tdd
       detail: npm test -- tests/unit/review-roles.test.ts
         tests/integration/milestone-review-interactive.test.ts
-    result: null
+    result:
+      summary: |
+        Added a label field (3-8 word display description) to all 9 REVIEW_ROLES
+        entries, focus/ids untouched, and updated formatRoleList() to render
+        "RoleName: label" instead of the raw "id -- focus" line, no
+        checkbox/HTML markup, selection logic unchanged.
+      evidence: Tests  10 passed (10) | Start at  23:08:34 | Duration  2.10s
+        (transform 280ms, setup 0ms, import 386ms, tests 1.65s, environment 0ms)
     attempts: 1
-    usage: null
+    usage:
+      total_tokens: 78205
   - id: T005
     name: B003 -- backlog storage scalability investigation
     objective: "Write docs/evidence/M019/backlog-scalability.md: evaluate

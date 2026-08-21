@@ -11,8 +11,20 @@ export interface PromptStreams {
   output: NodeJS.WritableStream;
 }
 
+// AC015: display name is a mechanical capitalization of the role id (split
+// on '-', capitalize each segment, join with a space) -- no separate
+// display-name registry is introduced for this UX-only fix.
+function capitalizeRoleName(id: string): string {
+  return id
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 function formatRoleList(): string {
-  return REVIEW_ROLES.map((role, i) => `  ${i + 1}. ${role.id} -- ${role.focus}`).join('\n');
+  return REVIEW_ROLES.map((role, i) => `  ${i + 1}. ${capitalizeRoleName(role.id)}: ${role.label}`).join(
+    '\n',
+  );
 }
 
 // `1,3,4`-style input: comma-separated 1-based indices into REVIEW_ROLES,
