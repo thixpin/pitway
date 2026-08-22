@@ -583,3 +583,98 @@ describe('pitway init root agent-discovery files (AC004)', () => {
     expect(existsSync(join(root, '.claude'))).toBe(false);
   });
 });
+
+describe('pitway init --reconfigure', () => {
+  it('normal init remains unchanged (already-initialized no-op still preserves conflicts)', async () => {
+    await runInit(root);
+    const asset = listClaudeAssets().find((a) => a.startsWith('commands/'))!;
+    writeFileSync(join(root, '.claude', asset), 'tampered\n');
+    const { error, lines } = await runInit(root);
+    expect(error).toBeUndefined();
+    expect(readFileSync(join(root, '.claude', asset), 'utf8')).toBe('tampered\n');
+    expect(lines.join('\n')).toMatch(/left untouched/);
+  });
+
+  it('works on an already-initialized project', async () => {
+    await runInit(root, ['--opencode']);
+    const { error, lines } = await runInit(root, ['--reconfigure']);
+    expect(error).toBeUndefined();
+    expect(lines.join('\n')).toMatch(/Reconfigured/);
+  });
+
+  it('preserves all .pitway workflow state', async () => {
+    await runInit(root);
+    // Create a milestone-like state to prove preservation
+    const statePath = join(root, '.pitway', 'state.yaml');
+    const beforeState = readFileSync(statePath, 'utf8');
+    const configPath = join(root, '.pitway', 'config.yaml');
+    const beforeConfig = readFileSync(configPath, 'utf8');
+    // Add a dummy milestone entry via direct state edit (simulating workflow state)
+    const state = parse(beforeState) as { milestones: string[] };
+    state.milestones.push('M999');
+    writeFileSync(statePath, `schema_version: 1\nactive_milestone: null\nmilestones: [${state.milestones.map((m) => `"${m}"`).join(', ')}]\n`);
+    const tamperedState = readFileSync(statePath, 'utf8');
+    const { error } = await runInit(root, ['--reconfigure']);
+    expect(error).toBeUndefined();
+    expect(readFileSync(statePath, 'utf8')).toBe(tamperedState);
+    expect(readFileSync(configPath, 'utf8')).toBe(beforeConfig);
+  });
+
+  it('refreshes managed .claude and .opencode assets (including conflicts)', async () => {
+    await runInit(root, ['--opencode']);
+    const claudeAsset = listClaudeAssets().find((a) => a.startsWith('commands/'))!;
+    const opencodeAsset = resolveDriverAssets('opencode').find((a) => a.startsWith('commands/'))!;
+    writeFileSync(join(root, '.claude', claudeAsset), 'tampered claude\n');
+    writeFileSync(join(root, '.opencode', opencodeAsset), 'tampered opencode\n');
+    const { error } = await runInit(root, ['--reconfigure', '--opencode']);
+    expect(error).toBeUndefined();
+    expect(readFileSync(join(root, '.claude', claudeAsset), 'utf8')).toBe(
+      readFileSync(resolveDriverAssetSource('claude', claudeAsset), 'utf8'),
+    );
+    expect(readFileSync(join(root, '.opencode', opencodeAsset), 'utf8')).toBe(
+      readFileSync(resolveDriverAssetSource('opencode', opencodeAsset), 'utf8'),
+    );
+  });
+
+  it('refreshes existing .opencode installation even without explicit --opencode flag', async () => {
+    await runInit(root, ['--opencode']);
+    const asset = resolveDriverAssets('opencode')[0]!;
+    writeFileSync(join(root, '.opencode', asset), 'tampered\n');
+    const { error } = await runInit(root, ['--reconfigure']);
+    expect(error).toBeUndefined();
+    expect(readFileSync(join(root, '.opencode', asset), 'utf8')).toBe(
+      readFileSync(resolveDriverAssetSource('opencode', asset), 'utf8'),
+    );
+  });
+
+  it('repeated reconfigure is idempotent', async () => {
+    await runInit(root, ['--opencode']);
+    const asset = listClaudeAssets()[0]!;
+    writeFileSync(join(root, '.claude', asset), 'tampered\n');
+    await runInit(root, ['--reconfigure', '--opencode']);
+    const afterFirst = readFileSync(join(root, '.claude', asset), 'utf8');
+    const mtimeFirst = statSync(join(root, '.claude', asset)).mtimeMs;
+    const { error } = await runInit(root, ['--reconfigure', '--opencode']);
+    expect(error).toBeUndefined();
+    expect(readFileSync(join(root, '.claude', asset), 'utf8')).toBe(afterFirst);
+    expect(statSync(join(root, '.claude', asset)).mtimeMs).toBe(mtimeFirst);
+  });
+
+  it('does not remove or overwrite unrelated user files', async () => {
+    await runInit(root, ['--opencode']);
+    const userClaude = join(root, '.claude', 'my-notes.md');
+    const userOpencode = join(root, '.opencode', 'my-config.md');
+    writeFileSync(userClaude, 'user claude notes\n');
+    writeFileSync(userOpencode, 'user opencode notes\n');
+    // Also tamper a managed asset to ensure refresh happens but user files stay
+    const managed = listClaudeAssets()[0]!;
+    writeFileSync(join(root, '.claude', managed), 'tampered managed\n');
+    const { error } = await runInit(root, ['--reconfigure', '--opencode']);
+    expect(error).toBeUndefined();
+    expect(readFileSync(userClaude, 'utf8')).toBe('user claude notes\n');
+    expect(readFileSync(userOpencode, 'utf8')).toBe('user opencode notes\n');
+    expect(readFileSync(join(root, '.claude', managed), 'utf8')).toBe(
+      readFileSync(resolveDriverAssetSource('claude', managed), 'utf8'),
+    );
+  });
+});

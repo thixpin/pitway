@@ -1,4 +1,6 @@
 import type { Command } from 'commander';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { assertGitWorkTree } from '../../git/exec.js';
 import { classifyClaudeAssets, installClaudeAssets } from '../../state/claude-assets.js';
 import {
@@ -45,7 +47,7 @@ export interface InitView {
 
 export function runInit(
   root: string,
-  options: { claude?: boolean; opencode?: boolean } = {},
+  options: { claude?: boolean; opencode?: boolean; reconfigure?: boolean } = {},
 ): InitView {
   assertGitWorkTree(root);
   const config = probe(() => loadConfig(root));
@@ -56,12 +58,19 @@ export function runInit(
   // alongside the default-on Claude installation; without the flag no
   // .opencode/ path is ever read or written.
   const installOpencode = options.opencode ?? false;
+  const reconfigure = options.reconfigure ?? false;
+  // For --reconfigure, refresh an already-present .opencode installation even
+  // without an explicit --opencode flag, so repeated reconfigure is idempotent
+  // and an existing managed installation is not left stale.
+  const effectiveOpencode =
+    installOpencode || (reconfigure && existsSync(join(root, '.opencode')));
   // Classified up front, alongside config/state, so what happens to every
   // driver asset is decided before anything is written. --no-claude skips
   // classification and every .claude/ read entirely; the same discipline
-  // applies to .opencode/ without --opencode.
+  // applies to .opencode/ without --opencode (except the reconfigure
+  // refresh of an already-present installation above).
   const classification = installClaude ? classifyClaudeAssets(root) : [];
-  const opencodeClassification = installOpencode ? classifyDriverAssets(root, 'opencode') : [];
+  const opencodeClassification = effectiveOpencode ? classifyDriverAssets(root, 'opencode') : [];
   // A PitWay-owned asset whose installed bytes differ from the shipped
   // version is PRESERVED: never overwritten, and — since the divergence may
   // be a deliberate local edit or simply an older shipped version — never a
@@ -69,29 +78,35 @@ export function runInit(
   // view) for a future `pitway update` to reconcile. Only the paths PitWay
   // itself ships are ever classified at all: a user's own unknown files in
   // .claude/ or .opencode/ are never inspected, reported, or touched.
-  const preservedAssets = [
-    ...classification
-      .filter((c) => c.status === 'conflict')
-      .map((c) => `${driverDestinationDir('claude')}/${c.asset}`),
-    ...opencodeClassification
-      .filter((c) => c.status === 'conflict')
-      .map((c) => `${driverDestinationDir('opencode')}/${c.asset}`),
-  ];
+  const preservedAssets = reconfigure
+    ? []
+    : [
+        ...classification
+          .filter((c) => c.status === 'conflict')
+          .map((c) => `${driverDestinationDir('claude')}/${c.asset}`),
+        ...opencodeClassification
+          .filter((c) => c.status === 'conflict')
+          .map((c) => `${driverDestinationDir('opencode')}/${c.asset}`),
+      ];
 
   function finish(created: boolean, message: string): InitView {
     let claudeInstalled = false;
     if (installClaude) {
-      const absent = classification.filter((c) => c.status === 'absent').map((c) => c.asset);
-      if (absent.length > 0) {
-        installClaudeAssets(root, absent);
+      const toInstall = reconfigure
+        ? classification.filter((c) => c.status !== 'identical').map((c) => c.asset)
+        : classification.filter((c) => c.status === 'absent').map((c) => c.asset);
+      if (toInstall.length > 0) {
+        installClaudeAssets(root, toInstall);
         claudeInstalled = true;
       }
     }
     let opencodeInstalled = false;
-    if (installOpencode) {
-      const absent = opencodeClassification.filter((c) => c.status === 'absent').map((c) => c.asset);
-      if (absent.length > 0) {
-        installDriverAssets(root, 'opencode', absent);
+    if (effectiveOpencode) {
+      const toInstall = reconfigure
+        ? opencodeClassification.filter((c) => c.status !== 'identical').map((c) => c.asset)
+        : opencodeClassification.filter((c) => c.status === 'absent').map((c) => c.asset);
+      if (toInstall.length > 0) {
+        installDriverAssets(root, 'opencode', toInstall);
         opencodeInstalled = true;
       }
     }
@@ -107,6 +122,9 @@ export function runInit(
     return finish(true, 'Initialized .pitway/ (config.yaml, state.yaml).');
   }
   if (config === 'ok' && state === 'ok') {
+    if (reconfigure) {
+      return finish(false, 'Reconfigured managed integration assets (.claude/, .opencode/ where installed) — .pitway/ preserved.');
+    }
     return finish(false, '.pitway/ already initialized; nothing to do.');
   }
   throw new Error(
@@ -127,10 +145,15 @@ export function registerInitCommand(program: Command, deps: CommandDeps = {}): v
     .description('Initialize repository-local PitWay state (.pitway/).')
     .option('--no-claude', 'skip installing Claude Code integration assets (.claude/)')
     .option('--opencode', 'also install OpenCode integration assets (.opencode/)')
+    .option('--reconfigure', 'refresh managed integration assets on an already-initialized project (preserves .pitway/ state)')
     .option('--json', 'output machine-readable JSON')
-    .action((options: { claude?: boolean; opencode?: boolean; json?: boolean }) => {
+    .action((options: { claude?: boolean; opencode?: boolean; reconfigure?: boolean; json?: boolean }) => {
       const root = deps.root ?? process.cwd();
-      const view = runInit(root, { claude: options.claude, opencode: options.opencode });
+      const view = runInit(root, {
+        claude: options.claude,
+        opencode: options.opencode,
+        reconfigure: options.reconfigure,
+      });
       write(renderOutput(view, { json: options.json }, (v) => `🏁 ${v.message}`));
       if (!options.json) {
         if (view.preservedAssets.length > 0) {
