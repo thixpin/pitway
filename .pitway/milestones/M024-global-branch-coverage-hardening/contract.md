@@ -175,3 +175,13 @@ definition, disclosed structural exceptions) scales to the full tree here.
   verification-recursion-guard, git-safety). Vitest silently ignores
   nonexistent path filters, so the original commands under-checked while
   still exiting 0. Paths corrected; no scope or target change.
+- 2026-08-22: T005 gate widening (worker-disclosed at the gate): the
+  authoritative full-suite run shows five files still below the per-file
+  bar whose owning-task runs had over-reported branch coverage by misreading
+  lcov BRDA taken=0 as covered -- src/cli/commands/task-update.ts and
+  task-amend.ts CommandDeps fallbacks, src/core/tasks/verify.ts guard and
+  dirty-path-describe arms, src/git/exec.ts assertGitWorkTree arms, and
+  src/git/apply.ts's stderr-empty fallback. usage-add.ts stays covered by
+  T001's AC008 disclosure. T005 is amended to close the five with targeted
+  behavioral tests in their owning test files before writing the evidence
+  doc; no production change, no threshold change.

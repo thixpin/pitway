@@ -296,3 +296,20 @@ describe('task-integrate CLI + crash recovery (M014/T007)', () => {
     expect(view.outcome).toBe('integrated');
   });
 });
+
+// M024/T005 gate widening: gitWithInput's stderr-empty arm -- when git
+// cannot be spawned at all, the GitError carries the spawn error's own
+// message instead of a stderr dump. Real behavioral case via PATH removal.
+describe('git/apply error fallback (M024/T005)', () => {
+  it('falls back to the spawn error message when git cannot be executed', () => {
+    const dispatched = dispatchTask(root, 'T001');
+    const originalPath = process.env.PATH;
+    process.env.PATH = '/nonexistent';
+    try {
+      expect(() => computeRangeDiff(root, dispatched.createdFrom, 'HEAD')).toThrow(/spawnSync git ENOENT/);
+    } finally {
+      if (originalPath === undefined) delete process.env.PATH;
+      else process.env.PATH = originalPath;
+    }
+  });
+});

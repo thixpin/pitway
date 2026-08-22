@@ -215,17 +215,23 @@ tasks:
       total_tokens: 146678
   - id: T005
     name: Coverage gate and evidence (AC007)
-    objective: "Run the authoritative full `npm run test:coverage` and parse
-      coverage/lcov.info: confirm OVERALL branches >=90% and lines >=90%, and
-      every src file >=90% on both metrics except src/cli/index.ts (AC006's
-      disclosed exception) or AC008-disclosed named branches from T001-T004's
-      own evidence. Write docs/evidence/M024/coverage.md with the full
-      before/after per-file table (baseline: overall branches 1728/2002 86.3%,
-      lines 3070/3218 95.4%, 51 files below 90%), restating the cli/index.ts
-      exception without expanding it. If any file still misses the bar, this
-      task iterates with targeted additions in that file's owning test file only
-      after a task-amend widening -- never silently."
-    status: ready
+    objective: "Gate task, amended after the first authoritative full run exposed
+      five files still below the per-file bar (their owning-task runs had
+      over-reported branch coverage by misreading lcov BRDA taken=0 as covered):
+      close src/cli/commands/task-update.ts and task-amend.ts CommandDeps
+      fallbacks, src/core/tasks/verify.ts guard and dirty-path-describe arms,
+      src/git/exec.ts assertGitWorkTree arms, and src/git/apply.ts's
+      stderr-empty fallback with targeted real behavioral tests in their owning
+      test files; usage-add.ts stays covered by T001's AC008 disclosure. Then
+      run the authoritative full `npm run test:coverage`, parse
+      coverage/lcov.info (BRDA taken not in {0,-} = covered), confirm OVERALL
+      branches >=90% and lines >=90% and every src file >=90% on both metrics
+      except src/cli/index.ts (AC006) and AC008-disclosed branches, and write
+      docs/evidence/M024/coverage.md with the full before/after per-file table
+      (baseline re-measured at cb7c714: overall branches 1727/2002 86.3%, lines
+      3070/3218 95.4%, 51 files below 90%), restating the cli/index.ts exception
+      without expanding it."
+    status: completed
     depends_on:
       - T001
       - T002
@@ -238,11 +244,31 @@ tasks:
         AC008-disclosed named branch
       - docs/evidence/M024/coverage.md records the full before/after numbers and
         restates the cli/index.ts exception unchanged
+      - the five gate-exposed files are closed by real behavioral tests in their
+        owning test files only; no production file is modified
     write_scope:
       - docs/evidence/M024/coverage.md
+      - tests/integration/task-update.test.ts
+      - tests/integration/task-amend.test.ts
+      - tests/integration/task-verify.test.ts
+      - tests/unit/task-verify.test.ts
+      - tests/unit/git-safety.test.ts
+      - tests/integration/task-integrate-recovery.test.ts
     verification:
-      strategy: manual
-      detail: Manual review of docs/evidence/M024/coverage.md against the real
-        coverage run's lcov.info.
-    result: null
+      strategy: command
+      detail: npx vitest run tests/integration/task-update.test.ts
+        tests/integration/task-amend.test.ts
+        tests/integration/task-verify.test.ts tests/unit/task-verify.test.ts
+        tests/unit/git-safety.test.ts
+        tests/integration/task-integrate-recovery.test.ts
+    result:
+      summary: "[truncated]  with targeted behavioral tests in their owning test files
+        via the amended scope; before numbers re-measured at cb7c714 as real
+        per-file lcov data (51 files below bar -> 2 disclosed).
+        docs/evidence/M024/coverage.md records the full table and restates the
+        cli/index.ts exception unchanged."
+      evidence: Tests  153 passed (153) | Start at  19:06:40 | Duration  66.00s
+        (transform 2.20s, setup 0ms, import 3.40s, tests 167.92s, environment
+        0ms)
+    attempts: 1
     usage: null

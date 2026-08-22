@@ -1143,4 +1143,60 @@ tasks:
     const view = JSON.parse(lines[0]!) as { usageWarning: string | null };
     expect(view.usageWarning).toBeNull();
   });
+  it('falls back to console.error for the completion usage warning when writeErr is omitted', async () => {
+    await dispatchAndIntegrate('T001', 'src/a.ts');
+    const program = buildCli();
+    registerTaskUpdateBare(program);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const originalCwd = process.cwd();
+    let errCalls: unknown[][];
+    try {
+      process.chdir(root);
+      await program.parseAsync([
+        'node',
+        'pitway',
+        'task-update',
+        'T001',
+        'completed',
+        ...completionFlags(),
+      ]);
+    } finally {
+      process.chdir(originalCwd);
+      errCalls = errSpy.mock.calls;
+      logSpy.mockRestore();
+      errSpy.mockRestore();
+    }
+    expect(errCalls).toHaveLength(1);
+    expect(String(errCalls[0]![0])).toContain('T001');
+    expect(String(errCalls[0]![0])).toMatch(/N\/A/);
+  });
+});
+
+
+
+
+// M024/T005 gate widening: the CommandDeps default fallbacks the full-suite
+// coverage run exposed -- real behavioral cases through the bare command.
+describe('pitway task-update default CommandDeps fallbacks (M024/T005)', () => {
+  it('falls back to console.log and process.cwd() when deps are omitted', async () => {
+    expect((await update(['T001', 'in_progress'])).error).toBeUndefined();
+    const program = buildCli();
+    registerTaskUpdateBare(program);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const originalCwd = process.cwd();
+    let calls: unknown[][];
+    try {
+      process.chdir(root);
+      await program.parseAsync(['node', 'pitway', 'task-update', 'T001', 'blocked']);
+    } finally {
+      process.chdir(originalCwd);
+      calls = logSpy.mock.calls;
+      logSpy.mockRestore();
+    }
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0]![0])).toContain('Blocked');
+    expect(task('T001').status).toBe('blocked');
+  });
+
 });

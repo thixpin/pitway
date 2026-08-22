@@ -606,3 +606,35 @@ describe('pitway task-amend idempotency and ambiguity (AC5)', () => {
     expect(markers.every((m) => m.kind === 'checkpoint' && m.commitSha === sha)).toBe(true);
   });
 });
+
+// M024/T005 gate widening: the CommandDeps default fallbacks the full-suite
+// coverage run exposed -- real behavioral case through the bare command.
+describe('pitway task-amend default CommandDeps fallbacks (M024/T005)', () => {
+  it('falls back to console.log and process.cwd() when deps are omitted', async () => {
+    const program = buildCli();
+    registerTaskAmendCommand(program);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const originalCwd = process.cwd();
+    let calls: unknown[][];
+    try {
+      process.chdir(root);
+      await program.parseAsync([
+        'node',
+        'pitway',
+        'task-amend',
+        'T001',
+        '--file',
+        amendFile({ objective: 'Fallback-deps amended objective.' }),
+        '--change-log',
+        'Fallback deps amendment.',
+      ]);
+    } finally {
+      process.chdir(originalCwd);
+      calls = logSpy.mock.calls;
+      logSpy.mockRestore();
+    }
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0]![0])).toContain('T001');
+    expect(task('T001').objective).toBe('Fallback-deps amended objective.');
+  });
+});
