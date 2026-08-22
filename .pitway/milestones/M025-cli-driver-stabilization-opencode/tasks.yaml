@@ -263,7 +263,7 @@ tasks:
       keeping each directory's own SKILL.md-present rule. Behavioral tests
       include an .opencode-style install satisfying the gate and the
       still-missing case refusing by name."
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - the gate sees required skills installed under .opencode/skills/ as well
@@ -283,7 +283,12 @@ tasks:
       strategy: command
       detail: npx vitest run tests/unit/skills.test.ts
         tests/unit/claude-assets.test.ts tests/integration/task-status.test.ts
-    result: null
+    result:
+      summary: T006 multi-driver skills gate — listInstalledSkillNames unions
+        .claude/skills and .opencode/skills, sorted deduped, SKILL.md-filtered;
+        tests covering opencode-only, union, missing cases.
+      evidence: Tests  113 passed (113) | Start at  22:24:43 | Duration  784ms
+        (transform 471ms, setup 0ms, import 674ms, tests 252ms, environment 0ms)
     attempts: 1
     usage: null
   - id: T007

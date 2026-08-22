@@ -149,6 +149,53 @@ describe('listInstalledSkillNames', () => {
   });
 });
 
+// M025/T006 (B009): multi-driver aware gate -- union of .claude/skills
+// and .opencode/skills, each filtered by SKILL.md, sorted deduped.
+describe('listInstalledSkillNames multi-driver (M025/T006)', () => {
+  it('lists a skill installed under .opencode/skills/ when .claude/skills/ is absent', () => {
+    mkdirSync(join(root, '.opencode', 'skills', 'debugging'), { recursive: true });
+    writeFileSync(join(root, '.opencode', 'skills', 'debugging', 'SKILL.md'), '---\nname: debugging\n---\n');
+    expect(listInstalledSkillNames(root)).toEqual(['debugging']);
+  });
+
+  it('unions skills from both drivers, deduplicated and sorted', () => {
+    mkdirSync(join(root, '.claude', 'skills', 'testing'), { recursive: true });
+    writeFileSync(join(root, '.claude', 'skills', 'testing', 'SKILL.md'), 'x');
+    mkdirSync(join(root, '.claude', 'skills', 'debugging'), { recursive: true });
+    writeFileSync(join(root, '.claude', 'skills', 'debugging', 'SKILL.md'), 'x');
+    mkdirSync(join(root, '.opencode', 'skills', 'debugging'), { recursive: true });
+    writeFileSync(join(root, '.opencode', 'skills', 'debugging', 'SKILL.md'), 'x');
+    mkdirSync(join(root, '.opencode', 'skills', 'bug-fix'), { recursive: true });
+    writeFileSync(join(root, '.opencode', 'skills', 'bug-fix', 'SKILL.md'), 'x');
+    expect(listInstalledSkillNames(root)).toEqual(['bug-fix', 'debugging', 'testing']);
+  });
+
+  it('never lists a .opencode directory present without its own SKILL.md', () => {
+    mkdirSync(join(root, '.opencode', 'skills', 'incomplete'), { recursive: true });
+    mkdirSync(join(root, '.opencode', 'skills', 'debugging'), { recursive: true });
+    writeFileSync(join(root, '.opencode', 'skills', 'debugging', 'SKILL.md'), 'x');
+    expect(listInstalledSkillNames(root)).toEqual(['debugging']);
+  });
+
+  it('ignores an incomplete entry in one driver while still listing the complete one from the other driver', () => {
+    mkdirSync(join(root, '.claude', 'skills', 'debugging'), { recursive: true });
+    // no SKILL.md in .claude/debugging
+    mkdirSync(join(root, '.opencode', 'skills', 'debugging'), { recursive: true });
+    writeFileSync(join(root, '.opencode', 'skills', 'debugging', 'SKILL.md'), 'x');
+    expect(listInstalledSkillNames(root)).toEqual(['debugging']);
+  });
+
+  it('returns [] when neither driver skills directory exists', () => {
+    expect(listInstalledSkillNames(root)).toEqual([]);
+  });
+
+  it('returns .claude skills when .opencode/skills is absent (backward compat)', () => {
+    mkdirSync(join(root, '.claude', 'skills', 'testing'), { recursive: true });
+    writeFileSync(join(root, '.claude', 'skills', 'testing', 'SKILL.md'), 'x');
+    expect(listInstalledSkillNames(root)).toEqual(['testing']);
+  });
+});
+
 // AC010/T010 (M014): asset discovery is dynamic (listClaudeAssets readdirs
 // the integration directory) -- these assertions pin that the three new
 // parallel-mode command docs actually ship, rather than maintaining any

@@ -54,17 +54,23 @@ export function installClaudeAssets(root: string, assets: string[] = listClaudeA
   return installDriverAssets(root, 'claude', assets);
 }
 
-// AC003/T003: the one and only place in the codebase that reads
-// .claude/skills/ from disk for the pre-dispatch context gate. Every
-// immediate subdirectory name under <root>/.claude/skills/ that itself
-// contains a SKILL.md file, sorted; a directory present without its own
-// SKILL.md is never listed. Empty array when .claude/skills/ does not
-// exist at all.
+// AC003/T003 + M025/T006 (B009): the one and only place in the codebase
+// that reads installed skills from disk for the pre-dispatch context gate.
+// Scans every installed driver skills directory that exists
+// (.claude/skills and .opencode/skills), union, sorted, deduplicated,
+// while keeping each directory's own SKILL.md-present rule: a directory
+// present without its own SKILL.md is never listed. Absent driver dirs
+// contribute nothing. Returns [] when neither exists.
 export function listInstalledSkillNames(root: string): string[] {
-  const skillsDir = join(root, '.claude', 'skills');
-  if (!existsSync(skillsDir)) return [];
-  return readdirSync(skillsDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && existsSync(join(skillsDir, entry.name, 'SKILL.md')))
-    .map((entry) => entry.name)
-    .sort();
+  const skillDirs = [join(root, '.claude', 'skills'), join(root, '.opencode', 'skills')];
+  const names = new Set<string>();
+  for (const skillsDir of skillDirs) {
+    if (!existsSync(skillsDir)) continue;
+    for (const entry of readdirSync(skillsDir, { withFileTypes: true })) {
+      if (entry.isDirectory() && existsSync(join(skillsDir, entry.name, 'SKILL.md'))) {
+        names.add(entry.name);
+      }
+    }
+  }
+  return [...names].sort();
 }
