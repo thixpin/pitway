@@ -12,7 +12,7 @@ PitWay is an npm-distributed CLI that controls the engineering process around AI
 - **Agents** drive the interaction
 - **PitWay** controls workflow state, engineering boundaries, verification, and traceability
 
-> 💡 **Driver Support:** Claude Code is the first supported driver integration, while PitWay's Core remains provider-agnostic.
+> 💡 **Driver Support:** Claude Code (installed by default) and OpenCode (opt-in) driver integrations ship as text assets from a shared common layer — skills and protocol documents are defined once and resolved per driver. PitWay's Core remains provider-agnostic.
 
 ---
 
@@ -61,6 +61,8 @@ pitway init
 
 - PitWay initializes `.pitway/` and installs the Claude Code integration by default.
 - Use `pitway init --no-claude` to opt out of the Claude Code integration.
+- Use `pitway init --opencode` to also install the OpenCode integration (`.opencode/` — commands, skills, and driver protocol documents).
+- `init` also creates root `AGENTS.md`/`CLAUDE.md` instruction files. PitWay's content lives inside an explicit `<!-- pitway:managed:start/end -->` block — if you already have your own `AGENTS.md` or `CLAUDE.md`, the block is appended and your content is left intact; PitWay only ever owns the marked block.
 
 ### 2. Resume Workflow
 
@@ -88,9 +90,10 @@ For a hands-on walkthrough of the whole workflow — drafting a contract, confir
 
 ## Commands & Integration
 
-- **Command Reference:** Run `pitway --help` for the full, authoritative CLI command surface and available flags.
+- **Command Reference:** Run `pitway --help` for the full, authoritative CLI command surface and available flags. The `milestone-*` commands also answer to shorter `ms-*` aliases (`pitway ms-status`, `ms-confirm`, `ms-merge`, …).
 - **Usage Guide:** See [USAGE.md](./USAGE.md) for a hands-on walkthrough — installation, your first milestone end to end, inspecting state, mid-flight corrections, and a full command reference table.
 - **Claude Code:** `pitway init` installs PitWay's commands as real Claude Code slash commands (`.claude/commands/*.md`, each carrying `description`/`argument-hint` metadata for the `/` picker), alongside the driver protocol documents that explain how and when to use them.
+- **OpenCode:** `pitway init --opencode` installs the same command surface in OpenCode's own convention (`.opencode/commands/*.md`) plus the shared skills and protocol documents. Skills and protocol content come from the common layer — defined once, never forked per driver.
 
 ---
 
@@ -98,7 +101,7 @@ For a hands-on walkthrough of the whole workflow — drafting a contract, confir
 
 Two repository-level policies live in `.pitway/config.yaml`, both absent by default and both byte-identical to today's behavior until a project opts in:
 
-- **`git.branch_strategy: main | milestone`** — `main` (the default) commits every milestone directly to the current branch, exactly as before this option existed. `milestone` gives each milestone its own dedicated branch instead, checked out for the milestone's full lifecycle.
+- **`git.branch_strategy: main | milestone`** — `main` (the default) commits every milestone directly to the current branch, exactly as before this option existed. `milestone` gives each milestone its own dedicated branch instead, checked out for the milestone's full lifecycle; once completed, `pitway milestone-merge <id>` lands the branch into its base branch with full git-safety checks and idempotent re-runs.
 - **`execution.strategy: sequential | parallel_worktrees`** — `sequential` (the default) runs one task at a time, inline, exactly as before this option existed. `parallel_worktrees` allows dispatching independent, dependency-free, disjoint-`write_scope` tasks concurrently, each into its own temporary Git worktree; PitWay validates eligibility and integrates each result as a diff-apply — never a merge — so the resulting mainline history stays indistinguishable from sequential execution.
 
 ---
