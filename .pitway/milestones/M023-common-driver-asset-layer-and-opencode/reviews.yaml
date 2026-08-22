@@ -1,0 +1,351 @@
+schema_version: 1
+sessions:
+  - id: rev-4d6be75ae702
+    status: decided
+    created_at: 2026-08-22T02:08:38Z
+    roles:
+      - architect
+    content_hash: sha256:0b09b1a4e4af90fe32912c2044705e64419627ea2c17fc75195fc8f790722a6c
+    findings:
+      - role: architect
+        recorded_at: 2026-08-22T02:13:55Z
+        findings:
+          - severity: blocker
+            finding: "AC009 and T001 directly contradict each other. AC009 declares
+              src/core/tasks/skills.ts \"explicitly left unchanged by this
+              milestone\" and CT009 verifies \"git diff empty for that file\".
+              Yet T001's objective instructs \"Update every call site ...
+              src/core/tasks/skills.ts\" and T001's write_scope includes that
+              file. Following T001 as written makes CT009 fail as written. The
+              likely resolution is that skills.ts is not a source-tree call site
+              at all: per AC009 it reads the installed .claude/skills/
+              destination, which the common-layer source move does not touch, so
+              it needs no edit."
+            targets:
+              - ac009
+              - t001
+            recommendation: Remove src/core/tasks/skills.ts from T001's objective and
+              write_scope (it reads the installed destination, not the moved
+              source tree), keeping AC009/CT009 as the authoritative "unchanged"
+              statement.
+          - severity: major
+            finding: "AC003's byte-parity test as specified (\"matches a pinned pre-refactor
+              snapshot of src/integrations/claude/'s former full contents\") is
+              underspecified in two load-bearing ways. (a) Artifact location: no
+              fixture path appears in T001's write_scope, so either the snapshot
+              must be an inline content-hash manifest inside
+              tests/unit/claude-assets.test.ts, or the write_scope is incomplete
+              — the contract should say which. (b) Lifecycle: the contract never
+              states what happens to the pinned snapshot when a LATER milestone
+              legitimately edits a protocol doc or skill in common/. As written,
+              the first such edit breaks the suite, forcing a future task to
+              modify a frozen safety fixture ad hoc. The durable invariant is
+              not equality with a historical snapshot; it is resolution
+              equivalence (claude overrides union common fallbacks, driver wins
+              on collision, equals the installed set)."
+            targets:
+              - ac003
+              - t001
+            recommendation: "Specify the snapshot as a hash manifest, state where it lives
+              (add the path to T001 write_scope if a fixture), and declare its
+              lifecycle: one-time M023 migration check retired/regenerated on
+              legitimate edits, with the durable test asserting resolution
+              equivalence instead."
+          - severity: major
+            finding: The OpenCode destination for the 7 protocol docs is unspecified,
+              leaving AC008 unimplementable as written. AC005 defines only the
+              *source* side (protocol docs resolve to common/), AC006 defines
+              .opencode/ destinations only for skills
+              (.opencode/skills/<name>/SKILL.md) and commands
+              (.opencode/commands/<name>.md), and the contract nowhere says
+              where protocol-driver.md, protocol-worker.md, dispatch.md,
+              coordination.md, report-format.md, lsp-guidance.md, and
+              interactive-ux.md install under .opencode/. Yet AC008's structural
+              test must prove "every logical asset resolves to the correct
+              source and destination path for both drivers" — there is no spec
+              to test the protocol docs' OpenCode destination against. If they
+              are intentionally not installed for OpenCode, the OpenCode command
+              docs that reference them would dangle, and AC008's "every logical
+              asset" claim is false for that driver.
+            targets:
+              - ac005
+              - ac006
+              - ac008
+              - t002
+              - t003
+            recommendation: Amend AC006 to name the .opencode/ destination for each protocol
+              doc (or explicitly exclude them for OpenCode and reconcile AC008's
+              "every logical asset" wording and any command-doc references
+              accordingly).
+          - severity: minor
+            finding: Command-count arithmetic is inconsistent across the contract and tasks.
+              AC001 describes src/integrations/claude/ retaining "the ~32
+              command docs ... and the 8 ms-*.md aliases" — reading as ~32
+              non-alias commands plus 8 aliases (~40 files). T002's acceptance
+              criterion says "all 32 OpenCode command docs exist" and its
+              write_scope enumerates exactly 32 files, but those 32 *include*
+              the 8 ms-* aliases, i.e. only 24 distinct commands are mirrored.
+              If Claude Code genuinely has ~32 non-alias command docs, T002
+              silently omits ~8; if "~32" loosely included the aliases, AC001's
+              wording misstates the split. A hardcoded count in the structural
+              test would bake the ambiguity in.
+            targets:
+              - ac001
+              - ac005
+              - t002
+            recommendation: Reconcile the counts (state the exact non-alias command count
+              and whether ms-* aliases ship for OpenCode), and have AC008's test
+              derive the expected set from glob discovery of claude/commands/,
+              never from a hardcoded constant.
+          - severity: minor
+            finding: "Every OpenCode-facing claim in AC005/AC006/AC008 is single-sourced to
+              one static evidence snapshot (docs/evidence/M022/opencode.md), and
+              the milestone's own checks are circular against it: CT005's manual
+              review and CT008's structural test both validate against that same
+              snapshot, so a defect in the snapshot is invisible to every check
+              in the milestone, and AC008 correctly concedes no OpenCode CLI
+              exists in this environment to validate against. Concretely at
+              risk: the exact install directory names (e.g. whether OpenCode's
+              documented convention is .opencode/commands/ plural as the
+              contract states, or a singular form), the frontmatter shape for
+              commands, and OpenCode's SKILL.md layout. If the snapshot has
+              drifted from upstream since M022, T002 ships a structurally
+              \"verified\" but non-functional integration."
+            targets:
+              - ac005
+              - ac006
+              - ac008
+              - t002
+            recommendation: At T002 start, recheck the install layout and frontmatter shape
+              against OpenCode's live upstream docs and record the recheck
+              (confirmed or corrected) in completion evidence, so the layout is
+              not solely inherited from the M022 snapshot.
+          - severity: minor
+            finding: T001 authorizes the resolution function in src/state/claude-assets.ts
+              "or a clearly justified sibling module", but T002's write_scope
+              lists only src/state/claude-assets.ts. If T001 exercises the
+              sibling-module option, T002 cannot legally touch the module that
+              owns driver resolution when wiring OpenCode in — a write_scope
+              contingency the task plan leaves dangling. Separately, a
+              driver-agnostic claude-then-opencode-then-common resolver living
+              in a file named claude-assets.ts is misleading naming for the very
+              abstraction this milestone introduces.
+            targets:
+              - t001
+              - t002
+            recommendation: Name the resolution module explicitly (e.g.
+              src/state/driver-assets.ts) and list it in both T001's and T002's
+              write_scope, or drop the sibling-module option and commit to
+              claude-assets.ts in both.
+          - severity: minor
+            finding: "Hidden coupling between pure glob discovery and the fallback lookup:
+              with no manifest (per AC002, deliberately), the set of \"logical
+              asset names\" is itself derived from whatever files exist, so
+              AC008's \"resolves to the correct source\" has no independent
+              referent. A typo'd override filename in a driver directory (e.g.
+              protcol-driver.md) silently becomes a NEW logical asset installed
+              alongside the common one instead of shadowing it, and the
+              structural test cannot catch it because its expected set comes
+              from the same glob discovery. This is the one place the
+              manifest-free design loses a safety property the old
+              single-directory layout implicitly had."
+            targets:
+              - ac002
+              - ac008
+              - t003
+            recommendation: Have the AC008 test assert every driver-directory file either
+              shadows an existing common/ relative path or belongs to that
+              driver's declared driver-specific class (commands/*, ms-*.md);
+              anything else fails as a stray.
+          - severity: minor
+            finding: The Background's approved Stage 4 decision includes "Reuse existing
+              open standards verbatim (Agent Skills for skills, AGENTS.md for
+              rules -- both already near-zero-cost per M022's findings)", but no
+              acceptance criterion, task, or out-of-scope bullet mentions
+              AGENTS.md. The explicit out-of-scope list names pitway update, a
+              canonical format, MCP, and a third driver — not AGENTS.md. Half of
+              the quoted decision is therefore silently undelivered and
+              unaccounted for, which is exactly the scope ambiguity the contract
+              discipline exists to prevent.
+            targets:
+              - ac001
+            recommendation: Add AGENTS.md to the explicit out-of-scope list with a one-line
+              deferral note (or add an AC if it is meant to ship here), so the
+              Stage 4 decision's rules-file half is visibly deferred, not
+              dropped.
+        usage: null
+      - role: architect
+        recorded_at: 2026-08-22T02:14:09Z
+        findings:
+          - severity: blocker
+            finding: "AC009 and T001 directly contradict each other. AC009 declares
+              src/core/tasks/skills.ts \"explicitly left unchanged by this
+              milestone\" and CT009 verifies \"git diff empty for that file\".
+              Yet T001's objective instructs \"Update every call site ...
+              src/core/tasks/skills.ts\" and T001's write_scope includes that
+              file. Following T001 as written makes CT009 fail as written. The
+              likely resolution is that skills.ts is not a source-tree call site
+              at all: per AC009 it reads the installed .claude/skills/
+              destination, which the common-layer source move does not touch, so
+              it needs no edit."
+            targets:
+              - ac009
+              - t001
+            recommendation: Remove src/core/tasks/skills.ts from T001's objective and
+              write_scope (it reads the installed destination, not the moved
+              source tree), keeping AC009/CT009 as the authoritative "unchanged"
+              statement.
+          - severity: major
+            finding: "AC003's byte-parity test as specified (\"matches a pinned pre-refactor
+              snapshot of src/integrations/claude/'s former full contents\") is
+              underspecified in two load-bearing ways. (a) Artifact location: no
+              fixture path appears in T001's write_scope, so either the snapshot
+              must be an inline content-hash manifest inside
+              tests/unit/claude-assets.test.ts, or the write_scope is incomplete
+              — the contract should say which. (b) Lifecycle: the contract never
+              states what happens to the pinned snapshot when a LATER milestone
+              legitimately edits a protocol doc or skill in common/. As written,
+              the first such edit breaks the suite, forcing a future task to
+              modify a frozen safety fixture ad hoc. The durable invariant is
+              not equality with a historical snapshot; it is resolution
+              equivalence (claude overrides union common fallbacks, driver wins
+              on collision, equals the installed set)."
+            targets:
+              - ac003
+              - t001
+            recommendation: "Specify the snapshot as a hash manifest, state where it lives
+              (add the path to T001 write_scope if a fixture), and declare its
+              lifecycle: one-time M023 migration check retired/regenerated on
+              legitimate edits, with the durable test asserting resolution
+              equivalence instead."
+          - severity: major
+            finding: The OpenCode destination for the 7 protocol docs is unspecified,
+              leaving AC008 unimplementable as written. AC005 defines only the
+              *source* side (protocol docs resolve to common/), AC006 defines
+              .opencode/ destinations only for skills
+              (.opencode/skills/<name>/SKILL.md) and commands
+              (.opencode/commands/<name>.md), and the contract nowhere says
+              where protocol-driver.md, protocol-worker.md, dispatch.md,
+              coordination.md, report-format.md, lsp-guidance.md, and
+              interactive-ux.md install under .opencode/. Yet AC008's structural
+              test must prove "every logical asset resolves to the correct
+              source and destination path for both drivers" — there is no spec
+              to test the protocol docs' OpenCode destination against. If they
+              are intentionally not installed for OpenCode, the OpenCode command
+              docs that reference them would dangle, and AC008's "every logical
+              asset" claim is false for that driver.
+            targets:
+              - ac005
+              - ac006
+              - ac008
+              - t002
+              - t003
+            recommendation: Amend AC006 to name the .opencode/ destination for each protocol
+              doc (or explicitly exclude them for OpenCode and reconcile AC008's
+              "every logical asset" wording and any command-doc references
+              accordingly).
+          - severity: minor
+            finding: Command-count arithmetic is inconsistent across the contract and tasks.
+              AC001 describes src/integrations/claude/ retaining "the ~32
+              command docs ... and the 8 ms-*.md aliases" — reading as ~32
+              non-alias commands plus 8 aliases (~40 files). T002's acceptance
+              criterion says "all 32 OpenCode command docs exist" and its
+              write_scope enumerates exactly 32 files, but those 32 *include*
+              the 8 ms-* aliases, i.e. only 24 distinct commands are mirrored.
+              If Claude Code genuinely has ~32 non-alias command docs, T002
+              silently omits ~8; if "~32" loosely included the aliases, AC001's
+              wording misstates the split. A hardcoded count in the structural
+              test would bake the ambiguity in.
+            targets:
+              - ac001
+              - ac005
+              - t002
+            recommendation: Reconcile the counts (state the exact non-alias command count
+              and whether ms-* aliases ship for OpenCode), and have AC008's test
+              derive the expected set from glob discovery of claude/commands/,
+              never from a hardcoded constant.
+          - severity: minor
+            finding: "Every OpenCode-facing claim in AC005/AC006/AC008 is single-sourced to
+              one static evidence snapshot (docs/evidence/M022/opencode.md), and
+              the milestone's own checks are circular against it: CT005's manual
+              review and CT008's structural test both validate against that same
+              snapshot, so a defect in the snapshot is invisible to every check
+              in the milestone, and AC008 correctly concedes no OpenCode CLI
+              exists in this environment to validate against. Concretely at
+              risk: the exact install directory names (e.g. whether OpenCode's
+              documented convention is .opencode/commands/ plural as the
+              contract states, or a singular form), the frontmatter shape for
+              commands, and OpenCode's SKILL.md layout. If the snapshot has
+              drifted from upstream since M022, T002 ships a structurally
+              \"verified\" but non-functional integration."
+            targets:
+              - ac005
+              - ac006
+              - ac008
+              - t002
+            recommendation: At T002 start, recheck the install layout and frontmatter shape
+              against OpenCode's live upstream docs and record the recheck
+              (confirmed or corrected) in completion evidence, so the layout is
+              not solely inherited from the M022 snapshot.
+          - severity: minor
+            finding: T001 authorizes the resolution function in src/state/claude-assets.ts
+              "or a clearly justified sibling module", but T002's write_scope
+              lists only src/state/claude-assets.ts. If T001 exercises the
+              sibling-module option, T002 cannot legally touch the module that
+              owns driver resolution when wiring OpenCode in — a write_scope
+              contingency the task plan leaves dangling. Separately, a
+              driver-agnostic claude-then-opencode-then-common resolver living
+              in a file named claude-assets.ts is misleading naming for the very
+              abstraction this milestone introduces.
+            targets:
+              - t001
+              - t002
+            recommendation: Name the resolution module explicitly (e.g.
+              src/state/driver-assets.ts) and list it in both T001's and T002's
+              write_scope, or drop the sibling-module option and commit to
+              claude-assets.ts in both.
+          - severity: minor
+            finding: "Hidden coupling between pure glob discovery and the fallback lookup:
+              with no manifest (per AC002, deliberately), the set of \"logical
+              asset names\" is itself derived from whatever files exist, so
+              AC008's \"resolves to the correct source\" has no independent
+              referent. A typo'd override filename in a driver directory (e.g.
+              protcol-driver.md) silently becomes a NEW logical asset installed
+              alongside the common one instead of shadowing it, and the
+              structural test cannot catch it because its expected set comes
+              from the same glob discovery. This is the one place the
+              manifest-free design loses a safety property the old
+              single-directory layout implicitly had."
+            targets:
+              - ac002
+              - ac008
+              - t003
+            recommendation: Have the AC008 test assert every driver-directory file either
+              shadows an existing common/ relative path or belongs to that
+              driver's declared driver-specific class (commands/*, ms-*.md);
+              anything else fails as a stray.
+          - severity: minor
+            finding: The Background's approved Stage 4 decision includes "Reuse existing
+              open standards verbatim (Agent Skills for skills, AGENTS.md for
+              rules -- both already near-zero-cost per M022's findings)", but no
+              acceptance criterion, task, or out-of-scope bullet mentions
+              AGENTS.md. The explicit out-of-scope list names pitway update, a
+              canonical format, MCP, and a third driver — not AGENTS.md. Half of
+              the quoted decision is therefore silently undelivered and
+              unaccounted for, which is exactly the scope ambiguity the contract
+              discipline exists to prevent.
+            targets:
+              - ac001
+            recommendation: Add AGENTS.md to the explicit out-of-scope list with a one-line
+              deferral note (or add an AC if it is meant to ship here), so the
+              Stage 4 decision's rules-file half is visibly deferred, not
+              dropped.
+        usage:
+          total_tokens: 51418
+    decision:
+      outcome: revision_requested
+      note: "All 8 findings accepted: skills.ts blocker removed from T001; AC003
+        respecified (hash manifest + lifecycle + resolution-equivalence); AC006
+        names .opencode/ protocol-doc destinations (recommended option,
+        developer-approved); all 5 minors applied per recommendations."
+      decided_at: 2026-08-22T03:51:23Z
