@@ -27,6 +27,8 @@ function appendCommittedSnapshot(root: string, current: JournalQuickChange): voi
     verifyCommand: current.verifyCommand,
     approvedHash: current.approvedHash,
     runs: current.runs,
+    ...(current.tddExempt !== undefined ? { tddExempt: current.tddExempt } : {}),
+    ...(current.tddExemptReason !== undefined ? { tddExemptReason: current.tddExemptReason } : {}),
   });
 }
 
@@ -96,6 +98,21 @@ export function commitQuickChange(root: string, changeId: string): QuickChangeCo
     throw new QuickChangeError(
       `cannot commit ${changeId}: no passing run recorded; run the approved verify command first`,
     );
+  }
+
+  // B020: TDD discipline — for behavior-changing changes, require RED→GREEN
+  // evidence (at least one failing run before the final passing run), unless
+  // the change was explicitly declared tdd-exempt at create time (doc-only /
+  // genuinely test-free, with a reason).
+  if (current.tddExempt !== true) {
+    const hasPriorFail = current.runs.slice(0, -1).some((r) => r.status === 'fail');
+    if (!hasPriorFail) {
+      throw new QuickChangeError(
+        `cannot commit ${changeId}: TDD discipline requires at least one failing run before the passing run (RED→GREEN); ` +
+          `run the verify command before the fix to confirm RED, then again after to confirm GREEN, ` +
+          `or create with --tdd-exempt "<reason>" for doc-only / test-free changes`,
+      );
+    }
   }
 
   // AC005/T005: a create that succeeded in the fresh-init window still

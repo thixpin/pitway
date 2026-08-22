@@ -51,6 +51,8 @@ export function promoteQuickChange(root: string, changeId: string): QuickChangeP
     verifyCommand: current.verifyCommand,
     ...(current.approvedHash !== undefined ? { approvedHash: current.approvedHash } : {}),
     runs: current.runs,
+    ...(current.tddExempt !== undefined ? { tddExempt: current.tddExempt } : {}),
+    ...(current.tddExemptReason !== undefined ? { tddExemptReason: current.tddExemptReason } : {}),
   });
   return { id: record.id, status: 'promoted', objective: record.objective, scope: record.scope };
 }

@@ -18,13 +18,18 @@ export interface QuickChangeRunView {
   evidence: string;
 }
 
-// Recomputes the identical sha256({scope, verifyCommand}) hash create.ts's
+// Recomputes the identical sha256({scope, verifyCommand, tddExempt, tddExemptReason}) hash create.ts's
 // computeQuickChangeHash produces at approve time. That function is private
 // to create.ts (not exported), so this is a small, pure, local duplicate --
 // a deliberate bounded duplication rather than widening this task's write
 // scope onto create.ts to export it.
-function computeQuickChangeHash(scope: string[], verifyCommand: string): string {
-  const canonical = JSON.stringify({ scope, verifyCommand });
+function computeQuickChangeHash(
+  scope: string[],
+  verifyCommand: string,
+  tddExempt?: boolean,
+  tddExemptReason?: string,
+): string {
+  const canonical = JSON.stringify({ scope, verifyCommand, tddExempt: tddExempt ?? false, tddExemptReason: tddExemptReason ?? null });
   return `sha256:${createHash('sha256').update(canonical).digest('hex')}`;
 }
 
@@ -47,7 +52,12 @@ export function runQuickChange(root: string, changeId: string): QuickChangeRunVi
     );
   }
 
-  const recomputedHash = computeQuickChangeHash(current.scope, current.verifyCommand);
+  const recomputedHash = computeQuickChangeHash(
+    current.scope,
+    current.verifyCommand,
+    current.tddExempt,
+    current.tddExemptReason,
+  );
   if (recomputedHash !== current.approvedHash) {
     throw new QuickChangeError(
       `cannot run ${changeId}: recomputed hash does not match the approved hash; the change's ` +
@@ -67,6 +77,8 @@ export function runQuickChange(root: string, changeId: string): QuickChangeRunVi
     verifyCommand: current.verifyCommand,
     approvedHash: current.approvedHash,
     runs: [...current.runs, { at: new Date().toISOString(), status, evidence }],
+    ...(current.tddExempt !== undefined ? { tddExempt: current.tddExempt } : {}),
+    ...(current.tddExemptReason !== undefined ? { tddExemptReason: current.tddExemptReason } : {}),
   });
 
   return { id: record.id, status, evidence };

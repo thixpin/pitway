@@ -170,6 +170,9 @@ describe('quick-change create/approve/run/commit end to end', () => {
 
     expect((await approve(id)).error).toBeUndefined();
 
+    // RED — verify fails before fix
+    const red = await doRun(id);
+    expect((JSON.parse(red.lines[0]!) as { status: string }).status).toBe('fail');
     writeFileSync(join(root, 'target.txt'), 'FIXED\n');
     const ran = await doRun(id);
     expect(ran.error).toBeUndefined();
@@ -235,6 +238,8 @@ describe('quick-change cancel', () => {
     const created = await create();
     const id = idOf(created.lines);
     await approve(id);
+    // RED before GREEN
+    await doRun(id);
     writeFileSync(join(root, 'target.txt'), 'FIXED\n');
     await doRun(id);
     expect((await commit(id)).error).toBeUndefined();
@@ -287,6 +292,7 @@ describe('quick-change promote', () => {
     const created = await create();
     const id = idOf(created.lines);
     await approve(id);
+    await doRun(id);
     writeFileSync(join(root, 'target.txt'), 'FIXED\n');
     await doRun(id);
     expect((await commit(id)).error).toBeUndefined();
@@ -316,6 +322,7 @@ describe('pitway resume as the authoritative recovery view for a pending quick-c
     expect(beforeCommit).toContain(id);
     expect(beforeCommit).toContain('approved');
 
+    await doRun(id);
     writeFileSync(join(root, 'target.txt'), 'FIXED\n');
     await doRun(id);
     expect((await commit(id)).error).toBeUndefined();
@@ -472,6 +479,9 @@ describe('quick-change after a fresh, uncommitted pitway init (T005/AC005)', () 
 
       expect((await run(['quick-change', 'approve', id, '--json'], freshRoot)).error).toBeUndefined();
 
+      // RED before GREEN
+      const red = await run(['quick-change', 'run', id, '--json'], freshRoot);
+      expect((JSON.parse(red.lines[0]!) as { status: string }).status).toBe('fail');
       writeFileSync(join(freshRoot, 'target.txt'), 'FIXED\n');
       const ran = await run(['quick-change', 'run', id, '--json'], freshRoot);
       expect(ran.error).toBeUndefined();
@@ -539,6 +549,7 @@ describe('quick-change CLI human output (no --json)', () => {
   it('commit renders the committed line, then the already-committed line on a repeat', async () => {
     const id = idOf((await create()).lines);
     await approve(id);
+    await doRun(id);
     writeFileSync(join(root, 'target.txt'), 'FIXED\n');
     await doRun(id);
 
@@ -582,6 +593,53 @@ describe('quick-change CLI human output (no --json)', () => {
     const single = await human(['status', idA]);
     expect(single.error).toBeUndefined();
     expect(single.lines).toEqual([`🔧 ${idA} (draft) — First fix`]);
+  });
+});
+
+describe('quick-change TDD discipline via CLI (B020)', () => {
+  it('commit via CLI refuses single-pass without prior fail (TDD), and succeeds with RED→GREEN', async () => {
+    const verify = 'node -e "if(!require(\'fs\').readFileSync(\'target.txt\',\'utf8\').includes(\'FIXED\')) process.exit(1)"';
+    const created = await create('TDD fix', ['target.txt'], verify);
+    const id = idOf(created.lines);
+    await approve(id);
+    writeFileSync(join(root, 'target.txt'), 'FIXED\n');
+    await doRun(id);
+    const committedNoRed = await commit(id);
+    expect(committedNoRed.error?.message).toMatch(/TDD|failing run|RED/i);
+  });
+
+  it('commit via CLI with --tdd-exempt allows single-pass', async () => {
+    const args = ['quick-change', 'create', '--objective', 'Doc fix', '--scope', 'target.txt', '--verify', 'echo ok', '--tdd-exempt', 'doc-only: typo', '--json'];
+    const created = await run(args, root);
+    expect(created.error).toBeUndefined();
+    const id = idOf(created.lines);
+    expect((JSON.parse(created.lines[0]!) as any).tddExempt).toBe(true);
+    await approve(id);
+    writeFileSync(join(root, 'target.txt'), 'FIXED\n');
+    await doRun(id);
+    const committed = await commit(id);
+    expect(committed.error).toBeUndefined();
+  });
+
+  it('RED→GREEN via CLI: fail then pass allows commit', async () => {
+    const verify = 'node -e "if(!require(\'fs\').readFileSync(\'target.txt\',\'utf8\').includes(\'FIXED\')) process.exit(1)"';
+    const created = await create('Behavior fix', ['target.txt'], verify);
+    const id = idOf(created.lines);
+    await approve(id);
+    // RED — file still ORIGINAL
+    const r1 = await doRun(id);
+    expect((JSON.parse(r1.lines[0]!) as { status: string }).status).toBe('fail');
+    writeFileSync(join(root, 'target.txt'), 'FIXED\n');
+    const r2 = await doRun(id);
+    expect((JSON.parse(r2.lines[0]!) as { status: string }).status).toBe('pass');
+    const committed = await commit(id);
+    expect(committed.error).toBeUndefined();
+  });
+
+  it('create via CLI refuses --tdd-exempt without reason', async () => {
+    const args = ['quick-change', 'create', '--objective', 'Fix', '--scope', 'target.txt', '--verify', 'echo ok', '--tdd-exempt', '', '--json'];
+    const { error } = await run(args, root);
+    expect(error?.message).toMatch(/tdd-exempt|reason/i);
   });
 });
 
@@ -653,6 +711,9 @@ describe('quick-change CLI default deps (no deps object: process.cwd() root, con
     expect(approved.caught).toBeUndefined();
     expect(jsonOf(approved.calls).status).toBe('approved');
 
+    const red = await runDefault(['run', id, '--json']);
+    expect(red.caught).toBeUndefined();
+    expect(jsonOf(red.calls).status).toBe('fail');
     writeFileSync(join(root, 'target.txt'), 'FIXED\n');
     const ran = await runDefault(['run', id, '--json']);
     expect(ran.caught).toBeUndefined();

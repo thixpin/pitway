@@ -110,22 +110,44 @@ export const journalQuickChangeRunSchema = z.strictObject({
   evidence: z.string().min(1),
 });
 
-export const journalQuickChangeSchema = z.strictObject({
-  kind: z.literal('quick_change'),
-  id: z.string().min(1),
-  status: journalQuickChangeStatusSchema,
-  objective: z.string().min(1),
-  // The exact file census declared at create time -- locked (never
-  // widened/narrowed) once approvedHash is set at approve.
-  scope: z.array(z.string().min(1)),
-  verifyCommand: z.string().min(1),
-  // Set once approved: sha256 over {scope, verifyCommand} exactly as
-  // declared at create. Absent on a still-draft record. Gates `quick-change
-  // run` (T004's job) the same way verification_approved_hash gates
-  // `pitway verify` today.
-  approvedHash: z.string().min(1).optional(),
-  runs: z.array(journalQuickChangeRunSchema),
-});
+export const journalQuickChangeSchema = z
+  .strictObject({
+    kind: z.literal('quick_change'),
+    id: z.string().min(1),
+    status: journalQuickChangeStatusSchema,
+    objective: z.string().min(1),
+    // The exact file census declared at create time -- locked (never
+    // widened/narrowed) once approvedHash is set at approve.
+    scope: z.array(z.string().min(1)),
+    verifyCommand: z.string().min(1),
+    // Set once approved: sha256 over {scope, verifyCommand, tddExempt, tddExemptReason} exactly as
+    // declared at create. Absent on a still-draft record. Gates `quick-change
+    // run` (T004's job) the same way verification_approved_hash gates
+    // `pitway verify` today.
+    approvedHash: z.string().min(1).optional(),
+    runs: z.array(journalQuickChangeRunSchema),
+    // B020: TDD exemption for doc-only or genuinely test-free changes.
+    // When true, commit does not require RED→GREEN (a failing run before the passing run).
+    // Must be declared at create time and is hashed/locked at approve time.
+    tddExempt: z.boolean().optional(),
+    tddExemptReason: z.string().min(1).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.tddExempt === true && (data.tddExemptReason === undefined || data.tddExemptReason.trim().length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'tddExempt requires a non-empty tddExemptReason',
+        path: ['tddExemptReason'],
+      });
+    }
+    if (data.tddExempt !== true && data.tddExemptReason !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'tddExemptReason requires tddExempt to be true',
+        path: ['tddExemptReason'],
+      });
+    }
+  });
 
 // Fifth sibling member of the discriminated union (task-verify evidence
 // engine): captures one task-scoped command/tdd verification run --

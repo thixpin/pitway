@@ -26,6 +26,11 @@ export interface CreateQuickChangeInputs {
   // approveQuickChange hashes it.
   scope: string[];
   verifyCommand: string;
+  // B020: optional TDD exemption for doc-only / test-free changes.
+  // When true, commit does not require a prior failing run (RED→GREEN).
+  // Must provide a non-empty reason; hashed/locked at approve time.
+  tddExempt?: boolean;
+  tddExemptReason?: string;
 }
 
 export interface QuickChangeView {
@@ -36,6 +41,8 @@ export interface QuickChangeView {
   verifyCommand: string;
   approvedHash: string | null;
   runs: JournalQuickChange['runs'];
+  tddExempt?: boolean;
+  tddExemptReason?: string;
 }
 
 function toView(record: JournalQuickChange): QuickChangeView {
@@ -47,6 +54,8 @@ function toView(record: JournalQuickChange): QuickChangeView {
     verifyCommand: record.verifyCommand,
     approvedHash: record.approvedHash ?? null,
     runs: record.runs,
+    ...(record.tddExempt !== undefined ? { tddExempt: record.tddExempt } : {}),
+    ...(record.tddExemptReason !== undefined ? { tddExemptReason: record.tddExemptReason } : {}),
   };
 }
 
@@ -147,14 +156,20 @@ function assertNoActiveMilestone(root: string): void {
   }
 }
 
-// sha256 over the declared scope + verify command exactly as approved --
+// sha256 over the declared scope + verify command + tdd exemption exactly as approved --
 // deliberately narrower than computeVerificationHash's contract-frontmatter
 // canonicalization (src/core/contracts/verification-hash.ts), since a
 // quick-change has no contract frontmatter to hash from. Prefixed
 // "sha256:" to match the same format sha256Hash (src/state/schemas.ts) and
-// verification_approved_hash already use.
-function computeQuickChangeHash(scope: string[], verifyCommand: string): string {
-  const canonical = JSON.stringify({ scope, verifyCommand });
+// verification_approved_hash already use. B020: tddExempt fields are part of
+// the hash so they are locked at approve time.
+function computeQuickChangeHash(
+  scope: string[],
+  verifyCommand: string,
+  tddExempt?: boolean,
+  tddExemptReason?: string,
+): string {
+  const canonical = JSON.stringify({ scope, verifyCommand, tddExempt: tddExempt ?? false, tddExemptReason: tddExemptReason ?? null });
   return `sha256:${createHash('sha256').update(canonical).digest('hex')}`;
 }
 
@@ -178,6 +193,14 @@ export function createQuickChange(
   if (inputs.verifyCommand.trim().length === 0) {
     throw new QuickChangeError('quick-change create requires a non-empty --verify command');
   }
+  // B020: TDD exemption validation.
+  if (inputs.tddExempt === true) {
+    if (inputs.tddExemptReason === undefined || inputs.tddExemptReason.trim().length === 0) {
+      throw new QuickChangeError('quick-change create --tdd-exempt requires a non-empty reason');
+    }
+  } else if (inputs.tddExemptReason !== undefined) {
+    throw new QuickChangeError('--tdd-exempt reason requires --tdd-exempt to be set');
+  }
   assertNoActiveMilestone(root);
   assertCleanWorkingTree(root);
   const scope = assertValidScope(root, inputs.scope);
@@ -190,6 +213,7 @@ export function createQuickChange(
     scope,
     verifyCommand: inputs.verifyCommand,
     runs: [],
+    ...(inputs.tddExempt === true ? { tddExempt: true as const, tddExemptReason: inputs.tddExemptReason! } : {}),
   });
   return toView(record);
 }
@@ -207,7 +231,7 @@ export function requireQuickChange(root: string, changeId: string): JournalQuick
 }
 
 // approve: draft -> approved. Hashes and locks exactly the scope/verify
-// command declared at create -- approve takes no fields of its own to
+// command + tdd exemption declared at create -- approve takes no fields of its own to
 // change, matching AC003's "approve hashes and locks them" (gated exactly
 // like verification_approved_hash gates `pitway verify`).
 export function approveQuickChange(root: string, changeId: string): QuickChangeView {
@@ -217,7 +241,12 @@ export function approveQuickChange(root: string, changeId: string): QuickChangeV
       `cannot approve ${changeId}: status is "${current.status}", not draft`,
     );
   }
-  const approvedHash = computeQuickChangeHash(current.scope, current.verifyCommand);
+  const approvedHash = computeQuickChangeHash(
+    current.scope,
+    current.verifyCommand,
+    current.tddExempt,
+    current.tddExemptReason,
+  );
   const record = appendQuickChangeRecord(root, {
     id: current.id,
     status: 'approved',
@@ -226,6 +255,8 @@ export function approveQuickChange(root: string, changeId: string): QuickChangeV
     verifyCommand: current.verifyCommand,
     approvedHash,
     runs: current.runs,
+    ...(current.tddExempt !== undefined ? { tddExempt: current.tddExempt } : {}),
+    ...(current.tddExemptReason !== undefined ? { tddExemptReason: current.tddExemptReason } : {}),
   });
   return toView(record);
 }
@@ -250,6 +281,8 @@ export function cancelQuickChange(root: string, changeId: string): QuickChangeVi
     verifyCommand: current.verifyCommand,
     ...(current.approvedHash !== undefined ? { approvedHash: current.approvedHash } : {}),
     runs: current.runs,
+    ...(current.tddExempt !== undefined ? { tddExempt: current.tddExempt } : {}),
+    ...(current.tddExemptReason !== undefined ? { tddExemptReason: current.tddExemptReason } : {}),
   });
   return toView(record);
 }

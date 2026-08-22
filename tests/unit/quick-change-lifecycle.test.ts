@@ -205,6 +205,67 @@ describe('approveQuickChange', () => {
   });
 });
 
+describe('createQuickChange TDD exemption (B020)', () => {
+  it('creates a draft with tddExempt and reason, preserving them through approve', () => {
+    const created = createQuickChange(repo, {
+      objective: 'Fix typo',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      tddExempt: true,
+      tddExemptReason: 'doc-only: trivial typo',
+    });
+    expect(created.status).toBe('draft');
+    expect((created as any).tddExempt).toBe(true);
+    expect((created as any).tddExemptReason).toBe('doc-only: trivial typo');
+
+    const approved = approveQuickChange(repo, created.id);
+    expect(approved.status).toBe('approved');
+    expect((approved as any).tddExempt).toBe(true);
+    expect((approved as any).tddExemptReason).toBe('doc-only: trivial typo');
+  });
+
+  it('refuses tddExempt without a reason', () => {
+    expect(() =>
+      createQuickChange(repo, {
+        objective: 'Fix it',
+        scope: ['README.md'],
+        verifyCommand: 'echo ok',
+        tddExempt: true,
+        tddExemptReason: '',
+      }),
+    ).toThrow(/tddExemptReason|reason/);
+  });
+
+  it('refuses tddExemptReason without tddExempt flag', () => {
+    expect(() =>
+      createQuickChange(repo, {
+        objective: 'Fix it',
+        scope: ['README.md'],
+        verifyCommand: 'echo ok',
+        tddExemptReason: 'some reason',
+      } as any),
+    ).toThrow(/tdd[_-]?exempt/i);
+  });
+
+  it('two changes differing only in tddExempt produce different approved hashes', () => {
+    const a = createQuickChange(repo, {
+      objective: 'Fix it',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+    });
+    const b = createQuickChange(repo, {
+      objective: 'Fix it',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      tddExempt: true,
+      tddExemptReason: 'doc-only',
+    });
+    const approvedA = approveQuickChange(repo, a.id);
+    const approvedB = approveQuickChange(repo, b.id);
+    expect(approvedA.approvedHash).not.toBe(approvedB.approvedHash);
+  });
+});
+
 describe('cancelQuickChange', () => {
   it('cancels a draft change, appending a new record and performing no git operation', () => {
     const created = createQuickChange(repo, {

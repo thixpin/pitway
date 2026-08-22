@@ -60,7 +60,14 @@ describe('runQuickChange', () => {
   });
 
   it('refuses to run a change that is already committed', () => {
-    const approved = createAndApprove('echo ok');
+    const created = createQuickChange(repo, {
+      objective: 'Fix the readme typo',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      tddExempt: true,
+      tddExemptReason: 'test-only: echo ok has no RED state',
+    });
+    const approved = approveQuickChange(repo, created.id);
     writeFileSync(join(repo, 'README.md'), 'fixed\n');
     runQuickChange(repo, approved.id);
     commitQuickChange(repo, approved.id);
@@ -142,7 +149,14 @@ describe('commitQuickChange', () => {
   });
 
   it('refuses to commit on unexpected dirt outside the declared scope', () => {
-    const approved = createAndApprove('echo ok');
+    const created = createQuickChange(repo, {
+      objective: 'Fix the readme typo',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      tddExempt: true,
+      tddExemptReason: 'test-only: echo ok has no RED state',
+    });
+    const approved = approveQuickChange(repo, created.id);
     runQuickChange(repo, approved.id);
     writeFileSync(join(repo, 'README.md'), 'fixed\n');
     writeFileSync(join(repo, 'other.txt'), 'not in scope\n');
@@ -150,7 +164,14 @@ describe('commitQuickChange', () => {
   });
 
   it('lands a real commit carrying PitWay-Change and no milestone/task trailers', () => {
-    const approved = createAndApprove('echo ok');
+    const created = createQuickChange(repo, {
+      objective: 'Fix the readme typo',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      tddExempt: true,
+      tddExemptReason: 'test-only: echo ok has no RED state',
+    });
+    const approved = approveQuickChange(repo, created.id);
     writeFileSync(join(repo, 'README.md'), 'fixed\n');
     runQuickChange(repo, approved.id);
     const before = commitCount(repo);
@@ -168,7 +189,14 @@ describe('commitQuickChange', () => {
   });
 
   it('refuses to run again once committed (status is terminal for running)', () => {
-    const approved = createAndApprove('echo ok');
+    const created = createQuickChange(repo, {
+      objective: 'Fix the readme typo',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      tddExempt: true,
+      tddExemptReason: 'test-only: echo ok has no RED state',
+    });
+    const approved = approveQuickChange(repo, created.id);
     writeFileSync(join(repo, 'README.md'), 'fixed\n');
     runQuickChange(repo, approved.id);
     commitQuickChange(repo, approved.id);
@@ -176,7 +204,14 @@ describe('commitQuickChange', () => {
   });
 
   it('self-heals on a second invocation after the commit already exists (interrupted-then-resumed)', () => {
-    const approved = createAndApprove('echo ok');
+    const created = createQuickChange(repo, {
+      objective: 'Fix the readme typo',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      tddExempt: true,
+      tddExemptReason: 'test-only: echo ok has no RED state',
+    });
+    const approved = approveQuickChange(repo, created.id);
     writeFileSync(join(repo, 'README.md'), 'fixed\n');
     runQuickChange(repo, approved.id);
 
@@ -206,6 +241,50 @@ describe('commitQuickChange', () => {
 
   it('refuses to commit an unknown change id', () => {
     expect(() => commitQuickChange(repo, 'qc-does-not-exist')).toThrow(/unknown/);
+  });
+});
+
+describe('commitQuickChange TDD discipline (B020 RED→GREEN)', () => {
+  it('refuses to commit when only a single passing run exists and no prior fail (requires RED before GREEN)', () => {
+    const approved = createAndApprove('echo ok');
+    writeFileSync(join(repo, 'README.md'), 'fixed\n');
+    runQuickChange(repo, approved.id);
+    // Single pass, no prior fail — TDD requires a failing run first.
+    expect(() => commitQuickChange(repo, approved.id)).toThrow(/TDD|failing run|RED/i);
+  });
+
+  it('allows commit with a single passing run when the change was created as tdd-exempt (doc-only / test-free)', () => {
+    const created = createQuickChange(repo, {
+      objective: 'Fix typo in README',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      tddExempt: true,
+      tddExemptReason: 'doc-only: typo fix, verify is existence check',
+    });
+    const approved = approveQuickChange(repo, created.id);
+    writeFileSync(join(repo, 'README.md'), 'fixed\n');
+    runQuickChange(repo, approved.id);
+    const result = commitQuickChange(repo, approved.id);
+    expect(result.outcome).toBe('committed');
+  });
+
+  it('allows commit when a failing run precedes the passing run (RED→GREEN)', () => {
+    const verify = 'node -e "if(!require(\'fs\').readFileSync(\'README.md\',\'utf8\').includes(\'FIXED\')) process.exit(1)"';
+    const created = createQuickChange(repo, {
+      objective: 'Fix behavior',
+      scope: ['README.md'],
+      verifyCommand: verify,
+    });
+    const approved = approveQuickChange(repo, created.id);
+    // README.md is still 'hello\n' from beforeEach — verify fails (RED)
+    const first = runQuickChange(repo, approved.id);
+    expect(first.status).toBe('fail');
+    // Apply fix — now verify passes (GREEN)
+    writeFileSync(join(repo, 'README.md'), 'FIXED\n');
+    const second = runQuickChange(repo, approved.id);
+    expect(second.status).toBe('pass');
+    const result = commitQuickChange(repo, approved.id);
+    expect(result.outcome).toBe('committed');
   });
 });
 

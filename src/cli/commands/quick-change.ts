@@ -53,6 +53,8 @@ function toStatusView(record: JournalQuickChange): QuickChangeView {
     verifyCommand: record.verifyCommand,
     approvedHash: record.approvedHash ?? null,
     runs: record.runs,
+    ...(record.tddExempt !== undefined ? { tddExempt: record.tddExempt } : {}),
+    ...(record.tddExemptReason !== undefined ? { tddExemptReason: record.tddExemptReason } : {}),
   };
 }
 
@@ -101,22 +103,28 @@ export function registerQuickChangeCommand(program: Command, deps: CommandDeps =
     .option('--objective <text>', 'what the change fixes')
     .option('--scope <path>', 'repeatable: repo-relative path this change may edit', collect, [])
     .option('--verify <command>', 'the command that verifies the fix')
+    .option('--tdd-exempt <reason>', 'exempt TDD RED→GREEN requirement (doc-only / test-free changes); requires a reason')
     .option('--json', 'output machine-readable JSON')
-    .action((options: { objective?: string; scope: string[]; verify?: string; json?: boolean }) => {
-      if (options.objective === undefined) {
-        throw new Error('quick-change create requires --objective <text>');
-      }
-      if (options.verify === undefined) {
-        throw new Error('quick-change create requires --verify <command>');
-      }
-      const root = deps.root ?? process.cwd();
-      const view = createQuickChange(root, {
-        objective: options.objective,
-        scope: options.scope,
-        verifyCommand: options.verify,
-      });
-      write(renderOutput(view, { json: options.json }, renderViewHuman));
-    });
+    .action(
+      (options: { objective?: string; scope: string[]; verify?: string; tddExempt?: string; json?: boolean }) => {
+        if (options.objective === undefined) {
+          throw new Error('quick-change create requires --objective <text>');
+        }
+        if (options.verify === undefined) {
+          throw new Error('quick-change create requires --verify <command>');
+        }
+        const root = deps.root ?? process.cwd();
+        const view = createQuickChange(root, {
+          objective: options.objective,
+          scope: options.scope,
+          verifyCommand: options.verify,
+          ...(options.tddExempt !== undefined
+            ? { tddExempt: true as const, tddExemptReason: options.tddExempt }
+            : {}),
+        });
+        write(renderOutput(view, { json: options.json }, renderViewHuman));
+      },
+    );
 
   quickChange
     .command('approve <change-id>')

@@ -42,6 +42,28 @@ Pick the smallest that fits:
 A bug inside an *active* milestone's own scope uses none of these — it is
 a task or the ripple-fix policy.
 
+## Quick-change TDD discipline (B020)
+
+A behavior-changing quick-change **must** follow RED→GREEN:
+
+1. define the behavior, 2. write a failing test, 3. confirm RED
+(`quick-change run` fails for the expected reason), 4. implement the
+minimum fix, 5. confirm GREEN (`quick-change run` passes), 6. refactor
+while green. `pitway quick-change commit` **enforces** this:
+it refuses to commit when the run history contains only a single passing
+run with no prior `fail` — you must have at least one recorded `fail`
+before the final `pass`.
+
+For **doc-only** or genuinely test-free changes where no meaningful
+failing test can exist, declare an explicit exemption at creation:
+
+`pitway quick-change create ... --tdd-exempt "<reason>"`
+
+The reason is required, hashed/locked at `approve` time, and visible
+in `quick-change status --json`. The exemption is the *only* sanctioned
+bypass; do not fabricate a synthetic failing test to satisfy the gate —
+mark the change exempt and justify it.
+
 ## Verification discipline
 
 Task execution runs only that task's own declared verification command —
