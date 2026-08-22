@@ -400,7 +400,13 @@ describe('root instruction files through a real init -> milestone-add -> milesto
     }
   });
 
-  it('a pre-existing, already-committed AGENTS.md with different content is never touched, never staged into the baseline', async () => {
+  // M023/T004 (AC011(c), VR001): init now APPENDS the managed block to a
+  // pre-existing user-authored AGENTS.md (explicit developer directive,
+  // replacing the former preserve-untouched behavior), and a file carrying
+  // a CURRENT managed block classifies identical/safe-managed -- so
+  // baseline staging legitimately includes it. The user's own content
+  // above the block is never modified.
+  it('a pre-existing, already-committed AGENTS.md gets the managed block appended, user content intact, and stages as a safe managed path', async () => {
     const freshRoot = makeRepo('pitway-shr-rootfiles-preserved-');
     try {
       const custom = '# My own AGENTS.md, hand-authored before pitway init\n';
@@ -409,12 +415,15 @@ describe('root instruction files through a real init -> milestone-add -> milesto
       git(['commit', '-q', '-m', 'add custom AGENTS.md'], freshRoot);
 
       await run(['init'], freshRoot);
-      expect(readFileSync(join(freshRoot, 'AGENTS.md'), 'utf8')).toBe(custom);
+      const afterInit = readFileSync(join(freshRoot, 'AGENTS.md'), 'utf8');
+      expect(afterInit.startsWith(custom)).toBe(true);
+      expect(afterInit).toContain('<!-- pitway:managed:start -->');
+      expect(afterInit).toContain('<!-- pitway:managed:end -->');
 
       await addDraftMilestone(freshRoot, false);
       const { error } = await run(['milestone-confirm', 'M001'], freshRoot);
       expect(error).toBeUndefined();
-      expect(readFileSync(join(freshRoot, 'AGENTS.md'), 'utf8')).toBe(custom);
+      expect(readFileSync(join(freshRoot, 'AGENTS.md'), 'utf8')).toBe(afterInit);
 
       const committedFiles = execFileSync('git', ['show', '--stat', '--name-only', '--format=', 'HEAD'], {
         cwd: freshRoot,
@@ -422,7 +431,7 @@ describe('root instruction files through a real init -> milestone-add -> milesto
         .toString()
         .trim()
         .split('\n');
-      expect(committedFiles).not.toContain('AGENTS.md');
+      expect(committedFiles).toContain('AGENTS.md');
       expect(git(['status', '--porcelain'], freshRoot).trim()).toBe('');
     } finally {
       rmSync(freshRoot, { recursive: true, force: true });

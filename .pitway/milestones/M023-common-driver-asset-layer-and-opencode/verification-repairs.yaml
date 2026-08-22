@@ -1,2 +1,18 @@
 schema_version: 1
-records: []
+records:
+  - id: VR001
+    files:
+      - tests/integration/self-hosting-readiness.test.ts
+    checks:
+      - CT010
+    change_log: "Fifth recurrence of the write_scope/stale-test-assertion pattern:
+      self-hosting-readiness.test.ts's 'pre-existing AGENTS.md never touched,
+      never staged' test asserts the pre-T004 preserve-untouched behavior. Under
+      AC011(c) (explicit developer directive), init now APPENDS the managed
+      block to a user-authored AGENTS.md, and a file carrying a current block
+      classifies identical/safe-managed, so baseline staging legitimately
+      includes it. Test updated to assert the new semantics: user content
+      preserved above the appended block, and the file staged as a safe managed
+      path."
+    approved_at: 2026-08-22T04:47:00Z
+    status: committed
