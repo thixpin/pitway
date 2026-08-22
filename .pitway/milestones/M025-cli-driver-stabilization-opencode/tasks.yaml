@@ -14,7 +14,7 @@ tasks:
       tests/unit/footer.test.ts coverage for any new footer composition.
       Surfaces already rendering the footer stay byte-stable; record the audit
       table (surface -> before/after) in completion evidence."
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - task-update's completion output renders the racing footer immediately
@@ -43,6 +43,7 @@ tasks:
         tests/integration/racing-footer-surfaces.test.ts
         tests/integration/task-update.test.ts
     result: null
+    attempts: 1
     usage: null
   - id: T002
     name: Reusable CLI table renderer + milestone-status refactor (B012)
@@ -54,7 +55,7 @@ tasks:
       divergence is deliberate, in which case each divergence is an explicit,
       test-pinned decision recorded in evidence. No other command's output
       changes.
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - the renderer module carries unit tests covering alignment, width
@@ -74,7 +75,13 @@ tasks:
       strategy: command
       detail: npx vitest run tests/unit/table-renderer.test.ts
         tests/integration/milestone-status.test.ts
-    result: null
+    result:
+      summary: T002 table renderer implemented and milestone-status refactored —
+        reusable renderer with grapheme-safe width, tests covering alignment,
+        Unicode, wrapping; milestone-status tables byte-identical via renderer.
+      evidence: Tests  62 passed (62) | Start at  22:23:16 | Duration  4.63s
+        (transform 370ms, setup 0ms, import 522ms, tests 4.07s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T003
     name: Direct usage examples in all command instructions (B014)
@@ -256,7 +263,7 @@ tasks:
       keeping each directory's own SKILL.md-present rule. Behavioral tests
       include an .opencode-style install satisfying the gate and the
       still-missing case refusing by name."
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - the gate sees required skills installed under .opencode/skills/ as well
@@ -277,6 +284,7 @@ tasks:
       detail: npx vitest run tests/unit/skills.test.ts
         tests/unit/claude-assets.test.ts tests/integration/task-status.test.ts
     result: null
+    attempts: 1
     usage: null
   - id: T007
     name: OpenCode dogfooding evidence run (gate)
