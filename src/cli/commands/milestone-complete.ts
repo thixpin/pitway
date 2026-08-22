@@ -1,6 +1,7 @@
 import type { Command } from 'commander';
 import { completeMilestone, type MilestoneCompleteView } from '../../core/milestones/complete.js';
 import { renderOutput } from '../output.js';
+import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
 
 function renderMilestoneCompleteHuman(view: MilestoneCompleteView): string {
   const recorded = view.outcome === 'already-committed' ? 'already recorded in' : 'recorded in';
@@ -23,5 +24,9 @@ export function registerMilestoneCompleteCommand(program: Command, deps: Command
       const root = deps.root ?? process.cwd();
       const view = completeMilestone(root, id);
       write(renderOutput(view, { json: options.json }, renderMilestoneCompleteHuman));
+      if (!options.json) {
+        const footer = getFooterForActiveMilestone(root);
+        if (footer !== null) write(footer);
+      }
     });
 }

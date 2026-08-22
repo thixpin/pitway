@@ -130,3 +130,104 @@ describe('computeRacingFooter task-name segment', () => {
     expect(footer).not.toContain('\n');
   });
 });
+
+describe('getFooterForActiveMilestone (M025/T001)', () => {
+  it('returns null when no active milestone is set and never throws', async () => {
+    const { mkdtempSync, rmSync, writeFileSync, mkdirSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { execFileSync } = await import('node:child_process');
+    const { getFooterForActiveMilestone } = await import('../../src/core/milestones/footer.js');
+    const { saveState } = await import('../../src/state/store.js');
+    const dir = mkdtempSync(join(tmpdir(), 'pitway-footer-unit-'));
+    try {
+      execFileSync('git', ['init', '-q'], { cwd: dir });
+      mkdirSync(join(dir, '.pitway'), { recursive: true });
+      writeFileSync(join(dir, '.pitway', 'config.yaml'), 'schema_version: 1\n');
+      // minimal state with no active milestone
+      saveState(dir, { schema_version: 1, active_milestone: null, milestones: [] });
+      expect(getFooterForActiveMilestone(dir)).toBeNull();
+      expect(getFooterForActiveMilestone(join(dir, 'nonexistent'))).toBeNull();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns null for a draft milestone and a real footer once confirmed', async () => {
+    const { mkdtempSync, rmSync, writeFileSync, mkdirSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { execFileSync } = await import('node:child_process');
+    const dir = mkdtempSync(join(tmpdir(), 'pitway-footer-unit2-'));
+    try {
+      execFileSync('git', ['init', '-q'], { cwd: dir });
+      execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: dir });
+      execFileSync('git', ['config', 'user.name', 'Test'], { cwd: dir });
+      writeFileSync(join(dir, 'README.md'), 'x\n');
+      execFileSync('git', ['add', 'README.md'], { cwd: dir });
+      execFileSync('git', ['commit', '-q', '-m', 'init'], { cwd: dir });
+      const { buildCli } = await import('../../src/cli/index.js');
+      const { registerInitCommand } = await import('../../src/cli/commands/init.js');
+      const { registerMilestoneAddCommand } = await import('../../src/cli/commands/milestone-add.js');
+      const { getFooterForActiveMilestone } = await import('../../src/core/milestones/footer.js');
+      const prog = buildCli();
+      registerInitCommand(prog, { root: dir, write: () => {} });
+      await prog.parseAsync(['node', 'pitway', 'init', '--no-claude']);
+      const scratch = mkdtempSync(join(tmpdir(), 'pitway-footer-scratch-'));
+      const contract = join(scratch, 'c.md');
+      const tasks = join(scratch, 't.yaml');
+      writeFileSync(contract, `---
+schema_version: 1
+id: M999
+title: Footer unit
+status: draft
+requirement: null
+confirmed_at: null
+verification_approved_hash: null
+acceptance_criteria:
+  - id: AC001
+    text: x
+verification:
+  - id: CT001
+    criterion: AC001
+    type: command
+    command: echo ok
+---
+
+# Contract
+
+## Objective
+
+X.
+
+## Change Log
+`);
+      writeFileSync(tasks, `schema_version: 1
+tasks:
+  - id: T001
+    objective: x
+    status: planned
+    depends_on: []
+    acceptance_criteria: [x]
+    relevant_files: []
+    verification: { strategy: tdd, detail: npm test }
+    result: null
+    usage: null
+`);
+      const prog2 = buildCli();
+      registerMilestoneAddCommand(prog2, { root: dir, write: () => {} });
+      await prog2.parseAsync(['node', 'pitway', 'milestone-add', '--contract', contract, '--tasks', tasks]);
+      expect(getFooterForActiveMilestone(dir)).toBeNull();
+      const { registerMilestoneConfirmCommand } = await import('../../src/cli/commands/milestone-confirm.js');
+      const prog3 = buildCli();
+      registerMilestoneConfirmCommand(prog3, { root: dir, write: () => {} });
+      await prog3.parseAsync(['node', 'pitway', 'milestone-confirm', 'M001']);
+      const footer = getFooterForActiveMilestone(dir);
+      expect(footer).not.toBeNull();
+      expect(footer).toMatch(/^🏎️ \d+% · ✅/);
+      rmSync(scratch, { recursive: true, force: true });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

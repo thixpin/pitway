@@ -14,7 +14,7 @@ tasks:
       tests/unit/footer.test.ts coverage for any new footer composition.
       Surfaces already rendering the footer stay byte-stable; record the audit
       table (surface -> before/after) in completion evidence."
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - task-update's completion output renders the racing footer immediately
@@ -42,7 +42,15 @@ tasks:
       detail: npx vitest run tests/unit/footer.test.ts
         tests/integration/racing-footer-surfaces.test.ts
         tests/integration/task-update.test.ts
-    result: null
+    result:
+      summary: "[truncated]  on all CLI progress surfaces — helper
+        getFooterForActiveMilestone added, 8 surfaces now emit footer in human
+        mode (task-update, dispatch, integrate, discard,
+        milestone-complete/cancel/merge, backlog add/promote/archive);
+        resume/milestone-status byte-stable already. Audit table recorded."
+      evidence: Tests  79 passed (79) | Start at  22:54:30 | Duration  54.00s
+        (transform 855ms, setup 0ms, import 1.14s, tests 62.37s, environment
+        0ms)
     attempts: 1
     usage: null
   - id: T002
@@ -345,7 +353,7 @@ tasks:
       unknown or malformed filter values refuse by name; the command stays
       read-only. Behavioral tests cover each filter alone, combined (including a
       no-match empty result), and refusal diagnostics."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
