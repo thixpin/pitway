@@ -123,18 +123,30 @@ acceptance_criteria:
     text: The full test suite and tsc --noEmit stay green throughout.
   - id: AC011
     text: "B008 (developer-reported 2026-08-22, inserted mid-milestone by explicit
-      developer decision): pitway init's generated CLAUDE.md no longer
-      duplicates AGENTS.md's shared bullet content. CLAUDE_MD_CONTENT
-      (src/state/root-instructions.ts) becomes a thin pointer using Claude
-      Code's own documented AGENTS.md bridge -- the @AGENTS.md import
-      (docs/evidence/M022/claude-code.md section 4) -- plus the existing
-      Claude-specific .claude/protocol-driver.md pointer; the 5 SHARED_BULLETS
-      live only in AGENTS_MD_CONTENT. Disclosed migration consequence, accepted
-      rather than hidden: repos initialized before this change hold the old
-      CLAUDE.md bytes, which classify as 'conflict' (preserved with a warning,
-      never overwritten or appended) on a re-run of init -- exactly the existing
-      non-destructive behavior, and a test proves the old-content case
-      classifies 'conflict' while the new content classifies 'identical'."
+      developer decision; append-behavior extension added by a second developer
+      directive the same day): pitway init's root instruction files are
+      restructured around a delimited PitWay-managed block. (a) Dedup:
+      CLAUDE.md's PitWay content becomes a thin pointer using Claude Code's own
+      documented AGENTS.md bridge -- the @AGENTS.md import
+      (docs/evidence/M022/claude-code.md section 4) -- plus the
+      .claude/protocol-driver.md pointer; the 5 SHARED_BULLETS live only in
+      AGENTS.md's content. (b) Managed block: each file's PitWay content is
+      wrapped in explicit HTML-comment markers (<!-- pitway:managed:start --> /
+      <!-- pitway:managed:end -->, invisible in rendered markdown) -- the marked
+      block is the one and only region PitWay ever owns in these files, the
+      forward-looking contract a future `pitway update` command (still
+      explicitly out of scope) will rely on to modify ONLY PitWay's portion. (c)
+      Append on existing user files: when AGENTS.md or CLAUDE.md already exists
+      and was NOT made by PitWay (no managed block present, content not a known
+      legacy PitWay-generated form), init APPENDS the marked block to the
+      existing file -- replacing the former preserve-untouched behavior, per
+      explicit developer directive. (d) Legacy migration: a file whose entire
+      content byte-equals a known prior PitWay-generated form (the pre-B008
+      full-content constants) is PitWay-authored and is rewritten to the new
+      marked form outright -- never appended-to, which would duplicate content.
+      (e) A file whose managed block exists but differs from current content is
+      left unmodified by init and reported (the future update command's job, not
+      init's). Tests prove each of the five cases (a)-(e)."
 verification:
   - id: CT001
     criterion: AC001
@@ -283,3 +295,13 @@ every respect.
   refactor). The AGENTS.md out-of-scope deferral note above is narrowed,
   not reversed: no per-driver rules-file work is added -- this is a dedup
   fix to content PitWay already generates.
+- 2026-08-22: AC011 extended by a second explicit developer directive:
+  root instruction files gain a delimited PitWay-managed block
+  (HTML-comment markers); init now APPENDS the marked block to a
+  pre-existing user-authored AGENTS.md/CLAUDE.md (replacing the former
+  preserve-untouched behavior for these two files), rewrites known legacy
+  PitWay-generated content to the marked form outright, and leaves a
+  present-but-differing managed block for the future `pitway update`
+  command (still out of scope) whose only-modify-the-managed-block
+  contract this block structure establishes. T004 amended accordingly
+  (task-amend, same day).

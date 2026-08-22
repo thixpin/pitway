@@ -23,6 +23,17 @@ function git(args: string[], cwd: string): void {
   execFileSync('git', args, { cwd, stdio: 'pipe' });
 }
 
+// AC011(b): extracts the PitWay-managed block (markers plus everything
+// between) from a fixed-content constant, so append expectations compose
+// from the shipped content rather than a second hand-maintained copy.
+function extractManagedBlock(content: string): string {
+  const start = content.indexOf('<!-- pitway:managed:start -->');
+  const end = content.indexOf('<!-- pitway:managed:end -->', start);
+  expect(start).toBeGreaterThanOrEqual(0);
+  expect(end).toBeGreaterThan(start);
+  return content.slice(start, end + '<!-- pitway:managed:end -->'.length);
+}
+
 let root: string;
 
 // Recursively lists every file under `dir`, relative to `dir`.
@@ -353,22 +364,55 @@ describe('pitway init root agent-discovery files (AC004)', () => {
     expect(statSync(join(root, 'CLAUDE.md')).mtimeMs).toBe(claudeMtimeBefore);
   });
 
-  it('preserves an existing, user-authored AGENTS.md byte-for-byte, warning with the exact fixed content', async () => {
+  // AC011(c): a pre-existing user-authored file gets the managed block
+  // APPENDED (developer directive 2026-08-22, replacing the former
+  // preserve-untouched behavior), user content fully intact above it.
+  it('appends the managed block to an existing, user-authored AGENTS.md, its own content intact above', async () => {
     const custom = '# My own AGENTS.md, hand-authored\n';
     writeFileSync(join(root, 'AGENTS.md'), custom);
-    const { error, lines } = await runInit(root);
+    const { error } = await runInit(root);
     expect(error).toBeUndefined();
-    expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toBe(custom);
-    expect(lines.join('\n')).toContain(AGENTS_MD_CONTENT);
+    const installed = readFileSync(join(root, 'AGENTS.md'), 'utf8');
+    expect(installed.startsWith(custom)).toBe(true);
+    expect(installed).toBe(`${custom}\n${extractManagedBlock(AGENTS_MD_CONTENT)}\n`);
   });
 
-  it('preserves an existing, user-authored CLAUDE.md the same way', async () => {
+  it('appends to an existing, user-authored CLAUDE.md the same way', async () => {
     const custom = '# My own CLAUDE.md, hand-authored\n';
     writeFileSync(join(root, 'CLAUDE.md'), custom);
+    const { error } = await runInit(root);
+    expect(error).toBeUndefined();
+    expect(readFileSync(join(root, 'CLAUDE.md'), 'utf8')).toBe(
+      `${custom}\n${extractManagedBlock(CLAUDE_MD_CONTENT)}\n`,
+    );
+  });
+
+  // AC011(d): a file byte-equal to the pre-B008 PitWay-generated form is
+  // rewritten to the new marked form outright, never appended-to.
+  it('rewrites a legacy PitWay-generated AGENTS.md to the new marked form outright', async () => {
+    const legacyAgentsMd =
+      '# Agent Instructions\n' +
+      '\n' +
+      '- This project uses [PitWay](https://github.com/thixpin/pitway) to control the engineering workflow.\n' +
+      '- Run `pitway resume` before starting or resuming any work.\n' +
+      '- Never edit `.pitway/` directly.\n' +
+      '- Work only within a confirmed task boundary.\n' +
+      "- Obtain a task's bounded context via `pitway task-status <id> --context`.\n";
+    writeFileSync(join(root, 'AGENTS.md'), legacyAgentsMd);
+    const { error } = await runInit(root);
+    expect(error).toBeUndefined();
+    expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toBe(AGENTS_MD_CONTENT);
+  });
+
+  // AC011(e): a present-but-differing managed block is left completely
+  // unmodified and reported (the future `pitway update` command's job).
+  it('leaves a differing managed block unmodified, warning with the exact fixed content', async () => {
+    const tampered = AGENTS_MD_CONTENT.replace('- Never edit `.pitway/` directly.\n', '');
+    writeFileSync(join(root, 'AGENTS.md'), tampered);
     const { error, lines } = await runInit(root);
     expect(error).toBeUndefined();
-    expect(readFileSync(join(root, 'CLAUDE.md'), 'utf8')).toBe(custom);
-    expect(lines.join('\n')).toContain(CLAUDE_MD_CONTENT);
+    expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toBe(tampered);
+    expect(lines.join('\n')).toContain(AGENTS_MD_CONTENT);
   });
 
   it('a simulated .claude/ conflict refuses the whole init with neither root file created (preflight ordering)', async () => {

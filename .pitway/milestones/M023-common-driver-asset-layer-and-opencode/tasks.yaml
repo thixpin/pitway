@@ -245,39 +245,47 @@ tasks:
     usage: null
   - id: T004
     name: "B008: dedupe init-generated CLAUDE.md vs AGENTS.md"
-    objective: "Fix the developer-reported duplication in pitway init's generated
-      root instruction files (AC011): CLAUDE_MD_CONTENT in
-      src/state/root-instructions.ts currently embeds the same 5 SHARED_BULLETS
-      that AGENTS_MD_CONTENT carries, then points at AGENTS.md for the content
-      it just restated -- a driver that reads both files ingests identical
-      content twice. Make CLAUDE_MD_CONTENT a thin pointer using Claude Code's
-      own documented AGENTS.md bridge, the @AGENTS.md import
-      (docs/evidence/M022/claude-code.md section 4): a short header, the
-      @AGENTS.md import line, and the existing Claude-specific
-      .claude/protocol-driver.md pointer -- SHARED_BULLETS live only in
-      AGENTS_MD_CONTENT afterwards. AGENTS_MD_CONTENT itself is unchanged.
-      Update tests/unit/root-instructions.test.ts: the new content shape, plus a
-      migration-consequence test proving a repo holding the OLD CLAUDE.md bytes
-      classifies 'conflict' (preserved with a warning, never overwritten) while
-      the NEW content classifies 'identical' -- the existing non-destructive
-      behavior, disclosed rather than hidden. Update
-      tests/integration/init.test.ts if it asserts the old CLAUDE.md content
-      verbatim. Depends on T001 because both touch the root-instruction install
-      surface and T001's refactor is in flight -- sequencing avoids a
-      write-scope-adjacent collision."
-    status: ready
+    objective: "Restructure pitway init's root instruction files around a delimited
+      PitWay-managed block, per AC011's five cases (a)-(e), fixing B008's
+      duplication and enabling the future pitway update's
+      only-modify-PitWay's-portion contract. In src/state/root-instructions.ts:
+      (a) dedup -- CLAUDE.md's PitWay content becomes a thin pointer via Claude
+      Code's documented @AGENTS.md import bridge
+      (docs/evidence/M022/claude-code.md section 4) plus the
+      .claude/protocol-driver.md pointer; the 5 SHARED_BULLETS live only in
+      AGENTS.md's content. (b) managed block -- each file's PitWay content is
+      wrapped in <!-- pitway:managed:start --> / <!-- pitway:managed:end -->
+      markers (invisible in rendered markdown), the only region PitWay ever owns
+      in these files. (c) append -- when AGENTS.md or CLAUDE.md already exists
+      without a managed block and is not a known legacy PitWay-generated form,
+      init APPENDS the marked block to the existing file (replacing the former
+      preserve-untouched behavior for these two files, explicit developer
+      directive 2026-08-22). (d) legacy migration -- a file byte-equal to a
+      known prior PitWay-generated form (the pre-B008 full-content constants) is
+      rewritten to the new marked form outright, never appended-to. (e)
+      present-but-differing managed block -- init leaves the file unmodified and
+      reports it (the future update command's job, which stays out of scope).
+      Update tests/unit/root-instructions.test.ts with real cases for all five
+      behaviors, and tests/integration/init.test.ts where it asserts the old
+      content verbatim."
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
-      - CLAUDE_MD_CONTENT no longer contains the SHARED_BULLETS text; it imports
-        AGENTS.md via the @AGENTS.md bridge and keeps the
+      - CLAUDE.md's managed-block content no longer contains the SHARED_BULLETS
+        text -- it imports AGENTS.md via the @AGENTS.md bridge and keeps the
         .claude/protocol-driver.md pointer
-      - AGENTS_MD_CONTENT is byte-identical to before this task
-      - a test proves the old CLAUDE.md content now classifies 'conflict'
-        (preserved, never overwritten or appended) and the new content
-        classifies 'identical'
-      - no dollar-sign template/engine mechanism is introduced -- plain string
-        constants, exactly as before
+      - both files' PitWay content is delimited by the pitway:managed:start/end
+        HTML-comment markers
+      - a pre-existing user-authored file without a managed block gets the
+        marked block APPENDED, its own content untouched above it
+      - a file byte-equal to a known legacy PitWay-generated form is rewritten
+        to the new marked form outright, never appended-to
+      - a file whose managed block exists but differs is left unmodified and
+        reported
+      - no template engine or general rewrite mechanism is introduced -- plain
+        string constants and marker search, exactly in the existing module's
+        style
     write_scope:
       - src/state/root-instructions.ts
       - tests/unit/root-instructions.test.ts
@@ -286,5 +294,13 @@ tasks:
       strategy: command
       detail: npx vitest run tests/unit/root-instructions.test.ts
         tests/integration/init.test.ts
-    result: null
-    usage: null
+    result:
+      summary: B008 delivered with the full managed-block design (AC011 cases a-e) --
+        CLAUDE.md dedup via the @AGENTS.md bridge, pitway:managed markers,
+        append on user-authored files, legacy migration, differing-block
+        preservation.
+      evidence: Tests  43 passed (43) | Start at  11:23:38 | Duration  2.20s
+        (transform 286ms, setup 0ms, import 393ms, tests 1.77s, environment 0ms)
+    attempts: 1
+    usage:
+      total_tokens: 81346
