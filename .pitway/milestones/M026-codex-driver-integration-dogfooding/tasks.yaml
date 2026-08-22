@@ -90,7 +90,7 @@ tasks:
       .claude/skills and .opencode/skills. Note: src/git/baseline.ts requires no
       change (generic extraExpectedPaths param); skill gate lives in
       src/state/claude-assets.ts, not src/core/tasks/skills.ts."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -117,7 +117,12 @@ tasks:
       detail: npx vitest run tests/integration/init.test.ts
         tests/integration/multi-driver-assets.test.ts
         tests/unit/managed-init-paths.test.ts tests/unit/skills.test.ts
-    result: null
+    result:
+      summary: Init --codex, coexistence, managed paths and skill gate extended for
+        Codex
+      evidence: Tests  64 passed (64) | Start at  01:31:03 | Duration  3.48s
+        (transform 685ms, setup 0ms, import 1.00s, tests 3.07s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T003
     name: Codex dogfooding, evidence, and docs
@@ -134,7 +139,7 @@ tasks:
       update relevant docs (README.md, IMPLEMENTATION_PLAN.md) in a strictly
       limited, Codex-only diff. No unrelated backlog fixes and no changes to
       existing drivers beyond T001-T002.
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002

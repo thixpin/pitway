@@ -54,15 +54,19 @@ export function installClaudeAssets(root: string, assets: string[] = listClaudeA
   return installDriverAssets(root, 'claude', assets);
 }
 
-// AC003/T003 + M025/T006 (B009): the one and only place in the codebase
+// AC003/T003 + M025/T006 (B009) + M026/T002 (AC005): the one and only place in the codebase
 // that reads installed skills from disk for the pre-dispatch context gate.
 // Scans every installed driver skills directory that exists
-// (.claude/skills and .opencode/skills), union, sorted, deduplicated,
+// (.claude/skills, .opencode/skills, and .codex/skills), union, sorted, deduplicated,
 // while keeping each directory's own SKILL.md-present rule: a directory
 // present without its own SKILL.md is never listed. Absent driver dirs
-// contribute nothing. Returns [] when neither exists.
+// contribute nothing. Returns [] when none exists.
 export function listInstalledSkillNames(root: string): string[] {
-  const skillDirs = [join(root, '.claude', 'skills'), join(root, '.opencode', 'skills')];
+  const skillDirs = [
+    join(root, '.claude', 'skills'),
+    join(root, '.opencode', 'skills'),
+    join(root, '.codex', 'skills'),
+  ];
   const names = new Set<string>();
   for (const skillsDir of skillDirs) {
     if (!existsSync(skillsDir)) continue;

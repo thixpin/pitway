@@ -114,14 +114,17 @@ describe('multi-driver source resolution (AC008)', () => {
     }
   });
 
-  it('both drivers ship the same command-doc set, derived by glob, never a hardcoded count', () => {
-    const [claudeCommands, opencodeCommands] = DRIVERS.map((driver) =>
+  it('all drivers ship the same command-doc set, derived by glob, never a hardcoded count', () => {
+    const allCommands = DRIVERS.map((driver) =>
       listFilesRecursive(sourceDriverDir(driver)).filter((f) => f.startsWith('commands/')),
     );
+    const [claudeCommands] = allCommands;
     expect(claudeCommands!.length).toBeGreaterThan(0);
-    // AC005: the OpenCode command set mirrors Claude Code's command docs
+    // AC005: every driver's command set mirrors Claude Code's command docs
     // one-for-one (same relative filenames, including the ms-*.md aliases).
-    expect(opencodeCommands).toEqual(claudeCommands);
+    for (const commands of allCommands) {
+      expect(commands).toEqual(claudeCommands);
+    }
     expect(claudeCommands!.some((f) => /^commands\/ms-[^/]+\.md$/.test(f))).toBe(true);
   });
 });
@@ -130,6 +133,7 @@ describe('multi-driver destination mapping (AC006, AC008)', () => {
   it('maps every logical asset to the correct per-driver destination', () => {
     expect(driverDestinationDir('claude')).toBe('.claude');
     expect(driverDestinationDir('opencode')).toBe('.opencode');
+    expect(driverDestinationDir('codex' as any)).toBe('.codex');
     for (const driver of DRIVERS) {
       const destDir = driverDestinationDir(driver);
       // Destination layout mirrors the resolved relative layout exactly:
@@ -141,7 +145,7 @@ describe('multi-driver destination mapping (AC006, AC008)', () => {
     }
   });
 
-  it('the two drivers\' destination sets have zero path collisions', () => {
+  it('all drivers\' destination sets have zero path collisions', () => {
     const all = DRIVERS.flatMap((driver) => listDriverAssetDestinations(driver));
     expect(new Set(all).size).toBe(all.length);
   });
@@ -178,8 +182,9 @@ describe('installing both drivers into one real repo (AC008)', () => {
     const { error } = await runInit(root, ['--opencode']);
     expect(error).toBeUndefined();
 
+    const expectedDrivers = ['claude', 'opencode'] as const;
     const installedByDriver = new Map<string, string[]>();
-    for (const driver of DRIVERS) {
+    for (const driver of expectedDrivers) {
       const destDir = join(root, driverDestinationDir(driver));
       const resolved = resolveDriverAssets(driver);
       const installed = listFilesRecursive(destDir);
@@ -193,6 +198,9 @@ describe('installing both drivers into one real repo (AC008)', () => {
       }
       installedByDriver.set(driver, installed.map((f) => `${driverDestinationDir(driver)}/${f}`));
     }
+
+    // Codex was not requested, so its destination must not exist.
+    expect(existsSync(join(root, driverDestinationDir('codex' as any)))).toBe(false);
 
     // Zero destination-path collisions across the two installed trees.
     const allInstalled = [...installedByDriver.values()].flat();
