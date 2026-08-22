@@ -204,7 +204,7 @@ tasks:
       commands/milestone-status.md and commands/ms-status.md (the opencode
       copies belong to T005). Docs-only; extend the asset structure tests to pin
       the rule's presence."
-    status: waiting
+    status: ready
     depends_on:
       - T003
       - T010
@@ -441,7 +441,7 @@ tasks:
       in protocol-worker.md (and coordination.md or dispatch.md if they are the
       better home for the discovery moment) across the installed driver assets,
       pinned by asset structure tests. Docs-only."
-    status: ready
+    status: completed
     depends_on:
       - T003
     acceptance_criteria:
@@ -462,5 +462,11 @@ tasks:
       strategy: command
       detail: npx vitest run tests/unit/claude-assets.test.ts
         tests/unit/opencode-assets.test.ts
-    result: null
+    result:
+      summary: T010 protocol rule installed — unrelated non-blocking issues surfaced
+        immediately for backlog capture via host workflow, no direct .pitway
+        edits, no mandatory CLI; docs-only, both drivers.
+      evidence: Tests  198 passed (198) | Start at  23:17:01 | Duration  296ms
+        (transform 69ms, setup 0ms, import 124ms, tests 197ms, environment 0ms)
+    attempts: 1
     usage: null

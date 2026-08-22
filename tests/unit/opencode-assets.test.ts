@@ -235,6 +235,33 @@ describe('classifyDriverAssets(root, "opencode")', () => {
   });
 });
 
+// M025/T010 (AC012/B017 governance): automatic non-blocking issue capture rule in protocol-worker.md (opencode driver resolves to common/)
+describe('M025 T010 opencode protocol-worker non-blocking issue capture rule (AC012)', () => {
+  it('protocol-worker.md instructs agents to surface unrelated non-blocking findings immediately via the existing PitWay workflow/host mechanism', () => {
+    const text = shippedContent('protocol-worker.md').toString('utf8');
+    expect(text).toMatch(/unrelated, non-blocking/);
+    expect(text).toMatch(/existing PitWay workflow\/host mechanism/);
+    expect(text).toMatch(/pitway backlog add/);
+    expect(text).toMatch(/surface/i);
+    expect(text).toMatch(/naming the discovering task/);
+  });
+
+  it('protocol-worker.md separates reporting (agent) from capture (driver/host) and forbids direct .pitway edits / mandatory CLI invocation', () => {
+    const text = shippedContent('protocol-worker.md').toString('utf8');
+    expect(text).toMatch(/reporting is the agent.*capture belongs to the driver\/host/i);
+    expect(text).toMatch(/never edit.*\.pitway\//i);
+    expect(text).toMatch(/never.*required to invoke.*pitway/i);
+  });
+
+  it('protocol-worker.md keeps blocking/task-related issues on the normal escalation/scope rules', () => {
+    const text = shippedContent('protocol-worker.md').toString('utf8');
+    expect(text).toMatch(/Blocking or task-related issues keep following the normal escalation\/scope rules/);
+    expect(text).toMatch(/task-amend/);
+    expect(text).toMatch(/contract amendment/);
+    expect(text).toMatch(/developer approval/);
+  });
+});
+
 // M025/T003 (B014): every covered opencode command doc carries a usage block (```sh + pitway), backlog documents --milestone/--task
 describe('M025 T003 opencode command docs carry usage blocks (B014)', () => {
   const COVERED_COMMAND_DOCS = [

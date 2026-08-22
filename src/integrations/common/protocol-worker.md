@@ -41,6 +41,14 @@ beyond what it and this document say.
   (summary and evidence are capped on the way in; keep them dense rather
   than exhaustive).
 
+## Discovering unrelated, non-blocking issues
+
+If mid-task you discover an issue that is **unrelated, non-blocking** — it does not prevent you from completing your declared objective and acceptance criteria and it is not within your task's own scope — **do not expand scope to fix it**. **Surface/report it immediately** in your report, naming the discovering task (your task id) with enough detail for triage, so it is captured as a backlog item through the existing PitWay workflow/host mechanism (e.g., the driver/host records it via `pitway backlog add`) instead of expanding the current task's scope.
+
+Governance: reporting is the agent's job, capture belongs to the driver/host. Agents never edit `.pitway/` state directly and are never required to invoke `pitway` CLI commands themselves — you never call `pitway`, per Hard rules above; the host does the capture after reading your report.
+
+Blocking or task-related issues keep following the normal escalation/scope rules: anything that prevents completion, contradicts the contract, or requires scope or dependency expansion — stop, report the conflict, and wait for a `task-amend` / contract amendment with explicit developer approval before continuing. Do not route around a blocker by silently expanding scope.
+
 ## If dispatched into a worktree (parallel mode)
 
 When the bundle names an **assigned worktree path and scaffolding

@@ -316,6 +316,33 @@ describe('M019 ms-* alias command docs ship and stay in parity (AC009, AC010)', 
   });
 });
 
+// M025/T010 (AC012/B017 governance): automatic non-blocking issue capture rule in protocol-worker.md
+describe('M025 T010 protocol-worker non-blocking issue capture rule (AC012)', () => {
+  it('protocol-worker.md instructs agents to surface unrelated non-blocking findings immediately via the existing PitWay workflow/host mechanism', () => {
+    const text = shippedContent('protocol-worker.md').toString('utf8');
+    expect(text).toMatch(/unrelated, non-blocking/);
+    expect(text).toMatch(/existing PitWay workflow\/host mechanism/);
+    expect(text).toMatch(/pitway backlog add/);
+    expect(text).toMatch(/surface/i);
+    expect(text).toMatch(/naming the discovering task/);
+  });
+
+  it('protocol-worker.md separates reporting (agent) from capture (driver/host) and forbids direct .pitway edits / mandatory CLI invocation', () => {
+    const text = shippedContent('protocol-worker.md').toString('utf8');
+    expect(text).toMatch(/reporting is the agent.*capture belongs to the driver\/host/i);
+    expect(text).toMatch(/never edit.*\.pitway\//i);
+    expect(text).toMatch(/never.*required to invoke.*pitway/i);
+  });
+
+  it('protocol-worker.md keeps blocking/task-related issues on the normal escalation/scope rules', () => {
+    const text = shippedContent('protocol-worker.md').toString('utf8');
+    expect(text).toMatch(/Blocking or task-related issues keep following the normal escalation\/scope rules/);
+    expect(text).toMatch(/task-amend/);
+    expect(text).toMatch(/contract amendment/);
+    expect(text).toMatch(/developer approval/);
+  });
+});
+
 // M025/T003 (B014): every covered command doc carries a usage block (```sh + pitway), backlog documents --milestone/--task
 describe('M025 T003 command docs carry usage blocks (B014)', () => {
   const COVERED_COMMAND_DOCS = [
@@ -427,7 +454,7 @@ const PRE_M023_ASSET_MANIFEST: ReadonlyArray<readonly [string, string]> = [
   ['interactive-ux.md', 'e8cc6c74b807247ff2f9b35abb5d85622f904b462b5ac4c2a0b20be4f2587aa1'],
   ['lsp-guidance.md', 'e2fc2650c5f53b1ff569db8a340a96d9e6975bc4e2eea5c0a36a745a1fe18b78'],
   ['protocol-driver.md', '9ace6b8f6ce05227cf54711da2ac341a3316004dae94ed4ea96fdde3abc2855c'],
-  ['protocol-worker.md', 'eff8d70fbd92600da65c56ddc4d56eb5a0c4f6aa1861c3c93862ab63d0988cf6'],
+  ['protocol-worker.md', '44fc562967c7a7563010a421af311cc3699157af2d5b0f174d34d7afb1681a60'],
   ['report-format.md', '1f78522fe1c9cfad3ff9afa1b3d915e00dd640d2433a52ce63544dde1d6e8dbf'],
   ['skills/NOTICE.md', '8d5dd0d6fb2753abf21aef4e98a3a2969dfac37dea91f059d117424da0dc5976'],
   ['skills/architecture-review/SKILL.md', 'd3c79781c122f8c60ad00fc35ad050dc260fa9b4d57c28217386fda1fd39a7cc'],
