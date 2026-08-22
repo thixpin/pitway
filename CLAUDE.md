@@ -54,3 +54,9 @@ Be concise by default.
 - Put necessary detail in contracts/docs, not chat summaries.
 - When presenting a contract for approval, provide the complete contract.
 - Expand only when ambiguity, risk, or a design decision requires explanation.
+
+<!-- pitway:managed:start -->
+@AGENTS.md
+
+See .claude/protocol-driver.md for the full Claude Code driver protocol.
+<!-- pitway:managed:end -->

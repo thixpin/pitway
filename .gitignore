@@ -10,6 +10,7 @@ drafts/
 # managed repo's own .claude/ (never this one). /CLAUDE.md is hand-authored
 # and already tracked -- deliberately not listed here.
 /.claude/
+/.opencode/
 /AGENTS.md
 
 # Machine-local OpenCode configuration (developer's own, never tracked)
