@@ -2,7 +2,7 @@
 schema_version: 1
 id: M025
 title: CLI & Driver Stabilization + OpenCode Dogfooding
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-22T15:09:43Z
 verification_approved_hash: sha256:00aace861273229995a53690c704df0d0905636de031211a18e69422563af377
