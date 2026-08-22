@@ -5,6 +5,10 @@ argument-hint: <task-id>
 
 # task-amend
 
+```sh
+pitway task-amend <task-id> --file <path> --change-log <text> [--json]
+```
+
 Use when a task's own definition needs to change mid-flight — its
 objective, acceptance criteria, file scoping (`relevant_files` /
 `context_files` / `write_scope`), or verification — without that rising to

@@ -4,6 +4,10 @@ description: "PitWay: Apply a dispatched task's worktree commit to the main tree
 
 # task-integrate
 
+```sh
+pitway task-integrate <id> [--json]
+```
+
 Integrates one dispatched task's worktree commits back into the main tree,
 diff-apply-model, one task at a time: computes the combined range diff
 (`--binary --no-renames`, created-from revision to scaffolding-branch
@@ -29,5 +33,4 @@ Refusals name their cause: no live dispatch, vanished worktree (→
 task-discard), worker committed nothing, empty diff, dirty main tree,
 scope violation (every offending path named).
 
-See `../protocol-driver.md` (Parallel dispatch). Run `pitway
-task-integrate --help` for flags.
+See `../protocol-driver.md` (Parallel dispatch).

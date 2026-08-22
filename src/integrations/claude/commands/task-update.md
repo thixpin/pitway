@@ -5,6 +5,10 @@ argument-hint: <id> <status>
 
 # task-update
 
+```sh
+pitway task-update <id> <status> [--result <path>] [--message <path>] [--usage <json>] [--evidence <id>] [--json]
+```
+
 The only way a task's status ever changes, and the only way its completion
 commit ever gets made. You run this — a dispatched worker never does; it
 reports back to you instead (see `../protocol-worker.md`).

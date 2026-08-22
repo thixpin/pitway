@@ -4,6 +4,10 @@ description: "PitWay: Accumulate measured planning or qa token usage onto a mile
 
 # usage-add
 
+```sh
+pitway usage-add <id> --category planning|qa --usage <json> [--json]
+```
+
 Records measured token usage — never estimated — onto a milestone's
 `usage.yaml`, tagged `planning` or `qa` to keep it separate from per-task
 usage recorded through `task-update --usage`. Only call this with a real,

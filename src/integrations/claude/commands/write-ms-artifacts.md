@@ -4,6 +4,10 @@ description: PitWay: Write a drafted contract and task plan to an explicit desti
 
 # write-ms-artifacts
 
+```sh
+pitway write-ms-artifacts --contract <path> --tasks <path> --destination <dir> [--overwrite] [--json]
+```
+
 Writes a drafted contract and task plan out as plain files to an explicit
 destination — the step between drafting a milestone's contract/tasks with
 the developer and handing them to `milestone-add`, useful when you want the

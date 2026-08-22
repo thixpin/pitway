@@ -5,6 +5,10 @@ argument-hint: <id>
 
 # milestone-cancel
 
+```sh
+pitway milestone-cancel <id> [--json]
+```
+
 Use to permanently abandon a draft milestone — genuine abandonment, not a
 routine correction. Only works while the milestone is still `draft`; the
 directory and `contract.md` are preserved (status becomes `cancelled`) and
@@ -30,4 +34,4 @@ destructive action PitWay's git-safety rules exist to prevent. Adding
 corrective or follow-on work the other direction — mid-flight, without a
 new milestone — is `task-add`'s job; see `commands/task-add.md`.
 
-See `../protocol-driver.md`. Run `pitway milestone-cancel --help` for flags.
+See `../protocol-driver.md`.

@@ -5,6 +5,10 @@ argument-hint: <id>
 
 # task-verify
 
+```sh
+pitway task-verify <id> [--typecheck <command>] [--json]
+```
+
 Runs an `in_progress` task's own approved `command`/`tdd` verification
 command (plus an optional `--typecheck <command>`) and persists a
 **verification record** — a full `task_verify_evidence` journal entry

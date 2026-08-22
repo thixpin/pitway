@@ -4,6 +4,10 @@ description: "PitWay: Insert one new task into a confirmed or in_progress milest
 
 # task-add
 
+```sh
+pitway task-add <milestone-id> --file <path> --change-log <text> [--json]
+```
+
 Use to insert one new task into a `confirmed` or `in_progress` milestone —
 corrective or follow-on work discovered mid-flight that belongs alongside
 the existing task graph, not a new milestone. Requires `--file` (one task

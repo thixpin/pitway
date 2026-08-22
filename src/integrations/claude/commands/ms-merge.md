@@ -5,6 +5,10 @@ argument-hint: <id> [--target <branch>]
 
 # milestone-merge
 
+```sh
+pitway milestone-merge <id> [--target <branch>] [--json]
+```
+
 Run after `milestone-complete`, once a milestone is `completed`: merges the
 milestone's own branch into a target branch (default: the milestone's
 `base_branch`). Refuses immediately, before any git mutation, unless the

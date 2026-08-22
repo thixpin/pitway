@@ -5,6 +5,10 @@ argument-hint: <id>
 
 # milestone-confirm
 
+```sh
+pitway milestone-confirm <id> [--amend] [--file <path>] [--json]
+```
+
 The human gate. Run this only after the full contract has been presented
 in this conversation and the developer has explicitly approved it — never
 on your own judgment that the contract "looks fine." Confirming moves the

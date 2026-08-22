@@ -5,6 +5,10 @@ argument-hint: <id>
 
 # task-dispatch
 
+```sh
+pitway task-dispatch <id> [--json]
+```
+
 Prepares one parallel-eligible task for worktree execution under
 `execution.strategy: parallel_worktrees` (refuses under `sequential`):
 checks eligibility against every `in_progress` task — dispatched or inline
@@ -25,5 +29,4 @@ to the worker yourself.
 A dispatched task's only exits are `task-integrate` and `task-discard`;
 direct `task-update` status changes refuse until the dispatch is closed.
 
-See `../protocol-driver.md` (Parallel dispatch) and `../dispatch.md`. Run
-`pitway task-dispatch --help` for flags.
+See `../protocol-driver.md` (Parallel dispatch) and `../dispatch.md`.

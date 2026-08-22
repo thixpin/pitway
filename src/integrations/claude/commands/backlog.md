@@ -5,6 +5,14 @@ argument-hint: <add|list|show|promote|archive> [id]
 
 # backlog
 
+```sh
+pitway backlog add --title <text> --reason <text> [--milestone <id>] [--task <id>] [--json]
+pitway backlog list [--status pending|promoted|archived] [--milestone <id>] [--task <id>] [--json]
+pitway backlog show <id> [--json]
+pitway backlog promote <id> --task <id> [--milestone <id>] [--json]
+pitway backlog archive <id> --reason <text> [--json]
+```
+
 Use when you discover work that is genuinely out of scope for the current
 task or milestone and want to continue without expanding it — capture it,
 keep going, deal with it later. Requires an active milestone; there is no

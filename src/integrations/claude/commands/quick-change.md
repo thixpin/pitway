@@ -5,6 +5,16 @@ argument-hint: <create|approve|run|commit|cancel|promote|status> [change-id]
 
 # quick-change
 
+```sh
+pitway quick-change create --objective <text> [--scope <path> ...] --verify <command> [--json]
+pitway quick-change approve <change-id> [--json]
+pitway quick-change run <change-id> [--json]
+pitway quick-change commit <change-id> [--json]
+pitway quick-change cancel <change-id> [--json]
+pitway quick-change promote <change-id> [--json]
+pitway quick-change status [change-id] [--json]
+```
+
 Use for a small, bounded fix against an already-completed milestone that
 fits in one atomic commit — never while any milestone is `in_progress`
 (that's a task or the ripple-fix policy instead), and never to reopen,
@@ -32,4 +42,4 @@ quick-change.
 quick-change; `quick-change status [<change-id>]` is a convenience read
 only, never a substitute for it.
 
-See `../protocol-driver.md`. Run `pitway quick-change --help` for flags.
+See `../protocol-driver.md`. Run `pitway quick-change --help` or `pitway quick-change <subcommand> --help` for flags and details.

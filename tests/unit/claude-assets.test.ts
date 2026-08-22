@@ -316,6 +316,66 @@ describe('M019 ms-* alias command docs ship and stay in parity (AC009, AC010)', 
   });
 });
 
+// M025/T003 (B014): every covered command doc carries a usage block (```sh + pitway), backlog documents --milestone/--task
+describe('M025 T003 command docs carry usage blocks (B014)', () => {
+  const COVERED_COMMAND_DOCS = [
+    'commands/auto-run.md',
+    'commands/backlog.md',
+    'commands/milestone-add.md',
+    'commands/milestone-cancel.md',
+    'commands/milestone-complete.md',
+    'commands/milestone-confirm.md',
+    'commands/milestone-list.md',
+    'commands/milestone-merge.md',
+    'commands/milestone-review.md',
+    'commands/ms-add.md',
+    'commands/ms-cancel.md',
+    'commands/ms-complete.md',
+    'commands/ms-confirm.md',
+    'commands/ms-list.md',
+    'commands/ms-merge.md',
+    'commands/ms-review.md',
+    'commands/quick-change.md',
+    'commands/resume.md',
+    'commands/task-add.md',
+    'commands/task-amend.md',
+    'commands/task-discard.md',
+    'commands/task-dispatch.md',
+    'commands/task-integrate.md',
+    'commands/task-status.md',
+    'commands/task-update.md',
+    'commands/task-verify.md',
+    'commands/usage-add.md',
+    'commands/verification-repair.md',
+    'commands/verify.md',
+    'commands/write-ms-artifacts.md',
+  ];
+
+  it('lists exactly the 30 covered docs among shipped assets', () => {
+    const assets = listClaudeAssets();
+    for (const doc of COVERED_COMMAND_DOCS) {
+      expect(assets).toContain(doc);
+    }
+  });
+
+  it.each(COVERED_COMMAND_DOCS.map((doc) => [doc]))(
+    '%s contains a usage block with ```sh and pitway',
+    (doc) => {
+      const text = shippedContent(doc).toString('utf8');
+      expect(text).toMatch(/```sh/);
+      expect(text).toMatch(/pitway/);
+    },
+  );
+
+  it('backlog.md usage block documents --milestone and --task filters', () => {
+    const text = shippedContent('commands/backlog.md').toString('utf8');
+    expect(text).toMatch(/--milestone/);
+    expect(text).toMatch(/--task/);
+    // Ensure the list subcommand documents both filters together
+    expect(text).toMatch(/backlog list.*--milestone.*--task/s);
+  });
+});
+
 // M023/T001/AC003(a): ONE-TIME MIGRATION CHECK. This inline sha256 manifest
 // pins every asset path + content hash exactly as shipped BEFORE this
 // milestone moved the driver-agnostic assets from src/integrations/claude/
@@ -330,38 +390,38 @@ describe('M019 ms-* alias command docs ship and stay in parity (AC009, AC010)', 
 // invariant lives in the resolution-equivalence suite below, which never
 // pins historical content.
 const PRE_M023_ASSET_MANIFEST: ReadonlyArray<readonly [string, string]> = [
-  ['commands/auto-run.md', 'cf7a54bb3fb3e561d315f89c54d12d493d8efe09a6708ac63c724c3e975986d4'],
-  ['commands/backlog.md', '05e9f376731946535ddd34dcb1c838a592fbdf421d8084bb1f2fde364f456516'],
-  ['commands/milestone-add.md', '74ab3d6024217d792e4b83060f4a9510fa059a0b8d03f6ab607f87a6cc51d289'],
-  ['commands/milestone-cancel.md', '57d8469883dbaa71eca1df813f5cc720312c5dc01000934ddf98a8f33999a1a4'],
-  ['commands/milestone-complete.md', '9bd16abe4eee316f01b96f88fbc8da18db16de3e7a1bf63f663eea2a65bc08de'],
-  ['commands/milestone-confirm.md', 'b4446e7290f386b433a98e1d8cacd13637fb3c865fdf7110fae74c58b2db5612'],
-  ['commands/milestone-list.md', 'c5312bf74dffd1ef80f819b1c37b3e96f482afc9ee097233dd6220897563b4eb'],
-  ['commands/milestone-merge.md', 'ae0b0bfadaf11cac281dd929e17584ad01ef8e92c88cf29bd64ad9fbcb1e1e51'],
-  ['commands/milestone-review.md', 'a84b80577580be641d5af8b3f00d76d55f56529a965e19b8e21d40d8f811a44f'],
+  ['commands/auto-run.md', '09ed02f780f35e35066dacf323d16fea9e2c4c9ddd5b5ed63e1b07afdfef3f11'],
+  ['commands/backlog.md', 'c0f92b16177c71dbb72e6b89f6544703fffb66db27d139a906e9396060e50baa'],
+  ['commands/milestone-add.md', 'bc0653d519cda796ebf9a3e6e2046ab6b5461f895717d6814089133c2ebfc8b6'],
+  ['commands/milestone-cancel.md', '097d46f142860f6215ed0808ecaa1a61f4947d23d12425b32bbe287e6b8d09ed'],
+  ['commands/milestone-complete.md', '00bb60d02e2a9cd6f7f052ed83e273b0a2f513902f582927309cb82d1bec7c9b'],
+  ['commands/milestone-confirm.md', '88329984e453f7b9adc87d9d0b2d760794eba73bd1d89f46038090be61d117f0'],
+  ['commands/milestone-list.md', '085229a691673a20a5d69820534e2a6dbffdb842f47863f0c86ca9d2b63f1790'],
+  ['commands/milestone-merge.md', '0c38d2e3f6fde90000fa2461f2d77fd522cdc558cf9608c039639791c4e8a981'],
+  ['commands/milestone-review.md', '6fea5970c3dacf4f9bf96cf6c4ca3f495ad993606b07b15aa35278bd65e7920b'],
   ['commands/milestone-status.md', '916252ecf23efdd45f93264e7a729a9bbe0114775cf03374732b3fc651626197'],
-  ['commands/ms-add.md', '74ab3d6024217d792e4b83060f4a9510fa059a0b8d03f6ab607f87a6cc51d289'],
-  ['commands/ms-cancel.md', '57d8469883dbaa71eca1df813f5cc720312c5dc01000934ddf98a8f33999a1a4'],
-  ['commands/ms-complete.md', '9bd16abe4eee316f01b96f88fbc8da18db16de3e7a1bf63f663eea2a65bc08de'],
-  ['commands/ms-confirm.md', 'b4446e7290f386b433a98e1d8cacd13637fb3c865fdf7110fae74c58b2db5612'],
-  ['commands/ms-list.md', 'c5312bf74dffd1ef80f819b1c37b3e96f482afc9ee097233dd6220897563b4eb'],
-  ['commands/ms-merge.md', 'ae0b0bfadaf11cac281dd929e17584ad01ef8e92c88cf29bd64ad9fbcb1e1e51'],
-  ['commands/ms-review.md', 'a84b80577580be641d5af8b3f00d76d55f56529a965e19b8e21d40d8f811a44f'],
+  ['commands/ms-add.md', 'bc0653d519cda796ebf9a3e6e2046ab6b5461f895717d6814089133c2ebfc8b6'],
+  ['commands/ms-cancel.md', '097d46f142860f6215ed0808ecaa1a61f4947d23d12425b32bbe287e6b8d09ed'],
+  ['commands/ms-complete.md', '00bb60d02e2a9cd6f7f052ed83e273b0a2f513902f582927309cb82d1bec7c9b'],
+  ['commands/ms-confirm.md', '88329984e453f7b9adc87d9d0b2d760794eba73bd1d89f46038090be61d117f0'],
+  ['commands/ms-list.md', '085229a691673a20a5d69820534e2a6dbffdb842f47863f0c86ca9d2b63f1790'],
+  ['commands/ms-merge.md', '0c38d2e3f6fde90000fa2461f2d77fd522cdc558cf9608c039639791c4e8a981'],
+  ['commands/ms-review.md', '6fea5970c3dacf4f9bf96cf6c4ca3f495ad993606b07b15aa35278bd65e7920b'],
   ['commands/ms-status.md', '916252ecf23efdd45f93264e7a729a9bbe0114775cf03374732b3fc651626197'],
-  ['commands/quick-change.md', 'b94ddea4eceec509a3f7f1d384b86c110af1a57baca0a9700d3fa6b7d453e195'],
-  ['commands/resume.md', '83e530ee885eafe22ea9c9ca3da43b36db6bb2705efe039947ef636e94f683b7'],
-  ['commands/task-add.md', '1c645e69313678cd87263d593116dddb05accb9a45eb545bc8c996780fc0541b'],
-  ['commands/task-amend.md', 'efa8f445e8f746fda6456da6364cd2cf7c592b26f68a1d2a58df8f88a765fb1a'],
-  ['commands/task-discard.md', '5c5d6ea9c2dd3b59b2c830a14b3f0d0b4a0e4a237231d8fe1cf3f37c40f81f1a'],
-  ['commands/task-dispatch.md', 'fc323baf04db4ce3fddee5db84c4a27c03cc48725af5a79c9d99644f3eda12ac'],
-  ['commands/task-integrate.md', 'f2ce38803dfa04da476f25f6cf0651c64b73d4d70113b0d88680cf4ae6521d13'],
-  ['commands/task-status.md', 'a94471218d26c0ee5801beba555c5f2f9c971683e137f4f8898272a6afe40eca'],
-  ['commands/task-update.md', 'c64faad286679dcabef5df44d116ce2f2e3f73a73c622eac11e213eeb9a66eed'],
-  ['commands/task-verify.md', '4006f8b341752195abba0c03b60e5ae5e5738fa03ed8c22a69f6f81896fc9a11'],
-  ['commands/usage-add.md', '3592699d3b85ab02adadc9625f0037c53560ef407e0922c8123eff0b745eca19'],
-  ['commands/verification-repair.md', '2138f0b8f7ceb52162803633e74ebd86ee9cb895f4f98588c2860adf1c58819a'],
-  ['commands/verify.md', '8a32f630180ec65fe0a3b6260106665d75860e5fd068a9a675ae0fdc9612b734'],
-  ['commands/write-ms-artifacts.md', 'ac3fbd18dff802744526a2431756a8373850575c12865f882c71bf1c7046000c'],
+  ['commands/quick-change.md', '949e37404e672b0856aebae7f2c426b1f54aed64645f3767dc28abd3c54a37c3'],
+  ['commands/resume.md', 'df2e0da7669c478b29ec7aa5b430562240948f7802c03d4830ca2ab72f84709d'],
+  ['commands/task-add.md', 'aa281cc1715d7f07ddd6e54685ba51e8691aed87ac4895e6823a33b079da48c4'],
+  ['commands/task-amend.md', '5d4761714ba535c9d2508cdef5ca8ac0e12ec24a5331acf1088915bdcfe45d26'],
+  ['commands/task-discard.md', '5ff651a972b3e0b64efa4a1d0a9eda4249c70045cca10c61a86c0d6ac5c485cc'],
+  ['commands/task-dispatch.md', '10f2b30ff686124d0987aa6bf5e67688814c446cec376178327b571d206f37b6'],
+  ['commands/task-integrate.md', 'e75b0b6e9b81b5cdf49e52914b11834c3e0d854e3c60adcd664dad9939904c21'],
+  ['commands/task-status.md', 'ba2970670d5bcd8d4319bb35c375058b296b09acb1640c0726c024a6d5aed2ca'],
+  ['commands/task-update.md', '8bf8914bfbf719b40fd2eeb975988e310d717c2eca3f5d7ccd8bc19a19f052bd'],
+  ['commands/task-verify.md', '83c4a0a3561baadf8ee29a64c1ed90a034c6ad5bb7ee3bc82fa8ce80cd036575'],
+  ['commands/usage-add.md', '812942afae8daefd23431f7db10eda28cbacd5b2819adde1005f23162b541306'],
+  ['commands/verification-repair.md', 'faec5c2f3dc2e43b2cc56dd842891a6088201e19034ea2f95cace4bdca01d809'],
+  ['commands/verify.md', '52b73c2b87cf76d8511ee5d0681ecba3066f9bb65a67cf8405b13c73c1313e28'],
+  ['commands/write-ms-artifacts.md', 'e96381e954dd1eed5424e8ed077a8f2081400473a3d06e1f267b70d46f289ca1'],
   ['coordination.md', 'b7af25661169ec0dc0caca9f7a395c23f71b97f22d9a9bca0cb9673968c0500f'],
   ['dispatch.md', '42d51189e54eb5fe44954e94b466cb3da39b3900c95566e1a0a75826b0247054'],
   ['interactive-ux.md', 'e8cc6c74b807247ff2f9b35abb5d85622f904b462b5ac4c2a0b20be4f2587aa1'],

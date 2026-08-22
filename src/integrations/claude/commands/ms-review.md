@@ -5,6 +5,14 @@ argument-hint: <start|brief|record|report|decide> <id>
 
 # milestone-review
 
+```sh
+pitway milestone-review start <id> [--roles <csv>] [--json]
+pitway milestone-review brief <id> --role <role> [--json]
+pitway milestone-review record <id> --role <role> --file <path> [--usage <json>] [--json]
+pitway milestone-review report <id> [--json]
+pitway milestone-review decide <id> --outcome accepted|revision_requested|rejected [--note <text>] [--json]
+```
+
 A role-based review workflow: PitWay manages review **state** (sessions,
 briefs, findings, decisions) — the driver runs the actual reviews. Usable
 against a draft, confirmed, in_progress, or review milestone; never against

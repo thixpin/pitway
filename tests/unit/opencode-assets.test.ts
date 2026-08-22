@@ -234,3 +234,55 @@ describe('classifyDriverAssets(root, "opencode")', () => {
     expect(rest.every((c) => c.status === 'absent')).toBe(true);
   });
 });
+
+// M025/T003 (B014): every covered opencode command doc carries a usage block (```sh + pitway), backlog documents --milestone/--task
+describe('M025 T003 opencode command docs carry usage blocks (B014)', () => {
+  const COVERED_COMMAND_DOCS = [
+    'commands/auto-run.md',
+    'commands/backlog.md',
+    'commands/milestone-add.md',
+    'commands/milestone-cancel.md',
+    'commands/milestone-complete.md',
+    'commands/milestone-confirm.md',
+    'commands/milestone-list.md',
+    'commands/milestone-merge.md',
+    'commands/milestone-review.md',
+    'commands/ms-add.md',
+    'commands/ms-cancel.md',
+    'commands/ms-complete.md',
+    'commands/ms-confirm.md',
+    'commands/ms-list.md',
+    'commands/ms-merge.md',
+    'commands/ms-review.md',
+    'commands/quick-change.md',
+    'commands/resume.md',
+    'commands/task-add.md',
+    'commands/task-amend.md',
+    'commands/task-discard.md',
+    'commands/task-dispatch.md',
+    'commands/task-integrate.md',
+    'commands/task-status.md',
+    'commands/task-update.md',
+    'commands/task-verify.md',
+    'commands/usage-add.md',
+    'commands/verification-repair.md',
+    'commands/verify.md',
+    'commands/write-ms-artifacts.md',
+  ];
+
+  it.each(COVERED_COMMAND_DOCS.map((doc) => [doc]))(
+    '%s contains a usage block with ```sh and pitway',
+    (doc) => {
+      const text = shippedContent(doc).toString('utf8');
+      expect(text).toMatch(/```sh/);
+      expect(text).toMatch(/pitway/);
+    },
+  );
+
+  it('backlog.md usage block documents --milestone and --task filters', () => {
+    const text = shippedContent('commands/backlog.md').toString('utf8');
+    expect(text).toMatch(/--milestone/);
+    expect(text).toMatch(/--task/);
+    expect(text).toMatch(/backlog list.*--milestone.*--task/s);
+  });
+});

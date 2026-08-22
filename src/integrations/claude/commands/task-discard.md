@@ -5,6 +5,10 @@ argument-hint: <id>
 
 # task-discard
 
+```sh
+pitway task-discard <id> --reason <text> [--json]
+```
+
 Abandons one dispatched task's worktree without integrating — the single
 sanctioned exit besides `task-integrate` for a live dispatch. Requires an
 explicit `--reason <text>`. Appends a `worktree_discard` journal record
