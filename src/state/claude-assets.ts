@@ -1,35 +1,20 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { resolveDriverAssets, resolveDriverAssetSource } from './driver-assets.js';
 
-// Source directory shipped with the pitway package: AC003 requires
-// src/integrations/claude/ to contain only text assets, zero .ts files,
-// zero runtime code -- this module installs those assets verbatim, never
-// generating or transforming their content.
-const assetsSourceDir = fileURLToPath(new URL('../integrations/claude/', import.meta.url));
-
-// Recursively lists every .md file under `dir`, returning paths relative to
-// `base`. Glob-based discovery, not a hardcoded list, so a later task's new
-// assets under src/integrations/claude/ install automatically with no
-// change to this module.
-function listMarkdownAssets(dir: string, base: string = dir): string[] {
-  const entries = readdirSync(dir, { withFileTypes: true });
-  const files: string[] = [];
-  for (const entry of entries) {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...listMarkdownAssets(full, base));
-    } else if (entry.isFile() && entry.name.endsWith('.md')) {
-      files.push(relative(base, full));
-    }
-  }
-  return files.sort();
-}
+// M023/T001: the Claude Code asset surface. The shipped sources now live in
+// two tiers -- src/integrations/common/ (driver-agnostic skills and protocol
+// docs) and src/integrations/claude/ (Claude Code's own command docs, plus
+// any override of a common asset) -- resolved by src/state/driver-assets.ts's
+// driver-then-common fallback. Every exported function here keeps its
+// pre-M023 name and signature; the installed .claude/ output stays
+// byte-for-byte identical. Assets install verbatim, never generated or
+// transformed.
 
 // The full set of asset relative paths (e.g. "protocol-driver.md",
 // "commands/milestone-add.md") currently shipped with this pitway install.
 export function listClaudeAssets(): string[] {
-  return listMarkdownAssets(assetsSourceDir);
+  return resolveDriverAssets('claude');
 }
 
 // Repo-relative destination paths for every currently shipped asset (e.g.
@@ -66,14 +51,14 @@ export function classifyClaudeAssets(root: string): ClaudeAssetClassification[] 
     if (!existsSync(destination)) {
       return { asset, status: 'absent' };
     }
-    const shipped = readFileSync(join(assetsSourceDir, asset));
+    const shipped = readFileSync(resolveDriverAssetSource('claude', asset));
     const installed = readFileSync(destination);
     return { asset, status: shipped.equals(installed) ? 'identical' : 'conflict' };
   });
 }
 
 // Installs the given subset of currently shipped .md assets into
-// <root>/.claude/, mirroring src/integrations/claude/'s relative layout
+// <root>/.claude/, mirroring the resolved source set's relative layout
 // exactly (e.g. commands/milestone-add.md -> .claude/commands/milestone-add.md).
 // Defaults to the full shipped set for backward-compatible callers; init.ts
 // passes exactly the classified-'absent' subset so an 'identical' asset is
@@ -83,7 +68,7 @@ export function installClaudeAssets(root: string, assets: string[] = listClaudeA
   for (const asset of assets) {
     const destination = join(claudeDir, asset);
     mkdirSync(dirname(destination), { recursive: true });
-    writeFileSync(destination, readFileSync(join(assetsSourceDir, asset)));
+    writeFileSync(destination, readFileSync(resolveDriverAssetSource('claude', asset)));
   }
   return assets;
 }

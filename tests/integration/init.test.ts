@@ -16,6 +16,7 @@ import { parse } from 'yaml';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { listClaudeAssets } from '../../src/state/claude-assets.js';
+import { resolveDriverAssetSource } from '../../src/state/driver-assets.js';
 import { AGENTS_MD_CONTENT, CLAUDE_MD_CONTENT } from '../../src/state/root-instructions.js';
 
 function git(args: string[], cwd: string): void {
@@ -114,9 +115,16 @@ describe('pitway init', () => {
 // --no-claude, refusing a partial/inconsistent .claude/ state the same way
 // it already refuses partial/inconsistent .pitway/ state.
 describe('pitway init Claude Code asset installation (AC003)', () => {
-  it('src/integrations/claude/ contains zero .ts files -- text assets and runtime code only', () => {
-    const sourceRoot = new URL('../../src/integrations/claude/', import.meta.url);
-    const files = listFilesRecursive(sourceRoot.pathname);
+  it('src/integrations/claude/ and common/ contain zero .ts files -- text assets only, and their union is the shipped set', () => {
+    // M023/T001: shipped sources live in two tiers (claude/ + common/);
+    // the resolved union, driver winning on collision, is the shipped set.
+    const claudeFiles = listFilesRecursive(
+      new URL('../../src/integrations/claude/', import.meta.url).pathname,
+    );
+    const commonFiles = listFilesRecursive(
+      new URL('../../src/integrations/common/', import.meta.url).pathname,
+    );
+    const files = [...new Set([...claudeFiles, ...commonFiles])].sort();
     expect(files.some((f) => f.endsWith('.ts'))).toBe(false);
     expect(files.every((f) => f.endsWith('.md'))).toBe(true);
     expect(files).toEqual(listClaudeAssets());
@@ -144,13 +152,11 @@ describe('pitway init Claude Code asset installation (AC003)', () => {
     expect(installed).toContain('commands/task-add.md');
     // AC008/T005 (M018): the new backlog command doc installs too.
     expect(installed).toContain('commands/backlog.md');
-    // Content is copied verbatim, not transformed.
+    // Content is copied verbatim, not transformed -- compared against the
+    // resolved source (driver-then-common fallback), per asset.
     for (const asset of shipped) {
       expect(readFileSync(join(root, '.claude', asset), 'utf8')).toBe(
-        readFileSync(
-          new URL(`../../src/integrations/claude/${asset}`, import.meta.url),
-          'utf8',
-        ),
+        readFileSync(resolveDriverAssetSource('claude', asset), 'utf8'),
       );
     }
   });
@@ -267,8 +273,13 @@ describe('pitway init Claude Code asset installation (AC003)', () => {
   // -- so this doesn't just restate the installer's own idea of what's
   // shipped, it re-derives it from disk.
   it('installs the complete current asset set, including this task\'s own new files (AC010)', async () => {
-    const sourceRoot = new URL('../../src/integrations/claude/', import.meta.url);
-    const actualAssets = listFilesRecursive(sourceRoot.pathname);
+    // M023/T001: re-derived from BOTH source tiers on disk (claude/ union
+    // common/, driver winning on any collision) -- still independent of
+    // listClaudeAssets()'s own answer.
+    const claudeRoot = new URL('../../src/integrations/claude/', import.meta.url).pathname;
+    const commonRoot = new URL('../../src/integrations/common/', import.meta.url).pathname;
+    const claudeFiles = listFilesRecursive(claudeRoot);
+    const actualAssets = [...new Set([...claudeFiles, ...listFilesRecursive(commonRoot)])].sort();
 
     expect(actualAssets).toContain(join('commands', 'auto-run.md'));
     expect(actualAssets).toContain('interactive-ux.md');
@@ -278,8 +289,9 @@ describe('pitway init Claude Code asset installation (AC003)', () => {
     const installed = listFilesRecursive(join(root, '.claude'));
     expect(installed).toEqual(actualAssets);
     for (const asset of actualAssets) {
+      const sourceRoot = claudeFiles.includes(asset) ? claudeRoot : commonRoot;
       expect(readFileSync(join(root, '.claude', asset), 'utf8')).toBe(
-        readFileSync(new URL(`../../src/integrations/claude/${asset}`, import.meta.url), 'utf8'),
+        readFileSync(join(sourceRoot, asset), 'utf8'),
       );
     }
   });

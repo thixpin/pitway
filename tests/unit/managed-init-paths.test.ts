@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { listClaudeAssets } from '../../src/state/claude-assets.js';
+import { resolveDriverAssetSource } from '../../src/state/driver-assets.js';
 import { listSafeManagedDirtyPaths } from '../../src/state/managed-init-paths.js';
 import { AGENTS_MD_CONTENT, CLAUDE_MD_CONTENT } from '../../src/state/root-instructions.js';
 
@@ -16,8 +17,10 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
+// M023/T001: shipped sources are resolved via driver-assets.ts's
+// driver-then-common fallback, never a single hardcoded source directory.
 function shippedContent(asset: string): Buffer {
-  return readFileSync(new URL(`../../src/integrations/claude/${asset}`, import.meta.url));
+  return readFileSync(resolveDriverAssetSource('claude', asset));
 }
 
 function writeClaudeAsset(asset: string, content: string | Buffer): void {

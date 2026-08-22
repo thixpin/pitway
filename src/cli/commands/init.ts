@@ -51,7 +51,7 @@ export function runInit(root: string, options: { claude?: boolean } = {}): InitV
   if (conflicts.length > 0) {
     throw new Error(
       'refusing to initialize: .claude/ has conflicting content relative to the pitway-managed ' +
-        `assets under src/integrations/claude/ (will not overwrite): ${conflicts
+        `assets shipped under src/integrations/ (will not overwrite): ${conflicts
           .map((c) => `.claude/${c.asset}`)
           .join(', ')} — inspect manually (or pass --no-claude to skip Claude Code asset installation)`,
     );

@@ -5,7 +5,7 @@ title: Common Driver Asset Layer and OpenCode Integration
 status: in_progress
 requirement: null
 confirmed_at: 2026-08-22T03:54:04Z
-verification_approved_hash: sha256:3ca5ae6794b502c579a44bc6cf61a32a860866d564d3bbd383b228094bd90e5b
+verification_approved_hash: sha256:bf89db057119cf7de651f394f3df3221dd24cdd2255d28c150ac8384a4191453
 base_branch: main
 base_revision: 1fe95cae884e5c8db52a51146d8c208d58297cc0
 acceptance_criteria:
@@ -121,6 +121,20 @@ acceptance_criteria:
       Recorded as a candidate backlog item at completion, not fixed here."
   - id: AC010
     text: The full test suite and tsc --noEmit stay green throughout.
+  - id: AC011
+    text: "B008 (developer-reported 2026-08-22, inserted mid-milestone by explicit
+      developer decision): pitway init's generated CLAUDE.md no longer
+      duplicates AGENTS.md's shared bullet content. CLAUDE_MD_CONTENT
+      (src/state/root-instructions.ts) becomes a thin pointer using Claude
+      Code's own documented AGENTS.md bridge -- the @AGENTS.md import
+      (docs/evidence/M022/claude-code.md section 4) -- plus the existing
+      Claude-specific .claude/protocol-driver.md pointer; the 5 SHARED_BULLETS
+      live only in AGENTS_MD_CONTENT. Disclosed migration consequence, accepted
+      rather than hidden: repos initialized before this change hold the old
+      CLAUDE.md bytes, which classify as 'conflict' (preserved with a warning,
+      never overwritten or appended) on a re-run of init -- exactly the existing
+      non-destructive behavior, and a test proves the old-content case
+      classifies 'conflict' while the new content classifies 'identical'."
 verification:
   - id: CT001
     criterion: AC001
@@ -168,6 +182,11 @@ verification:
     criterion: AC010
     type: command
     command: npm run build && npm test && npx tsc --noEmit
+  - id: CT011
+    criterion: AC011
+    type: command
+    command: npx vitest run tests/unit/root-instructions.test.ts
+      tests/integration/init.test.ts
 ---
 
 # M023: Common Driver Asset Layer and OpenCode Integration
@@ -253,3 +272,14 @@ every respect.
   src/state/driver-assets.ts in both T001 and T002 write_scopes; AC008
   gains the stray-override guard; AGENTS.md explicitly added to the
   out-of-scope list with its deferral reasoning.
+- 2026-08-22: Mid-execution insertion by explicit developer decision
+  (B008, developer-reported): AC011/CT011 added -- init-generated
+  CLAUDE.md duplicates AGENTS.md's shared bullets verbatim and even
+  points at AGENTS.md for the content it just restated; fixed by making
+  CLAUDE_MD_CONTENT a thin @AGENTS.md-import pointer per Claude Code's
+  own documented bridge (M022 evidence). Inserted as T004 via task-add,
+  depending on T001 (both touch the root-instruction install surface;
+  sequencing avoids a write-scope-adjacent collision with the in-flight
+  refactor). The AGENTS.md out-of-scope deferral note above is narrowed,
+  not reversed: no per-driver rules-file work is added -- this is a dedup
+  fix to content PitWay already generates.

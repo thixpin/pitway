@@ -32,7 +32,7 @@ tasks:
       outlives it. Amend CLAUDE.md's MVP boundary sentence to the exact wording
       in this contract's Background (AC004). Do NOT add any OpenCode assets in
       this task -- prove the refactor is safe standalone first."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - src/integrations/common/ exists with the 14 relocated files,
@@ -92,14 +92,23 @@ tasks:
       - tests/integration/init.test.ts
       - tests/integration/build-bin.test.ts
       - tests/unit/managed-init-paths.test.ts
+      - scripts/copy-claude-assets.mjs
     verification:
       strategy: command
       detail: npx vitest run tests/unit/skills-structure.test.ts
         tests/unit/claude-assets.test.ts tests/integration/init.test.ts
         tests/integration/build-bin.test.ts
         tests/unit/managed-init-paths.test.ts
-    result: null
-    usage: null
+    result:
+      summary: Common asset layer landed with proven Claude Code byte parity -- 14
+        assets relocated to src/integrations/common/, driver-then-common
+        resolution in new src/state/driver-assets.ts, CLAUDE.md MVP boundary
+        amended. One disclosed build-script ripple, approved via task-amend.
+      evidence: Tests  170 passed (170) | Start at  11:13:03 | Duration  6.08s
+        (transform 571ms, setup 0ms, import 810ms, tests 7.67s, environment 0ms)
+    attempts: 1
+    usage:
+      total_tokens: 106822
   - id: T002
     name: OpenCode driver assets and init support
     objective: "FIRST, before writing any asset: recheck OpenCode's install layout
@@ -127,7 +136,7 @@ tasks:
       .opencode/ managed paths, so milestone-confirm/quick-change create don't
       refuse on a freshly-installed OpenCode asset set. The resolution wiring
       lives in src/state/driver-assets.ts (in scope here too)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
@@ -232,5 +241,50 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/integration/multi-driver-assets.test.ts
+    result: null
+    usage: null
+  - id: T004
+    name: "B008: dedupe init-generated CLAUDE.md vs AGENTS.md"
+    objective: "Fix the developer-reported duplication in pitway init's generated
+      root instruction files (AC011): CLAUDE_MD_CONTENT in
+      src/state/root-instructions.ts currently embeds the same 5 SHARED_BULLETS
+      that AGENTS_MD_CONTENT carries, then points at AGENTS.md for the content
+      it just restated -- a driver that reads both files ingests identical
+      content twice. Make CLAUDE_MD_CONTENT a thin pointer using Claude Code's
+      own documented AGENTS.md bridge, the @AGENTS.md import
+      (docs/evidence/M022/claude-code.md section 4): a short header, the
+      @AGENTS.md import line, and the existing Claude-specific
+      .claude/protocol-driver.md pointer -- SHARED_BULLETS live only in
+      AGENTS_MD_CONTENT afterwards. AGENTS_MD_CONTENT itself is unchanged.
+      Update tests/unit/root-instructions.test.ts: the new content shape, plus a
+      migration-consequence test proving a repo holding the OLD CLAUDE.md bytes
+      classifies 'conflict' (preserved with a warning, never overwritten) while
+      the NEW content classifies 'identical' -- the existing non-destructive
+      behavior, disclosed rather than hidden. Update
+      tests/integration/init.test.ts if it asserts the old CLAUDE.md content
+      verbatim. Depends on T001 because both touch the root-instruction install
+      surface and T001's refactor is in flight -- sequencing avoids a
+      write-scope-adjacent collision."
+    status: ready
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - CLAUDE_MD_CONTENT no longer contains the SHARED_BULLETS text; it imports
+        AGENTS.md via the @AGENTS.md bridge and keeps the
+        .claude/protocol-driver.md pointer
+      - AGENTS_MD_CONTENT is byte-identical to before this task
+      - a test proves the old CLAUDE.md content now classifies 'conflict'
+        (preserved, never overwritten or appended) and the new content
+        classifies 'identical'
+      - no dollar-sign template/engine mechanism is introduced -- plain string
+        constants, exactly as before
+    write_scope:
+      - src/state/root-instructions.ts
+      - tests/unit/root-instructions.test.ts
+      - tests/integration/init.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/root-instructions.test.ts
+        tests/integration/init.test.ts
     result: null
     usage: null

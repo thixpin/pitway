@@ -76,14 +76,19 @@ describe('build produces a real, spawnable dist/ binary (M008/T001/AC001)', () =
     expect(statSync(distEntry).isFile()).toBe(true);
   });
 
-  it('copies every src/integrations/claude/ asset to dist/integrations/claude/ under the same relative layout', () => {
-    const srcAssetsDir = join(repoRoot, 'src', 'integrations', 'claude');
-    const distAssetsDir = join(repoRoot, 'dist', 'integrations', 'claude');
-    const srcFiles = listFilesRecursive(srcAssetsDir);
-    const distFiles = listFilesRecursive(distAssetsDir);
-    expect(srcFiles.length).toBeGreaterThan(0);
-    expect(distFiles).toEqual(srcFiles);
-  });
+  // M023/T001: both source tiers ship -- dist/state/driver-assets.js
+  // resolves from dist/integrations/<driver>/ AND dist/integrations/common/.
+  it.each(['claude', 'common'])(
+    'copies every src/integrations/%s/ asset to dist/integrations/ under the same relative layout',
+    (tier) => {
+      const srcAssetsDir = join(repoRoot, 'src', 'integrations', tier);
+      const distAssetsDir = join(repoRoot, 'dist', 'integrations', tier);
+      const srcFiles = listFilesRecursive(srcAssetsDir);
+      const distFiles = listFilesRecursive(distAssetsDir);
+      expect(srcFiles.length).toBeGreaterThan(0);
+      expect(distFiles).toEqual(srcFiles);
+    },
+  );
 
   describe('real subprocess spawn of the compiled binary', () => {
     it.each(ALL_COMMAND_NAMES)('registers and reaches "%s" via --help', (name) => {
