@@ -113,10 +113,7 @@ describe('OpenCode command docs mirror the Claude Code command set (AC005)', () 
       expect(parsed.frontmatter['description']).toBe(claudeParsed.description);
       expect(String(parsed.frontmatter['description']).startsWith('PitWay: ')).toBe(true);
       // The body -- the pitway-invocation instruction -- mirrors the Claude
-      // source doc's own body byte-for-byte. Staged: T004 updates claude
-      // milestone-status/ms-status ahead of opencode (T005 owns the opencode
-      // copies), so those two are excluded from the interim verbatim check.
-      if (doc === 'milestone-status.md' || doc === 'ms-status.md') return;
+      // source doc's own body byte-for-byte.
       expect(parsed.body).toBe(claudeParsed.body);
     },
   );
@@ -325,5 +322,33 @@ describe('M025 T004 common protocol-driver verbatim relay + footer habit (AC004/
     expect(text).toContain('annotations may surround');
     expect(text).toContain('never prose summaries');
     expect(text).toContain('end routine progress updates with the footer');
+  });
+});
+
+// M025/T005 (AC005/B013,B015): opencode milestone-status/ms-status --report passthrough + footer relay (B014 usage blocks owned here as well)
+describe('M025 T005 opencode milestone-status --report + footer relay (AC005/B013,B015)', () => {
+  it('opencode milestone-status.md carries the relay rule and a usage block with --report passthrough', () => {
+    const text = shippedContent('commands/milestone-status.md').toString('utf8');
+    expect(text).toContain('reproduce the rendered table and racing footer as-is');
+    expect(text).toContain('annotations may surround');
+    expect(text).toContain('never prose summaries');
+    expect(text).toContain('end routine progress updates with the footer');
+    expect(text).toMatch(/```sh/);
+    expect(text).toMatch(/pitway milestone-status <id> \[--report\] \[--json\]/);
+    expect(text).toMatch(/--report/);
+    expect(text).toMatch(/--json/);
+  });
+
+  it('opencode ms-status.md carries the relay rule and a usage block with --report and stays byte-identical to milestone-status.md', () => {
+    const text = shippedContent('commands/ms-status.md').toString('utf8');
+    expect(text).toContain('reproduce the rendered table and racing footer as-is');
+    expect(text).toContain('annotations may surround');
+    expect(text).toContain('never prose summaries');
+    expect(text).toContain('end routine progress updates with the footer');
+    expect(text).toMatch(/```sh/);
+    expect(text).toMatch(/pitway milestone-status <id> \[--report\] \[--json\]/);
+    expect(text).toMatch(/--report/);
+    expect(text).toMatch(/--json/);
+    expect(shippedContent('commands/ms-status.md')).toEqual(shippedContent('commands/milestone-status.md'));
   });
 });
