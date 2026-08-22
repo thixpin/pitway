@@ -356,11 +356,11 @@ items:
       Data lost at the completing driver step. Quick-change candidate: ensure
       every dispatched task completion extracts and forwards --usage (or record
       reason when truly unavailable). No M025 scope change."
-    status: pending
+    status: archived
     source:
       milestone: M025
       task: null
     created_at: 2026-08-22T23:58:00.000Z
-    resolved_at: null
+    resolved_at: 2026-08-22T17:28:24Z
     promoted_to: null
-    archived_reason: null
+    archived_reason: "Resolved via quick-change qc-f0f57dfa (commit d55d9b8) — actionable warning + usage-add fallback documented; dispatched tasks now forward --usage per dispatch.md."
