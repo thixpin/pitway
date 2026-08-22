@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveReadyTasks } from '../../src/core/tasks/dependencies.js';
+import { isTransitivelyDependent, resolveReadyTasks } from '../../src/core/tasks/dependencies.js';
 import type { Task } from '../../src/state/schemas.js';
 
 const task = (overrides: Partial<Task> & Pick<Task, 'id' | 'status'>): Task => ({
@@ -57,5 +57,27 @@ describe('resolveReadyTasks', () => {
   it('reports an unknown dependency reference explicitly', () => {
     const tasks = [task({ id: 'T001', status: 'waiting', depends_on: ['T999'] })];
     expect(() => resolveReadyTasks(tasks)).toThrowError(/T999/);
+  });
+});
+
+describe('isTransitivelyDependent (M014/T002)', () => {
+  it('visits a diamond graph without revisiting the shared node, returning false when the target is unreachable', () => {
+    // T001 -> {T002, T003} -> T004: T004 is pushed twice and must be skipped
+    // on the second pop (seen-set), while the whole graph is still walked.
+    const tasks = [
+      task({ id: 'T001', status: 'waiting', depends_on: ['T002', 'T003'] }),
+      task({ id: 'T002', status: 'waiting', depends_on: ['T004'] }),
+      task({ id: 'T003', status: 'waiting', depends_on: ['T004'] }),
+      task({ id: 'T004', status: 'waiting', depends_on: [] }),
+    ];
+    expect(isTransitivelyDependent(tasks, 'T001', 'T999')).toBe(false);
+    expect(isTransitivelyDependent(tasks, 'T001', 'T004')).toBe(true);
+  });
+
+  it('treats a dangling dependency reference as a dead end, never an error', () => {
+    // Pure reachability performs no unknown-reference validation of its own:
+    // an id with no task record simply contributes no further edges.
+    const tasks = [task({ id: 'T001', status: 'waiting', depends_on: ['T404'] })];
+    expect(isTransitivelyDependent(tasks, 'T001', 'T002')).toBe(false);
   });
 });

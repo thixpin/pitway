@@ -51,4 +51,16 @@ describe('checkWriteScope (AC004)', () => {
   it('treats an empty write path list as trivially in scope', () => {
     expect(checkWriteScope([], baseTask)).toEqual({ ok: true, outOfScope: [] });
   });
+
+  it('treats a task carrying neither write_scope nor relevant_files as an empty scope: every write is out of scope', () => {
+    // The pure helper takes any structured Task value; when both scope styles
+    // are absent the boundary is the empty set, so nothing may be written --
+    // it must never silently treat "no declaration" as "everything allowed".
+    const { write_scope: _write_scope, context_files: _context_files, ...scopeless } = baseTask;
+    expect(checkWriteScope(['src/a.ts'], scopeless as Task)).toEqual({
+      ok: false,
+      outOfScope: ['src/a.ts'],
+    });
+    expect(checkWriteScope([], scopeless as Task)).toEqual({ ok: true, outOfScope: [] });
+  });
 });

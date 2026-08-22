@@ -2,8 +2,11 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
+import { registerTaskDiscardCommand as registerTaskDiscardBare } from '../../src/cli/commands/task-discard.js';
+import { discardTask, TaskDiscardError } from '../../src/core/tasks/discard.js';
+import { saveState } from '../../src/state/store.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
@@ -173,6 +176,78 @@ describe('pitway task-discard (M014/T008)', () => {
     expect(result.error).toBeUndefined();
     expect(git(['branch', '--list', 'pitway/task/M001-T001'], root).trim()).toBe('');
     expect(loadTasks(root, 'M001').tasks.find((t) => t.id === 'T001')?.status).toBe('failed');
+  });
+
+  it('refuses when no milestone is active', () => {
+    saveState(root, { schema_version: 1, active_milestone: null, milestones: ['M001'] });
+    expect(() => discardTask(root, 'T001', 'reason')).toThrow(TaskDiscardError);
+    expect(() => discardTask(root, 'T001', 'reason')).toThrow(/no active milestone/);
+  });
+
+  it('refuses under sequential strategy with a clear diagnostic', () => {
+    saveConfig(root, { schema_version: 1 });
+    expect(() => discardTask(root, 'T001', 'reason')).toThrow(/parallel_worktrees/);
+    expect(() => discardTask(root, 'T001', 'reason')).toThrow(/"sequential"/);
+  });
+
+  it('refuses an unknown task id, naming the milestone', () => {
+    expect(() => discardTask(root, 'T404', 'reason')).toThrow(/unknown task T404 in milestone M001/);
+  });
+
+  it('refuses a task with no live dispatch record', () => {
+    expect(() => discardTask(root, 'T001', 'reason')).toThrow(/no live worktree dispatch record/);
+  });
+
+  it('records discardedSha: null and skips branch deletion when worktree AND branch are both already gone', async () => {
+    const dispatched = dispatchTask(root, 'T001');
+    rmSync(dispatched.worktreePath, { recursive: true, force: true });
+    git(['worktree', 'prune'], root);
+    git(['branch', '-D', 'pitway/task/M001-T001'], root);
+
+    const view = discardTask(root, 'T001', 'everything already vanished');
+    expect(view.discardedSha).toBeNull();
+    expect(view.worktreeRemoved).toBe(false);
+    expect(view.status).toBe('failed');
+    const record = readJournal(root).find((r) => r.kind === 'worktree_discard');
+    expect(record).toMatchObject({ taskId: 'T001', discardedSha: null });
+  });
+
+  it('renders the was-already-gone human message and falls back to console.log/process.cwd() with no deps', async () => {
+    const dispatched = dispatchTask(root, 'T001');
+    rmSync(dispatched.worktreePath, { recursive: true, force: true });
+    git(['worktree', 'prune'], root);
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerTaskDiscardBare(program);
+      await program.parseAsync(['node', 'pitway', 'task-discard', 'T001', '--reason', 'crashed dispatch']);
+    } catch (error) {
+      caught = error;
+    } finally {
+      // vitest v4: mockRestore() clears recorded calls -- capture first.
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+
+    expect(caught).toBeUndefined();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.[0]).toContain('was already gone');
+    expect(calls[0]?.[0]).toContain('failed → ready allows re-dispatch');
+  });
+
+  it('renders the removed human message when the worktree exists (worktreeRemoved true)', async () => {
+    dispatchTask(root, 'T001');
+    const result = await run(['task-discard', 'T001', '--reason', 'off-scope work']);
+    expect(result.error).toBeUndefined();
+    const text = result.lines.join('\n');
+    expect(text).toContain('worktree removed');
+    expect(text).toContain('unrecoverable through PitWay');
   });
 
   it('task-update refuses any direct status change on a live-dispatched task, pointing at the two exits', async () => {

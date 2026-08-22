@@ -8,7 +8,7 @@ import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
 import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js';
-import { loadConfig, loadTasks, saveConfig } from '../../src/state/store.js';
+import { loadConfig, loadState, loadTasks, saveConfig, saveState } from '../../src/state/store.js';
 import { readJournal } from '../../src/state/journal.js';
 import { dispatchTask } from '../../src/core/tasks/dispatch.js';
 import { integrateTask, TaskIntegrateError } from '../../src/core/tasks/integrate.js';
@@ -225,6 +225,52 @@ describe('integrateTask engine (M014/T006)', () => {
 
   it('refuses a task with no live dispatch record, pointing at task-discard', () => {
     expect(() => integrateTask(root, 'T002')).toThrow(/no live worktree dispatch/);
+  });
+
+  it('refuses with no active milestone', () => {
+    saveState(root, { ...loadState(root), active_milestone: null });
+    expect(() => integrateTask(root, 'T001')).toThrow(/no active milestone; nothing to integrate/);
+  });
+
+  it("refuses when the execution strategy isn't parallel_worktrees", () => {
+    saveConfig(root, { schema_version: 1 });
+    expect(() => integrateTask(root, 'T001')).toThrow(/parallel_worktrees/);
+    expect(() => integrateTask(root, 'T001')).toThrow(/"sequential"/);
+  });
+
+  it('refuses an unknown task id', () => {
+    expect(() => integrateTask(root, 'NOPE')).toThrow(/unknown task NOPE in milestone M001/);
+  });
+
+  it("refuses when the scaffolding branch is missing while the worktree survives", () => {
+    const dispatched = dispatchTask(root, 'T001');
+    workerCommit(dispatched.worktreePath, { 'src/a.ts': 'ok\n' });
+    execFileSync('git', ['update-ref', '-d', 'refs/heads/pitway/task/M001-T001'], { cwd: root });
+    expect(() => integrateTask(root, 'T001')).toThrow(
+      /scaffolding branch pitway\/task\/M001-T001 is missing/,
+    );
+    expect(existsSync(dispatched.worktreePath)).toBe(true);
+  });
+
+  it("refuses an empty combined diff (worker's commits change nothing)", () => {
+    const dispatched = dispatchTask(root, 'T001');
+    git(['commit', '-q', '--allow-empty', '-m', 'worker: empty'], dispatched.worktreePath);
+    expect(() => integrateTask(root, 'T001')).toThrow(/nothing to integrate/);
+    expect(existsSync(dispatched.worktreePath)).toBe(true);
+  });
+
+  it('refuses when the combined diff no longer applies cleanly to a diverged main tree', () => {
+    const dispatched = dispatchTask(root, 'T001');
+    workerCommit(dispatched.worktreePath, { 'src/seeded.ts': 'worker version\n' });
+    writeFileSync(join(root, 'src', 'seeded.ts'), 'main version\n');
+    git(['add', 'src/seeded.ts'], root);
+    git(['commit', '-q', '-m', 'main diverges'], root);
+
+    expect(() => integrateTask(root, 'T001')).toThrow(/does not apply cleanly/);
+    // Nothing was written: only dispatch's own expected tasks.yaml dirt.
+    expect(git(['status', '--porcelain', '--', 'src'], root)).toBe('');
+    expect(readFileSync(join(root, 'src', 'seeded.ts'), 'utf8')).toBe('main version\n');
+    expect(loadTasks(root, 'M001').tasks.find((t) => t.id === 'T001')?.status).toBe('in_progress');
   });
 
   it('refuses on an unexpectedly dirty main tree', () => {

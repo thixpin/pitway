@@ -2,8 +2,11 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
+import { registerTaskDispatchCommand as registerTaskDispatchBare } from '../../src/cli/commands/task-dispatch.js';
+import { dispatchTask, TaskDispatchError } from '../../src/core/tasks/dispatch.js';
+import { saveState } from '../../src/state/store.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
@@ -275,6 +278,45 @@ describe('pitway task-dispatch (M014/T004)', () => {
     expect(result.error?.message).toContain('journal-pending');
     expect(result.error?.message).toContain('op-test-1');
     expect(loadTasks(root, 'M001').tasks.find((t) => t.id === 'T001')?.status).toBe('ready');
+  });
+
+  it('refuses when no milestone is active', () => {
+    saveState(root, { schema_version: 1, active_milestone: null, milestones: [] });
+    expect(() => dispatchTask(root, 'T001')).toThrow(TaskDispatchError);
+    expect(() => dispatchTask(root, 'T001')).toThrow(/no active milestone/);
+  });
+
+  it('refuses an unknown task id, naming the milestone', async () => {
+    await confirmMilestone('parallel_worktrees');
+    expect(() => dispatchTask(root, 'T404')).toThrow(/unknown task T404 in milestone M001/);
+  });
+
+  it('renders the human handoff line and falls back to console.log/process.cwd() with no deps', async () => {
+    await confirmMilestone('parallel_worktrees');
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerTaskDispatchBare(program);
+      await program.parseAsync(['node', 'pitway', 'task-dispatch', 'T001']);
+    } catch (error) {
+      caught = error;
+    } finally {
+      // vitest v4: mockRestore() clears recorded calls -- capture first.
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+
+    expect(caught).toBeUndefined();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.[0]).toContain('Dispatched T001 to worktree');
+    expect(calls[0]?.[0]).toContain('branch pitway/task/M001-T001');
+    expect(calls[0]?.[0]).toContain('task-integrate T001');
   });
 
   it('deriveLiveDispatches treats a closing record as ending liveness', async () => {

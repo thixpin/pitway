@@ -2,8 +2,15 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
+import {
+  amendTask,
+  computeTaskAmendOperationId,
+  TaskAmendError,
+} from '../../src/core/tasks/amend.js';
+import { appendJournalEntry } from '../../src/state/journal.js';
+import { saveState } from '../../src/state/store.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
@@ -275,6 +282,74 @@ describe('pitway task-amend validation (AC1)', () => {
     expect(error?.message).toMatch(/Change Log/);
     expect(pendingAmendEntries()).toHaveLength(0);
   });
+
+  it('refuses when the contract has no Change Log heading at all', async () => {
+    const contractPath = join(root, '.pitway', 'milestones', milestoneDirName('M001'), 'contract.md');
+    writeFileSync(contractPath, readFileSync(contractPath, 'utf8').replace(/## Change Log[\s\S]*$/, ''));
+    const { error } = await amend('T001', { objective: 'Reworded.' });
+    expect(error?.message).toMatch(/Change Log/);
+    expect(pendingAmendEntries()).toHaveLength(0);
+  });
+
+  it('refuses when the Change Log heading is immediately followed by another heading (no entry text)', async () => {
+    const contractPath = join(root, '.pitway', 'milestones', milestoneDirName('M001'), 'contract.md');
+    writeFileSync(
+      contractPath,
+      readFileSync(contractPath, 'utf8').replace(
+        /## Change Log[\s\S]*$/,
+        '## Change Log\n\n## Appendix\n\n- Not a change log entry.\n',
+      ),
+    );
+    const { error } = await amend('T001', { objective: 'Reworded.' });
+    expect(error?.message).toMatch(/Change Log/);
+    expect(pendingAmendEntries()).toHaveLength(0);
+  });
+
+  it('refuses malformed YAML in the amendment file, naming the file', async () => {
+    const bad = join(scratch, 'bad.yaml');
+    writeFileSync(bad, 'objective: x\n  broken:\n indent: [unclosed\n');
+    const { error } = await run(
+      ['task-amend', 'T001', '--file', bad, '--change-log', 'Evidence.'],
+      root,
+    );
+    expect(error?.message).toMatch(/invalid amendment/);
+    expect(pendingAmendEntries()).toHaveLength(0);
+  });
+
+  it('refuses an amendment file that is not a YAML object (list)', async () => {
+    const list = join(scratch, 'list.yaml');
+    writeFileSync(list, '- not\n- an\n- object\n');
+    const { error } = await run(
+      ['task-amend', 'T001', '--file', list, '--change-log', 'Evidence.'],
+      root,
+    );
+    expect(error?.message).toMatch(/must be a YAML object of task fields/);
+    expect(pendingAmendEntries()).toHaveLength(0);
+  });
+});
+
+describe('pitway task-amend core milestone resolution', () => {
+  it('accepts an explicitly passed milestone id, bypassing active-milestone resolution', () => {
+    const file = amendFile({ objective: 'Amended via explicit milestone id.' });
+    const view = amendTask(root, 'M001', 'T001', {
+      filePath: file,
+      changeLogEvidence: 'Explicit milestone.',
+    });
+    expect(view).toEqual({ id: 'T001', milestone: 'M001', operation: 'amend' });
+    expect(task('T001').objective).toBe('Amended via explicit milestone id.');
+  });
+
+  it('refuses when no milestone id is passed and no milestone is active', () => {
+    saveState(root, { schema_version: 1, active_milestone: null, milestones: ['M001'] });
+    const file = amendFile({ objective: 'Whatever.' });
+    expect(() =>
+      amendTask(root, undefined, 'T001', { filePath: file, changeLogEvidence: 'Evidence.' }),
+    ).toThrow(TaskAmendError);
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    expect(() =>
+      amendTask(root, undefined, 'T404', { filePath: file, changeLogEvidence: 'Evidence.' }),
+    ).toThrow(/no active milestone|T404/);
+  });
 });
 
 describe('pitway task-amend approval + journal + materialize (AC2, AC3, AC4)', () => {
@@ -392,6 +467,37 @@ describe('pitway task-amend idempotency and ambiguity (AC5)', () => {
     const { error } = await amend('T001', fields);
     expect(error?.message).toMatch(/ambiguous/i);
     expect(error?.message).toContain(operationId);
+  });
+
+  it('re-applies the write when the journal entry landed but the tasks.yaml materialization was lost (crash recovery duplicate)', async () => {
+    // Crash window between appendJournalEntry and writeMerged: the entry
+    // exists with the correct content-derived identity and payload, but the
+    // materialized write never happened. Re-running the same amendment must
+    // take the duplicate path -- no second entry, write re-applied.
+    const before = task('T001');
+    const fields = { objective: 'Crash-recovered rewording.' };
+    const baseFingerprint = JSON.stringify(before);
+    const resultFingerprint = JSON.stringify({ ...before, objective: 'Crash-recovered rewording.' });
+    const operationId = computeTaskAmendOperationId('M001', 'T001', baseFingerprint, fields);
+    appendJournalEntry(root, {
+      milestone: 'M001',
+      type: 'task_amendment',
+      operationId,
+      target: 'T001',
+      payload: {
+        changeLogEvidence: 'Evidence.',
+        fields,
+        baseFingerprint,
+        resultFingerprint,
+      },
+    });
+    // tasks.yaml still shows the pre-amendment task (the lost write).
+    expect(task('T001').objective).toBe('First task.');
+
+    const { error } = await amend('T001', fields);
+    expect(error).toBeUndefined();
+    expect(task('T001').objective).toBe('Crash-recovered rewording.');
+    expect(pendingAmendEntries('T001')).toHaveLength(1); // no duplicate entry
   });
 
   it('refuses as a conflict when a proposed amendment is not based on the current pending chain\'s tip result', async () => {

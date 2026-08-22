@@ -13,8 +13,11 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { parse } from 'yaml';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
+import { registerTaskUpdateCommand as registerTaskUpdateBare } from '../../src/cli/commands/task-update.js';
+import { hasVerifiedEvidence, updateTask, TaskUpdateError } from '../../src/core/tasks/update.js';
+import { saveState } from '../../src/state/store.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
@@ -830,6 +833,7 @@ describe('pitway task-update integrates task-verify evidence (T002/AC001)', () =
     exitCode?: number | null;
     terminationReason?: 'exited' | 'timeout' | 'signal' | 'spawn_error';
     fingerprint?: JournalTaskVerifyFingerprint;
+    typecheck?: { command: string; exitCode: number | null; evidence: string };
   } = {}): string {
     touchRelevantFile();
     const id = overrides.id ?? `tve-${Math.random().toString(36).slice(2, 10)}`;
@@ -844,6 +848,7 @@ describe('pitway task-update integrates task-verify evidence (T002/AC001)', () =
       durationMs: 500,
       terminationReason: overrides.terminationReason ?? 'exited',
       fingerprint: overrides.fingerprint ?? currentFingerprint(),
+      ...(overrides.typecheck !== undefined ? { typecheck: overrides.typecheck } : {}),
       at: new Date().toISOString(),
     });
     return id;

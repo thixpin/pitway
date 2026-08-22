@@ -272,3 +272,16 @@ items:
     resolved_at: null
     promoted_to: null
     archived_reason: null
+  - id: B015
+    title: Fix OpenCode milestone-status racing footer
+    reason: OpenCode /milestone-status does not reproduce the PitWay racing footer
+      shown by the native CLI. Preserve the footer and its progress information
+      in the OpenCode command output.
+    status: pending
+    source:
+      milestone: M024
+      task: null
+    created_at: 2026-08-22T09:47:39.059Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null

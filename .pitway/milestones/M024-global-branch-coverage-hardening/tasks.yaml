@@ -115,7 +115,7 @@ tasks:
       src/git/apply.ts. Measure per file with npx vitest run --coverage over
       this task's own test files, parsing lcov BRDA; iterate until every listed
       file clears 90/90. AC008's quality rule applies."
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - every AC004-listed file reaches >=90% branches and >=90% lines, measured
@@ -152,7 +152,15 @@ tasks:
         tests/unit/critical-path.test.ts tests/unit/dependencies.test.ts
         tests/unit/write-scope-check.test.ts
         tests/unit/parallel-eligibility.test.ts
-    result: null
+    result:
+      summary: "[truncated] y combined diff, diverged-main-tree non-clean-apply),
+        crash-window residue re-runs (branch-only cleanup-completed,
+        fully-cleaned dispatch refusal), task-status --context unknown-id
+        refusal, context-bundle defense-in-depth refusal. No production file
+        modified; no AC008 disclosures needed."
+      evidence: Tests  247 passed (247) | Start at  18:00:24 | Duration  65.18s
+        (transform 2.86s, setup 0ms, import 5.15s, tests 239.00s, environment
+        2ms)
     attempts: 1
     usage: null
   - id: T004
@@ -217,7 +225,7 @@ tasks:
       exception without expanding it. If any file still misses the bar, this
       task iterates with targeted additions in that file's owning test file only
       after a task-amend widening -- never silently."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002
