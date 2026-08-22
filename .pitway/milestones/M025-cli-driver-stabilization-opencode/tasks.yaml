@@ -103,7 +103,7 @@ tasks:
       behavior genuinely vary (B014). Keep descriptions accurate to the current
       CLI flags (verify against src/cli/commands/*.ts registrations); extend the
       asset structure tests to assert each command doc carries a usage block."
-    status: waiting
+    status: ready
     depends_on:
       - T006
       - T008
@@ -353,7 +353,7 @@ tasks:
       unknown or malformed filter values refuse by name; the command stays
       read-only. Behavioral tests cover each filter alone, combined (including a
       no-match empty result), and refusal diagnostics."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -374,7 +374,14 @@ tasks:
       strategy: command
       detail: npx vitest run tests/integration/backlog.test.ts
         tests/unit/backlog-state.test.ts
-    result: null
+    result:
+      summary: T008 backlog filters --milestone/--task added, combinable with --status
+        and --json; malformed values refuse by name, well-formed nonexistent
+        yields clean empty with filters echoed; command read-only.
+      evidence: Tests  65 passed (65) | Start at  23:02:28 | Duration  32.99s
+        (transform 376ms, setup 0ms, import 611ms, tests 32.46s, environment
+        0ms)
+    attempts: 1
     usage: null
   - id: T009
     name: Human-readable backlog renderer on the shared table module
@@ -386,7 +393,7 @@ tasks:
       terminal text (Markdown-ish formatting preserved where sensible). --json
       output is byte-unchanged; no data restructuring. Depends on T002 for the
       renderer and T008 for the settled list surface."
-    status: waiting
+    status: ready
     depends_on:
       - T002
       - T008

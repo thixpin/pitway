@@ -21,8 +21,17 @@ function renderItemHuman(item: BacklogItem): string {
   return `🔧 ${item.id} [${item.status}] ${item.title} — ${item.reason}`;
 }
 
-function renderListHuman(items: BacklogItem[]): string {
-  return items.length === 0 ? 'No backlog items recorded.' : items.map(renderItemHuman).join('\n');
+function renderListHuman(
+  items: BacklogItem[],
+  filters?: { status?: string; milestone?: string; task?: string },
+): string {
+  const parts: string[] = [];
+  if (filters?.status !== undefined) parts.push(`status=${filters.status}`);
+  if (filters?.milestone !== undefined) parts.push(`milestone=${filters.milestone}`);
+  if (filters?.task !== undefined) parts.push(`task=${filters.task}`);
+  const header = parts.length > 0 ? `Backlog (filtered: ${parts.join(', ')})` : null;
+  const body = items.length === 0 ? 'No backlog items recorded.' : items.map(renderItemHuman).join('\n');
+  return header ? `${header}\n${body}` : body;
 }
 
 function renderPromoteHuman(view: BacklogPromoteView): string {
@@ -77,16 +86,32 @@ export function registerBacklogCommand(program: Command, deps: CommandDeps = {})
 
   backlog
     .command('list')
-    .description('List backlog items, optionally filtered by status.')
+    .description('List backlog items, optionally filtered by status, milestone, or task.')
     .option('--status <status>', 'filter: pending | promoted | archived')
+    .option('--milestone <id>', 'filter: source milestone (e.g. M001)')
+    .option('--task <id>', 'filter: source task (e.g. T001)')
     .option('--json', 'output machine-readable JSON')
-    .action((options: { status?: string; json?: boolean }) => {
+    .action((options: { status?: string; milestone?: string; task?: string; json?: boolean }) => {
       const root = deps.root ?? process.cwd();
       if (options.status !== undefined && !['pending', 'promoted', 'archived'].includes(options.status)) {
         throw new Error(`backlog list --status must be pending, promoted, or archived; got ${options.status}`);
       }
-      const items = listBacklogItems(root, options.status as BacklogStatus | undefined);
-      write(renderOutput(items, { json: options.json }, renderListHuman));
+      if (options.milestone !== undefined && !/^M\d{3}$/.test(options.milestone)) {
+        throw new Error(`backlog list --milestone must match M000; got ${options.milestone}`);
+      }
+      if (options.task !== undefined && !/^T\d{3}$/.test(options.task)) {
+        throw new Error(`backlog list --task must match T000; got ${options.task}`);
+      }
+      const items = listBacklogItems(root, {
+        status: options.status as BacklogStatus | undefined,
+        milestone: options.milestone,
+        task: options.task,
+      });
+      const filters =
+        options.status !== undefined || options.milestone !== undefined || options.task !== undefined
+          ? { status: options.status, milestone: options.milestone, task: options.task }
+          : undefined;
+      write(renderOutput(items, { json: options.json }, (data) => renderListHuman(data, filters)));
     });
 
   backlog
