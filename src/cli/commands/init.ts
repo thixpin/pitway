@@ -35,6 +35,12 @@ export interface InitView {
   claudeInstalled: boolean;
   opencodeInstalled: boolean;
   rootInstructions: ApplyRootInstructionFilesResult;
+  // Repo-relative destination paths of PitWay-owned driver assets whose
+  // installed bytes differ from the shipped version: left completely
+  // untouched (never overwritten, never a refusal) and reported here for a
+  // future `pitway update` to reconcile. Additive field; empty on a clean
+  // install.
+  preservedAssets: string[];
 }
 
 export function runInit(
@@ -50,14 +56,20 @@ export function runInit(
   // alongside the default-on Claude installation; without the flag no
   // .opencode/ path is ever read or written.
   const installOpencode = options.opencode ?? false;
-  // Classified up front, alongside config/state, so every refusal is
-  // decided before anything is written — installing driver assets must
-  // never happen if the overall call is about to refuse for an unrelated
-  // reason. --no-claude skips classification and every .claude/ read
-  // entirely; the same discipline applies to .opencode/ without --opencode.
+  // Classified up front, alongside config/state, so what happens to every
+  // driver asset is decided before anything is written. --no-claude skips
+  // classification and every .claude/ read entirely; the same discipline
+  // applies to .opencode/ without --opencode.
   const classification = installClaude ? classifyClaudeAssets(root) : [];
   const opencodeClassification = installOpencode ? classifyDriverAssets(root, 'opencode') : [];
-  const conflicts = [
+  // A PitWay-owned asset whose installed bytes differ from the shipped
+  // version is PRESERVED: never overwritten, and — since the divergence may
+  // be a deliberate local edit or simply an older shipped version — never a
+  // refusal either. It is reported (human warning + preservedAssets in the
+  // view) for a future `pitway update` to reconcile. Only the paths PitWay
+  // itself ships are ever classified at all: a user's own unknown files in
+  // .claude/ or .opencode/ are never inspected, reported, or touched.
+  const preservedAssets = [
     ...classification
       .filter((c) => c.status === 'conflict')
       .map((c) => `${driverDestinationDir('claude')}/${c.asset}`),
@@ -65,18 +77,6 @@ export function runInit(
       .filter((c) => c.status === 'conflict')
       .map((c) => `${driverDestinationDir('opencode')}/${c.asset}`),
   ];
-  // Per-file, content-comparing refusal: only an actual byte conflict
-  // refuses, naming every conflicting path together (not just the first),
-  // across both drivers. A harmless partial mix (some assets absent, none
-  // differing) is no longer refused — see finish() below.
-  if (conflicts.length > 0) {
-    throw new Error(
-      'refusing to initialize: existing driver assets have conflicting content relative to the ' +
-        `pitway-managed assets shipped under src/integrations/ (will not overwrite): ${conflicts.join(
-          ', ',
-        )} — inspect manually (or skip driver asset installation via --no-claude / omitting --opencode)`,
-    );
-  }
 
   function finish(created: boolean, message: string): InitView {
     let claudeInstalled = false;
@@ -95,13 +95,10 @@ export function runInit(
         opencodeInstalled = true;
       }
     }
-    // AC004/T004: strictly after the .claude/ conflict preflight above has
-    // already passed (or been skipped via --no-claude) -- a refused
-    // Claude-asset install must never leave a partial instruction setup.
     // --no-claude still creates/preserves AGENTS.md, since it is the
     // generic agent-discovery file, not a Claude-specific asset.
     const rootInstructions = applyRootInstructionFiles(root, { includeClaudeMd: installClaude });
-    return { created, message, claudeInstalled, opencodeInstalled, rootInstructions };
+    return { created, message, claudeInstalled, opencodeInstalled, rootInstructions, preservedAssets };
   }
 
   if (config === 'missing' && state === 'missing') {
@@ -136,6 +133,14 @@ export function registerInitCommand(program: Command, deps: CommandDeps = {}): v
       const view = runInit(root, { claude: options.claude, opencode: options.opencode });
       write(renderOutput(view, { json: options.json }, (v) => `🏁 ${v.message}`));
       if (!options.json) {
+        if (view.preservedAssets.length > 0) {
+          write(
+            `⚠️  ${view.preservedAssets.length} PitWay-managed driver asset(s) differ from the shipped ` +
+              `version and were left untouched (never overwritten):\n` +
+              view.preservedAssets.map((p) => `  - ${p}`).join('\n') +
+              `\nA future \`pitway update\` will offer to reconcile these.`,
+          );
+        }
         if (view.rootInstructions.agentsMd === 'preserved') {
           write(
             `⚠️  AGENTS.md already exists with different content; left untouched. ` +

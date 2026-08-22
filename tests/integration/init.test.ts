@@ -223,42 +223,49 @@ describe('pitway init Claude Code asset installation (AC003)', () => {
     expect(statSync(join(root, '.claude', untouched)).mtimeMs).toBe(mtimeBefore);
   });
 
-  it('refuses a single conflicting command doc, naming exactly that path, writing nothing else', async () => {
+  // qc-90a293e4: a PitWay-owned asset whose bytes differ from shipped no
+  // longer refuses init -- it is preserved untouched and reported (via the
+  // human warning and the additive preservedAssets JSON field) for a
+  // future `pitway update` to reconcile. Absent assets still install in
+  // the same run; identical assets still no-op.
+  it('preserves a single differing command doc untouched, reports it, and still installs absent assets', async () => {
     await runInit(root);
     const commandDoc = listClaudeAssets().find((a) => a.startsWith('commands/'))!;
     writeFileSync(join(root, '.claude', commandDoc), 'tampered content\n');
     const absentAsset = listClaudeAssets().find((a) => a !== commandDoc)!;
     rmSync(join(root, '.claude', absentAsset));
 
-    const { error } = await runInit(root);
-    expect(error?.message).toMatch(new RegExp(commandDoc.replace('.', '\\.')));
-    expect(error?.message).not.toMatch(new RegExp(absentAsset.replace('.', '\\.')));
-    // Nothing else got written either — the refusal is atomic.
-    expect(existsSync(join(root, '.claude', absentAsset))).toBe(false);
+    const { lines, error } = await runInit(root);
+    expect(error).toBeUndefined();
+    // The differing asset is untouched, the absent one installed.
+    expect(readFileSync(join(root, '.claude', commandDoc), 'utf8')).toBe('tampered content\n');
+    expect(existsSync(join(root, '.claude', absentAsset))).toBe(true);
+    // Reported by full destination path, with the pitway update pointer.
+    const text = lines.join('\n');
+    expect(text).toContain(`.claude/${commandDoc}`);
+    expect(text).toMatch(/left untouched/);
+    expect(text).toMatch(/pitway update/);
+    expect(text).not.toContain(`.claude/${absentAsset}`);
   });
 
-  it('refuses a single conflicting skill the same way', async () => {
-    await runInit(root);
-    const skill = 'skills/debugging/SKILL.md';
-    writeFileSync(join(root, '.claude', skill), 'tampered content\n');
-
-    const { error } = await runInit(root);
-    expect(error?.message).toMatch(/skills\/debugging\/SKILL\.md/);
-  });
-
-  it('refuses two simultaneous conflicts, naming both together, not just one', async () => {
+  it('reports a differing command doc and skill together in preservedAssets (--json)', async () => {
     await runInit(root);
     const commandDoc = listClaudeAssets().find((a) => a.startsWith('commands/'))!;
     const skill = 'skills/debugging/SKILL.md';
     writeFileSync(join(root, '.claude', commandDoc), 'tampered command doc\n');
     writeFileSync(join(root, '.claude', skill), 'tampered skill\n');
 
-    const { error } = await runInit(root);
-    expect(error?.message).toMatch(new RegExp(commandDoc.replace('.', '\\.')));
-    expect(error?.message).toMatch(/skills\/debugging\/SKILL\.md/);
+    const { lines, error } = await runInit(root, ['--json']);
+    expect(error).toBeUndefined();
+    const view = JSON.parse(lines[0]!) as { preservedAssets: string[] };
+    expect(view.preservedAssets).toContain(`.claude/${commandDoc}`);
+    expect(view.preservedAssets).toContain(`.claude/${skill}`);
+    // Preserved means preserved: neither file was rewritten.
+    expect(readFileSync(join(root, '.claude', commandDoc), 'utf8')).toBe('tampered command doc\n');
+    expect(readFileSync(join(root, '.claude', skill), 'utf8')).toBe('tampered skill\n');
   });
 
-  it('a conflict alongside otherwise-absent assets writes nothing at all, including .pitway/', async () => {
+  it('a differing asset does not block a fresh .pitway/ initialization', async () => {
     await runInit(root);
     const shipped = listClaudeAssets();
     const conflicting = shipped[0]!;
@@ -268,10 +275,25 @@ describe('pitway init Claude Code asset installation (AC003)', () => {
     rmSync(join(root, '.pitway'), { recursive: true, force: true });
 
     const { error } = await runInit(root);
-    expect(error?.message).toMatch(/conflicting|inconsistent/i);
-    // Nothing else got written either — the refusal is atomic.
-    expect(existsSync(join(root, '.pitway'))).toBe(false);
-    expect(existsSync(join(root, '.claude', absent))).toBe(false);
+    expect(error).toBeUndefined();
+    expect(existsSync(join(root, '.pitway'))).toBe(true);
+    expect(existsSync(join(root, '.claude', absent))).toBe(true);
+    expect(readFileSync(join(root, '.claude', conflicting), 'utf8')).toBe('tampered content\n');
+  });
+
+  it("a user's own unknown file in .claude/ is never inspected, reported, or touched", async () => {
+    await runInit(root);
+    const userFile = join(root, '.claude', 'my-own-notes.md');
+    writeFileSync(userFile, 'user content, not a pitway asset\n');
+    const userSetting = join(root, '.claude', 'settings.json');
+    writeFileSync(userSetting, '{"theme":"dark"}\n');
+
+    const { lines, error } = await runInit(root, ['--json']);
+    expect(error).toBeUndefined();
+    const view = JSON.parse(lines[0]!) as { preservedAssets: string[] };
+    expect(view.preservedAssets).toEqual([]);
+    expect(readFileSync(userFile, 'utf8')).toBe('user content, not a pitway asset\n');
+    expect(readFileSync(userSetting, 'utf8')).toBe('{"theme":"dark"}\n');
   });
 
   // T005/AC010: the last asset-creating task in this milestone -- proves
@@ -425,26 +447,43 @@ describe('pitway init OpenCode asset installation (M023/T002, AC006)', () => {
     expect(statSync(join(root, '.opencode', untouched)).mtimeMs).toBe(mtimeBefore);
   });
 
-  it('refuses a conflicting .opencode/ asset by its full path, writing nothing at all', async () => {
+  // qc-90a293e4: same preserve-and-report semantics as .claude/ above.
+  it('preserves a differing .opencode/ asset untouched, reports it by full path, and completes init', async () => {
     await runInit(root, ['--opencode']);
     const conflicting = resolveDriverAssets('opencode').find((a) => a.startsWith('commands/'))!;
     writeFileSync(join(root, '.opencode', conflicting), 'tampered content\n');
     rmSync(join(root, '.pitway'), { recursive: true, force: true });
 
-    const { error } = await runInit(root, ['--opencode']);
-    expect(error?.message).toMatch(/conflicting/i);
-    expect(error?.message).toContain(`.opencode/${conflicting}`);
-    // The refusal is atomic -- .pitway/ was not recreated either.
-    expect(existsSync(join(root, '.pitway'))).toBe(false);
+    const { lines, error } = await runInit(root, ['--opencode', '--json']);
+    expect(error).toBeUndefined();
+    const view = JSON.parse(lines[0]!) as { preservedAssets: string[] };
+    expect(view.preservedAssets).toContain(`.opencode/${conflicting}`);
+    expect(readFileSync(join(root, '.opencode', conflicting), 'utf8')).toBe('tampered content\n');
+    // Init itself completed: .pitway/ was recreated.
+    expect(existsSync(join(root, '.pitway'))).toBe(true);
   });
 
-  it('a conflicting .opencode/ asset never refuses a default init that omits --opencode', async () => {
+  it('a differing .opencode/ asset is never inspected or reported by a default init that omits --opencode', async () => {
     await runInit(root, ['--opencode']);
     const conflicting = resolveDriverAssets('opencode')[0]!;
     writeFileSync(join(root, '.opencode', conflicting), 'tampered content\n');
 
-    const { error } = await runInit(root);
+    const { lines, error } = await runInit(root, ['--json']);
     expect(error).toBeUndefined();
+    const view = JSON.parse(lines[0]!) as { preservedAssets: string[] };
+    expect(view.preservedAssets).toEqual([]);
+  });
+
+  it("a user's own unknown file in .opencode/ is never inspected, reported, or touched", async () => {
+    await runInit(root, ['--opencode']);
+    const userFile = join(root, '.opencode', 'my-own-config.md');
+    writeFileSync(userFile, 'user content, not a pitway asset\n');
+
+    const { lines, error } = await runInit(root, ['--opencode', '--json']);
+    expect(error).toBeUndefined();
+    const view = JSON.parse(lines[0]!) as { preservedAssets: string[] };
+    expect(view.preservedAssets).toEqual([]);
+    expect(readFileSync(userFile, 'utf8')).toBe('user content, not a pitway asset\n');
   });
 });
 
@@ -519,17 +558,21 @@ describe('pitway init root agent-discovery files (AC004)', () => {
     expect(lines.join('\n')).toContain(AGENTS_MD_CONTENT);
   });
 
-  it('a simulated .claude/ conflict refuses the whole init with neither root file created (preflight ordering)', async () => {
+  // qc-90a293e4: a differing PitWay-owned asset no longer refuses init, so
+  // it no longer blocks root-file creation either -- the preserved asset
+  // is reported, and both root files are still created.
+  it('a differing .claude/ asset does not block root file creation', async () => {
     await runInit(root);
     const shipped = listClaudeAssets();
     writeFileSync(join(root, '.claude', shipped[0]!), 'tampered\n');
     rmSync(join(root, 'AGENTS.md'));
     rmSync(join(root, 'CLAUDE.md'));
 
-    const { error } = await runInit(root);
-    expect(error).toBeDefined();
-    expect(existsSync(join(root, 'AGENTS.md'))).toBe(false);
-    expect(existsSync(join(root, 'CLAUDE.md'))).toBe(false);
+    const { lines, error } = await runInit(root);
+    expect(error).toBeUndefined();
+    expect(existsSync(join(root, 'AGENTS.md'))).toBe(true);
+    expect(existsSync(join(root, 'CLAUDE.md'))).toBe(true);
+    expect(lines.join('\n')).toContain(`.claude/${shipped[0]!}`);
   });
 
   it('--no-claude creates/preserves AGENTS.md only, never touching CLAUDE.md or .claude/', async () => {
