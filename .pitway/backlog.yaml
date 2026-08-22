@@ -248,13 +248,27 @@ items:
   - id: B013
     title: Fix OpenCode milestone-status --report argument handling
     reason: OpenCode /milestone-status currently does not pass or invoke the
-      --report option correctly. Investigate the OpenCode and other driver's command
-      adapter/template and preserve the report argument.
+      --report option correctly. Investigate the OpenCode and other driver's
+      command adapter/template and preserve the report argument.
     status: pending
     source:
       milestone: M024
       task: null
     created_at: 2026-08-22T09:27:47.022Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B014
+    title: Standardize CLI command instructions with direct usage examples
+    reason: Update all PitWay command instructions to show the normal command
+      invocation and common options directly; use --help only when available
+      flags or behavior are unclear, reducing unnecessary help lookups and agent
+      steps.
+    status: pending
+    source:
+      milestone: M024
+      task: null
+    created_at: 2026-08-22T09:46:09.886Z
     resolved_at: null
     promoted_to: null
     archived_reason: null

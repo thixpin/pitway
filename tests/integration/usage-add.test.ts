@@ -2,7 +2,7 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:f
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerUsageAddCommand } from '../../src/cli/commands/usage-add.js';
 import { loadUsage, saveUsage } from '../../src/state/store.js';
@@ -213,5 +213,50 @@ describe('pitway usage-add', () => {
     expect(loadUsage(root, 'M001').planning).toEqual({ attempts: 3, total_tokens: 60 });
     expect(commitCount(root)).toBe(1);
     expect(pendingUsageEntries()).toHaveLength(3);
+  });
+});
+
+// The default CommandDeps fallbacks (deps.write ?? console.log,
+// deps.root ?? process.cwd()) are only reached when a caller registers the
+// command with no overrides -- the real shape a bare `pitway usage-add`
+// invocation takes outside this test file's harness.
+//
+// Coverage disclosure (AC008): renderUsageAddHuman's `view.usage === null`
+// branch is unreachable in-process — recordUsage always returns the
+// non-null accumulated recording (accumulate() returns NonNullable<Usage>),
+// and the renderer is module-private, fed only by that return value.
+describe('pitway usage-add default CommandDeps fallbacks', () => {
+  it('falls back to console.log and process.cwd() when no overrides are given', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerUsageAddCommand(program);
+      await program.parseAsync([
+        'node',
+        'pitway',
+        'usage-add',
+        'M001',
+        '--category',
+        'planning',
+        '--usage',
+        '{"total_tokens":1200}',
+      ]);
+    } catch (error) {
+      caught = error;
+    } finally {
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+
+    expect(caught).toBeUndefined();
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0]?.[0])).toMatch(
+      /📊 Recorded pending planning usage for M001 \(attempt 1, 1200 total tokens\)/,
+    );
   });
 });
