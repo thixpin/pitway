@@ -15,7 +15,7 @@ tasks:
       disclosed incompatibility is found (name it in evidence if so). Ensure
       stray-override guard passes (every file in codex/ either shadows common/
       or is in the declared driver-specific class commands/*.md).
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - DRIVERS includes codex and DRIVER_DESTINATION_DIRS maps codex to .codex
@@ -59,11 +59,17 @@ tasks:
       - src/integrations/codex/commands/verify.md
       - src/integrations/codex/commands/write-ms-artifacts.md
       - tests/unit/codex-assets.test.ts
+      - tests/unit/claude-assets.test.ts
     verification:
       strategy: command
       detail: npx vitest run tests/unit/codex-assets.test.ts
         tests/unit/claude-assets.test.ts
-    result: null
+    result:
+      summary: Codex driver registered and 32 command docs shipped; codex-assets tests
+        pass, claude-assets hash fixed
+      evidence: Tests  204 passed (204) | Start at  01:24:30 | Duration  247ms
+        (transform 68ms, setup 0ms, import 116ms, tests 183ms, environment 0ms)
+    attempts: 1
     usage: null
   - id: T002
     name: Init --codex, coexistence, and managed paths
@@ -84,7 +90,7 @@ tasks:
       .claude/skills and .opencode/skills. Note: src/git/baseline.ts requires no
       change (generic extraExpectedPaths param); skill gate lives in
       src/state/claude-assets.ts, not src/core/tasks/skills.ts."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
