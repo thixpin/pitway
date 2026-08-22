@@ -368,13 +368,31 @@ describe('driver-then-common resolution equivalence (durable invariant)', () => 
     }
   });
 
-  it('tolerates a missing driver directory, resolving entirely to common/ (the opencode case today)', () => {
-    // opencode/ does not exist yet in this milestone -- AC002's hardcoded
-    // two-driver list must treat a missing driver directory as "no
-    // overrides", not an error.
-    const opencodeAssets = resolveDriverAssets('opencode');
+  it('opencode overrides union common fallbacks equals the resolved opencode set', () => {
+    // M023/T002 ripple (approved task-amend): T001 wrote this case as the
+    // missing-driver-directory tolerance check, valid only while opencode/
+    // did not exist. Now that T002 ships src/integrations/opencode/, the
+    // assertion becomes the same union equivalence the claude test above
+    // proves; missing-directory tolerance itself stays covered by the
+    // fixture-based cases below.
+    const opencodeDir = fileURLToPath(new URL('../../src/integrations/opencode/', import.meta.url));
     const commonDir = fileURLToPath(new URL('../../src/integrations/common/', import.meta.url));
-    expect(opencodeAssets).toEqual(listMarkdownFiles(commonDir));
+    const union = [
+      ...new Set([...listMarkdownFiles(opencodeDir), ...listMarkdownFiles(commonDir)]),
+    ].sort();
+    expect(resolveDriverAssets('opencode')).toEqual(union);
+  });
+
+  it('tolerates a missing driver directory as no-overrides (fixture proof)', () => {
+    // AC002: the hardcoded driver list may name a driver whose directory
+    // does not exist -- resolution must treat it as "no overrides", never
+    // an error. Proven against fixtures now that the real opencode/
+    // directory exists (T002).
+    const commonDir = join(root, 'common');
+    mkdirSync(commonDir, { recursive: true });
+    writeFileSync(join(commonDir, 'protocol-demo.md'), 'common only\n');
+    const missingDriverDir = join(root, 'no-such-driver');
+    expect(resolveAssetsFromDirs(missingDriverDir, commonDir)).toEqual(['protocol-demo.md']);
   });
 
   it('driver wins on a relative-path collision (proven against fixture directories)', () => {

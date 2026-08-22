@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { listClaudeAssets } from '../../src/state/claude-assets.js';
-import { resolveDriverAssetSource } from '../../src/state/driver-assets.js';
+import { resolveDriverAssetSource, resolveDriverAssets } from '../../src/state/driver-assets.js';
 import { listSafeManagedDirtyPaths } from '../../src/state/managed-init-paths.js';
 import { AGENTS_MD_CONTENT, CLAUDE_MD_CONTENT } from '../../src/state/root-instructions.js';
 
@@ -74,5 +74,48 @@ describe('listSafeManagedDirtyPaths', () => {
     }
     expect(result).toContain('AGENTS.md');
     expect(result).toContain('CLAUDE.md');
+  });
+
+  // M023/T002 (AC007): installed .opencode/ managed paths are recognized
+  // exactly like .claude/'s -- so milestone-confirm/quick-change create do
+  // not refuse on a freshly `pitway init --opencode`'d repo's own
+  // byte-identical OpenCode assets.
+  describe('opencode managed paths (M023/T002, AC007)', () => {
+    function writeOpencodeAsset(asset: string, content: string | Buffer): void {
+      const destination = join(root, '.opencode', asset);
+      mkdirSync(dirname(destination), { recursive: true });
+      writeFileSync(destination, content);
+    }
+
+    it('a fully absent tree includes every .opencode/ managed asset path (harmless-absent semantics)', () => {
+      const result = listSafeManagedDirtyPaths(root);
+      for (const asset of resolveDriverAssets('opencode')) {
+        expect(result).toContain(`.opencode/${asset}`);
+      }
+    });
+
+    it('includes a byte-identical installed .opencode/ asset and excludes a conflicting one', () => {
+      const [identicalAsset, conflictAsset] = resolveDriverAssets('opencode');
+      writeOpencodeAsset(
+        identicalAsset!,
+        readFileSync(resolveDriverAssetSource('opencode', identicalAsset!)),
+      );
+      writeOpencodeAsset(conflictAsset!, 'tampered\n');
+
+      const result = listSafeManagedDirtyPaths(root);
+      expect(result).toContain(`.opencode/${identicalAsset}`);
+      expect(result).not.toContain(`.opencode/${conflictAsset}`);
+    });
+
+    it('a .opencode/ conflict never disturbs the .claude/ entries, and vice versa', () => {
+      const [claudeAsset] = listClaudeAssets();
+      const [opencodeAsset] = resolveDriverAssets('opencode');
+      writeClaudeAsset(claudeAsset!, shippedContent(claudeAsset!));
+      writeOpencodeAsset(opencodeAsset!, 'tampered\n');
+
+      const result = listSafeManagedDirtyPaths(root);
+      expect(result).toContain(`.claude/${claudeAsset}`);
+      expect(result).not.toContain(`.opencode/${opencodeAsset}`);
+    });
   });
 });

@@ -78,7 +78,8 @@ describe('build produces a real, spawnable dist/ binary (M008/T001/AC001)', () =
 
   // M023/T001: both source tiers ship -- dist/state/driver-assets.js
   // resolves from dist/integrations/<driver>/ AND dist/integrations/common/.
-  it.each(['claude', 'common'])(
+  // M023/T002: the opencode driver directory rides the same whole-tree copy.
+  it.each(['claude', 'common', 'opencode'])(
     'copies every src/integrations/%s/ asset to dist/integrations/ under the same relative layout',
     (tier) => {
       const srcAssetsDir = join(repoRoot, 'src', 'integrations', tier);
@@ -176,12 +177,49 @@ describe('build produces a real, spawnable dist/ binary (M008/T001/AC001)', () =
         cwd: tempRepo,
         stdio: 'pipe',
       }).toString();
-      const view = JSON.parse(output) as { claudeInstalled: boolean };
+      const view = JSON.parse(output) as { claudeInstalled: boolean; opencodeInstalled: boolean };
       expect(view.claudeInstalled).toBe(true);
+      // M023/T002: OpenCode is opt-in -- the default init never touches it.
+      expect(view.opencodeInstalled).toBe(false);
+      expect(existsSync(join(tempRepo, '.opencode'))).toBe(false);
 
       const installedAsset = join(tempRepo, '.claude', 'protocol-driver.md');
       expect(existsSync(installedAsset)).toBe(true);
       expect(statSync(installedAsset).isFile()).toBe(true);
+    });
+
+    // M023/T002 (AC006): the OpenCode opt-in round trip, in its own fresh
+    // temp repo so it never depends on the default-init test above.
+    it('installs the OpenCode assets via a real spawned `init --opencode`', () => {
+      const opencodeRepo = mkdtempSync(join(tmpdir(), 'pitway-build-bin-opencode-'));
+      try {
+        git(['init', '-q'], opencodeRepo);
+        git(['config', 'user.email', 'test@example.com'], opencodeRepo);
+        git(['config', 'user.name', 'Test'], opencodeRepo);
+
+        const output = execFileSync('node', [distEntry, 'init', '--opencode', '--json'], {
+          cwd: opencodeRepo,
+          stdio: 'pipe',
+        }).toString();
+        const view = JSON.parse(output) as { claudeInstalled: boolean; opencodeInstalled: boolean };
+        expect(view.claudeInstalled).toBe(true);
+        expect(view.opencodeInstalled).toBe(true);
+
+        // AC006's explicit destination layout, resolved from the real
+        // compiled dist/ assets: root-level protocol doc, command doc,
+        // and skill.
+        for (const path of [
+          join('.opencode', 'protocol-driver.md'),
+          join('.opencode', 'commands', 'milestone-status.md'),
+          join('.opencode', 'skills', 'debugging', 'SKILL.md'),
+        ]) {
+          const installed = join(opencodeRepo, path);
+          expect(existsSync(installed)).toBe(true);
+          expect(statSync(installed).isFile()).toBe(true);
+        }
+      } finally {
+        rmSync(opencodeRepo, { recursive: true, force: true });
+      }
     });
   });
 

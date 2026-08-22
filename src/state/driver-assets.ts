@@ -1,5 +1,5 @@
-import { existsSync, readdirSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // M023/T001/AC002: driver-then-common asset resolution. Text assets ship in
@@ -76,4 +76,74 @@ export function resolveDriverAssets(driver: Driver): string[] {
 // Absolute source path for one resolved asset of one driver.
 export function resolveDriverAssetSource(driver: Driver, asset: string): string {
   return resolveAssetSourceFromDirs(driverAssetsDir(driver), commonAssetsDir(), asset);
+}
+
+// M023/T002/AC006: each driver's repo-relative installation directory. The
+// destination layout is identical for both drivers -- <dir>/<relativePath>
+// exactly mirrors the resolved source set's relative layout, so skills land
+// at <dir>/skills/<name>/SKILL.md, commands at <dir>/commands/<name>.md,
+// and the protocol docs at <dir>/<name>.md (root-level).
+const DRIVER_DESTINATION_DIRS: Record<Driver, string> = {
+  claude: '.claude',
+  opencode: '.opencode',
+};
+
+export function driverDestinationDir(driver: Driver): string {
+  return DRIVER_DESTINATION_DIRS[driver];
+}
+
+// Repo-relative destination paths for every currently shipped asset of one
+// driver (e.g. ".opencode/protocol-driver.md") -- the single authoritative
+// source for what "a managed driver asset path" means.
+export function listDriverAssetDestinations(driver: Driver): string[] {
+  return resolveDriverAssets(driver).map((asset) => `${driverDestinationDir(driver)}/${asset}`);
+}
+
+export interface DriverAssetClassification {
+  asset: string;
+  status: 'absent' | 'identical' | 'conflict';
+}
+
+// Classifies every currently shipped asset of one driver against
+// <root>/<destinationDir>/<asset>: the one and only place in the codebase
+// that compares installed driver-asset bytes. 'absent' when the destination
+// file does not exist yet; 'identical' when it exists and its bytes exactly
+// equal the resolved shipped source (a real content comparison, never
+// mtime/size); 'conflict' when it exists with different bytes.
+//
+// Only the pitway-managed asset paths are inspected. The destination
+// directory is shared space -- a developer's own driver configuration
+// (settings, unrelated commands/skills) may already live there and is never
+// touched or considered by this classification.
+export function classifyDriverAssets(root: string, driver: Driver): DriverAssetClassification[] {
+  const destDir = join(root, driverDestinationDir(driver));
+  return resolveDriverAssets(driver).map((asset) => {
+    const destination = join(destDir, asset);
+    if (!existsSync(destination)) {
+      return { asset, status: 'absent' };
+    }
+    const shipped = readFileSync(resolveDriverAssetSource(driver, asset));
+    const installed = readFileSync(destination);
+    return { asset, status: shipped.equals(installed) ? 'identical' : 'conflict' };
+  });
+}
+
+// Installs the given subset of one driver's currently shipped .md assets
+// into <root>/<destinationDir>/, mirroring the resolved source set's
+// relative layout exactly. Defaults to the driver's full shipped set;
+// init.ts passes exactly the classified-'absent' subset so an 'identical'
+// asset is never rewritten. Assets install verbatim, never generated or
+// transformed.
+export function installDriverAssets(
+  root: string,
+  driver: Driver,
+  assets: string[] = resolveDriverAssets(driver),
+): string[] {
+  const destDir = join(root, driverDestinationDir(driver));
+  for (const asset of assets) {
+    const destination = join(destDir, asset);
+    mkdirSync(dirname(destination), { recursive: true });
+    writeFileSync(destination, readFileSync(resolveDriverAssetSource(driver, asset)));
+  }
+  return assets;
 }

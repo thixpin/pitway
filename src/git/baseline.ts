@@ -26,7 +26,9 @@ export interface BaselineCommitOptions {
 //
 // `extraExpectedPaths` (M006 hotfix): exact repo-relative file paths beyond
 // `.pitway/` that this baseline may also cover -- e.g. init-installed
-// Claude assets (src/state/claude-assets.ts's listClaudeAssetDestinations).
+// driver assets, .claude/ and .opencode/ alike (resolved content-aware by
+// src/state/managed-init-paths.ts's listSafeManagedDirtyPaths over
+// driver-assets.ts's hardcoded driver list, M023/T002).
 // This module has zero knowledge of what those paths are or represent; the
 // Core-layer caller resolves the exact managed set and passes it in, the
 // same agent-agnostic-boundary pattern already used for milestoneDir above.

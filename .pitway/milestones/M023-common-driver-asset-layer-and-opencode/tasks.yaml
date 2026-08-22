@@ -136,7 +136,7 @@ tasks:
       .opencode/ managed paths, so milestone-confirm/quick-change create don't
       refuse on a freshly-installed OpenCode asset set. The resolution wiring
       lives in src/state/driver-assets.ts (in scope here too)."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -153,6 +153,8 @@ tasks:
       - milestone-confirm/quick-change create do not refuse on a freshly
         pitway-init --opencode'd repo's own managed .opencode/ paths
     write_scope:
+      - src/cli/commands/init.ts
+      - src/git/baseline.ts
       - src/integrations/opencode/commands/auto-run.md
       - src/integrations/opencode/commands/backlog.md
       - src/integrations/opencode/commands/milestone-add.md
@@ -185,22 +187,28 @@ tasks:
       - src/integrations/opencode/commands/verification-repair.md
       - src/integrations/opencode/commands/verify.md
       - src/integrations/opencode/commands/write-ms-artifacts.md
-      - src/state/driver-assets.ts
       - src/state/claude-assets.ts
-      - src/cli/commands/init.ts
-      - src/git/baseline.ts
+      - src/state/driver-assets.ts
       - src/state/managed-init-paths.ts
-      - tests/unit/opencode-assets.test.ts
-      - tests/integration/init.test.ts
       - tests/integration/build-bin.test.ts
+      - tests/integration/init.test.ts
+      - tests/unit/claude-assets.test.ts
       - tests/unit/managed-init-paths.test.ts
+      - tests/unit/opencode-assets.test.ts
     verification:
       strategy: command
       detail: npx vitest run tests/unit/opencode-assets.test.ts
         tests/integration/init.test.ts tests/integration/build-bin.test.ts
         tests/unit/managed-init-paths.test.ts
-    result: null
-    usage: null
+    result:
+      summary: OpenCode driver shipped -- 32 command docs in OpenCode's own verified
+        convention, opt-in pitway init --opencode, .opencode/ managed-path
+        git-safety recognition. No skill/protocol-doc overrides needed.
+      evidence: Tests  136 passed (136) | Start at  11:37:07 | Duration  6.39s
+        (transform 504ms, setup 0ms, import 739ms, tests 8.75s, environment 0ms)
+    attempts: 1
+    usage:
+      total_tokens: 123263
   - id: T003
     name: Cross-driver structural verification and dogfood disclosure
     objective: Write a real end-to-end structural test proving every logical asset
@@ -221,7 +229,7 @@ tasks:
       recording the required_skills gate's .claude/-only limitation (AC009) as a
       disclosed, unaddressed gap for a future milestone to pick up if it ever
       becomes load-bearing.
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002

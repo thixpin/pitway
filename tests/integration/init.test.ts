@@ -16,7 +16,7 @@ import { parse } from 'yaml';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { listClaudeAssets } from '../../src/state/claude-assets.js';
-import { resolveDriverAssetSource } from '../../src/state/driver-assets.js';
+import { resolveDriverAssetSource, resolveDriverAssets } from '../../src/state/driver-assets.js';
 import { AGENTS_MD_CONTENT, CLAUDE_MD_CONTENT } from '../../src/state/root-instructions.js';
 
 function git(args: string[], cwd: string): void {
@@ -341,6 +341,110 @@ describe('pitway init Claude Code asset installation (AC003)', () => {
       '{"unrelated": true}\n',
     );
     expect(listFilesRecursive(join(root, '.claude'))).toContain('settings.json');
+  });
+});
+
+// M023/T002 (AC005, AC006): opt-in OpenCode asset installation into
+// .opencode/, additive alongside the default-on Claude installation, with
+// the same absent/identical/conflict semantics.
+describe('pitway init OpenCode asset installation (M023/T002, AC006)', () => {
+  it('default init never touches .opencode/ at all', async () => {
+    const { error } = await runInit(root);
+    expect(error).toBeUndefined();
+    expect(existsSync(join(root, '.opencode'))).toBe(false);
+  });
+
+  it('--opencode installs every resolved opencode asset into .opencode/, verbatim, alongside .claude/', async () => {
+    const { error } = await runInit(root, ['--opencode']);
+    expect(error).toBeUndefined();
+    const resolved = resolveDriverAssets('opencode');
+    expect(resolved.length).toBeGreaterThan(0);
+    const installed = listFilesRecursive(join(root, '.opencode'));
+    expect(installed).toEqual(resolved.slice().sort());
+    // AC006's explicit destinations: commands, skills, root-level protocol docs.
+    expect(installed).toContain(join('commands', 'milestone-status.md'));
+    expect(installed).toContain(join('skills', 'debugging', 'SKILL.md'));
+    expect(installed).toContain('protocol-driver.md');
+    // Content is copied verbatim from the resolved source, per asset.
+    for (const asset of resolved) {
+      expect(readFileSync(join(root, '.opencode', asset), 'utf8')).toBe(
+        readFileSync(resolveDriverAssetSource('opencode', asset), 'utf8'),
+      );
+    }
+    // Additive: the default Claude installation still happened too.
+    expect(listFilesRecursive(join(root, '.claude'))).toEqual(listClaudeAssets().slice().sort());
+  });
+
+  it('--opencode --no-claude installs .opencode/ only, never .claude/ or CLAUDE.md', async () => {
+    const { error } = await runInit(root, ['--opencode', '--no-claude']);
+    expect(error).toBeUndefined();
+    expect(existsSync(join(root, '.opencode', 'protocol-driver.md'))).toBe(true);
+    expect(existsSync(join(root, '.claude'))).toBe(false);
+    expect(existsSync(join(root, 'CLAUDE.md'))).toBe(false);
+    expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toBe(AGENTS_MD_CONTENT);
+  });
+
+  it('the --json view reports opencodeInstalled, mirroring claudeInstalled', async () => {
+    const first = await runInit(root, ['--opencode', '--json']);
+    expect(first.error).toBeUndefined();
+    const view = JSON.parse(first.lines[0]!) as { claudeInstalled: boolean; opencodeInstalled: boolean };
+    expect(view.claudeInstalled).toBe(true);
+    expect(view.opencodeInstalled).toBe(true);
+    // A fully installed rerun reports false for both -- nothing was written.
+    const rerun = await runInit(root, ['--opencode', '--json']);
+    expect(rerun.error).toBeUndefined();
+    const rerunView = JSON.parse(rerun.lines[0]!) as {
+      claudeInstalled: boolean;
+      opencodeInstalled: boolean;
+    };
+    expect(rerunView.claudeInstalled).toBe(false);
+    expect(rerunView.opencodeInstalled).toBe(false);
+  });
+
+  it('a default (flagless) rerun after --opencode leaves the installed .opencode/ untouched', async () => {
+    await runInit(root, ['--opencode']);
+    const before = listFilesRecursive(join(root, '.opencode'));
+    const mtimeBefore = statSync(join(root, '.opencode', 'protocol-driver.md')).mtimeMs;
+    const { error } = await runInit(root);
+    expect(error).toBeUndefined();
+    expect(listFilesRecursive(join(root, '.opencode'))).toEqual(before);
+    expect(statSync(join(root, '.opencode', 'protocol-driver.md')).mtimeMs).toBe(mtimeBefore);
+  });
+
+  it('a partial-but-non-conflicting .opencode/ state installs only the missing assets cleanly', async () => {
+    await runInit(root, ['--opencode']);
+    const resolved = resolveDriverAssets('opencode');
+    const removed = resolved[0]!;
+    const untouched = resolved[1]!;
+    rmSync(join(root, '.opencode', removed));
+    const mtimeBefore = statSync(join(root, '.opencode', untouched)).mtimeMs;
+
+    const { error } = await runInit(root, ['--opencode']);
+    expect(error).toBeUndefined();
+    expect(existsSync(join(root, '.opencode', removed))).toBe(true);
+    expect(statSync(join(root, '.opencode', untouched)).mtimeMs).toBe(mtimeBefore);
+  });
+
+  it('refuses a conflicting .opencode/ asset by its full path, writing nothing at all', async () => {
+    await runInit(root, ['--opencode']);
+    const conflicting = resolveDriverAssets('opencode').find((a) => a.startsWith('commands/'))!;
+    writeFileSync(join(root, '.opencode', conflicting), 'tampered content\n');
+    rmSync(join(root, '.pitway'), { recursive: true, force: true });
+
+    const { error } = await runInit(root, ['--opencode']);
+    expect(error?.message).toMatch(/conflicting/i);
+    expect(error?.message).toContain(`.opencode/${conflicting}`);
+    // The refusal is atomic -- .pitway/ was not recreated either.
+    expect(existsSync(join(root, '.pitway'))).toBe(false);
+  });
+
+  it('a conflicting .opencode/ asset never refuses a default init that omits --opencode', async () => {
+    await runInit(root, ['--opencode']);
+    const conflicting = resolveDriverAssets('opencode')[0]!;
+    writeFileSync(join(root, '.opencode', conflicting), 'tampered content\n');
+
+    const { error } = await runInit(root);
+    expect(error).toBeUndefined();
   });
 });
 

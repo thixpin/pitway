@@ -1,0 +1,17 @@
+---
+description: "PitWay: Show a task's status, or its minimal execution context"
+---
+
+# task-status
+
+Two distinct uses, gated by `--context`:
+
+- Without it: a quick look at one task's status, its dependencies, and its
+  recorded result — useful mid-conversation without pulling the full
+  dispatch bundle.
+- With `--context --json`: produces the minimal task-context bundle that
+  goes to a dispatched worker — the one and only source of that bundle. See
+  `../dispatch.md` for where this fits in the dispatch sequence and exactly
+  what "minimal" means here.
+
+See `../protocol-driver.md`. Run `pitway task-status --help` for flags.

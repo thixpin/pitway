@@ -1,6 +1,12 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { resolveDriverAssets, resolveDriverAssetSource } from './driver-assets.js';
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  classifyDriverAssets,
+  installDriverAssets,
+  listDriverAssetDestinations,
+  resolveDriverAssets,
+  type DriverAssetClassification,
+} from './driver-assets.js';
 
 // M023/T001: the Claude Code asset surface. The shipped sources now live in
 // two tiers -- src/integrations/common/ (driver-agnostic skills and protocol
@@ -25,36 +31,17 @@ export function listClaudeAssets(): string[] {
 // this list; a later task's new assets are covered automatically because
 // this derives from listClaudeAssets(), not a separate manifest.
 export function listClaudeAssetDestinations(): string[] {
-  return listClaudeAssets().map((asset) => `.claude/${asset}`);
+  return listDriverAssetDestinations('claude');
 }
 
-export interface ClaudeAssetClassification {
-  asset: string;
-  status: 'absent' | 'identical' | 'conflict';
-}
+export type ClaudeAssetClassification = DriverAssetClassification;
 
-// Classifies every currently shipped asset against <root>/.claude/<asset>:
-// the one and only place in the codebase that compares installed .claude/
-// asset bytes. 'absent' when the destination file does not exist yet;
-// 'identical' when it exists and its bytes exactly equal the shipped
-// source (a real content comparison, never mtime/size); 'conflict' when it
-// exists with different bytes.
-//
-// Only the pitway-managed asset paths are inspected. .claude/ is shared
-// space -- a developer's own Claude Code configuration (settings.json,
-// skills/, unrelated commands) may already live there and is never
-// touched or considered by this classification.
+// Classifies every currently shipped asset against <root>/.claude/<asset>.
+// M023/T002: the byte-comparison itself now lives once in driver-assets.ts's
+// classifyDriverAssets, shared with the opencode driver; this wrapper keeps
+// its pre-M023 name and signature.
 export function classifyClaudeAssets(root: string): ClaudeAssetClassification[] {
-  const claudeDir = join(root, '.claude');
-  return listClaudeAssets().map((asset) => {
-    const destination = join(claudeDir, asset);
-    if (!existsSync(destination)) {
-      return { asset, status: 'absent' };
-    }
-    const shipped = readFileSync(resolveDriverAssetSource('claude', asset));
-    const installed = readFileSync(destination);
-    return { asset, status: shipped.equals(installed) ? 'identical' : 'conflict' };
-  });
+  return classifyDriverAssets(root, 'claude');
 }
 
 // Installs the given subset of currently shipped .md assets into
@@ -62,15 +49,9 @@ export function classifyClaudeAssets(root: string): ClaudeAssetClassification[] 
 // exactly (e.g. commands/milestone-add.md -> .claude/commands/milestone-add.md).
 // Defaults to the full shipped set for backward-compatible callers; init.ts
 // passes exactly the classified-'absent' subset so an 'identical' asset is
-// never rewritten.
+// never rewritten. Delegates to driver-assets.ts's shared installer.
 export function installClaudeAssets(root: string, assets: string[] = listClaudeAssets()): string[] {
-  const claudeDir = join(root, '.claude');
-  for (const asset of assets) {
-    const destination = join(claudeDir, asset);
-    mkdirSync(dirname(destination), { recursive: true });
-    writeFileSync(destination, readFileSync(resolveDriverAssetSource('claude', asset)));
-  }
-  return assets;
+  return installDriverAssets(root, 'claude', assets);
 }
 
 // AC003/T003: the one and only place in the codebase that reads

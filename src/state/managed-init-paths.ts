@@ -1,4 +1,4 @@
-import { classifyClaudeAssets } from './claude-assets.js';
+import { DRIVERS, classifyDriverAssets, driverDestinationDir } from './driver-assets.js';
 import { classifyRootInstructionFiles } from './root-instructions.js';
 
 // AC005/T005: the single shared mechanism that closes two real,
@@ -6,7 +6,11 @@ import { classifyRootInstructionFiles } from './root-instructions.js';
 // checks, and milestone-confirm's own baseline staging for .claude/
 // assets -- never a duplicated hardcoded path list.
 //
-// Composes classifyClaudeAssets and classifyRootInstructionFiles, filters
+// Composes classifyDriverAssets (M023/T002: over the whole hardcoded driver
+// list, so a freshly `pitway init --opencode`'d repo's byte-identical
+// .opencode/ assets are recognized exactly like .claude/'s -- an entirely
+// absent driver contributes only harmless 'absent' entries) and
+// classifyRootInstructionFiles, filters
 // OUT every entry classified 'conflict' from both (an 'absent' entry is
 // harmless to include -- it is never actually dirty), and unconditionally
 // unions in the two literal paths '.pitway/config.yaml' and
@@ -19,11 +23,13 @@ import { classifyRootInstructionFiles } from './root-instructions.js';
 // clean, so neither can reappear here as leftover dirt from a later,
 // legitimate edit.
 export function listSafeManagedDirtyPaths(root: string): string[] {
-  const claudeAssetPaths = classifyClaudeAssets(root)
-    .filter((c) => c.status !== 'conflict')
-    .map((c) => `.claude/${c.asset}`);
+  const driverAssetPaths = DRIVERS.flatMap((driver) =>
+    classifyDriverAssets(root, driver)
+      .filter((c) => c.status !== 'conflict')
+      .map((c) => `${driverDestinationDir(driver)}/${c.asset}`),
+  );
   const rootInstructionPaths = classifyRootInstructionFiles(root)
     .filter((c) => c.status !== 'conflict')
     .map((c) => c.file);
-  return ['.pitway/config.yaml', '.pitway/state.yaml', ...claudeAssetPaths, ...rootInstructionPaths];
+  return ['.pitway/config.yaml', '.pitway/state.yaml', ...driverAssetPaths, ...rootInstructionPaths];
 }
