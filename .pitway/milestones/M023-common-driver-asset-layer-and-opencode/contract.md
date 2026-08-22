@@ -2,7 +2,7 @@
 schema_version: 1
 id: M023
 title: Common Driver Asset Layer and OpenCode Integration
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-22T03:54:04Z
 verification_approved_hash: sha256:bf89db057119cf7de651f394f3df3221dd24cdd2255d28c150ac8384a4191453
