@@ -345,7 +345,10 @@ items:
     created_at: 2026-08-22T13:36:39.751Z
     resolved_at: 2026-08-22T17:23:55Z
     promoted_to: null
-    archived_reason: "Investigated 2026-08-22: already true multi-select (src/cli/review-prompt.ts) — verified via tests/integration/milestone-review-interactive.test.ts (27 tests) — no code change; closing as implemented."
+    archived_reason: "Investigated 2026-08-22: already true multi-select
+      (src/cli/review-prompt.ts) — verified via
+      tests/integration/milestone-review-interactive.test.ts (27 tests) — no
+      code change; closing as implemented."
   - id: B019
     title: N/A token usage — dispatched tasks complete without --usage
     reason: "Investigation 2026-08-22 (M025 execution, T002/T006): dispatched
@@ -363,7 +366,9 @@ items:
     created_at: 2026-08-22T23:58:00.000Z
     resolved_at: 2026-08-22T17:28:24Z
     promoted_to: null
-    archived_reason: "Resolved via quick-change qc-f0f57dfa (commit d55d9b8) — actionable warning + usage-add fallback documented; dispatched tasks now forward --usage per dispatch.md."
+    archived_reason: Resolved via quick-change qc-f0f57dfa (commit d55d9b8) —
+      actionable warning + usage-add fallback documented; dispatched tasks now
+      forward --usage per dispatch.md.
   - id: B020
     title: Enforce TDD discipline for Quick Changes (RED→GREEN)
     reason: "Origin: pitway init --reconfigure Quick Change (qc-e3c3c525). Quick
@@ -373,16 +378,18 @@ items:
       enforceable for behavior-changing Quick Changes: (1) define behavior, (2)
       write failing tests, (3) confirm RED, (4) implement minimum change, (5)
       confirm GREEN, (6) refactor while green. Scope: investigate whether Quick
-      Change contracts should require explicit test-first CTs, whether CLI/workflow
-      can verify RED→GREEN, and update driver/protocol docs if needed — avoid
-      heavyweight overhead for doc-only or genuinely test-free changes (explicit
-      justified exceptions). Non-goal: do not require artificial failing tests
-      where no meaningful test can exist."
-    status: pending
+      Change contracts should require explicit test-first CTs, whether
+      CLI/workflow can verify RED→GREEN, and update driver/protocol docs if
+      needed — avoid heavyweight overhead for doc-only or genuinely test-free
+      changes (explicit justified exceptions). Non-goal: do not require
+      artificial failing tests where no meaningful test can exist."
+    status: archived
     source:
       milestone: M025
       task: null
     created_at: 2026-08-22T17:33:40Z
-    resolved_at: null
+    resolved_at: 2026-08-22T17:50:04.556Z
     promoted_to: null
-    archived_reason: null
+    archived_reason: Implemented via qc-aa2bd5a8 (commit 17c447f) — TDD discipline
+      enforced for Quick Changes (RED→GREEN) with --tdd-exempt for
+      doc-only/test-free changes
