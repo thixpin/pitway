@@ -2,7 +2,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, w
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
@@ -627,5 +627,46 @@ describe('pitway milestone-complete merge-ready state (M012/T006)', () => {
     const contract = loadContract(root, 'M001');
     expect(contract.frontmatter.base_branch ?? null).toBeNull();
     expect(contract.frontmatter.base_revision ?? null).toBeNull();
+  });
+});
+
+describe('pitway milestone-complete human rendering', () => {
+  it("renders the idempotent re-entry as 'already recorded in' in human output", async () => {
+    await completed();
+    const { lines, error } = await run(['milestone-complete', 'M001'], root);
+    expect(error).toBeUndefined();
+    const sha = git(['rev-parse', 'HEAD'], root).trim();
+    expect(lines.join('\n')).toBe(`🏁 Completed milestone M001: already recorded in commit ${sha}.`);
+  });
+});
+
+// The default CommandDeps fallbacks (deps.write ?? console.log,
+// deps.root ?? process.cwd()) are only reached when a caller registers the
+// command with no overrides -- the real shape a bare `pitway
+// milestone-complete` invocation takes outside this test file's harness.
+describe('pitway milestone-complete default CommandDeps fallbacks', () => {
+  it('falls back to console.log and process.cwd() when no overrides are given', async () => {
+    await readyToComplete();
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerMilestoneCompleteCommand(program);
+      await program.parseAsync(['node', 'pitway', 'milestone-complete', 'M001']);
+    } catch (error) {
+      caught = error;
+    } finally {
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+
+    expect(caught).toBeUndefined();
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0]?.[0])).toMatch(/🏁 Completed milestone M001: recorded in commit [0-9a-f]{40}\./);
   });
 });

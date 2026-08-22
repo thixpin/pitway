@@ -18,7 +18,12 @@ import {
   reconcilePending,
 } from '../../src/state/journal.js';
 import { resolvePitwayJournalPath } from '../../src/git/paths.js';
-import { derivePending, resolveTargetPath } from '../../src/core/journal/operations.js';
+import {
+  buildJournalEntry,
+  derivePending,
+  JournalValidationError,
+  resolveTargetPath,
+} from '../../src/core/journal/operations.js';
 import { composeMessage } from '../../src/git/trailers.js';
 
 function git(args: string[], cwd: string): string {
@@ -200,6 +205,49 @@ describe('derivePending', () => {
     const all = readJournal(repo);
     expect(all.some((r) => r.kind === 'entry' && r.operationId === 'op-1')).toBe(true);
     expect(derivePending(all)).toHaveLength(0);
+  });
+});
+
+describe('buildJournalEntry', () => {
+  it('constructs a well-formed entry carrying every input field, including an optional target', () => {
+    const entry = buildJournalEntry({
+      milestone: 'M005',
+      type: 'task_amendment',
+      operationId: 'op-build-1',
+      target: 'T002',
+      payload: { note: 'amended' },
+    });
+    expect(entry).toEqual({
+      milestone: 'M005',
+      type: 'task_amendment',
+      operationId: 'op-build-1',
+      target: 'T002',
+      payload: { note: 'amended' },
+    });
+  });
+
+  it('rejects an empty or whitespace-only operationId with a JournalValidationError', () => {
+    const input = { milestone: 'M005', type: 'usage_recording' as const, payload: {} };
+    expect(() => buildJournalEntry({ ...input, operationId: '' })).toThrowError(
+      JournalValidationError,
+    );
+    expect(() => buildJournalEntry({ ...input, operationId: '   ' })).toThrowError(
+      /operationId must not be empty/,
+    );
+  });
+});
+
+describe('resolveTargetPath per-type mapping', () => {
+  it('maps task_amendment to the milestone tasks.yaml', () => {
+    expect(resolveTargetPath({ type: 'task_amendment' }, 'M005-some-slug')).toBe(
+      '.pitway/milestones/M005-some-slug/tasks.yaml',
+    );
+  });
+
+  it('maps contract_amendment to the milestone contract.md', () => {
+    expect(resolveTargetPath({ type: 'contract_amendment' }, 'M005')).toBe(
+      '.pitway/milestones/M005/contract.md',
+    );
   });
 });
 

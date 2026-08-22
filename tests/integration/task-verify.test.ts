@@ -9,7 +9,8 @@ import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-ad
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
 import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js';
 import { registerTaskVerifyCommand } from '../../src/cli/commands/task-verify.js';
-import { loadTasks } from '../../src/state/store.js';
+import { loadContract, loadTasks, loadState, saveState, saveContract, saveTasks } from '../../src/state/store.js';
+import { runTaskVerify } from '../../src/core/tasks/verify.js';
 import type { Task } from '../../src/state/schemas.js';
 import type { JournalTaskVerifyEvidence } from '../../src/state/journal.js';
 
@@ -515,5 +516,103 @@ describe('pitway task-verify default CommandDeps fallbacks', () => {
     expect(caught).toBeUndefined();
     expect(calls).toHaveLength(1);
     expect(calls[0]?.[0]).toMatch(/✅ pass/);
+  });
+});
+
+// M024/T005 gate widening: the guard and diagnostic branches the full-suite
+// coverage run exposed -- each a real behavioral case, no production change.
+describe('pitway task-verify guard and diagnostic branches (M024/T005)', () => {
+  it('refuses with no active milestone', () => {
+    saveState(root, { ...loadState(root), active_milestone: null });
+    expect(() => runTaskVerify(root, 'T001')).toThrow(
+      /no active milestone; run milestone-add first/,
+    );
+  });
+
+  it('refuses an unknown task id', () => {
+    expect(() => runTaskVerify(root, 'NOPE')).toThrow(/task NOPE not found/);
+  });
+
+  it('refuses a declared path resolving outside the repository', async () => {
+    const tasksFile = loadTasks(root, 'M001');
+    const t = tasksFile.tasks.find((x) => x.id === 'T001');
+    t!.write_scope = ['../outside/a.ts'];
+    saveTasks(root, 'M001', tasksFile);
+    await update(['T001', 'in_progress']);
+    expect(() => runTaskVerify(root, 'T001')).toThrow(/resolves outside the repository/);
+  });
+
+  it('refuses when git check-ignore fails outright (root is not a repository)', () => {
+    // A plain directory with valid .pitway state but no git repo: every
+    // earlier guard passes, then check-ignore exits non-0/1 and the verify
+    // engine must surface that as its own diagnostic.
+    const bare = mkdtempSync(join(tmpdir(), 'pitway-tver-nogit-'));
+    try {
+      mkdirSync(join(bare, '.pitway', 'milestones', 'M001'), { recursive: true });
+      saveState(bare, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+      saveContract(bare, 'M001', loadContract(root, 'M001'));
+      const tasksFile = loadTasks(root, 'M001');
+      tasksFile.tasks.find((x) => x.id === 'T001')!.status = 'in_progress';
+      saveTasks(bare, 'M001', tasksFile);
+      expect(() => runTaskVerify(bare, 'T001')).toThrow(/git check-ignore failed/);
+    } finally {
+      rmSync(bare, { recursive: true, force: true });
+    }
+  });
+
+  it('names modified unexpected dirt in the refusal diagnostic', async () => {
+    await update(['T001', 'in_progress']);
+    writeFileSync(join(root, 'README.md'), 'dirtied\n');
+    try {
+      expect(() => runTaskVerify(root, 'T001')).toThrow(/unrelated dirty changes.*\(modified\)/s);
+    } finally {
+      git(['checkout', '--', 'README.md'], root);
+    }
+  });
+
+  it('names deleted unexpected dirt in the refusal diagnostic', async () => {
+    await update(['T001', 'in_progress']);
+    rmSync(join(root, 'README.md'));
+    try {
+      expect(() => runTaskVerify(root, 'T001')).toThrow(/unrelated dirty changes.*\(deleted\)/s);
+    } finally {
+      git(['checkout', '--', 'README.md'], root);
+    }
+  });
+
+  it('names staged-added unexpected dirt in the refusal diagnostic', async () => {
+    await update(['T001', 'in_progress']);
+    touchFile('stray-added.ts', 'x\n');
+    git(['add', 'stray-added.ts'], root);
+    try {
+      expect(() => runTaskVerify(root, 'T001')).toThrow(/unrelated dirty changes.*\(added\)/s);
+    } finally {
+      git(['rm', '-q', '--cached', 'stray-added.ts'], root);
+      rmSync(join(root, 'stray-added.ts'));
+    }
+  });
+
+  it('names staged-renamed unexpected dirt in the refusal diagnostic', async () => {
+    await update(['T001', 'in_progress']);
+    git(['mv', 'README.md', 'RENAMED.md'], root);
+    try {
+      expect(() => runTaskVerify(root, 'T001')).toThrow(/unrelated dirty changes.*\(renamed\)/s);
+    } finally {
+      git(['mv', 'RENAMED.md', 'README.md'], root);
+    }
+  });
+
+  it('records the task\'s real attempts count in the evidence record', async () => {
+    const tasksFile = loadTasks(root, 'M001');
+    const t = tasksFile.tasks.find((x) => x.id === 'T003');
+    t!.attempts = 2;
+    saveTasks(root, 'M001', tasksFile);
+    await update(['T003', 'in_progress']);
+    const expectedAttempts = loadTasks(root, 'M001').tasks.find((x) => x.id === 'T003')!.attempts;
+
+    const view = runTaskVerify(root, 'T003');
+    expect(view.exitCode).toBe(0);
+    expect(expectedAttempts).not.toBeNull();
+    expect(view.attempts).toBe(expectedAttempts);
   });
 });

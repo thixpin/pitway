@@ -11,3 +11,6 @@ drafts/
 # and already tracked -- deliberately not listed here.
 /.claude/
 /AGENTS.md
+
+# Machine-local OpenCode configuration (developer's own, never tracked)
+opencode.json

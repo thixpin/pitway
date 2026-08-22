@@ -66,6 +66,28 @@ describe('computeCriticalPath (M013/T004/AC006)', () => {
     expect(computeCriticalPath([])).toEqual([]);
   });
 
+  it('keeps the first (smallest-id) predecessor at a two-dependency join of equal depth', () => {
+    // T003 depends on both roots T001 and T002 (each length 1): iterating
+    // sorted deps, T001 sets the maximum and T002's equal length must NOT
+    // replace it -- the strictly-greater comparison's false side.
+    const tasks = [
+      task('T001', 'planned'),
+      task('T002', 'planned'),
+      task('T003', 'planned', ['T001', 'T002']),
+    ];
+    expect(computeCriticalPath(tasks)).toEqual(['T001', 'T003']);
+  });
+
+  it('is independent of input array order (descending ids give the same chain)', () => {
+    const tasks = [
+      task('T004', 'planned', ['T002']),
+      task('T003', 'planned', ['T001']),
+      task('T002', 'planned'),
+      task('T001', 'planned'),
+    ];
+    expect(computeCriticalPath(tasks)).toEqual(['T001', 'T003']);
+  });
+
   it('treats a dependency on a completed task as satisfied, not extending the remaining chain', () => {
     const tasks = [
       task('T001', 'completed'),

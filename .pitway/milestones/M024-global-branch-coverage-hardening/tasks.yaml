@@ -1,0 +1,274 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: "Coverage: milestone/review/reporting surfaces (AC002)"
+    objective: "Bring every AC002 file to >=90% branch AND line coverage via real
+      behavioral tests in the existing matching test files:
+      src/cli/commands/milestone-{add,cancel,complete,confirm,list,merge,
+      status}.ts, verify.ts, usage-add.ts, write-ms-artifacts.ts, resume.ts,
+      src/cli/review-prompt.ts, src/core/milestones/{cancel,create,merge}.ts,
+      src/core/verification/status.ts. Dominant gap class per the baseline lcov:
+      non---json human-render branches and CommandDeps default fallbacks (M020's
+      exact pattern). Measure per file with npx vitest run --coverage over this
+      task's own test files, parsing lcov BRDA; iterate until every listed file
+      clears 90/90. AC008's quality rule applies: real behavioral cases only,
+      disclosed-unreachable branches named in completion evidence."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - every AC002-listed file reaches >=90% branches and >=90% lines, measured
+        via real lcov BRDA/LF data, or carries an AC008-disclosed
+        named-unreachable branch in completion evidence
+      - no production file is modified
+      - each newly covered branch corresponds to a real behavioral case
+    write_scope:
+      - tests/integration/milestone-add.test.ts
+      - tests/integration/milestone-cancel.test.ts
+      - tests/integration/milestone-complete.test.ts
+      - tests/integration/milestone-confirm.test.ts
+      - tests/integration/milestone-list.test.ts
+      - tests/integration/milestone-merge.test.ts
+      - tests/integration/milestone-status.test.ts
+      - tests/integration/verify.test.ts
+      - tests/integration/usage-add.test.ts
+      - tests/integration/write-ms-artifacts.test.ts
+      - tests/integration/resume.test.ts
+      - tests/integration/milestone-review-interactive.test.ts
+      - tests/unit/verification-status.test.ts
+      - tests/unit/footer.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/milestone-add.test.ts
+        tests/integration/milestone-cancel.test.ts
+        tests/integration/milestone-complete.test.ts
+        tests/integration/milestone-confirm.test.ts
+        tests/integration/milestone-list.test.ts
+        tests/integration/milestone-merge.test.ts
+        tests/integration/milestone-status.test.ts
+        tests/integration/verify.test.ts tests/integration/usage-add.test.ts
+        tests/integration/write-ms-artifacts.test.ts
+        tests/integration/resume.test.ts
+        tests/integration/milestone-review-interactive.test.ts
+        tests/unit/verification-status.test.ts tests/unit/footer.test.ts
+    result:
+      summary: All 16 AC002 files at the >=90/90 bar -- 15 at 100% branches and lines;
+        usage-add.ts at 6/7 branches with its one remaining arm disclosed as
+        structurally unreachable per AC008.
+      evidence: Tests  251 passed (251) | Start at  16:46:21 | Duration  52.26s
+        (transform 2.57s, setup 0ms, import 6.25s, tests 180.95s, environment
+        1ms)
+    attempts: 1
+    usage:
+      total_tokens: 260514
+  - id: T002
+    name: "Coverage: workflow-support surfaces (AC003)"
+    objective: "Bring every AC003 file to >=90% branch AND line coverage via real
+      behavioral tests in the existing matching test files:
+      src/cli/commands/auto-run.ts (52.0% branches), backlog.ts (15.8% branches
+      -- the tree's worst file), quick-change.ts (45.7%),
+      src/core/backlog/{archive,promote,state-machine}.ts. Dominant gap class:
+      human-render branches (every existing test passes --json) and CommandDeps
+      fallbacks. Measure per file with npx vitest run --coverage over this
+      task's own test files, parsing lcov BRDA; iterate until every listed file
+      clears 90/90. AC008's quality rule applies."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - every AC003-listed file reaches >=90% branches and >=90% lines, measured
+        via real lcov BRDA/LF data, or carries an AC008-disclosed
+        named-unreachable branch in completion evidence
+      - no production file is modified
+      - each newly covered branch corresponds to a real behavioral case
+    write_scope:
+      - tests/integration/auto-run.test.ts
+      - tests/unit/auto-run-authorization.test.ts
+      - tests/integration/backlog.test.ts
+      - tests/unit/backlog-state.test.ts
+      - tests/integration/quick-change.test.ts
+      - tests/unit/quick-change-lifecycle.test.ts
+      - tests/unit/quick-change-commit.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/auto-run.test.ts
+        tests/unit/auto-run-authorization.test.ts
+        tests/integration/backlog.test.ts tests/unit/backlog-state.test.ts
+        tests/integration/quick-change.test.ts
+        tests/unit/quick-change-lifecycle.test.ts
+        tests/unit/quick-change-commit.test.ts
+    result:
+      summary: All six AC003 files brought to 100% branch and 100% line coverage via
+        real behavioral tests -- including backlog.ts, the tree's worst file
+        (10.5% branches measured at task start).
+      evidence: Tests  164 passed (164) | Start at  16:24:35 | Duration  27.80s
+        (transform 1.63s, setup 0ms, import 2.58s, tests 65.97s, environment
+        1ms)
+    attempts: 1
+    usage:
+      total_tokens: 89710
+  - id: T003
+    name: "Coverage: task-lifecycle surfaces (AC004)"
+    objective: "Bring every AC004 file to >=90% branch AND line coverage via real
+      behavioral tests in the existing matching test files:
+      src/cli/commands/task-{add,amend,discard,dispatch,status,update}.ts,
+      src/core/tasks/{add,amend,context-bundle,critical-path,dependencies,
+      discard,dispatch,integrate,update,verify,write-scope-check}.ts,
+      src/git/apply.ts. Measure per file with npx vitest run --coverage over
+      this task's own test files, parsing lcov BRDA; iterate until every listed
+      file clears 90/90. AC008's quality rule applies."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - every AC004-listed file reaches >=90% branches and >=90% lines, measured
+        via real lcov BRDA/LF data, or carries an AC008-disclosed
+        named-unreachable branch in completion evidence
+      - no production file is modified
+      - each newly covered branch corresponds to a real behavioral case
+    write_scope:
+      - tests/integration/task-add.test.ts
+      - tests/integration/task-amend.test.ts
+      - tests/integration/task-discard.test.ts
+      - tests/integration/task-dispatch.test.ts
+      - tests/integration/task-status.test.ts
+      - tests/integration/task-update.test.ts
+      - tests/integration/task-verify.test.ts
+      - tests/unit/task-verify.test.ts
+      - tests/integration/task-integrate.test.ts
+      - tests/integration/task-integrate-recovery.test.ts
+      - tests/unit/critical-path.test.ts
+      - tests/unit/dependencies.test.ts
+      - tests/unit/write-scope-check.test.ts
+      - tests/unit/parallel-eligibility.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/task-add.test.ts
+        tests/integration/task-amend.test.ts
+        tests/integration/task-discard.test.ts
+        tests/integration/task-dispatch.test.ts
+        tests/integration/task-status.test.ts
+        tests/integration/task-update.test.ts
+        tests/integration/task-verify.test.ts tests/unit/task-verify.test.ts
+        tests/integration/task-integrate.test.ts
+        tests/integration/task-integrate-recovery.test.ts
+        tests/unit/critical-path.test.ts tests/unit/dependencies.test.ts
+        tests/unit/write-scope-check.test.ts
+        tests/unit/parallel-eligibility.test.ts
+    result:
+      summary: "[truncated] y combined diff, diverged-main-tree non-clean-apply),
+        crash-window residue re-runs (branch-only cleanup-completed,
+        fully-cleaned dispatch refusal), task-status --context unknown-id
+        refusal, context-bundle defense-in-depth refusal. No production file
+        modified; no AC008 disclosures needed."
+      evidence: Tests  247 passed (247) | Start at  18:00:24 | Duration  65.18s
+        (transform 2.86s, setup 0ms, import 5.15s, tests 239.00s, environment
+        2ms)
+    attempts: 1
+    usage: null
+  - id: T004
+    name: "Coverage: verification/journal/git/state surfaces (AC005)"
+    objective: "Bring every AC005 file to >=90% branch AND line coverage via real
+      behavioral tests in the existing matching test files:
+      src/core/verification/{failure-summary,repair,run}.ts,
+      src/core/contracts/verification-hash.ts, src/core/journal/operations.ts,
+      src/core/reviews/roles.ts, src/git/{exec,worktree}.ts,
+      src/state/{contract-file,store}.ts. Measure per file with npx vitest run
+      --coverage over this task's own test files, parsing lcov BRDA; iterate
+      until every listed file clears 90/90. AC008's quality rule applies."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - every AC005-listed file reaches >=90% branches and >=90% lines, measured
+        via real lcov BRDA/LF data, or carries an AC008-disclosed
+        named-unreachable branch in completion evidence
+      - no production file is modified
+      - each newly covered branch corresponds to a real behavioral case
+    write_scope:
+      - tests/unit/failure-summary.test.ts
+      - tests/integration/verification-repair.test.ts
+      - tests/unit/verification-process-exec.test.ts
+      - tests/unit/verification-recursion-guard.test.ts
+      - tests/unit/verification-hash.test.ts
+      - tests/unit/journal.test.ts
+      - tests/unit/review-roles.test.ts
+      - tests/integration/git-worktree.test.ts
+      - tests/unit/git-safety.test.ts
+      - tests/unit/state-store.test.ts
+      - tests/unit/contract-file.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/failure-summary.test.ts
+        tests/integration/verification-repair.test.ts
+        tests/unit/verification-process-exec.test.ts
+        tests/unit/verification-recursion-guard.test.ts
+        tests/unit/verification-hash.test.ts tests/unit/journal.test.ts
+        tests/unit/review-roles.test.ts tests/integration/git-worktree.test.ts
+        tests/unit/git-safety.test.ts tests/unit/state-store.test.ts
+        tests/unit/contract-file.test.ts
+    result:
+      summary: All 10 AC005 files brought to >=90% branch and line coverage (six at
+        100% branches) via real behavioral tests; one structurally-unreachable
+        branch disclosed by name per AC008.
+      evidence: Tests  249 passed (249) | Start at  16:29:37 | Duration  56.71s
+        (transform 972ms, setup 0ms, import 1.84s, tests 76.59s, environment
+        1ms)
+    attempts: 1
+    usage:
+      total_tokens: 146678
+  - id: T005
+    name: Coverage gate and evidence (AC007)
+    objective: "Gate task, amended after the first authoritative full run exposed
+      five files still below the per-file bar (their owning-task runs had
+      over-reported branch coverage by misreading lcov BRDA taken=0 as covered):
+      close src/cli/commands/task-update.ts and task-amend.ts CommandDeps
+      fallbacks, src/core/tasks/verify.ts guard and dirty-path-describe arms,
+      src/git/exec.ts assertGitWorkTree arms, and src/git/apply.ts's
+      stderr-empty fallback with targeted real behavioral tests in their owning
+      test files; usage-add.ts stays covered by T001's AC008 disclosure. Then
+      run the authoritative full `npm run test:coverage`, parse
+      coverage/lcov.info (BRDA taken not in {0,-} = covered), confirm OVERALL
+      branches >=90% and lines >=90% and every src file >=90% on both metrics
+      except src/cli/index.ts (AC006) and AC008-disclosed branches, and write
+      docs/evidence/M024/coverage.md with the full before/after per-file table
+      (baseline re-measured at cb7c714: overall branches 1727/2002 86.3%, lines
+      3070/3218 95.4%, 51 files below 90%), restating the cli/index.ts exception
+      without expanding it."
+    status: completed
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+    acceptance_criteria:
+      - a real full coverage run shows overall branches >=90% and overall lines
+        >=90%
+      - every src file is >=90% on both metrics except src/cli/index.ts and any
+        AC008-disclosed named branch
+      - docs/evidence/M024/coverage.md records the full before/after numbers and
+        restates the cli/index.ts exception unchanged
+      - the five gate-exposed files are closed by real behavioral tests in their
+        owning test files only; no production file is modified
+    write_scope:
+      - docs/evidence/M024/coverage.md
+      - tests/integration/task-update.test.ts
+      - tests/integration/task-amend.test.ts
+      - tests/integration/task-verify.test.ts
+      - tests/unit/task-verify.test.ts
+      - tests/unit/git-safety.test.ts
+      - tests/integration/task-integrate-recovery.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/task-update.test.ts
+        tests/integration/task-amend.test.ts
+        tests/integration/task-verify.test.ts tests/unit/task-verify.test.ts
+        tests/unit/git-safety.test.ts
+        tests/integration/task-integrate-recovery.test.ts
+    result:
+      summary: "[truncated]  with targeted behavioral tests in their owning test files
+        via the amended scope; before numbers re-measured at cb7c714 as real
+        per-file lcov data (51 files below bar -> 2 disclosed).
+        docs/evidence/M024/coverage.md records the full table and restates the
+        cli/index.ts exception unchanged."
+      evidence: Tests  153 passed (153) | Start at  19:06:40 | Duration  66.00s
+        (transform 2.20s, setup 0ms, import 3.40s, tests 167.92s, environment
+        0ms)
+    attempts: 1
+    usage: null

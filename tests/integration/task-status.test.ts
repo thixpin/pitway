@@ -1,10 +1,11 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveContract, saveState, saveTasks } from '../../src/state/store.js';
 import { buildCli } from '../../src/cli/index.js';
 import { registerTaskStatusCommand } from '../../src/cli/commands/task-status.js';
+import { buildTaskContextBundle } from '../../src/core/tasks/context-bundle.js';
 import type { ContractFrontmatter, Task } from '../../src/state/schemas.js';
 
 let root: string;
@@ -343,6 +344,98 @@ describe('pitway task-status', () => {
       registerTaskStatusCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
       await humanProgram.parseAsync(['node', 'pitway', 'task-status', 'T001']);
       expect(humanLines.join('\n')).toContain('🛠 Task T001  ● In Progress');
+    });
+  });
+
+  describe('human rendering of dependencies and result', () => {
+    it('renders a joined dependency list and the result summary when both are present', async () => {
+      const program = buildCli();
+      const lines: string[] = [];
+      registerTaskStatusCommand(program, { root, write: (s) => lines.push(s) });
+      // T003 in the shared fixture has a recorded result; T002 depends on T001.
+      await program.parseAsync(['node', 'pitway', 'task-status', 'T003']);
+      const t3 = lines.join('\n');
+      expect(t3).toContain('Result: UNRELATED_SIBLING_MARKER_RESULT');
+
+      const program2 = buildCli();
+      const lines2: string[] = [];
+      registerTaskStatusCommand(program2, { root, write: (s) => lines2.push(s) });
+      await program2.parseAsync(['node', 'pitway', 'task-status', 'T002']);
+      const t2 = lines2.join('\n');
+      expect(t2).toContain('Depends on: T001');
+      expect(t2).toContain('Result: (none yet)');
+    });
+  });
+
+  describe('refusals', () => {
+    it('refuses an unknown task id', async () => {
+      const program = buildCli();
+      registerTaskStatusCommand(program, { root, write: () => {} });
+      await expect(
+        program.parseAsync(['node', 'pitway', 'task-status', 'T404', '--json']),
+      ).rejects.toThrow(/task T404 not found/);
+    });
+
+    it('refuses when no milestone is active, pointing at milestone-add', async () => {
+      saveState(root, { schema_version: 1, active_milestone: null, milestones: ['M001'] });
+      const program = buildCli();
+      registerTaskStatusCommand(program, { root, write: () => {} });
+      await expect(
+        program.parseAsync(['node', 'pitway', 'task-status', 'T001']),
+      ).rejects.toThrow(/no active milestone; run milestone-add first/);
+    });
+  });
+
+  describe('--context default output mode and CommandDeps fallbacks', () => {
+    it('emits JSON for --context even without --json (options.json ?? true)', async () => {
+      const program = buildCli();
+      const lines: string[] = [];
+      registerTaskStatusCommand(program, { root, write: (s) => lines.push(s) });
+      await program.parseAsync(['node', 'pitway', 'task-status', 'T002', '--context']);
+      const bundle = JSON.parse(lines.join('\n')) as { task: { id: string } };
+      expect(bundle.task.id).toBe('T002');
+    });
+
+    it('falls back to console.log and process.cwd() when no deps are given', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const cwdBefore = process.cwd();
+      process.chdir(root);
+      let caught: unknown;
+      let calls: unknown[][] = [];
+      try {
+        const program = buildCli();
+        registerTaskStatusCommand(program);
+        await program.parseAsync(['node', 'pitway', 'task-status', 'T001', '--json']);
+      } catch (error) {
+        caught = error;
+      } finally {
+        // vitest v4: mockRestore() clears recorded calls -- capture first.
+        calls = logSpy.mock.calls;
+        process.chdir(cwdBefore);
+        logSpy.mockRestore();
+      }
+
+      expect(caught).toBeUndefined();
+      expect(calls).toHaveLength(1);
+      const view = JSON.parse(calls[0]![0] as string) as { id: string; status: string };
+      expect(view).toMatchObject({ id: 'T001', status: 'completed' });
+    });
+  });
+
+  describe('buildTaskContextBundle direct edge cases', () => {
+    it('throws for an unknown task id', () => {
+      expect(() => buildTaskContextBundle(frontmatter, [task({ id: 'T001', status: 'ready' })], 'T404')).toThrow(
+        /task T404 not found/,
+      );
+    });
+
+    it('reports a null summary for a dependency that has no recorded result yet', () => {
+      const tasks = [
+        task({ id: 'T001', status: 'in_progress' }),
+        task({ id: 'T002', status: 'waiting', depends_on: ['T001'] }),
+      ];
+      const bundle = buildTaskContextBundle(frontmatter, tasks, 'T002');
+      expect(bundle.dependencyResults).toEqual([{ id: 'T001', summary: null }]);
     });
   });
 });

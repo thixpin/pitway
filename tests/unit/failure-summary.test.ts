@@ -70,4 +70,25 @@ describe('summarizeFailure', () => {
   it('returns an empty array for an empty budget', () => {
     expect(summarizeFailure('FAIL something', 0)).toEqual([]);
   });
+
+  it('truncates the line that overflows the remaining budget and stops there', () => {
+    // budget=100 -> total cap 40. First line is 35 chars; the separator
+    // costs 3, leaving exactly 2 chars for the second line, which is
+    // truncated to those 2 rather than dropped -- a partial line still
+    // carries signal.
+    const first = `FAIL ${'a'.repeat(30)}`;
+    const second = `FAIL ${'b'.repeat(30)}`;
+    const result = summarizeFailure([first, second].join('\n'), 100);
+    expect(result).toEqual([first, 'FA']);
+    expect(result.join(' | ').length).toBe(40);
+  });
+
+  it('stops before a line whose separator alone would already overflow the budget', () => {
+    // budget=100 -> total cap 40. The first line consumes the cap exactly,
+    // so the second line's ' | ' separator can never fit: the loop breaks
+    // without emitting even a truncated fragment.
+    const exact = `FAIL ${'a'.repeat(35)}`; // 40 chars
+    const result = summarizeFailure([exact, 'FAIL never-emitted'].join('\n'), 100);
+    expect(result).toEqual([exact]);
+  });
 });

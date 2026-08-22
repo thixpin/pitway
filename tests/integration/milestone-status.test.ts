@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveContract, saveTasks, saveUsage, saveVerificationResults } from '../../src/state/store.js';
 import { appendTaskVerifyEvidenceRecord } from '../../src/state/journal.js';
 import { buildCli } from '../../src/cli/index.js';
@@ -405,5 +405,142 @@ describe('pitway milestone-status footer output separation (M014 driver-output d
     expect(last).toBe('🏁 [████████████████████] 100% · ✅ 2/2 · Complete');
     expect(lines[lines.length - 2]).toBe('');
     expect(lines.filter((l) => /\d+% · ✅ \d+\/\d+/.test(l))).toEqual([last]);
+  });
+});
+
+describe('pitway milestone-status baseline resolution edges', () => {
+  it('renders Baseline: N/A for a milestone with no trailer commit at all', async () => {
+    mkdirSync(join(root, '.pitway', 'milestones', 'M002'), { recursive: true });
+    saveVerificationResults(root, 'M002', { schema_version: 1, results: [] });
+    saveContract(root, 'M002', {
+      frontmatter: { ...frontmatter, id: 'M002', status: 'draft' },
+      body: '\n',
+    });
+    saveTasks(root, 'M002', { schema_version: 1, tasks: [task({ id: 'T001', status: 'planned' })] });
+    saveUsage(root, 'M002', { schema_version: 1, planning: null, qa: null });
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M002']);
+    expect(lines.join('\n')).toContain('Baseline: N/A');
+  });
+
+  it('bounds the trailer walk to base_revision when the milestone tracks a branch, still resolving the SHA', async () => {
+    const base = git(['rev-parse', 'HEAD'], root).trim();
+    writeFileSync(join(root, 'work.txt'), 'w\n');
+    git(['add', 'work.txt'], root);
+    git(['commit', '-q', '-m', 'workflow: baseline M001\n\nPitWay-Milestone: M001'], root);
+    const expected = git(['rev-parse', 'HEAD'], root).trim();
+    saveContract(root, 'M001', {
+      frontmatter: { ...frontmatter, base_branch: 'main', base_revision: base },
+      body: '\n',
+    });
+
+    const view = JSON.parse(await runStatus(['--json'])) as { baselineSha: string | null };
+    expect(view.baselineSha).toBe(expected);
+  });
+});
+
+describe('pitway milestone-status --report token breakdown', () => {
+  it('reports measured planning and qa alongside task usage with a singular missing-usage count', async () => {
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [
+        task({ id: 'T001', status: 'completed', usage: { total_tokens: 1000 } }),
+        task({ id: 'T002', status: 'in_progress' }),
+      ],
+    });
+    saveUsage(root, 'M001', {
+      schema_version: 1,
+      planning: { attempts: 1, total_tokens: 200 },
+      qa: { attempts: 1, total_tokens: 100 },
+    });
+
+    const output = await runStatus(['--report']);
+    expect(output).toContain('(1 task missing usage)');
+    expect(output).toContain('  task: 1.0k');
+    expect(output).toContain('  planning: 200');
+    expect(output).toContain('  qa: 100');
+    expect(output).toContain('  total: 1.3k');
+    expect(output).toContain('  missing: 1');
+  });
+
+  it('sums only what was measured when qa is null, reporting qa as N/A', async () => {
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [task({ id: 'T001', status: 'completed', usage: { total_tokens: 500 } })],
+    });
+    saveUsage(root, 'M001', {
+      schema_version: 1,
+      planning: { attempts: 1, total_tokens: 200 },
+      qa: null,
+    });
+
+    const output = await runStatus(['--report']);
+    expect(output).toContain('  task: 500');
+    expect(output).toContain('  planning: 200');
+    expect(output).toContain('  qa: N/A');
+    expect(output).toContain('  total: 700');
+    // qa alone is the missing source (every task is measured).
+    expect(output).toContain('  missing: 1');
+  });
+
+  it('sums only what was measured when planning is null, reporting planning as N/A', async () => {
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [task({ id: 'T001', status: 'completed', usage: { total_tokens: 500 } })],
+    });
+    saveUsage(root, 'M001', {
+      schema_version: 1,
+      planning: null,
+      qa: { attempts: 1, total_tokens: 300 },
+    });
+
+    const output = await runStatus(['--report']);
+    expect(output).toContain('  task: 500');
+    expect(output).toContain('  planning: N/A');
+    expect(output).toContain('  qa: 300');
+    expect(output).toContain('  total: 800');
+  });
+
+  it('renders an empty draft report with (none) critical path, no ready task, and no footer', async () => {
+    saveContract(root, 'M001', { frontmatter: { ...frontmatter, status: 'draft' }, body: '\n' });
+    saveTasks(root, 'M001', { schema_version: 1, tasks: [] });
+
+    const output = await runStatus(['--report']);
+    expect(output).toContain('Critical path: (none)');
+    expect(output).toContain('Active: (none)');
+    expect(output).toContain('Next: (no ready task)');
+    expect(output).not.toMatch(/\d+% · ✅/);
+  });
+});
+
+// The default CommandDeps fallbacks (deps.write ?? console.log,
+// deps.root ?? process.cwd()) are only reached when a caller registers the
+// command with no overrides -- the real shape a bare `pitway
+// milestone-status` invocation takes outside this test file's harness.
+describe('pitway milestone-status default CommandDeps fallbacks', () => {
+  it('falls back to console.log and process.cwd() when no overrides are given', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerMilestoneStatusCommand(program);
+      await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001']);
+    } catch (error) {
+      caught = error;
+    } finally {
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+
+    expect(caught).toBeUndefined();
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0]?.[0])).toContain('🏁 Milestone M001 — Test Milestone');
   });
 });

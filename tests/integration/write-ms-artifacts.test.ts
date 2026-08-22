@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
@@ -219,5 +219,48 @@ describe('pitway write-ms-artifacts', () => {
     );
     expect(error).toBeUndefined();
     expect(loadState(root).active_milestone).toBe('M001');
+  });
+});
+
+// The default CommandDeps fallbacks (deps.write ?? console.log,
+// deps.root ?? process.cwd()) are only reached when a caller registers the
+// command with no overrides -- the real shape a bare `pitway
+// write-ms-artifacts` invocation takes outside this test file's harness.
+describe('pitway write-ms-artifacts default CommandDeps fallbacks', () => {
+  it('falls back to console.log and process.cwd() when no overrides are given', async () => {
+    const { contract, tasks } = writeInputs(root);
+    const destination = join(root, 'drafts');
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerWriteMsArtifactsCommand(program);
+      await program.parseAsync([
+        'node',
+        'pitway',
+        'write-ms-artifacts',
+        '--contract',
+        contract,
+        '--tasks',
+        tasks,
+        '--destination',
+        destination,
+      ]);
+    } catch (error) {
+      caught = error;
+    } finally {
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+
+    expect(caught).toBeUndefined();
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0]?.[0])).toContain('📜 Wrote draft artifacts:');
+    expect(existsSync(join(destination, 'contract.md'))).toBe(true);
   });
 });

@@ -2,13 +2,13 @@ import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneCancelCommand } from '../../src/cli/commands/milestone-cancel.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
-import { loadContract, loadState } from '../../src/state/store.js';
+import { loadContract, loadState, saveState } from '../../src/state/store.js';
 
 function git(args: string[], cwd: string): void {
   execFileSync('git', args, { cwd, stdio: 'pipe' });
@@ -170,5 +170,53 @@ describe('pitway milestone-cancel (AC001)', () => {
     expect(state.active_milestone).toBe('M002');
     expect(loadContract(root, 'M001').frontmatter.status).toBe('cancelled');
     expect(loadContract(root, 'M002').frontmatter.status).toBe('draft');
+  });
+
+  it('cancels a non-active draft without touching active_milestone', async () => {
+    const { contract, tasks } = writeInputs(root);
+    const added = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
+    expect(added.error).toBeUndefined();
+    // Crash-recovery shape: state.yaml no longer points at the draft (e.g.
+    // an interrupted correction cleared it); cancelling the draft must not
+    // rewrite state.yaml at all.
+    saveState(root, { ...loadState(root), active_milestone: null });
+
+    const { error } = await run(['milestone-cancel', 'M001'], root);
+    expect(error).toBeUndefined();
+    expect(loadContract(root, 'M001').frontmatter.status).toBe('cancelled');
+    expect(loadState(root).active_milestone).toBeNull();
+  });
+});
+
+// The default CommandDeps fallbacks (deps.write ?? console.log,
+// deps.root ?? process.cwd()) are only reached when a caller registers the
+// command with no overrides -- the real shape a bare `pitway milestone-cancel`
+// invocation takes outside this test file's harness.
+describe('pitway milestone-cancel default CommandDeps fallbacks', () => {
+  it('falls back to console.log and process.cwd() when no overrides are given', async () => {
+    const { contract, tasks } = writeInputs(root);
+    const added = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
+    expect(added.error).toBeUndefined();
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerMilestoneCancelCommand(program);
+      await program.parseAsync(['node', 'pitway', 'milestone-cancel', 'M001']);
+    } catch (error) {
+      caught = error;
+    } finally {
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+
+    expect(caught).toBeUndefined();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.[0]).toMatch(/🏁 Cancelled milestone M001; permanently retired\./);
   });
 });

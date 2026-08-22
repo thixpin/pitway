@@ -1,8 +1,8 @@
-import { chmodSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
@@ -15,6 +15,7 @@ import { deterministicBranchName } from '../../src/core/milestones/confirm.js';
 import { mergeMilestone, MilestoneMergeError } from '../../src/core/milestones/merge.js';
 import { derivePending } from '../../src/core/journal/operations.js';
 import { readJournal } from '../../src/state/journal.js';
+import { loadContract, saveContract } from '../../src/state/store.js';
 
 // AC001-AC007 (M019/T001): mergeMilestone against real temp git repos --
 // this task's write scope has no CLI wiring yet (T002's job), so every
@@ -476,5 +477,131 @@ describe('milestone-merge CLI command (AC001, AC008)', () => {
 
     expect(error).toBeInstanceOf(MilestoneMergeError);
     expect(error?.message).toMatch(/status is "in_progress"/);
+  });
+});
+
+describe('mergeMilestone completion-commit identity and recovery edge cases', () => {
+  it('refuses by name from a branch that carries the milestone state but not the completion commit', async () => {
+    const { completionSha } = await buildCompletedMilestone();
+    // Fork from the commit before completion: the milestone directory
+    // exists on this branch, but the completion commit is unreachable --
+    // the bounded since..HEAD walk itself must come up empty here.
+    git(['checkout', '-q', '-b', 'stale', `${completionSha}~1`], root);
+    // The working contract claims completed while no completion commit
+    // exists in this branch's history.
+    const contract = loadContract(root, 'M001');
+    saveContract(root, 'M001', {
+      frontmatter: { ...contract.frontmatter, status: 'completed' },
+      body: contract.body,
+    });
+
+    expect(() => mergeMilestone(root, 'M001')).toThrow(
+      /completion commit for M001 not found in current branch history/,
+    );
+  });
+
+  it('rejects a commit that wears the completion message but whose committed contract is not completed', async () => {
+    setBranchStrategy('milestone');
+    await addMilestone();
+    expect((await run(['milestone-confirm', 'M001'], root)).error).toBeUndefined();
+    await completeT001();
+    // A commit that merely carries the completion message and trailer,
+    // created while the committed contract still says in_progress.
+    git(
+      ['commit', '--allow-empty', '-q', '-m', 'workflow: complete milestone M001\n\nPitWay-Milestone: M001'],
+      root,
+    );
+    // The local contract now claims completed, committed under a
+    // non-completion message -- the identity check must reject the impostor.
+    const contract = loadContract(root, 'M001');
+    saveContract(root, 'M001', {
+      frontmatter: { ...contract.frontmatter, status: 'completed' },
+      body: contract.body,
+    });
+    git(['add', '-A'], root);
+    git(['commit', '-q', '-m', 'workflow: sync contract\n\nPitWay-Milestone: M001'], root);
+
+    expect(() => mergeMilestone(root, 'M001')).toThrow(
+      /completion commit for M001 not found in current branch history/,
+    );
+  });
+
+  it('propagates a non-resolution contract load failure instead of masking it as wrong-branch', async () => {
+    await buildCompletedMilestone();
+    const contractPath = join(root, '.pitway', 'milestones', milestoneDirName('M001'), 'contract.md');
+    writeFileSync(contractPath, 'not a contract at all\n');
+
+    let caught: unknown;
+    try {
+      mergeMilestone(root, 'M001');
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeDefined();
+    expect(caught).not.toBeInstanceOf(MilestoneMergeError);
+  });
+
+  it('merges a milestone whose base_revision is null (pre-branch-isolation contract) via the unbounded walk', async () => {
+    const { originalBranch } = await buildCompletedMilestone();
+    const contract = loadContract(root, 'M001');
+    saveContract(root, 'M001', {
+      frontmatter: { ...contract.frontmatter, base_revision: null },
+      body: contract.body,
+    });
+    git(['add', '-A'], root);
+    git(['commit', '-q', '-m', 'workflow: drop base_revision\n\nPitWay-Milestone: M001'], root);
+
+    const view = mergeMilestone(root, 'M001');
+    expect(view.outcome).toBe('merged');
+    expect(view.target).toBe(originalBranch);
+  });
+
+  it('rolls back cleanly when the merge fails without leaving MERGE_HEAD (unrelated-histories target)', async () => {
+    const { milestoneBranch } = await buildCompletedMilestone();
+    // An orphan target shares no history: git refuses the merge outright
+    // and leaves no MERGE_HEAD -- the recovery path must skip the abort and
+    // still restore the original branch before refusing.
+    git(['checkout', '-q', '--orphan', 'orphan-target'], root);
+    git(['commit', '-q', '-m', 'orphan seed'], root);
+    git(['checkout', '-q', milestoneBranch], root);
+    const headBefore = git(['rev-parse', 'HEAD'], root).trim();
+
+    expect(() => mergeMilestone(root, 'M001', { target: 'orphan-target' })).toThrow(/rolled back/);
+    expect(currentBranch(root)).toBe(milestoneBranch);
+    expect(git(['rev-parse', 'HEAD'], root).trim()).toBe(headBefore);
+    expect(existsSync(join(root, '.git', 'MERGE_HEAD'))).toBe(false);
+  });
+});
+
+// The default CommandDeps fallbacks (deps.write ?? console.log,
+// deps.root ?? process.cwd()) are only reached when a caller registers the
+// command with no overrides -- the real shape a bare `pitway
+// milestone-merge` invocation takes outside this test file's harness.
+describe('pitway milestone-merge default CommandDeps fallbacks', () => {
+  it('falls back to console.log and process.cwd() when no overrides are given', async () => {
+    const { originalBranch, milestoneBranch } = await buildCompletedMilestone();
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerMilestoneMergeCommand(program);
+      await program.parseAsync(['node', 'pitway', 'milestone-merge', 'M001']);
+    } catch (error) {
+      caught = error;
+    } finally {
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+
+    expect(caught).toBeUndefined();
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0]?.[0])).toMatch(
+      new RegExp(`🏁 Merged M001 \\(${milestoneBranch}\\) into ${originalBranch}: commit [0-9a-f]{40}\\.`),
+    );
   });
 });

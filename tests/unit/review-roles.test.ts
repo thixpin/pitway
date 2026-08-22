@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { REVIEW_ROLES } from '../../src/core/reviews/roles.js';
+import {
+  assertKnownReviewRoles,
+  computeReviewContentHash,
+  deriveLatestFindingsByRole,
+  getReviewRole,
+  isKnownReviewRole,
+  REVIEW_ROLES,
+  ReviewRoleError,
+} from '../../src/core/reviews/roles.js';
+import type { ContractFrontmatter, ReviewFindingsSnapshot, Task } from '../../src/state/schemas.js';
 
 // Snapshot of focus values as they existed before T004 (AC014's own
 // requirement: focus is never edited by this task). This is the diff target
@@ -52,5 +61,167 @@ describe('REVIEW_ROLES label field (AC014)', () => {
       expect(wordCount).toBeLessThanOrEqual(8);
       expect(role.label).not.toBe(role.focus);
     }
+  });
+});
+
+describe('registry lookups', () => {
+  it('isKnownReviewRole answers for registered and unregistered ids', () => {
+    expect(isKnownReviewRole('qa')).toBe(true);
+    expect(isKnownReviewRole('racing-engineer')).toBe(false);
+  });
+
+  it('getReviewRole returns the registry entry, or undefined for an unknown id', () => {
+    expect(getReviewRole('architect')?.label).toBe('System design & architecture');
+    expect(getReviewRole('nobody')).toBeUndefined();
+  });
+
+  it('assertKnownReviewRoles passes silently on all-known ids', () => {
+    expect(() => assertKnownReviewRoles(['developer', 'qa'])).not.toThrow();
+  });
+
+  it('assertKnownReviewRoles names every unknown id in a ReviewRoleError', () => {
+    expect(() => assertKnownReviewRoles(['qa', 'ghost', 'phantom'])).toThrowError(ReviewRoleError);
+    expect(() => assertKnownReviewRoles(['qa', 'ghost', 'phantom'])).toThrowError(
+      /unknown review role\(s\): ghost, phantom/,
+    );
+  });
+});
+
+describe('deriveLatestFindingsByRole', () => {
+  const snapshot = (role: string, at: string): ReviewFindingsSnapshot =>
+    ({ role, recorded_at: at, findings: [] }) as ReviewFindingsSnapshot;
+
+  it('keeps the latest snapshot per role while preserving first-seen key order', () => {
+    const latest = deriveLatestFindingsByRole([
+      snapshot('qa', '2026-08-20T00:00:00Z'),
+      snapshot('developer', '2026-08-20T01:00:00Z'),
+      snapshot('qa', '2026-08-20T02:00:00Z'),
+    ]);
+    expect([...latest.keys()]).toEqual(['qa', 'developer']);
+    expect(latest.get('qa')?.recorded_at).toBe('2026-08-20T02:00:00Z');
+  });
+
+  it('returns an empty map for no findings', () => {
+    expect(deriveLatestFindingsByRole([]).size).toBe(0);
+  });
+});
+
+describe('computeReviewContentHash', () => {
+  const frontmatter = (overrides: Partial<ContractFrontmatter> = {}): ContractFrontmatter =>
+    ({
+      schema_version: 1,
+      id: 'M001',
+      title: 'Reviewable milestone',
+      status: 'in_progress',
+      requirement: null,
+      confirmed_at: '2026-08-20T00:00:00Z',
+      verification_approved_hash: 'sha256:' + 'a'.repeat(64),
+      acceptance_criteria: [{ id: 'AC001', text: 'Behavior holds.' }],
+      verification: [
+        { id: 'CT001', criterion: 'AC001', type: 'command', command: 'npm test' },
+      ],
+      ...overrides,
+    }) as ContractFrontmatter;
+
+  // A task carrying every optional definition field the projection covers.
+  const fullTask: Task = {
+    id: 'T001',
+    name: 'Full task',
+    objective: 'Do the full thing.',
+    status: 'completed',
+    depends_on: [],
+    acceptance_criteria: ['It works'],
+    context_files: ['src/a.ts'],
+    write_scope: ['src/a.ts'],
+    mapped_ac_ids: ['AC001'],
+    required_skills: ['task-verify'],
+    verification: { strategy: 'tdd', detail: 'npm test' },
+    result: { summary: 'done', evidence: 'tests pass' },
+    usage: null,
+  } as Task;
+
+  // A legacy-shaped task omitting every optional field the projection guards.
+  const legacyTask: Task = {
+    id: 'T002',
+    objective: 'Do the legacy thing.',
+    status: 'planned',
+    depends_on: ['T001'],
+    acceptance_criteria: ['It also works'],
+    relevant_files: ['src/b.ts'],
+    verification: { strategy: 'command', detail: 'npm run lint' },
+    result: null,
+    usage: null,
+  } as Task;
+
+  const contract = { frontmatter: frontmatter(), body: '\n# Contract\n' };
+
+  it('is deterministic and shaped like a sha256 hash', () => {
+    const a = computeReviewContentHash(contract, [fullTask, legacyTask]);
+    const b = computeReviewContentHash(contract, [fullTask, legacyTask]);
+    expect(a).toBe(b);
+    expect(a).toMatch(/^sha256:[0-9a-f]{64}$/);
+  });
+
+  it('changes when a task definition field changes', () => {
+    const base = computeReviewContentHash(contract, [fullTask]);
+    const edited = computeReviewContentHash(contract, [
+      { ...fullTask, objective: 'Do something else.' } as Task,
+    ]);
+    expect(edited).not.toBe(base);
+  });
+
+  it('ignores task execution telemetry: status/attempts/result/usage changes never stale the hash', () => {
+    const base = computeReviewContentHash(contract, [fullTask]);
+    const transitioned = computeReviewContentHash(contract, [
+      {
+        ...fullTask,
+        status: 'in_progress',
+        attempts: 3,
+        result: null,
+        usage: { total_tokens: 999, attempts: 3 },
+      } as unknown as Task,
+    ]);
+    expect(transitioned).toBe(base);
+  });
+
+  it('ignores contract lifecycle fields: confirm\'s own status/hash rewrite never stales the hash', () => {
+    const base = computeReviewContentHash(contract, [legacyTask]);
+    const confirmed = computeReviewContentHash(
+      {
+        frontmatter: frontmatter({
+          status: 'review',
+          confirmed_at: '2026-08-21T12:00:00Z',
+          verification_approved_hash: 'sha256:' + 'b'.repeat(64),
+        }),
+        body: contract.body,
+      },
+      [legacyTask],
+    );
+    expect(confirmed).toBe(base);
+  });
+
+  it('covers contract CONTENT: a title or body change is a revision', () => {
+    const base = computeReviewContentHash(contract, [legacyTask]);
+    expect(
+      computeReviewContentHash({ frontmatter: frontmatter({ title: 'Renamed' }), body: contract.body }, [
+        legacyTask,
+      ]),
+    ).not.toBe(base);
+    expect(
+      computeReviewContentHash({ frontmatter: frontmatter(), body: '\n# Different prose\n' }, [legacyTask]),
+    ).not.toBe(base);
+  });
+
+  it('treats presence vs absence of an optional definition field as different content', () => {
+    const withName = computeReviewContentHash(contract, [fullTask]);
+    const { name: _name, ...rest } = fullTask;
+    const withoutName = computeReviewContentHash(contract, [rest as Task]);
+    expect(withoutName).not.toBe(withName);
+  });
+
+  it('treats task order as content: reordering tasks.yaml is itself a revision', () => {
+    const ab = computeReviewContentHash(contract, [fullTask, legacyTask]);
+    const ba = computeReviewContentHash(contract, [legacyTask, fullTask]);
+    expect(ba).not.toBe(ab);
   });
 });

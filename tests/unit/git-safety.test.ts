@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { GitError, checkWorkingTreeClean, classifyDirtyPaths } from '../../src/git/safety.js';
+import { assertGitWorkTree, git as execGit } from '../../src/git/exec.js';
 import { appendCheckpointMarker, appendJournalEntry } from '../../src/state/journal.js';
 import { resolveTargetPath } from '../../src/core/journal/operations.js';
 
@@ -25,6 +26,56 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(repo, { recursive: true, force: true });
+});
+
+describe('git exec primitive', () => {
+  it('returns command stdout on success', () => {
+    expect(execGit(['rev-parse', '--is-inside-work-tree'], repo).trim()).toBe('true');
+  });
+
+  it('wraps a failing git command into a GitError carrying stderr', () => {
+    expect(() => execGit(['definitely-not-a-git-subcommand'], repo)).toThrowError(GitError);
+    expect(() => execGit(['definitely-not-a-git-subcommand'], repo)).toThrowError(
+      /definitely-not-a-git-subcommand/,
+    );
+  });
+
+  it('falls back to the underlying error message when there is no stderr (nonexistent cwd)', () => {
+    // Spawning in a nonexistent cwd fails before git can write any stderr,
+    // so the GitError carries the spawn error's own message instead.
+    const missing = join(tmpdir(), 'pitway-no-such-dir-for-exec-test');
+    expect(() => execGit(['status'], missing)).toThrowError(GitError);
+    expect(() => execGit(['status'], missing)).toThrowError(/ENOENT/);
+  });
+});
+
+describe('assertGitWorkTree', () => {
+  it('passes silently inside a real work tree', () => {
+    expect(() => assertGitWorkTree(repo)).not.toThrow();
+  });
+
+  it('refuses a directory that is not a git repository at all', () => {
+    const nonRepo = mkdtempSync(join(tmpdir(), 'pitway-nongit-exec-'));
+    try {
+      expect(() => assertGitWorkTree(nonRepo)).toThrowError(GitError);
+      expect(() => assertGitWorkTree(nonRepo)).toThrowError(/git repository required/);
+    } finally {
+      rmSync(nonRepo, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses a bare repository: inside git, but not a work tree', () => {
+    // rev-parse --is-inside-work-tree succeeds but prints "false" -- the
+    // non-"true" output branch, distinct from the command failing outright.
+    const bare = mkdtempSync(join(tmpdir(), 'pitway-bare-'));
+    try {
+      git(['init', '-q', '--bare'], bare);
+      expect(() => assertGitWorkTree(bare)).toThrowError(GitError);
+      expect(() => assertGitWorkTree(bare)).toThrowError(/is not a git work tree/);
+    } finally {
+      rmSync(bare, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('checkWorkingTreeClean', () => {

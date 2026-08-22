@@ -10,7 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
@@ -21,6 +21,8 @@ import {
   loadTasks,
   loadUsage,
   loadVerificationResults,
+  saveContract,
+  saveState,
 } from '../../src/state/store.js';
 
 function git(args: string[], cwd: string): void {
@@ -279,6 +281,61 @@ describe('pitway milestone-add', () => {
     expect(loadState(root).milestones).toEqual([]);
   });
 
+  it('refuses an unreadable contract input path, naming the file', async () => {
+    const { tasks } = writeInputs(root);
+    const missing = join(root, 'does-not-exist.md');
+    const { error } = await run(['milestone-add', '--contract', missing, '--tasks', tasks], root);
+    expect(error?.message).toMatch(/cannot read contract file/);
+    expect(loadState(root).milestones).toEqual([]);
+  });
+
+  it('refuses a contract file that does not parse as a contract', async () => {
+    const badContract = join(root, 'bad-contract.md');
+    writeFileSync(badContract, 'not a contract at all\n');
+    const { tasks } = writeInputs(root);
+    const { error } = await run(['milestone-add', '--contract', badContract, '--tasks', tasks], root);
+    expect(error?.message).toMatch(/invalid contract/);
+    expect(loadState(root).milestones).toEqual([]);
+  });
+
+  it('refuses malformed tasks YAML naming the file', async () => {
+    const { contract } = writeInputs(root);
+    const badTasks = join(root, 'bad-tasks.yaml');
+    writeFileSync(badTasks, 'tasks: [unclosed\n  - broken');
+    const { error } = await run(['milestone-add', '--contract', contract, '--tasks', badTasks], root);
+    expect(error?.message).toMatch(/malformed YAML/);
+    expect(loadState(root).milestones).toEqual([]);
+  });
+
+  it('refuses schema-invalid tasks (valid YAML, missing required fields)', async () => {
+    const { contract } = writeInputs(root);
+    const badTasks = join(root, 'schema-bad-tasks.yaml');
+    writeFileSync(badTasks, 'schema_version: 1\ntasks:\n  - id: T001\n');
+    const { error } = await run(['milestone-add', '--contract', contract, '--tasks', badTasks], root);
+    expect(error?.message).toMatch(/invalid tasks/);
+    expect(loadState(root).milestones).toEqual([]);
+  });
+
+  it('proceeds when the active milestone is terminal (cancelled), minting the next id', async () => {
+    const { contract, tasks } = writeInputs(root);
+    const first = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
+    expect(first.error).toBeUndefined();
+    // The crash-recovery shape: a cancel that flipped the contract but never
+    // reached the state write leaves active_milestone pointing at a
+    // cancelled milestone. milestone-add treats terminal (cancelled or
+    // completed) as no obstacle.
+    const m1 = loadContract(root, 'M001');
+    saveContract(root, 'M001', {
+      frontmatter: { ...m1.frontmatter, status: 'cancelled' },
+      body: m1.body,
+    });
+    const second = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
+    expect(second.error).toBeUndefined();
+    const state = loadState(root);
+    expect(state.milestones).toEqual(['M001', 'M002']);
+    expect(state.active_milestone).toBe('M002');
+  });
+
   it('grandfathers a pre-existing bare directory: a milestone created bare still resolves correctly', async () => {
     // Simulates an M001-M005-style bare directory that predates slugging —
     // milestone-add's own createMilestone path always slugs new directories,
@@ -369,6 +426,23 @@ describe('pitway milestone-add --replace (AC001)', () => {
     expect(readFileSync(join(root, '.pitway', 'requirements', 'R001.md'), 'utf8')).toContain('Original.');
   });
 
+  it('re-activates a draft left non-active (interrupted prior correction) when replacing it', async () => {
+    const { contract, tasks } = writeInputs(root);
+    const added = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
+    expect(added.error).toBeUndefined();
+    // Crash-recovery shape: state.yaml no longer points at the draft.
+    saveState(root, { ...loadState(root), active_milestone: null });
+
+    const repl = writeReplacementInputs(root);
+    const { error } = await run(
+      ['milestone-add', '--replace', 'M001', '--contract', repl.contract, '--tasks', repl.tasks],
+      root,
+    );
+    expect(error).toBeUndefined();
+    expect(loadState(root).active_milestone).toBe('M001');
+    expect(loadContract(root, 'M001').frontmatter.title).toBe('Replaced milestone');
+  });
+
   it('creates a fresh requirement when --requirement is supplied, leaving the prior one on disk', async () => {
     const { contract, tasks } = writeInputs(root);
     const requirement = join(root, 'req.md');
@@ -400,5 +474,37 @@ describe('pitway milestone-add --replace (AC001)', () => {
     expect(loadContract(root, 'M001').frontmatter.requirement).toBe('R002');
     expect(readFileSync(join(root, '.pitway', 'requirements', 'R001.md'), 'utf8')).toContain('Original.');
     expect(readFileSync(join(root, '.pitway', 'requirements', 'R002.md'), 'utf8')).toContain('Updated.');
+  });
+});
+
+// The default CommandDeps fallbacks (deps.write ?? console.log,
+// deps.root ?? process.cwd()) are only reached when a caller registers the
+// command with no overrides -- the real shape a bare `pitway milestone-add`
+// invocation takes outside this test file's harness. process.chdir into the
+// fixture root keeps this from ever touching the real repository's state.
+describe('pitway milestone-add default CommandDeps fallbacks', () => {
+  it('falls back to console.log and process.cwd() when no overrides are given', async () => {
+    const { contract, tasks } = writeInputs(root);
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerMilestoneAddCommand(program);
+      await program.parseAsync(['node', 'pitway', 'milestone-add', '--contract', contract, '--tasks', tasks]);
+    } catch (error) {
+      caught = error;
+    } finally {
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+
+    expect(caught).toBeUndefined();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.[0]).toMatch(/🏁 Created milestone M001 "Example milestone" as draft\./);
   });
 });

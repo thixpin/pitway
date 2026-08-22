@@ -1,0 +1,103 @@
+schema_version: 1
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-22T12:19:57Z
+    evidence: Tests  236 passed (236) | Start at  19:19:00 | Duration  56.60s
+      (transform 2.82s, setup 0ms, import 5.97s, tests 204.20s, environment 2ms)
+    recorded_by: command
+    duration_ms: 57317
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-22T12:20:27Z
+    evidence: Tests  164 passed (164) | Start at  19:19:57 | Duration  30.10s
+      (transform 1.42s, setup 0ms, import 2.23s, tests 73.44s, environment 0ms)
+    recorded_by: command
+    duration_ms: 30715
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-22T12:21:46Z
+    evidence: Tests  260 passed (260) | Start at  19:20:28 | Duration  77.83s
+      (transform 2.92s, setup 0ms, import 5.61s, tests 310.73s, environment 2ms)
+    recorded_by: command
+    duration_ms: 78533
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-22T12:22:41Z
+    evidence: Tests  249 passed (249) | Start at  19:21:47 | Duration  53.91s
+      (transform 1.44s, setup 0ms, import 2.67s, tests 81.23s, environment 1ms)
+    recorded_by: command
+    duration_ms: 54557
+    termination_reason: exited
+  - check: CT007
+    status: fail
+    at: 2026-08-22T12:24:41Z
+    evidence: "> pitway@0.2.0 test | > vitest run | RUN  v4.1.11
+      /Users/thixpin/project/thixpin/pitway"
+    recorded_by: command
+    duration_ms: 120014
+    termination_reason: timeout
+  - check: CT001
+    status: pass
+    at: 2026-08-22T12:39:07Z
+    evidence: Tests  236 passed (236) | Start at  19:38:10 | Duration  57.22s
+      (transform 2.60s, setup 0ms, import 5.75s, tests 203.21s, environment 1ms)
+    recorded_by: command
+    duration_ms: 57958
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-22T12:39:38Z
+    evidence: Tests  164 passed (164) | Start at  19:39:08 | Duration  30.06s
+      (transform 1.54s, setup 0ms, import 2.45s, tests 74.15s, environment 1ms)
+    recorded_by: command
+    duration_ms: 30695
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-22T12:41:15Z
+    evidence: Tests  260 passed (260) | Start at  19:39:38 | Duration  96.61s
+      (transform 3.60s, setup 0ms, import 6.86s, tests 396.54s, environment 2ms)
+    recorded_by: command
+    duration_ms: 97249
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-22T12:42:39Z
+    evidence: Tests  249 passed (249) | Start at  19:41:16 | Duration  83.01s
+      (transform 2.56s, setup 0ms, import 4.66s, tests 131.52s, environment 2ms)
+    recorded_by: command
+    duration_ms: 84018
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-22T12:47:42Z
+    evidence: Tests  1685 passed (1685) | Start at  19:42:40 | Duration  299.43s
+      (transform 8.93s, setup 0ms, import 42.89s, tests 2014.63s, environment
+      24ms)
+    recorded_by: command
+    duration_ms: 302661
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-22T12:48:40Z
+    evidence: "Real full npm run test:coverage (88 files, 1685 tests green): OVERALL
+      branches 1933/2002 (96.6%), lines 3176/3218 (98.7%). Per-file lcov audit:
+      every src file >=90 branches and lines except src/cli/index.ts (AC006
+      exception) and two named AC008 disclosures (usage-add.ts 6/7, exec.ts
+      5/6). Full before/after per-file table recorded in
+      docs/evidence/M024/coverage.md from real lcov BRDA/LF data (baseline
+      re-measured at cb7c714: 86.3%/95.4%, 51 files below bar)."
+    recorded_by: developer
+  - check: CT006
+    status: pass
+    at: 2026-08-22T12:48:57Z
+    evidence: src/cli/index.ts has no diff against milestone base cb7c714 (git diff
+      empty; no production change). The exception is restated unchanged in
+      docs/evidence/M024/coverage.md - real-binary error boundary V8 cannot
+      measure, behaviorally covered by build-bin.test.ts's real-subprocess tests
+      including printStack=true; excluded by name, never expanded.
+    recorded_by: developer

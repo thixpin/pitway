@@ -13,8 +13,11 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { parse } from 'yaml';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
+import { registerTaskUpdateCommand as registerTaskUpdateBare } from '../../src/cli/commands/task-update.js';
+import { hasVerifiedEvidence, updateTask, TaskUpdateError } from '../../src/core/tasks/update.js';
+import { saveState } from '../../src/state/store.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
@@ -830,6 +833,7 @@ describe('pitway task-update integrates task-verify evidence (T002/AC001)', () =
     exitCode?: number | null;
     terminationReason?: 'exited' | 'timeout' | 'signal' | 'spawn_error';
     fingerprint?: JournalTaskVerifyFingerprint;
+    typecheck?: { command: string; exitCode: number | null; evidence: string };
   } = {}): string {
     touchRelevantFile();
     const id = overrides.id ?? `tve-${Math.random().toString(36).slice(2, 10)}`;
@@ -844,6 +848,7 @@ describe('pitway task-update integrates task-verify evidence (T002/AC001)', () =
       durationMs: 500,
       terminationReason: overrides.terminationReason ?? 'exited',
       fingerprint: overrides.fingerprint ?? currentFingerprint(),
+      ...(overrides.typecheck !== undefined ? { typecheck: overrides.typecheck } : {}),
       at: new Date().toISOString(),
     });
     return id;
@@ -1138,4 +1143,60 @@ tasks:
     const view = JSON.parse(lines[0]!) as { usageWarning: string | null };
     expect(view.usageWarning).toBeNull();
   });
+  it('falls back to console.error for the completion usage warning when writeErr is omitted', async () => {
+    await dispatchAndIntegrate('T001', 'src/a.ts');
+    const program = buildCli();
+    registerTaskUpdateBare(program);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const originalCwd = process.cwd();
+    let errCalls: unknown[][];
+    try {
+      process.chdir(root);
+      await program.parseAsync([
+        'node',
+        'pitway',
+        'task-update',
+        'T001',
+        'completed',
+        ...completionFlags(),
+      ]);
+    } finally {
+      process.chdir(originalCwd);
+      errCalls = errSpy.mock.calls;
+      logSpy.mockRestore();
+      errSpy.mockRestore();
+    }
+    expect(errCalls).toHaveLength(1);
+    expect(String(errCalls[0]![0])).toContain('T001');
+    expect(String(errCalls[0]![0])).toMatch(/N\/A/);
+  });
+});
+
+
+
+
+// M024/T005 gate widening: the CommandDeps default fallbacks the full-suite
+// coverage run exposed -- real behavioral cases through the bare command.
+describe('pitway task-update default CommandDeps fallbacks (M024/T005)', () => {
+  it('falls back to console.log and process.cwd() when deps are omitted', async () => {
+    expect((await update(['T001', 'in_progress'])).error).toBeUndefined();
+    const program = buildCli();
+    registerTaskUpdateBare(program);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const originalCwd = process.cwd();
+    let calls: unknown[][];
+    try {
+      process.chdir(root);
+      await program.parseAsync(['node', 'pitway', 'task-update', 'T001', 'blocked']);
+    } finally {
+      process.chdir(originalCwd);
+      calls = logSpy.mock.calls;
+      logSpy.mockRestore();
+    }
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0]![0])).toContain('Blocked');
+    expect(task('T001').status).toBe('blocked');
+  });
+
 });

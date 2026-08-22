@@ -2,8 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli, registerAllCommands } from '../../src/cli/index.js';
+import { registerTaskAddCommand } from '../../src/cli/commands/task-add.js';
 import { derivePending } from '../../src/core/journal/operations.js';
 import { readJournal, type JournalEntry } from '../../src/state/journal.js';
 import { loadConfig, loadTasks, saveConfig } from '../../src/state/store.js';
@@ -244,6 +245,39 @@ describe('pitway task-add milestone-status refusals', () => {
     expect(pendingAddEntries()).toHaveLength(0);
   });
 
+  it('refuses when the contract has no Change Log heading at all', async () => {
+    const dir = join(root, '.pitway', 'milestones', 'M002');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      dir + '/contract.md',
+      CONTRACT_FIXTURE.replace('id: M999', 'id: M002')
+        .replace('status: draft', 'status: in_progress')
+        .replace('## Change Log\n\n- Initial milestone contract.\n', ''),
+    );
+    writeFileSync(dir + '/tasks.yaml', TASKS_FIXTURE);
+    const { error } = await addTaskCmd(newTaskFields(), 'Evidence.', 'M002');
+    expect(error?.message).toMatch(/Change Log/);
+    expect(pendingAddEntries()).toHaveLength(0);
+  });
+
+  it('refuses when the Change Log heading is immediately followed by another heading (no entry text)', async () => {
+    const dir = join(root, '.pitway', 'milestones', 'M002');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      dir + '/contract.md',
+      CONTRACT_FIXTURE.replace('id: M999', 'id: M002')
+        .replace('status: draft', 'status: in_progress')
+        .replace(
+          '## Change Log\n\n- Initial milestone contract.\n',
+          '## Change Log\n\n## Appendix\n\n- Not a change log entry.\n',
+        ),
+    );
+    writeFileSync(dir + '/tasks.yaml', TASKS_FIXTURE);
+    const { error } = await addTaskCmd(newTaskFields(), 'Evidence.', 'M002');
+    expect(error?.message).toMatch(/Change Log/);
+    expect(pendingAddEntries()).toHaveLength(0);
+  });
+
   it('refuses when the milestone has no recorded Change Log entry', async () => {
     const dir = join(root, '.pitway', 'milestones', 'M002');
     mkdirSync(dir, { recursive: true });
@@ -300,6 +334,46 @@ describe('pitway task-add validation on a confirmed/in_progress milestone', () =
       expect(pendingAddEntries()).toHaveLength(0);
     },
   );
+
+  it('refuses an unreadable definition file, wrapping the read error', async () => {
+    const missing = join(scratch, 'does-not-exist.yaml');
+    const { error } = await run(
+      ['task-add', 'M001', '--file', missing, '--change-log', 'Evidence.', '--json'],
+      root,
+    );
+    expect(error?.message).toMatch(/task definition/);
+    expect(pendingAddEntries()).toHaveLength(0);
+  });
+
+  it('refuses malformed YAML in the definition file, naming the file', async () => {
+    const bad = join(scratch, 'bad.yaml');
+    writeFileSync(bad, 'id: T004\n  broken:\n indent: [unclosed\n');
+    const { error } = await run(
+      ['task-add', 'M001', '--file', bad, '--change-log', 'Evidence.', '--json'],
+      root,
+    );
+    expect(error?.message).toMatch(/invalid task definition/);
+    expect(pendingAddEntries()).toHaveLength(0);
+  });
+
+  it('refuses a definition file that is not a YAML object (list)', async () => {
+    const list = join(scratch, 'list.yaml');
+    writeFileSync(list, '- not\n- an\n- object\n');
+    const { error } = await run(
+      ['task-add', 'M001', '--file', list, '--change-log', 'Evidence.', '--json'],
+      root,
+    );
+    expect(error?.message).toMatch(/must be a YAML object of task fields/);
+    expect(pendingAddEntries()).toHaveLength(0);
+  });
+
+  it('refuses a definition failing full task-schema validation (context_files without write_scope)', async () => {
+    const fields = newTaskFields({ id: 'T004' });
+    delete fields.write_scope;
+    const { error } = await addTaskCmd(fields);
+    expect(error?.message).toMatch(/invalid new task T004/);
+    expect(pendingAddEntries()).toHaveLength(0);
+  });
 
   it('refuses an id that is not the next sequential Tnnn (gap)', async () => {
     const { error } = await addTaskCmd(newTaskFields({ id: 'T099' }));
@@ -456,6 +530,40 @@ describe('pitway task-add: the dispatch rule (inline immediate, dispatch waits f
 
     expect(task('T004').status).toBe('ready');
     expect(pendingAddEntries('T004')).toHaveLength(1);
+  });
+});
+
+// M020-pattern CommandDeps defaults: registering with no deps at all reaches
+// deps.write ?? console.log and deps.root ?? process.cwd(), and the non---json
+// invocation renders through renderTaskAddHuman.
+describe('pitway task-add default CommandDeps fallbacks and human rendering', () => {
+  it('falls back to console.log/process.cwd() and renders the human line without --json', async () => {
+    const file = taskDefinitionFile(newTaskFields());
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerTaskAddCommand(program);
+      await program.parseAsync([
+        'node', 'pitway', 'task-add', 'M001', '--file', file, '--change-log', 'Evidence.',
+      ]);
+    } catch (error) {
+      caught = error;
+    } finally {
+      // vitest v4: mockRestore() clears recorded calls -- capture first.
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+
+    expect(caught).toBeUndefined();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.[0]).toContain('Added task T004 to M001');
+    expect(calls[0]?.[0]).toContain('task-dispatch refuses until then');
+    expect(task('T004').status).toBe('ready');
   });
 });
 

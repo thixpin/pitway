@@ -53,4 +53,13 @@ describe('computeVerificationHash', () => {
       /verification/,
     );
   });
+
+  it('throws when the verification block has no closing frontmatter delimiter', () => {
+    // "verification:" exists but no later line is exactly "---": the block
+    // never closes, so there is no canonical byte range to hash.
+    const text = ['---', 'schema_version: 1', 'verification:', '  - id: CT001'].join('\n');
+    expect(() => computeVerificationHash(text)).toThrowError(
+      /no closing frontmatter delimiter/,
+    );
+  });
 });

@@ -2,7 +2,7 @@ import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
@@ -839,5 +839,58 @@ describe('milestone-confirm reconciles pending journal entries after its baselin
     expect(pendingFor('M001')).toHaveLength(1);
     expect(reconcilePending(root, 'M001')).toHaveLength(0);
     expect(pendingFor('M001')).toHaveLength(1);
+  });
+});
+
+describe('pitway milestone-confirm human rendering', () => {
+  it("renders the idempotent re-entry as 'already recorded in', omitting Ready tasks when none remain ready", async () => {
+    await confirmed();
+    // Work has since started: T001 moved past ready. The re-entry view
+    // reports the currently-ready set, which is now empty -- the human line
+    // must omit the Ready-tasks sentence entirely, not render an empty list.
+    const tasksPath = join(root, '.pitway', 'milestones', milestoneDirName('M001'), 'tasks.yaml');
+    writeFileSync(
+      tasksPath,
+      readFileSync(tasksPath, 'utf8').replace('status: ready', 'status: in_progress'),
+    );
+
+    const { lines, error } = await run(['milestone-confirm', 'M001'], root);
+    expect(error).toBeUndefined();
+    const output = lines.join('\n');
+    expect(output).toMatch(/🏁 Confirmed milestone M001: hash sha256:[0-9a-f]{64} already recorded in baseline [0-9a-f]{40}\./);
+    expect(output).not.toContain('Ready tasks');
+  });
+});
+
+// The default CommandDeps fallbacks (deps.write ?? console.log,
+// deps.root ?? process.cwd()) are only reached when a caller registers the
+// command with no overrides -- the real shape a bare `pitway
+// milestone-confirm` invocation takes outside this test file's harness.
+describe('pitway milestone-confirm default CommandDeps fallbacks', () => {
+  it('falls back to console.log and process.cwd() when no overrides are given', async () => {
+    await addMilestone();
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerMilestoneConfirmCommand(program);
+      await program.parseAsync(['node', 'pitway', 'milestone-confirm', 'M001']);
+    } catch (error) {
+      caught = error;
+    } finally {
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+
+    expect(caught).toBeUndefined();
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0]?.[0])).toMatch(
+      /🏁 Confirmed milestone M001: hash sha256:[0-9a-f]{64} recorded in baseline [0-9a-f]{40}\. Ready tasks: T001\./,
+    );
   });
 });

@@ -8,7 +8,7 @@ import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
 import { registerVerifyCommand } from '../../src/cli/commands/verify.js';
-import { loadVerificationResults } from '../../src/state/store.js';
+import { loadState, loadVerificationResults, saveState } from '../../src/state/store.js';
 
 function git(args: string[], cwd: string): string {
   return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
@@ -784,5 +784,74 @@ describe('pitway verify --status (M013/T001)', () => {
       root,
     );
     expect(error?.message).toMatch(/--status/);
+  });
+
+  it('accepts an explicit milestone id instead of resolving the active one', async () => {
+    await confirmed();
+    const { lines, error } = await run(['verify', 'M001', '--status', '--json'], root);
+    expect(error).toBeUndefined();
+    const view = JSON.parse(lines[0]!) as StatusView;
+    expect(view.id).toBe('M001');
+    expect(view.checks).toHaveLength(3);
+  });
+
+  it('refuses when no id is given and no milestone is active', async () => {
+    await confirmed();
+    saveState(root, { ...loadState(root), active_milestone: null });
+    const { error } = await run(['verify', '--status'], root);
+    expect(error?.message).toMatch(/no active milestone/);
+  });
+
+  it('renders the human status view with pass, fail, and pending labels', async () => {
+    await confirmed(FAILING_CHECKS);
+    await run(['verify'], root);
+
+    const { lines, error } = await run(['verify', '--status'], root);
+    expect(error).toBeUndefined();
+    const output = lines.join('\n');
+    expect(output).toContain('🔍 Verification status M001');
+    expect(output).toContain('CT001  ✅ pass');
+    expect(output).toContain('CT002  ❌ fail');
+    expect(output).toContain('CT003  ⏳ pending');
+  });
+});
+
+describe('pitway verify --check isolated rerun human rendering', () => {
+  it('renders a passing isolated rerun without --json', async () => {
+    await confirmed();
+    const { lines, error } = await run(['verify', '--check', 'CT001'], root);
+    expect(error).toBeUndefined();
+    expect(lines.join('\n')).toMatch(/🔍 CT001 {2}✅ pass — hello \(M001\)/);
+  });
+});
+
+// The default CommandDeps fallbacks (deps.write ?? console.log,
+// deps.root ?? process.cwd()) are only reached when a caller registers the
+// command with no overrides -- the real shape a bare `pitway verify`
+// invocation takes outside this test file's harness.
+describe('pitway verify default CommandDeps fallbacks', () => {
+  it('falls back to console.log and process.cwd() when no overrides are given', async () => {
+    await confirmed();
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerVerifyCommand(program);
+      await program.parseAsync(['node', 'pitway', 'verify', '--status']);
+    } catch (error) {
+      caught = error;
+    } finally {
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+
+    expect(caught).toBeUndefined();
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0]?.[0])).toContain('🔍 Verification status M001');
   });
 });

@@ -192,6 +192,46 @@ describe('promptForRoles (unit-level, injected streams)', () => {
     input.write('also bogus\n');
     await expect(promise).rejects.toThrow(ReviewPromptError);
   });
+
+  it('treats whitespace-only input as invalid, then accepts a valid selection', async () => {
+    const { input, output, getOutput } = makeStreams(true);
+    const promise = promptForRoles({ input, output });
+    await waitFor(getOutput, '> ');
+    input.write('   \n');
+    await waitFor(getOutput, 'Invalid selection');
+    input.write('1\n');
+    await expect(promise).resolves.toEqual(['developer']);
+  });
+
+  it('treats an empty list segment (1,,2) as invalid, never a partial selection', async () => {
+    const { input, output, getOutput } = makeStreams(true);
+    const promise = promptForRoles({ input, output });
+    await waitFor(getOutput, '> ');
+    input.write('1,,2\n');
+    await waitFor(getOutput, 'Invalid selection');
+    input.write('2\n');
+    await expect(promise).resolves.toEqual(['architect']);
+  });
+
+  it('rejects out-of-range indices (0 below, 99 above), never clamping', async () => {
+    const { input, output, getOutput } = makeStreams(true);
+    const promise = promptForRoles({ input, output });
+    await waitFor(getOutput, '> ');
+    input.write('0\n');
+    await waitFor(getOutput, 'Invalid selection');
+    input.write('99\n');
+    await expect(promise).rejects.toThrow(ReviewPromptError);
+  });
+
+  it('rejects a repeated index (1,1), never deduplicating silently', async () => {
+    const { input, output, getOutput } = makeStreams(true);
+    const promise = promptForRoles({ input, output });
+    await waitFor(getOutput, '> ');
+    input.write('1,1\n');
+    await waitFor(getOutput, 'Invalid selection');
+    input.write('1\n');
+    await expect(promise).resolves.toEqual(['developer']);
+  });
 });
 
 describe('milestone-review start interactive selection (CLI level)', () => {

@@ -11,6 +11,7 @@ import {
   loadBacklog,
   loadConfig,
   loadContract,
+  loadReviews,
   loadState,
   loadTasks,
   loadUsage,
@@ -24,6 +25,7 @@ import {
   saveConfig,
   saveContract,
   saveRequirement,
+  saveReviews,
   saveState,
   saveTasks,
   saveUsage,
@@ -36,6 +38,7 @@ import type {
   BacklogItem,
   PitwayConfig,
   PitwayState,
+  ReviewsFile,
   TasksFile,
   UsageFile,
   VerificationRepairsFile,
@@ -199,6 +202,49 @@ describe('nextBacklogId (M018/T001)', () => {
     const items = [{ id: 'B001' }, { id: 'B003' }, { id: 'B002' }] as BacklogItem[];
     expect(nextBacklogId(items)).toBe('B004');
   });
+
+  it('ignores ids that do not match the B\\d{3} shape instead of failing on them', () => {
+    const items = [{ id: 'B002' }, { id: 'X999' }, { id: 'B12' }] as BacklogItem[];
+    expect(nextBacklogId(items)).toBe('B003');
+  });
+});
+
+// M015/T001 (AC001): loadReviews/saveReviews share loadVerificationRepairs's
+// absent-file tolerance -- reviews.yaml is created only on first write, so a
+// milestone materialized before reviews existed as a concept has none.
+describe('loadReviews/saveReviews (M015/T001)', () => {
+  const reviews: ReviewsFile = {
+    schema_version: 1,
+    sessions: [
+      {
+        id: 'rev-0a1b2c3d',
+        status: 'open',
+        created_at: '2026-08-21T09:00:00Z',
+        roles: ['qa'],
+        content_hash: `sha256:${'a'.repeat(64)}`,
+        findings: [],
+        decision: null,
+      },
+    ],
+  };
+
+  it('treats a missing reviews.yaml as an empty, schema-valid store', () => {
+    expect(loadReviews(root, 'M001')).toEqual({ schema_version: 1, sessions: [] });
+  });
+
+  it('round-trips a genuinely existing reviews.yaml', () => {
+    saveReviews(root, 'M001', reviews);
+    expect(loadReviews(root, 'M001')).toEqual(reviews);
+  });
+
+  it('still reports malformed YAML with the file path, not silently treated as empty', () => {
+    writeFileSync(
+      join(root, '.pitway', 'milestones', 'M001', 'reviews.yaml'),
+      'sessions: [unclosed\n',
+    );
+    expect(() => loadReviews(root, 'M001')).toThrowError(StateStoreError);
+    expect(() => loadReviews(root, 'M001')).toThrowError(/reviews\.yaml/);
+  });
 });
 
 describe('state store validation', () => {
@@ -228,6 +274,25 @@ describe('state store validation', () => {
     rmSync(join(root, '.pitway'), { recursive: true });
     expect(() => loadConfig(root)).toThrowError(/\.pitway/);
   });
+
+  it('wraps an invalid contract.md into a StateStoreError naming the file path', () => {
+    writeFileSync(
+      join(root, '.pitway', 'milestones', 'M001', 'contract.md'),
+      '# no frontmatter here\n',
+    );
+    expect(() => loadContract(root, 'M001')).toThrowError(StateStoreError);
+    expect(() => loadContract(root, 'M001')).toThrowError(/contract\.md.*frontmatter/s);
+  });
+
+  it('refuses to save an invalid contract, naming the file path, writing nothing', () => {
+    expect(() =>
+      saveContract(root, 'M001', { frontmatter: { id: 'M001' } as never, body: '\nbody\n' }),
+    ).toThrowError(StateStoreError);
+    expect(() =>
+      saveContract(root, 'M001', { frontmatter: { id: 'M001' } as never, body: '\nbody\n' }),
+    ).toThrowError(/refusing to save invalid .*contract\.md/);
+    expect(readdirSync(join(root, '.pitway', 'milestones', 'M001'))).not.toContain('contract.md');
+  });
 });
 
 describe('requirement artifact I/O', () => {
@@ -245,6 +310,12 @@ describe('requirement artifact I/O', () => {
     saveRequirement(root, 'R001', '# One\n');
     saveRequirement(root, 'R005', '# Five\n');
     expect(nextRequirementId(root)).toBe('R006');
+  });
+
+  it('ignores files that do not match the R\\d{3}.md shape', () => {
+    saveRequirement(root, 'R002', '# Two\n');
+    writeFileSync(join(root, '.pitway', 'requirements', 'notes.txt'), 'not a requirement\n');
+    expect(nextRequirementId(root)).toBe('R003');
   });
 
   it('saves a requirement artifact and reads it back byte-for-byte', () => {
@@ -307,6 +378,10 @@ describe('slugifyTitle', () => {
 
   it('produces an empty string for a title with no alphanumeric characters', () => {
     expect(slugifyTitle('!!! --- ???')).toBe('');
+  });
+
+  it('hard-truncates a single hyphenless word longer than 40 characters', () => {
+    expect(slugifyTitle('x'.repeat(45))).toBe('x'.repeat(40));
   });
 });
 
