@@ -5,7 +5,7 @@ title: Global Branch Coverage Hardening
 status: in_progress
 requirement: null
 confirmed_at: 2026-08-22T05:55:49Z
-verification_approved_hash: sha256:0d3fcdbc2a2a13d482eeba9a2e8fed6a278400473e65570d6efc92680c3fc583
+verification_approved_hash: sha256:e2d25f941540b2be7eeceb03936dac4c21dd4cd4c8d02ee59dba6e4c7dda9d29
 base_branch: main
 base_revision: 5410b92f4c78aefc270a5152d49cc8f54418c2c3
 acceptance_criteria:
@@ -91,8 +91,8 @@ verification:
       tests/unit/auto-run-authorization.test.ts
       tests/integration/backlog.test.ts tests/unit/backlog-state.test.ts
       tests/integration/quick-change.test.ts
-      tests/integration/quick-change-lifecycle.test.ts
-      tests/integration/quick-change-commit.test.ts
+      tests/unit/quick-change-lifecycle.test.ts
+      tests/unit/quick-change-commit.test.ts
   - id: CT003
     criterion: AC004
     type: command
@@ -113,11 +113,11 @@ verification:
     type: command
     command: npx vitest run tests/unit/failure-summary.test.ts
       tests/integration/verification-repair.test.ts
-      tests/integration/verification-process-exec.test.ts
-      tests/integration/verification-recursion-guard.test.ts
+      tests/unit/verification-process-exec.test.ts
+      tests/unit/verification-recursion-guard.test.ts
       tests/unit/verification-hash.test.ts tests/unit/journal.test.ts
       tests/unit/review-roles.test.ts tests/integration/git-worktree.test.ts
-      tests/integration/git-safety.test.ts tests/unit/state-store.test.ts
+      tests/unit/git-safety.test.ts tests/unit/state-store.test.ts
       tests/unit/contract-file.test.ts
   - id: CT005
     criterion: AC007
@@ -167,3 +167,11 @@ definition, disclosed structural exceptions) scales to the full tree here.
 ## Change Log
 
 - 2026-08-22: Initial draft.
+- 2026-08-22: Drafting-error correction (worker-disclosed during T002 and
+  T004, the same class both times): five test-file paths in CT002/CT004
+  (and the matching task definitions, corrected via task-amend) named
+  tests/integration/ for files that live under tests/unit/
+  (quick-change-lifecycle, quick-change-commit, verification-process-exec,
+  verification-recursion-guard, git-safety). Vitest silently ignores
+  nonexistent path filters, so the original commands under-checked while
+  still exiting 0. Paths corrected; no scope or target change.

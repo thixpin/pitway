@@ -12,7 +12,20 @@ import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js
 import { registerVerificationRepairCommand } from '../../src/cli/commands/verification-repair.js';
 import { registerVerifyCommand } from '../../src/cli/commands/verify.js';
 import { resolveCommitSha } from '../../src/git/trailers.js';
-import { loadTasks, loadVerificationRepairs, loadVerificationResults } from '../../src/state/store.js';
+import { resolveCanonicalGitDir } from '../../src/git/paths.js';
+import {
+  recordCheckResult,
+  runSingleCheck,
+  runVerification,
+  VerifyError,
+} from '../../src/core/verification/run.js';
+import {
+  loadContract,
+  loadTasks,
+  loadVerificationRepairs,
+  loadVerificationResults,
+  saveVerificationRepairs,
+} from '../../src/state/store.js';
 import type { Task } from '../../src/state/schemas.js';
 
 function git(args: string[], cwd: string): string {
@@ -654,5 +667,258 @@ describe('pitway verification-repair CLI wiring (deps.root/deps.write fallbacks,
     } finally {
       process.chdir(originalCwd);
     }
+  });
+});
+
+describe('pitway verification-repair edge validation and ambiguous states', () => {
+  it('rejects a whitespace-only --change-log in Core, not just at the CLI flag layer', async () => {
+    await readyForRepair();
+    const { error } = await approve(['repair-target.txt'], ['CT001'], '   ');
+    expect(error?.message).toMatch(/--change-log requires non-empty text/);
+    expect(repairs().records).toHaveLength(0);
+  });
+
+  it('refuses commit and cancel for an unknown VR id', async () => {
+    await readyForRepair();
+    const committed = await commitRepair('VR999');
+    expect(committed.error?.message).toMatch(/unknown verification repair VR999/);
+    const cancelled = await cancelRepair('VR999');
+    expect(cancelled.error?.message).toMatch(/unknown verification repair VR999/);
+  });
+
+  it('refuses to commit a cancelled VR', async () => {
+    await readyForRepair();
+    await approve(['repair-target.txt'], ['CT001']);
+    expect((await cancelRepair('VR001')).error).toBeUndefined();
+    const { error } = await commitRepair('VR001');
+    expect(error?.message).toMatch(/cannot commit VR001: status is "cancelled"/);
+  });
+
+  it('refuses as ambiguous a VR recorded committed with no matching commit anywhere', async () => {
+    await readyForRepair();
+    await approve(['repair-target.txt'], ['CT001'], 'Fix it.');
+    // Simulate a corrupted local state: the record claims committed but no
+    // commit carrying the VR trailers exists in history.
+    const record = repairs().records[0]!;
+    saveVerificationRepairs(root, 'M001', {
+      schema_version: 1,
+      records: [{ ...record, status: 'committed' }],
+    });
+    const { error } = await commitRepair('VR001');
+    expect(error?.message).toMatch(/recorded as committed but no matching commit was found/);
+  });
+
+  it('cancels the right record when several VRs exist, leaving the others untouched', async () => {
+    await readyForRepair();
+    await approve(['repair-target.txt'], ['CT001'], 'First rationale.');
+    expect((await cancelRepair('VR001')).error).toBeUndefined();
+    await approve(['repair-target.txt'], ['CT001'], 'Second rationale.');
+    expect((await cancelRepair('VR002')).error).toBeUndefined();
+
+    expect(repairs().records.map((r) => ({ id: r.id, status: r.status }))).toEqual([
+      { id: 'VR001', status: 'cancelled' },
+      { id: 'VR002', status: 'cancelled' },
+    ]);
+    expect(repairs().records[0]!.change_log).toBe('First rationale.');
+  });
+
+  it('commits a repair on a branch-tracked milestone (base_revision bounds the trailer search)', async () => {
+    // branch_strategy: milestone makes milestone-confirm record base_branch/
+    // base_revision and work on a dedicated milestone branch -- the bounded
+    // since..HEAD search path in findRepairCommit.
+    writeFileSync(
+      join(root, '.pitway', 'config.yaml'),
+      'schema_version: 1\ngit:\n  branch_strategy: milestone\n',
+    );
+    await readyForRepair();
+    expect(loadContract(root, 'M001').frontmatter.base_revision).toBeTruthy();
+
+    await approve(['repair-target.txt'], ['CT001'], 'Branch-tracked fix.');
+    writeFileSync(join(root, 'repair-target.txt'), 'FIXED on branch\n');
+    const { lines, error } = await commitRepair('VR001');
+    expect(error).toBeUndefined();
+    expect((JSON.parse(lines[0]!) as { outcome: string }).outcome).toBe('committed');
+
+    // Idempotent re-entry still resolves through the bounded search.
+    const again = await commitRepair('VR001');
+    expect(again.error).toBeUndefined();
+    expect((JSON.parse(again.lines[0]!) as { outcome: string }).outcome).toBe('already-committed');
+  });
+});
+
+// Core run.ts paths this file's own repositories are the natural home for:
+// milestone resolution, the hash gate, the recursion guard's env mechanics,
+// and per-check evidence fallbacks for every termination reason.
+describe('runVerification / runSingleCheck / recordCheckResult (core paths)', () => {
+  const GUARD_ENV_VAR = 'PITWAY_VERIFY_GUARD';
+
+  // Every command check here is cheap and controls its own outcome: CT001
+  // fails loudly (summary path), CT002 times out silently, CT003 kills its
+  // own shell, CT004 exits nonzero with no output, CT005 stays manual.
+  const RUN_CONTRACT = `---
+schema_version: 1
+id: M999
+title: Run coverage milestone
+status: draft
+requirement: null
+confirmed_at: null
+verification_approved_hash: null
+acceptance_criteria:
+  - id: AC001
+    text: Behavior holds.
+verification:
+  - id: CT001
+    criterion: AC001
+    type: command
+    command: node -e "console.log('FAIL boom'); process.exit(1)"
+  - id: CT002
+    criterion: AC001
+    type: command
+    command: sleep 5
+    timeout_ms: 300
+  - id: CT003
+    criterion: AC001
+    type: command
+    command: kill -KILL $$
+  - id: CT004
+    criterion: AC001
+    type: command
+    command: node -e "process.exit(3)"
+  - id: CT005
+    criterion: AC001
+    type: manual
+    instruction: Check the docs.
+---
+
+# Contract
+
+## Objective
+
+Run-path coverage.
+
+## Change Log
+`;
+
+  async function addMilestone(contractText: string, confirm: boolean): Promise<void> {
+    const contract = join(root, 'draft-contract.md');
+    const tasks = join(root, 'draft-tasks.yaml');
+    writeFileSync(contract, contractText);
+    writeFileSync(tasks, TASKS_FIXTURE);
+    const added = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
+    expect(added.error).toBeUndefined();
+    rmSync(contract);
+    rmSync(tasks);
+    if (confirm) {
+      const confirmed = await run(['milestone-confirm', 'M001'], root);
+      expect(confirmed.error).toBeUndefined();
+    }
+  }
+
+  it('refuses when no milestone id is given and none is active', () => {
+    expect(() => runVerification(root)).toThrowError(VerifyError);
+    expect(() => runVerification(root)).toThrowError(/no active milestone/);
+  });
+
+  it('refuses an unconfirmed milestone: no approved verification hash yet', async () => {
+    await addMilestone(CONTRACT_FIXTURE, false);
+    expect(() => runVerification(root, 'M001')).toThrowError(
+      /no approved verification hash recorded/,
+    );
+  });
+
+  it('refuses when the verification block was edited after approval (hash gate)', async () => {
+    await addMilestone(CONTRACT_FIXTURE, true);
+    const path = join(root, contractPath());
+    writeFileSync(
+      path,
+      readFileSync(path, 'utf8').replace('repair-target.txt', 'tampered-target.txt'),
+    );
+    expect(() => runVerification(root, 'M001')).toThrowError(
+      /does not match the approved hash .*milestone-confirm M001 --amend/s,
+    );
+  });
+
+  it('resolves the active milestone by default and reports per-termination-reason evidence fallbacks', async () => {
+    await addMilestone(RUN_CONTRACT, true);
+
+    // No explicit milestone id: resolved from state.active_milestone.
+    const view = runVerification(root);
+    expect(view.id).toBe('M001');
+    expect(view.passed).toBe(false);
+    expect(view.pending).toEqual(['CT005']);
+
+    const byCheck = new Map(view.results.map((r) => [r.check, r.evidence]));
+    // CT001: failing output matching the failure patterns gets the
+    // `failures:` summary prepended ahead of the tail-trimmed output.
+    expect(byCheck.get('CT001')).toMatch(/^failures: FAIL boom/);
+    // CT002-CT004: no output at all, so evidence is the per-reason fallback.
+    expect(byCheck.get('CT002')).toBe('(no output; timed out)');
+    expect(byCheck.get('CT003')).toBe('(no output; killed by signal)');
+    expect(byCheck.get('CT004')).toBe('(no output; exit 3)');
+
+    // Every command outcome was persisted append-only, in contract order.
+    const persisted = loadVerificationResults(root, 'M001').results;
+    expect(persisted.map((r) => r.check)).toEqual(['CT001', 'CT002', 'CT003', 'CT004']);
+    expect(persisted.map((r) => r.termination_reason)).toEqual([
+      'exited',
+      'timeout',
+      'signal',
+      'exited',
+    ]);
+  });
+
+  it('refuses recursive verification of the same repo+milestone via the inherited guard token', async () => {
+    await addMilestone(CONTRACT_FIXTURE, true);
+    const token = `${resolveCanonicalGitDir(root)}#M001`;
+    const previous = process.env[GUARD_ENV_VAR];
+    process.env[GUARD_ENV_VAR] = token;
+    try {
+      expect(() => runVerification(root, 'M001')).toThrowError(
+        /already being verified by an ancestor process/,
+      );
+      // Refused before extending: the guard value is untouched.
+      expect(process.env[GUARD_ENV_VAR]).toBe(token);
+    } finally {
+      if (previous === undefined) delete process.env[GUARD_ENV_VAR];
+      else process.env[GUARD_ENV_VAR] = previous;
+    }
+  });
+
+  it('extends past an unrelated in-flight token and restores it afterwards', async () => {
+    await addMilestone(CONTRACT_FIXTURE, true);
+    const unrelated = '/elsewhere#M999';
+    const previous = process.env[GUARD_ENV_VAR];
+    process.env[GUARD_ENV_VAR] = unrelated;
+    try {
+      seedRepairTarget();
+      const view = runSingleCheck(root, 'M001', 'CT001');
+      expect(view.status).toBe('pass');
+      // The unrelated token survives: restored, not deleted.
+      expect(process.env[GUARD_ENV_VAR]).toBe(unrelated);
+    } finally {
+      if (previous === undefined) delete process.env[GUARD_ENV_VAR];
+      else process.env[GUARD_ENV_VAR] = previous;
+    }
+  });
+
+  it('runSingleCheck refuses an unknown check id and a non-command check', async () => {
+    await addMilestone(CONTRACT_FIXTURE, true);
+    expect(() => runSingleCheck(root, 'M001', 'CT999')).toThrowError(/unknown check CT999 in M001/);
+    expect(() => runSingleCheck(root, 'M001', 'CT002')).toThrowError(
+      /CT002 is a manual check; record it with --pass\/--fail/,
+    );
+  });
+
+  it('recordCheckResult refuses an unknown check, a command check, and empty evidence', async () => {
+    await addMilestone(CONTRACT_FIXTURE, true);
+    expect(() =>
+      recordCheckResult(root, 'M001', { check: 'CT999', status: 'pass', evidence: 'x' }),
+    ).toThrowError(/unknown check CT999 in M001/);
+    expect(() =>
+      recordCheckResult(root, 'M001', { check: 'CT001', status: 'pass', evidence: 'x' }),
+    ).toThrowError(/CT001 is a command check; run bare "pitway verify"/);
+    expect(() =>
+      recordCheckResult(root, 'M001', { check: 'CT002', status: 'pass', evidence: '   ' }),
+    ).toThrowError(/requires non-empty --evidence/);
   });
 });
