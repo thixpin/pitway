@@ -415,15 +415,18 @@ describe('backlog CLI human output (no --json)', () => {
     expect(lines[1]).toMatch(/🏎️|🏁/);
   });
 
-  it('list renders one line per item with status, title, and reason', async () => {
+  it('list renders a table with id, status, source, title columns', async () => {
     addBacklogItem(root, { title: 'First thing', reason: 'Deferred A' });
     addBacklogItem(root, { title: 'Second thing', reason: 'Deferred B' });
     const { lines, error } = await run(['backlog', 'list'], root);
     expect(error).toBeUndefined();
-    expect(lines.join('\n').split('\n')).toEqual([
-      '🔧 B001 [pending] First thing — Deferred A',
-      '🔧 B002 [pending] Second thing — Deferred B',
-    ]);
+    const outLines = lines.join('\n').split('\n');
+    expect(outLines[0]).toBe('| ID | Status | Source | Title |');
+    expect(outLines[1]).toMatch(/^\|[-|]+\|$/);
+    expect(outLines.slice(2).join('\n')).toContain('B001');
+    expect(outLines.slice(2).join('\n')).toContain('First thing');
+    expect(outLines.slice(2).join('\n')).toContain('B002');
+    expect(outLines.slice(2).join('\n')).toContain('Second thing');
   });
 
   it('list renders the empty-state line when nothing is recorded', async () => {
@@ -439,21 +442,27 @@ describe('backlog CLI human output (no --json)', () => {
 
     const filtered = await run(['backlog', 'list', '--status', 'archived'], root);
     expect(filtered.error).toBeUndefined();
-    // T008: active filters echoed in header
-    expect(filtered.lines.join('\n').split('\n')).toEqual([
-      'Backlog (filtered: status=archived)',
-      '🔧 B002 [archived] Gone — R',
-    ]);
+    // T008: active filters echoed in header; T009: table renderer
+    const filteredLines = filtered.lines.join('\n').split('\n');
+    expect(filteredLines[0]).toBe('Backlog (filtered: status=archived)');
+    expect(filteredLines[1]).toBe('| ID | Status | Source | Title |');
+    expect(filteredLines.slice(2).join('\n')).toContain('B002');
+    expect(filteredLines.slice(2).join('\n')).toContain('archived');
+    expect(filteredLines.slice(2).join('\n')).toContain('Gone');
 
     const bad = await run(['backlog', 'list', '--status', 'bogus'], root);
     expect(bad.error?.message).toMatch(/must be pending, promoted, or archived; got bogus/);
   });
 
-  it('show renders the single-item line', async () => {
+  it('show renders the item with header, source, status and wrapped reason', async () => {
     addBacklogItem(root, { title: 'Thing', reason: 'Why' });
     const { lines, error } = await run(['backlog', 'show', 'B001'], root);
     expect(error).toBeUndefined();
-    expect(lines).toEqual(['🔧 B001 [pending] Thing — Why']);
+    const text = lines.join('\n');
+    expect(text).toContain('B001 [pending] Thing');
+    expect(text).toContain('Source: M001');
+    expect(text).toContain('Status: pending');
+    expect(text).toContain('Why');
   });
 
   it('promote renders the target milestone/task line', async () => {
@@ -578,7 +587,9 @@ describe('backlog list filters: --milestone and --task (M025/T008)', () => {
     expect(out.error).toBeUndefined();
     const outLines = out.lines.join('\n').split('\n');
     expect(outLines[0]).toBe('Backlog (filtered: milestone=M002)');
-    expect(outLines.slice(1)).toEqual(['🔧 B002 [pending] In M002 — R']);
+    expect(outLines[1]).toBe('| ID | Status | Source | Title |');
+    expect(outLines.slice(2).join('\n')).toContain('B002');
+    expect(outLines.slice(2).join('\n')).toContain('In M002');
 
     // core-level combinable check
     expect(listBacklogItems(root, { milestone: 'M001' }).map((i) => i.id)).toEqual(['B001']);
@@ -592,7 +603,9 @@ describe('backlog list filters: --milestone and --task (M025/T008)', () => {
     expect(out.error).toBeUndefined();
     const outLines = out.lines.join('\n').split('\n');
     expect(outLines[0]).toBe('Backlog (filtered: task=T001)');
-    expect(outLines.slice(1)).toEqual(['🔧 B002 [pending] With task — R']);
+    expect(outLines[1]).toBe('| ID | Status | Source | Title |');
+    expect(outLines.slice(2).join('\n')).toContain('B002');
+    expect(outLines.slice(2).join('\n')).toContain('With task');
 
     expect(listBacklogItems(root, { task: 'T001' }).map((i) => i.id)).toEqual(['B002']);
   });
@@ -609,7 +622,9 @@ describe('backlog list filters: --milestone and --task (M025/T008)', () => {
     expect(combined.error).toBeUndefined();
     const combinedLines = combined.lines.join('\n').split('\n');
     expect(combinedLines[0]).toBe('Backlog (filtered: status=pending, milestone=M001)');
-    expect(combinedLines.slice(1)).toEqual(['🔧 B001 [pending] Keep pending M001 — R']);
+    expect(combinedLines[1]).toBe('| ID | Status | Source | Title |');
+    expect(combinedLines.slice(2).join('\n')).toContain('B001');
+    expect(combinedLines.slice(2).join('\n')).toContain('Keep pending M001');
 
     // no-match empty: well-formed but nonexistent milestone yields header + empty line
     const empty = await run(['backlog', 'list', '--milestone', 'M999'], root);
@@ -625,7 +640,9 @@ describe('backlog list filters: --milestone and --task (M025/T008)', () => {
     expect(both.error).toBeUndefined();
     const bothLines = both.lines.join('\n').split('\n');
     expect(bothLines[0]).toBe('Backlog (filtered: milestone=M001, task=T001)');
-    expect(bothLines.slice(1)).toEqual(['🔧 B004 [pending] M001 T001 — R']);
+    expect(bothLines[1]).toBe('| ID | Status | Source | Title |');
+    expect(bothLines.slice(2).join('\n')).toContain('B004');
+    expect(bothLines.slice(2).join('\n')).toContain('M001 T001');
 
     // all three combined, no match -> header lists all three + empty
     const tripleEmpty = await run(

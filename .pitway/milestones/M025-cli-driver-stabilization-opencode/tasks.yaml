@@ -399,7 +399,7 @@ tasks:
       terminal text (Markdown-ish formatting preserved where sensible). --json
       output is byte-unchanged; no data restructuring. Depends on T002 for the
       renderer and T008 for the settled list surface."
-    status: in_progress
+    status: completed
     depends_on:
       - T002
       - T008
@@ -418,7 +418,13 @@ tasks:
       detail: npx vitest run tests/integration/backlog.test.ts
         tests/unit/table-renderer.test.ts tests/unit/backlog-render.test.ts
         tests/unit/backlog-state.test.ts
-    result: null
+    result:
+      summary: T009 human-readable backlog render via shared table module — list as
+        table via renderTable, show with wrapped Markdown-ish reason; JSON
+        unchanged; 123 tests.
+      evidence: Tests  123 passed (123) | Start at  23:13:41 | Duration  30.45s
+        (transform 541ms, setup 0ms, import 851ms, tests 29.97s, environment
+        0ms)
     attempts: 1
     usage: null
   - id: T010
