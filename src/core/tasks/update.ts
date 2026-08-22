@@ -386,6 +386,9 @@ function findCompletionCommit(
 // worktree_dispatch record at all (never dispatched, or an inline sub-agent
 // dispatch that leaves none) never warns; supplying --usage always
 // suppresses it regardless of dispatch history.
+// B019 (qc-f0f57dfa): warning is actionable -- it names the dispatch.md MUST
+// rule (forward the sub-agent tool-result usage via --usage) and the
+// fallback path (pitway usage-add <id> --category task --usage ...).
 function computeUsageWarning(
   root: string,
   milestoneId: string,
@@ -399,7 +402,9 @@ function computeUsageWarning(
   if (!wasWorktreeDispatched) return null;
   return (
     `${taskId} was completed after a worktree dispatch with no --usage supplied; ` +
-    `its usage stays null -> N/A (detection only, never estimated)`
+    `its usage stays null -> N/A (detection only, never estimated). ` +
+    `Forward the dispatched sub-agent's reported usage via --usage on this completing call per dispatch.md step 8; ` +
+    `if unavailable, add it afterwards via pitway usage-add <id> --category task --usage '{"total_tokens": N}' or record why unavailable`
   );
 }
 

@@ -30,7 +30,10 @@ export function registerTaskUpdateCommand(program: Command, deps: CommandDeps = 
     .description("Transition a task's status; completion commits its files atomically.")
     .option('--result <path>', 'path to a YAML/JSON file with the completion result {summary, evidence}')
     .option('--message <path>', 'path to a file containing the completion commit message')
-    .option('--usage <json>', 'measured token usage JSON to accumulate onto the task')
+    .option(
+      '--usage <json>',
+      'measured token usage JSON to accumulate onto the task (MUST forward dispatched sub-agent tool-result usage per dispatch.md step 8; fallback: pitway usage-add <id> --category task --usage \'{"total_tokens": N}\')',
+    )
     .option(
       '--evidence <id>',
       'use a specific task-verify evidence record by id, instead of implicit selection',
