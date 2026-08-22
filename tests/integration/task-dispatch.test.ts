@@ -313,10 +313,14 @@ describe('pitway task-dispatch (M014/T004)', () => {
     }
 
     expect(caught).toBeUndefined();
-    expect(calls).toHaveLength(1);
+    // T001 now emits the racing footer as a second console.log line in human mode
+    expect(calls.length).toBeGreaterThanOrEqual(1);
     expect(calls[0]?.[0]).toContain('Dispatched T001 to worktree');
     expect(calls[0]?.[0]).toContain('branch pitway/task/M001-T001');
     expect(calls[0]?.[0]).toContain('task-integrate T001');
+    if (calls.length === 2) {
+      expect(String(calls[1]?.[0])).toMatch(/Next:|Complete|·/);
+    }
   });
 
   it('deriveLiveDispatches treats a closing record as ending liveness', async () => {
