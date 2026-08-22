@@ -1,6 +1,7 @@
 import type { Command } from 'commander';
 import { cancelMilestone, type MilestoneCancelView } from '../../core/milestones/cancel.js';
 import { renderOutput } from '../output.js';
+import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
 
 function renderMilestoneCancelHuman(view: MilestoneCancelView): string {
   return `🏁 Cancelled milestone ${view.id}; permanently retired.`;
@@ -22,5 +23,9 @@ export function registerMilestoneCancelCommand(program: Command, deps: CommandDe
       const root = deps.root ?? process.cwd();
       const view = cancelMilestone(root, id);
       write(renderOutput(view, { json: options.json }, renderMilestoneCancelHuman));
+      if (!options.json) {
+        const footer = getFooterForActiveMilestone(root);
+        if (footer !== null) write(footer);
+      }
     });
 }

@@ -410,18 +410,23 @@ describe('backlog CLI human output (no --json)', () => {
   it('add renders the recorded id and status as a human line', async () => {
     const { lines, error } = await run(['backlog', 'add', '--title', 'X', '--reason', 'Y'], root);
     expect(error).toBeUndefined();
-    expect(lines).toEqual(['🔧 B001 recorded as pending.']);
+    expect(lines[0]).toBe('🔧 B001 recorded as pending.');
+    // T001 wired racing footer on backlog add/promote/archive
+    expect(lines[1]).toMatch(/🏎️|🏁/);
   });
 
-  it('list renders one line per item with status, title, and reason', async () => {
+  it('list renders a table with id, status, source, title columns', async () => {
     addBacklogItem(root, { title: 'First thing', reason: 'Deferred A' });
     addBacklogItem(root, { title: 'Second thing', reason: 'Deferred B' });
     const { lines, error } = await run(['backlog', 'list'], root);
     expect(error).toBeUndefined();
-    expect(lines.join('\n').split('\n')).toEqual([
-      '🔧 B001 [pending] First thing — Deferred A',
-      '🔧 B002 [pending] Second thing — Deferred B',
-    ]);
+    const outLines = lines.join('\n').split('\n');
+    expect(outLines[0]).toBe('| ID | Status | Source | Title |');
+    expect(outLines[1]).toMatch(/^\|[-|]+\|$/);
+    expect(outLines.slice(2).join('\n')).toContain('B001');
+    expect(outLines.slice(2).join('\n')).toContain('First thing');
+    expect(outLines.slice(2).join('\n')).toContain('B002');
+    expect(outLines.slice(2).join('\n')).toContain('Second thing');
   });
 
   it('list renders the empty-state line when nothing is recorded', async () => {
@@ -437,31 +442,43 @@ describe('backlog CLI human output (no --json)', () => {
 
     const filtered = await run(['backlog', 'list', '--status', 'archived'], root);
     expect(filtered.error).toBeUndefined();
-    expect(filtered.lines).toEqual(['🔧 B002 [archived] Gone — R']);
+    // T008: active filters echoed in header; T009: table renderer
+    const filteredLines = filtered.lines.join('\n').split('\n');
+    expect(filteredLines[0]).toBe('Backlog (filtered: status=archived)');
+    expect(filteredLines[1]).toBe('| ID | Status | Source | Title |');
+    expect(filteredLines.slice(2).join('\n')).toContain('B002');
+    expect(filteredLines.slice(2).join('\n')).toContain('archived');
+    expect(filteredLines.slice(2).join('\n')).toContain('Gone');
 
     const bad = await run(['backlog', 'list', '--status', 'bogus'], root);
     expect(bad.error?.message).toMatch(/must be pending, promoted, or archived; got bogus/);
   });
 
-  it('show renders the single-item line', async () => {
+  it('show renders the item with header, source, status and wrapped reason', async () => {
     addBacklogItem(root, { title: 'Thing', reason: 'Why' });
     const { lines, error } = await run(['backlog', 'show', 'B001'], root);
     expect(error).toBeUndefined();
-    expect(lines).toEqual(['🔧 B001 [pending] Thing — Why']);
+    const text = lines.join('\n');
+    expect(text).toContain('B001 [pending] Thing');
+    expect(text).toContain('Source: M001');
+    expect(text).toContain('Status: pending');
+    expect(text).toContain('Why');
   });
 
   it('promote renders the target milestone/task line', async () => {
     addBacklogItem(root, { title: 'Thing', reason: 'Why' });
     const { lines, error } = await run(['backlog', 'promote', 'B001', '--task', 'T001'], root);
     expect(error).toBeUndefined();
-    expect(lines).toEqual(['🔧 B001 promoted to M001/T001.']);
+    expect(lines[0]).toBe('🔧 B001 promoted to M001/T001.');
+    expect(lines[1]).toMatch(/🏎️|🏁/);
   });
 
   it('archive renders the archived line', async () => {
     addBacklogItem(root, { title: 'Thing', reason: 'Why' });
     const { lines, error } = await run(['backlog', 'archive', 'B001', '--reason', 'obsolete'], root);
     expect(error).toBeUndefined();
-    expect(lines).toEqual(['🔧 B001 archived.']);
+    expect(lines[0]).toBe('🔧 B001 archived.');
+    expect(lines[1]).toMatch(/🏎️|🏁/);
   });
 
   it('add/show honor --json through the CLI wiring too', async () => {
@@ -554,5 +571,158 @@ describe('backlog CLI worktree guard (AC006)', () => {
 
     const show = await run(['backlog', 'show', 'B001'], worktree);
     expect(show.error).toBeInstanceOf(WorktreeGuardError);
+  });
+});
+
+// M025/T008 (AC010): --milestone and --task filters over source, combinable
+// with --status and --json; malformed refuses by name, well-formed but
+// nonexistent yields clean empty with active filters echoed; command stays read-only.
+describe('backlog list filters: --milestone and --task (M025/T008)', () => {
+  it('filters by --milestone alone (human header echoed)', async () => {
+    writeRetiredMilestone('M002');
+    addBacklogItem(root, { title: 'In M001', reason: 'R' }); // B001 -> M001
+    addBacklogItem(root, { title: 'In M002', reason: 'R', sourceMilestone: 'M002' }); // B002 -> M002
+
+    const out = await run(['backlog', 'list', '--milestone', 'M002'], root);
+    expect(out.error).toBeUndefined();
+    const outLines = out.lines.join('\n').split('\n');
+    expect(outLines[0]).toBe('Backlog (filtered: milestone=M002)');
+    expect(outLines[1]).toBe('| ID | Status | Source | Title |');
+    expect(outLines.slice(2).join('\n')).toContain('B002');
+    expect(outLines.slice(2).join('\n')).toContain('In M002');
+
+    // core-level combinable check
+    expect(listBacklogItems(root, { milestone: 'M001' }).map((i) => i.id)).toEqual(['B001']);
+  });
+
+  it('filters by --task alone (human header echoed)', async () => {
+    addBacklogItem(root, { title: 'No task', reason: 'R' }); // B001 -> M001, task null
+    addBacklogItem(root, { title: 'With task', reason: 'R', sourceTask: 'T001' }); // B002 -> M001/T001
+
+    const out = await run(['backlog', 'list', '--task', 'T001'], root);
+    expect(out.error).toBeUndefined();
+    const outLines = out.lines.join('\n').split('\n');
+    expect(outLines[0]).toBe('Backlog (filtered: task=T001)');
+    expect(outLines[1]).toBe('| ID | Status | Source | Title |');
+    expect(outLines.slice(2).join('\n')).toContain('B002');
+    expect(outLines.slice(2).join('\n')).toContain('With task');
+
+    expect(listBacklogItems(root, { task: 'T001' }).map((i) => i.id)).toEqual(['B002']);
+  });
+
+  it('filters combine: --status + --milestone and --milestone + --task, including no-match empty with header', async () => {
+    writeRetiredMilestone('M002');
+    addBacklogItem(root, { title: 'Keep pending M001', reason: 'R' }); // B001 pending M001
+    addBacklogItem(root, { title: 'Archived M001', reason: 'R' }); // B002 pending M001 -> archived
+    archiveBacklogItem(root, 'B002', 'done');
+    addBacklogItem(root, { title: 'Pending M002', reason: 'R', sourceMilestone: 'M002' }); // B003 pending M002
+
+    // --status + --milestone: only pending in M001
+    const combined = await run(['backlog', 'list', '--status', 'pending', '--milestone', 'M001'], root);
+    expect(combined.error).toBeUndefined();
+    const combinedLines = combined.lines.join('\n').split('\n');
+    expect(combinedLines[0]).toBe('Backlog (filtered: status=pending, milestone=M001)');
+    expect(combinedLines[1]).toBe('| ID | Status | Source | Title |');
+    expect(combinedLines.slice(2).join('\n')).toContain('B001');
+    expect(combinedLines.slice(2).join('\n')).toContain('Keep pending M001');
+
+    // no-match empty: well-formed but nonexistent milestone yields header + empty line
+    const empty = await run(['backlog', 'list', '--milestone', 'M999'], root);
+    expect(empty.error).toBeUndefined();
+    expect(empty.lines.join('\n').split('\n')).toEqual([
+      'Backlog (filtered: milestone=M999)',
+      'No backlog items recorded.',
+    ]);
+
+    // --milestone + --task
+    addBacklogItem(root, { title: 'M001 T001', reason: 'R', sourceTask: 'T001' }); // B004 M001/T001
+    const both = await run(['backlog', 'list', '--milestone', 'M001', '--task', 'T001'], root);
+    expect(both.error).toBeUndefined();
+    const bothLines = both.lines.join('\n').split('\n');
+    expect(bothLines[0]).toBe('Backlog (filtered: milestone=M001, task=T001)');
+    expect(bothLines[1]).toBe('| ID | Status | Source | Title |');
+    expect(bothLines.slice(2).join('\n')).toContain('B004');
+    expect(bothLines.slice(2).join('\n')).toContain('M001 T001');
+
+    // all three combined, no match -> header lists all three + empty
+    const tripleEmpty = await run(
+      ['backlog', 'list', '--status', 'archived', '--milestone', 'M002', '--task', 'T001'],
+      root,
+    );
+    expect(tripleEmpty.error).toBeUndefined();
+    const tripleLines = tripleEmpty.lines.join('\n').split('\n');
+    expect(tripleLines[0]).toBe('Backlog (filtered: status=archived, milestone=M002, task=T001)');
+    expect(tripleLines[1]).toBe('No backlog items recorded.');
+
+    // core-level triple filter
+    expect(listBacklogItems(root, { status: 'pending', milestone: 'M001', task: 'T001' }).map((i) => i.id)).toEqual([
+      'B004',
+    ]);
+  });
+
+  it('malformed --milestone and --task refuse by name naming valid shape M000/T000, --status bogus still refuses', async () => {
+    addBacklogItem(root, { title: 'X', reason: 'Y' });
+
+    const badMilestone = await run(['backlog', 'list', '--milestone', 'bogus'], root);
+    expect(badMilestone.error?.message).toMatch(/--milestone.*M000.*bogus/);
+
+    const badTask = await run(['backlog', 'list', '--task', 'bogus'], root);
+    expect(badTask.error?.message).toMatch(/--task.*T000.*bogus/);
+
+    const badStatus = await run(['backlog', 'list', '--status', 'bogus'], root);
+    expect(badStatus.error?.message).toMatch(/must be pending, promoted, or archived; got bogus/);
+  });
+
+  it('well-formed but nonexistent --milestone M999 is a valid empty query (not a refusal) and --task T999 likewise', async () => {
+    addBacklogItem(root, { title: 'X', reason: 'Y' });
+    const emptyM = await run(['backlog', 'list', '--milestone', 'M999', '--json'], root);
+    expect(emptyM.error).toBeUndefined();
+    expect(JSON.parse(emptyM.lines[0]!)).toEqual([]);
+
+    const emptyT = await run(['backlog', 'list', '--task', 'T999', '--json'], root);
+    expect(emptyT.error).toBeUndefined();
+    expect(JSON.parse(emptyT.lines[0]!)).toEqual([]);
+  });
+
+  it('JSON output shape unchanged but filtered (array of items)', async () => {
+    writeRetiredMilestone('M002');
+    addBacklogItem(root, { title: 'A', reason: 'R' }); // M001
+    addBacklogItem(root, { title: 'B', reason: 'R', sourceMilestone: 'M002' }); // M002
+
+    const filtered = await run(['backlog', 'list', '--milestone', 'M002', '--json'], root);
+    expect(filtered.error).toBeUndefined();
+    const parsed = JSON.parse(filtered.lines[0]!) as unknown[];
+    expect(parsed).toHaveLength(1);
+    expect((parsed[0] as { id: string }).id).toBe('B002');
+
+    const statusFiltered = await run(['backlog', 'list', '--status', 'pending', '--json'], root);
+    expect(statusFiltered.error).toBeUndefined();
+    expect((JSON.parse(statusFiltered.lines[0]!) as unknown[])).toHaveLength(2);
+  });
+
+  it('backlog list with filters remains read-only (no journal/backlog writes)', async () => {
+    addBacklogItem(root, { title: 'X', reason: 'Y' });
+    const beforeJournal = readJournal(root).length;
+    const beforeBacklog = loadBacklog(root).items.length;
+
+    await run(['backlog', 'list', '--milestone', 'M001'], root);
+    await run(['backlog', 'list', '--task', 'T001', '--json'], root);
+    await run(['backlog', 'list', '--status', 'pending', '--milestone', 'M001', '--json'], root);
+    // core-level too
+    listBacklogItems(root, { milestone: 'M001' });
+    listBacklogItems(root, { task: 'T001' });
+
+    expect(readJournal(root)).toHaveLength(beforeJournal);
+    expect(loadBacklog(root).items).toHaveLength(beforeBacklog);
+    expect(git(['status', '--porcelain'], root)).not.toMatch(/journal/);
+  });
+
+  it('empty backlog with active filter still echoes header', async () => {
+    const out = await run(['backlog', 'list', '--milestone', 'M001'], root);
+    expect(out.error).toBeUndefined();
+    expect(out.lines.join('\n').split('\n')).toEqual([
+      'Backlog (filtered: milestone=M001)',
+      'No backlog items recorded.',
+    ]);
   });
 });

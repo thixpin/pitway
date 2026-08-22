@@ -4,6 +4,10 @@ description: "PitWay: Reconstruct workflow state from .pitway/ and recommend the
 
 # resume
 
+```sh
+pitway resume [--json]
+```
+
 Run this first in any session where you're not already certain what
 PitWay's state is — a fresh conversation, after a context reset, after
 picking the project back up. It reconstructs workflow state from
@@ -11,4 +15,4 @@ picking the project back up. It reconstructs workflow state from
 reconstruct that by reading `.pitway/` files yourself (which you must
 never do — see `../protocol-driver.md`).
 
-See `../protocol-driver.md`. Run `pitway resume --help` for flags.
+See `../protocol-driver.md`.

@@ -1,6 +1,9 @@
 import type { MilestoneStatus, Task } from '../../state/schemas.js';
 import { computeWorkloadPercentage } from './workload.js';
 import type { MilestoneProgress } from './progress.js';
+import { computeMilestoneProgress } from './progress.js';
+import { loadContract, loadState, loadTasks } from '../../state/store.js';
+import { allChecksPassed, computeLatestCheckResults } from '../verification/status.js';
 
 // AC004 (M013): the same next-dependency-ready-task resolution resume.ts's
 // buildResumeView already computed privately -- extracted here so resume and
@@ -74,3 +77,31 @@ export function computeRacingFooter(
 
   return `${icon} ${workload}% · ${countSegment} · Next: ${gate}`;
 }
+
+// T001 (M025): active-milestone footer helper for every human CLI surface
+// that reports milestone progress. Loads the confirmed milestone's contract,
+// tasks, progress and verification status and returns computeRacingFooter's
+// result (or null for draft / no active milestone / any missing file).
+// Gracefully returns null rather than throwing when no active milestone is
+// set or on any read failure -- a missing footer never blocks the primary
+// command output.
+export function getFooterForActiveMilestone(root: string): string | null {
+  try {
+    const state = loadState(root);
+    const milestoneId = state.active_milestone;
+    if (!milestoneId) return null;
+    const contract = loadContract(root, milestoneId);
+    const tasksFile = loadTasks(root, milestoneId);
+    const progress = computeMilestoneProgress(tasksFile.tasks);
+    const verificationPassed = allChecksPassed(
+      contract,
+      computeLatestCheckResults(root, milestoneId),
+    );
+    return computeRacingFooter(contract.frontmatter.status, progress, verificationPassed, tasksFile.tasks);
+  } catch {
+    return null;
+  }
+}
+
+// Alias for call sites that prefer the racing-specific name.
+export const getRacingFooterForActiveMilestone = getFooterForActiveMilestone;

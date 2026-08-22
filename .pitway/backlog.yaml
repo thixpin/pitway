@@ -171,13 +171,15 @@ items:
       directory to resolve against, so there is no principled fix yet. Disclosed
       by M023/AC009 as an intentionally unaddressed limitation, by design; pick
       up if it ever becomes load-bearing.
-    status: pending
+    status: promoted
     source:
       milestone: M023
       task: T003
     created_at: 2026-08-22T04:43:48.885Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-22T17:18:24Z
+    promoted_to:
+      milestone: M025
+      task: T006
     archived_reason: null
   - id: B010
     title: Racing footer missing from ms-status report and other views
@@ -225,38 +227,44 @@ items:
       milestone is confirmed. Docs-only change; PitWay still cannot verify a
       driver session follows it (M013's standing disclosure) -- the point is
       making the rule explicit and installed rather than session-local memory."
-    status: pending
+    status: promoted
     source:
       milestone: M024
       task: null
     created_at: 2026-08-22T07:22:11.724Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-22T17:18:24Z
+    promoted_to:
+      milestone: M025
+      task: T004
     archived_reason: null
   - id: B012
     title: Add CLI table renderer
     reason: Add a reusable terminal table renderer with consistent column alignment,
       wrapping, Unicode support, and tests; refactor milestone-status to use it.
-    status: pending
+    status: promoted
     source:
       milestone: M024
       task: null
     created_at: 2026-08-22T07:56:24.096Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-22T17:18:24Z
+    promoted_to:
+      milestone: M025
+      task: T002
     archived_reason: null
   - id: B013
     title: Fix OpenCode milestone-status --report argument handling
     reason: OpenCode /milestone-status currently does not pass or invoke the
       --report option correctly. Investigate the OpenCode and other driver's
       command adapter/template and preserve the report argument.
-    status: pending
+    status: promoted
     source:
       milestone: M024
       task: null
     created_at: 2026-08-22T09:27:47.022Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-22T17:18:24Z
+    promoted_to:
+      milestone: M025
+      task: T005
     archived_reason: null
   - id: B014
     title: Standardize CLI command instructions with direct usage examples
@@ -264,26 +272,30 @@ items:
       invocation and common options directly; use --help only when available
       flags or behavior are unclear, reducing unnecessary help lookups and agent
       steps.
-    status: pending
+    status: promoted
     source:
       milestone: M024
       task: null
     created_at: 2026-08-22T09:46:09.886Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-22T17:18:24Z
+    promoted_to:
+      milestone: M025
+      task: T003
     archived_reason: null
   - id: B015
     title: Fix OpenCode milestone-status racing footer
     reason: OpenCode /milestone-status does not reproduce the PitWay racing footer
       shown by the native CLI. Preserve the footer and its progress information
       in the OpenCode command output.
-    status: pending
+    status: promoted
     source:
       milestone: M024
       task: null
     created_at: 2026-08-22T09:47:39.059Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-22T17:18:24Z
+    promoted_to:
+      milestone: M025
+      task: T005
     archived_reason: null
   - id: B016
     title: Fix task-complete output missing the global PitWay racing footer
@@ -291,13 +303,15 @@ items:
       the task completion message, consistently across the native CLI and
       supported drivers. Currently task-complete output omits it. Small, scoped
       fix.
-    status: pending
+    status: promoted
     source:
       milestone: M024
       task: null
     created_at: 2026-08-22T11:08:50.133Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-22T17:18:24Z
+    promoted_to:
+      milestone: M025
+      task: T001
     archived_reason: null
   - id: B017
     title: "Governance: amendments need developer approval"
@@ -306,11 +320,47 @@ items:
       for explicit developer approval before the contract is mutated or
       execution continues. Focused governance item; no change to current
       milestone scope.
-    status: pending
+    status: promoted
     source:
       milestone: M024
       task: null
     created_at: 2026-08-22T11:42:49.489Z
+    resolved_at: 2026-08-22T17:18:24Z
+    promoted_to:
+      milestone: M025
+      task: null
+    archived_reason: null
+  - id: B018
+    title: Review-role prompt renders combinations single-select
+    reason: "OpenCode dogfood finding (M025 draft review, 2026-08-22): the
+      review-role selection prompt currently renders role combinations as a
+      single-select list, so multiple roles cannot be selected independently in
+      one interaction. Investigate whether PitWay should provide true
+      multi-select behavior for role selection or explicitly model valid role
+      combinations instead. Non-blocking; no change to current M025 scope."
+    status: pending
+    source:
+      milestone: M025
+      task: null
+    created_at: 2026-08-22T13:36:39.751Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B019
+    title: N/A token usage — dispatched tasks complete without --usage
+    reason: "Investigation 2026-08-22 (M025 execution, T002/T006): dispatched
+      worktree tasks completed with usage null -> N/A despite sub-agent work.
+      Root cause: the driver did not extract the dispatched sub-agent's reported
+      token usage and pass it via --usage per protocol-driver.md/dispatch.md
+      MUST rule. Observed under Claude Code driver, so not OpenCode-specific.
+      Data lost at the completing driver step. Quick-change candidate: ensure
+      every dispatched task completion extracts and forwards --usage (or record
+      reason when truly unavailable). No M025 scope change."
+    status: pending
+    source:
+      milestone: M025
+      task: null
+    created_at: 2026-08-22T23:58:00.000Z
     resolved_at: null
     promoted_to: null
     archived_reason: null

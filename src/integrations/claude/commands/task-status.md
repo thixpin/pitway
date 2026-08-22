@@ -5,6 +5,10 @@ argument-hint: <id>
 
 # task-status
 
+```sh
+pitway task-status <id> [--context] [--json]
+```
+
 Two distinct uses, gated by `--context`:
 
 - Without it: a quick look at one task's status, its dependencies, and its

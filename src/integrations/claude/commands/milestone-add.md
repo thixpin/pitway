@@ -4,6 +4,10 @@ description: PitWay: Create the next milestone from a drafted contract and task 
 
 # milestone-add
 
+```sh
+pitway milestone-add --contract <path> --tasks <path> [--requirement <path>] [--replace <id>] [--json]
+```
+
 Call this once a requirement has been broken down into a drafted contract
 and a right-sized task graph, and you're ready to register the next
 milestone. It creates the milestone in `draft` status — nothing is

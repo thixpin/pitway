@@ -1,0 +1,493 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Racing footer on every CLI progress surface (B016 + B010 audit residue)
+    objective: "Audit every human-render CLI surface that reports milestone progress
+      (task-update completion output, task-dispatch, task-integrate,
+      task-discard, milestone-complete, milestone-cancel, milestone-merge,
+      backlog transitions, resume) against protocol-driver.md's Progress
+      reporting rule and M013's computeRacingFooter. Wire the footer into every
+      surface found missing -- task-update's completion output is the known gap
+      (B016: footer immediately below the completion message) -- and pin each
+      wired surface with a focused test in
+      tests/integration/racing-footer-surfaces.test.ts plus
+      tests/unit/footer.test.ts coverage for any new footer composition.
+      Surfaces already rendering the footer stay byte-stable; record the audit
+      table (surface -> before/after) in completion evidence."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - task-update's completion output renders the racing footer immediately
+        below the completion message (B016)
+      - every CLI human-render surface reporting milestone progress either
+        already rendered the footer or renders it now, with a test pinning it;
+        the audit result is recorded surface-by-surface
+      - no surface's existing output changes beyond the added footer line
+    write_scope:
+      - src/cli/commands/task-update.ts
+      - src/cli/commands/task-dispatch.ts
+      - src/cli/commands/task-integrate.ts
+      - src/cli/commands/task-discard.ts
+      - src/cli/commands/milestone-complete.ts
+      - src/cli/commands/milestone-cancel.ts
+      - src/cli/commands/milestone-merge.ts
+      - src/cli/commands/backlog.ts
+      - src/cli/commands/resume.ts
+      - src/core/milestones/footer.ts
+      - tests/unit/footer.test.ts
+      - tests/integration/racing-footer-surfaces.test.ts
+      - tests/integration/task-update.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/footer.test.ts
+        tests/integration/racing-footer-surfaces.test.ts
+        tests/integration/task-update.test.ts
+    result:
+      summary: "[truncated]  on all CLI progress surfaces — helper
+        getFooterForActiveMilestone added, 8 surfaces now emit footer in human
+        mode (task-update, dispatch, integrate, discard,
+        milestone-complete/cancel/merge, backlog add/promote/archive);
+        resume/milestone-status byte-stable already. Audit table recorded."
+      evidence: Tests  79 passed (79) | Start at  22:54:30 | Duration  54.00s
+        (transform 855ms, setup 0ms, import 1.14s, tests 62.37s, environment
+        0ms)
+    attempts: 1
+    usage: null
+  - id: T002
+    name: Reusable CLI table renderer + milestone-status refactor (B012)
+    objective: Add one reusable terminal table renderer (consistent column
+      alignment, content-aware widths, Unicode-safe, wrapping behavior decided
+      and tested -- never mid-grapheme breaks) as its own module with unit
+      tests, and refactor milestone-status's tables to render through it (B012).
+      The refactored output must be byte-identical to today's tables unless a
+      divergence is deliberate, in which case each divergence is an explicit,
+      test-pinned decision recorded in evidence. No other command's output
+      changes.
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - the renderer module carries unit tests covering alignment, width
+        computation (including wide/Unicode characters), and edge cases (empty
+        cells, varying row lengths)
+      - milestone-status's default and --report tables render through it with
+        byte-identical output to the pre-refactor renderings, or each deliberate
+        divergence is named and test-pinned
+      - no other command's rendered output changes
+    write_scope:
+      - src/cli/table.ts
+      - src/cli/format.ts
+      - src/cli/commands/milestone-status.ts
+      - tests/unit/table-renderer.test.ts
+      - tests/integration/milestone-status.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/table-renderer.test.ts
+        tests/integration/milestone-status.test.ts
+    result:
+      summary: T002 table renderer implemented and milestone-status refactored —
+        reusable renderer with grapheme-safe width, tests covering alignment,
+        Unicode, wrapping; milestone-status tables byte-identical via renderer.
+      evidence: Tests  62 passed (62) | Start at  22:23:16 | Duration  4.63s
+        (transform 370ms, setup 0ms, import 522ms, tests 4.07s, environment 0ms)
+    attempts: 1
+    usage: null
+  - id: T003
+    name: Direct usage examples in all command instructions (B014)
+    objective: "Update the installed PitWay command instructions enumerated
+      explicitly in write_scope below (both driver command sets, EXCLUDING the
+      four files owned by T004/T005: milestone-status.md and ms-status.md in
+      each set). Runs after T008 so backlog.md's usage block documents the new
+      filters against real flags. Each doc shows the normal invocation and its
+      common options directly at the top of the instructions, so an agent can
+      act without a --help lookup; --help stays referenced only where flags or
+      behavior genuinely vary (B014). Keep descriptions accurate to the current
+      CLI flags (verify against src/cli/commands/*.ts registrations); extend the
+      asset structure tests to assert each command doc carries a usage block."
+    status: completed
+    depends_on:
+      - T006
+      - T008
+    acceptance_criteria:
+      - every covered command doc leads with a direct invocation example
+        including common options, accurate to the registered CLI flags as they
+        exist AFTER T008's backlog filters land; backlog.md documents the new
+        --milestone/--task filters in its usage block
+      - --help references remain only where genuinely variable
+      - asset structure tests assert the usage block per command doc in both
+        driver sets
+      - the four files owned by T004/T005 are untouched by this task
+    write_scope:
+      - src/integrations/claude/commands/auto-run.md
+      - src/integrations/claude/commands/backlog.md
+      - src/integrations/claude/commands/milestone-add.md
+      - src/integrations/claude/commands/milestone-cancel.md
+      - src/integrations/claude/commands/milestone-complete.md
+      - src/integrations/claude/commands/milestone-confirm.md
+      - src/integrations/claude/commands/milestone-list.md
+      - src/integrations/claude/commands/milestone-merge.md
+      - src/integrations/claude/commands/milestone-review.md
+      - src/integrations/claude/commands/ms-add.md
+      - src/integrations/claude/commands/ms-cancel.md
+      - src/integrations/claude/commands/ms-complete.md
+      - src/integrations/claude/commands/ms-confirm.md
+      - src/integrations/claude/commands/ms-list.md
+      - src/integrations/claude/commands/ms-merge.md
+      - src/integrations/claude/commands/ms-review.md
+      - src/integrations/claude/commands/quick-change.md
+      - src/integrations/claude/commands/resume.md
+      - src/integrations/claude/commands/task-add.md
+      - src/integrations/claude/commands/task-amend.md
+      - src/integrations/claude/commands/task-discard.md
+      - src/integrations/claude/commands/task-dispatch.md
+      - src/integrations/claude/commands/task-integrate.md
+      - src/integrations/claude/commands/task-status.md
+      - src/integrations/claude/commands/task-update.md
+      - src/integrations/claude/commands/task-verify.md
+      - src/integrations/claude/commands/usage-add.md
+      - src/integrations/claude/commands/verification-repair.md
+      - src/integrations/claude/commands/verify.md
+      - src/integrations/claude/commands/write-ms-artifacts.md
+      - src/integrations/opencode/commands/auto-run.md
+      - src/integrations/opencode/commands/backlog.md
+      - src/integrations/opencode/commands/milestone-add.md
+      - src/integrations/opencode/commands/milestone-cancel.md
+      - src/integrations/opencode/commands/milestone-complete.md
+      - src/integrations/opencode/commands/milestone-confirm.md
+      - src/integrations/opencode/commands/milestone-list.md
+      - src/integrations/opencode/commands/milestone-merge.md
+      - src/integrations/opencode/commands/milestone-review.md
+      - src/integrations/opencode/commands/ms-add.md
+      - src/integrations/opencode/commands/ms-cancel.md
+      - src/integrations/opencode/commands/ms-complete.md
+      - src/integrations/opencode/commands/ms-confirm.md
+      - src/integrations/opencode/commands/ms-list.md
+      - src/integrations/opencode/commands/ms-merge.md
+      - src/integrations/opencode/commands/ms-review.md
+      - src/integrations/opencode/commands/quick-change.md
+      - src/integrations/opencode/commands/resume.md
+      - src/integrations/opencode/commands/task-add.md
+      - src/integrations/opencode/commands/task-amend.md
+      - src/integrations/opencode/commands/task-discard.md
+      - src/integrations/opencode/commands/task-dispatch.md
+      - src/integrations/opencode/commands/task-integrate.md
+      - src/integrations/opencode/commands/task-status.md
+      - src/integrations/opencode/commands/task-update.md
+      - src/integrations/opencode/commands/task-verify.md
+      - src/integrations/opencode/commands/usage-add.md
+      - src/integrations/opencode/commands/verification-repair.md
+      - src/integrations/opencode/commands/verify.md
+      - src/integrations/opencode/commands/write-ms-artifacts.md
+      - tests/unit/claude-assets.test.ts
+      - tests/unit/opencode-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/unit/opencode-assets.test.ts
+    result:
+      summary: T003 direct usage examples in 60 command docs — each shows normal
+        pitway invocation + common options at top, backlog.md documents new
+        --milestone/--task filters; asset structure tests pin usage blocks.
+      evidence: Tests  192 passed (192) | Start at  23:13:27 | Duration  296ms
+        (transform 76ms, setup 0ms, import 130ms, tests 221ms, environment 0ms)
+    attempts: 1
+    usage: null
+  - id: T004
+    name: Codify driver report style in protocol text (B011)
+    objective: "Strengthen the installed protocol text so verbatim relay is a rule,
+      not a habit: protocol-driver.md's Progress reporting section (plus
+      report-format.md if it is the better home for the rendering half) must
+      explicitly require (1) reproducing milestone-status/resume rendered tables
+      and the racing footer as-is when relaying to the developer -- annotations
+      may surround them, prose summaries may not replace them -- and (2) ending
+      routine progress updates with the footer line once a milestone is
+      confirmed (B011). Apply the same instruction to the claude copies of
+      commands/milestone-status.md and commands/ms-status.md (the opencode
+      copies belong to T005). Docs-only; extend the asset structure tests to pin
+      the rule's presence."
+    status: completed
+    depends_on:
+      - T003
+      - T010
+    acceptance_criteria:
+      - protocol-driver.md mandates verbatim table+footer relay and the
+        routine-update footer closing line
+      - the claude milestone-status.md and ms-status.md carry the same rule
+        alongside their --report/--json guidance
+      - the claude milestone-status.md and ms-status.md gain direct usage-block
+        invocation examples per AC003 (this task owns them for B014)
+      - asset structure tests assert the rule text's presence in each file
+      - docs-only change; no runtime code touched
+    write_scope:
+      - src/integrations/common/protocol-driver.md
+      - src/integrations/common/report-format.md
+      - src/integrations/claude/commands/milestone-status.md
+      - src/integrations/claude/commands/ms-status.md
+      - tests/unit/claude-assets.test.ts
+      - tests/unit/opencode-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/unit/opencode-assets.test.ts
+    result:
+      summary: T004 driver report style codified — protocol-driver verbatim relay +
+        footer habit, claude status docs gain usage blocks and relay rule; asset
+        tests pin.
+      evidence: Tests  202 passed (202) | Start at  23:22:08 | Duration  267ms
+        (transform 66ms, setup 0ms, import 115ms, tests 195ms, environment 0ms)
+    attempts: 1
+    usage: null
+  - id: T005
+    name: "OpenCode adapter fidelity: --report handling + footer relay (B013, B015)"
+    objective: "Fix the OpenCode milestone-status instructions so /milestone-status
+      passes the --report argument through correctly instead of dropping it
+      (B013), and so both /milestone-status and /ms-status instruct reproducing
+      the racing footer and the rendered table structure in the chat relay per
+      T004's codified rule (B015, B011-install). The primary fix path is the
+      shipped markdown instruction text (the only thing in scope): if
+      investigation proves a genuine adapter-mechanics defect beyond the
+      instruction text, name it in completion evidence and refer it through the
+      existing workflow for backlog capture instead of expanding this task --
+      never a silent scope violation. Covered by opencode asset/adapter tests
+      asserting the argument passthrough and the relay requirements."
+    status: completed
+    depends_on:
+      - T004
+    acceptance_criteria:
+      - /milestone-status correctly passes --report through (B013), pinned by a
+        template/adapter test
+      - OpenCode /milestone-status and /ms-status instructions require the
+        racing footer and verbatim table relay (B015), pinned by tests
+      - the opencode milestone-status.md and ms-status.md gain direct
+        usage-block invocation examples per AC003 (this task owns them for
+        B014), including correct --report passthrough
+      - any suspected non-markdown defect is named in completion evidence and
+        referred through the existing workflow for backlog capture, never fixed
+        out of scope
+    write_scope:
+      - src/integrations/opencode/commands/milestone-status.md
+      - src/integrations/opencode/commands/ms-status.md
+      - tests/unit/opencode-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/opencode-assets.test.ts
+    result:
+      summary: T005 OpenCode adapter fidelity — milestone-status/ms-status pass
+        --report correctly and instruct verbatim table+footer relay; docs-only,
+        both files byte-identical.
+      evidence: Tests  81 passed (81) | Start at  23:24:00 | Duration  242ms
+        (transform 27ms, setup 0ms, import 62ms, tests 88ms, environment 0ms)
+    attempts: 1
+    usage: null
+  - id: T006
+    name: required_skills gate resolves across installed drivers (B009)
+    objective: "Make the pre-dispatch required_skills gate multi-driver aware:
+      listInstalledSkillNames reads .claude/skills/ only, so with the OpenCode
+      driver installed a required skill under .opencode/skills/<name>/SKILL.md
+      is invisible to the gate (B009, M023/AC009's disclosed limitation).
+      Resolve against every installed driver skills directory that exists
+      (.claude/skills and .opencode/skills; union, sorted, deduplicated) while
+      keeping each directory's own SKILL.md-present rule. Behavioral tests
+      include an .opencode-style install satisfying the gate and the
+      still-missing case refusing by name."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - the gate sees required skills installed under .opencode/skills/ as well
+        as .claude/skills/, deduplicated and sorted
+      - a directory without SKILL.md is still never listed; absent directories
+        contribute nothing
+      - behavioral tests cover the opencode-install satisfies-gate case and the
+        missing-skill refusal case
+    write_scope:
+      - src/state/claude-assets.ts
+      - src/core/tasks/skills.ts
+      - src/cli/commands/task-status.ts
+      - tests/unit/claude-assets.test.ts
+      - tests/unit/skills.test.ts
+      - tests/integration/task-status.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/skills.test.ts
+        tests/unit/claude-assets.test.ts tests/integration/task-status.test.ts
+    result:
+      summary: T006 multi-driver skills gate — listInstalledSkillNames unions
+        .claude/skills and .opencode/skills, sorted deduped, SKILL.md-filtered;
+        tests covering opencode-only, union, missing cases.
+      evidence: Tests  113 passed (113) | Start at  22:24:43 | Duration  784ms
+        (transform 471ms, setup 0ms, import 674ms, tests 252ms, environment 0ms)
+    attempts: 1
+    usage: null
+  - id: T007
+    name: OpenCode dogfooding evidence run (gate)
+    objective: "Execute this milestone's own workflow end-to-end through the
+      installed OpenCode driver and capture the real run as evidence in
+      docs/evidence/M025/opencode-dogfood.md: command discovery (which
+      instructions were consulted), contract handling (draft/confirm flow), task
+      execution (dispatch or inline execution, context bundles), verification
+      (task-verify runs), and completion (milestone-complete). Record what
+      worked, what friction occurred, and every OpenCode-specific finding;
+      disposition each finding explicitly as fixed-in-scope,
+      referred-for-backlog-capture, or accepted limitation -- never silent scope
+      growth (AC007). The agent reports findings in the evidence doc; backlog
+      capture is performed through the existing PitWay workflow/host mechanism
+      outside the agent's task. This task closes only after the dogfood run has
+      actually happened and the evidence names the concrete commands and outputs
+      used."
+    status: completed
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+      - T005
+      - T006
+      - T008
+      - T009
+      - T010
+    acceptance_criteria:
+      - docs/evidence/M025/opencode-dogfood.md evidences every workflow stage
+        through the real OpenCode driver with concrete commands and outputs
+      - dogfood findings are reported in the evidence doc with explicit
+        dispositions; backlog capture happens through the existing PitWay
+        workflow/host mechanism, never by hand-editing .pitway/ state and never
+        by requiring the executing agent to run pitway commands itself
+      - every OpenCode-specific finding carries an explicit disposition (fixed /
+        backlog / accepted limitation)
+      - no scope was expanded beyond this contract during the run
+    write_scope:
+      - docs/evidence/M025/opencode-dogfood.md
+    verification:
+      strategy: manual
+      detail: Developer reviews docs/evidence/M025/opencode-dogfood.md against the
+        real run.
+    result:
+      summary: "[truncated] fooding evidence run — real run via installed OpenCode
+        driver, 384-line evidence doc capturing discovery, contract handling,
+        task execution (6 worktree/4 inline), verification, backlog
+        filtering/rendering, skills gate; 13 findings dispositioned
+        fixed/backlog/accepted, no scope expansion."
+      evidence: docs/evidence/M025/opencode-dogfood.md — 384 lines, 13 findings, full
+        suite green, tables+footer rendered, filters combinable, skills union
+        verified.
+    attempts: 1
+    usage: null
+  - id: T008
+    name: "Backlog list filters: --milestone and --task (developer-directed)"
+    objective: "Extend backlog list's filtering for efficient review: alongside the
+      existing --status, add combinable --milestone <id> and --task <id> filters
+      over each item's recorded source (item.source.milestone /
+      item.source.task). Filters combine with each other and with --json;
+      unknown or malformed filter values refuse by name; the command stays
+      read-only. Behavioral tests cover each filter alone, combined (including a
+      no-match empty result), and refusal diagnostics."
+    status: completed
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - --milestone <id> and --task <id> filter over recorded source fields
+      - "deterministic refusal rule: malformed values refuse by name naming the
+        valid shapes (e.g. --status bogus); well-formed but nonexistent ids
+        (e.g. --milestone M999) are valid queries yielding a clean empty result,
+        with active filters echoed in the human output header"
+      - filters combine with --status and with each other; JSON output unchanged
+        in shape
+      - the command remains read-only (no journal/backlog writes)
+    write_scope:
+      - src/cli/commands/backlog.ts
+      - src/core/backlog/list.ts
+      - tests/integration/backlog.test.ts
+      - tests/unit/backlog-state.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/backlog.test.ts
+        tests/unit/backlog-state.test.ts
+    result:
+      summary: T008 backlog filters --milestone/--task added, combinable with --status
+        and --json; malformed values refuse by name, well-formed nonexistent
+        yields clean empty with filters echoed; command read-only.
+      evidence: Tests  65 passed (65) | Start at  23:02:28 | Duration  32.99s
+        (transform 376ms, setup 0ms, import 611ms, tests 32.46s, environment
+        0ms)
+    attempts: 1
+    usage: null
+  - id: T009
+    name: Human-readable backlog renderer on the shared table module
+      (developer-directed)
+    objective: "Give backlog review a clean human output while keeping backlog.yaml
+      strictly structured: list renders as a table through T002's shared CLI
+      table renderer (columns: id, status, source milestone/task, title), and
+      show renders the item with its rich reason/description as readable wrapped
+      terminal text (Markdown-ish formatting preserved where sensible). --json
+      output is byte-unchanged; no data restructuring. Depends on T002 for the
+      renderer and T008 for the settled list surface."
+    status: completed
+    depends_on:
+      - T002
+      - T008
+    acceptance_criteria:
+      - list output is a table rendered through the shared renderer
+      - show output presents title/status/source plus a readable wrapped
+        description; Markdown-ish text stays legible in a terminal
+      - structured data (backlog.yaml and --json) is never restructured for
+        display; --json is byte-identical to before
+    write_scope:
+      - src/cli/commands/backlog.ts
+      - tests/integration/backlog.test.ts
+      - tests/unit/backlog-render.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/backlog.test.ts
+        tests/unit/table-renderer.test.ts tests/unit/backlog-render.test.ts
+        tests/unit/backlog-state.test.ts
+    result:
+      summary: T009 human-readable backlog render via shared table module — list as
+        table via renderTable, show with wrapped Markdown-ish reason; JSON
+        unchanged; 123 tests.
+      evidence: Tests  123 passed (123) | Start at  23:13:41 | Duration  30.45s
+        (transform 541ms, setup 0ms, import 851ms, tests 29.97s, environment
+        0ms)
+    attempts: 1
+    usage: null
+  - id: T010
+    name: Automatic non-blocking issue capture rule in protocol (developer-directed)
+    objective: "Install the issue-reporting discipline in the protocol text: when an
+      agent discovers an unrelated, non-blocking issue mid-task, it surfaces it
+      immediately -- naming the discovering task -- so it is captured as a
+      backlog item through the existing PitWay workflow/host mechanism, instead
+      of expanding the current task's scope. Agents do not edit .pitway/ state
+      directly and are not required to invoke pitway CLI commands themselves;
+      reporting is the agent's job, capture belongs to the driver/host. Blocking
+      or task-related issues keep following the normal escalation/scope rules
+      (task-amend / contract amendment with developer approval). Land the rule
+      in protocol-worker.md (and coordination.md or dispatch.md if they are the
+      better home for the discovery moment) across the installed driver assets,
+      pinned by asset structure tests. Docs-only."
+    status: completed
+    depends_on:
+      - T003
+    acceptance_criteria:
+      - protocol-worker.md (and any better-placed sibling) instructs agents to
+        immediately surface unrelated non-blocking findings for backlog capture
+        through the existing PitWay workflow -- no direct .pitway/ edits, no
+        mandatory agent pitway invocations
+      - blocking/task-related issues explicitly keep the escalation/scope rules
+      - asset structure tests pin the rule's presence in installed assets
+      - docs-only change; no runtime code touched
+    write_scope:
+      - src/integrations/common/protocol-worker.md
+      - src/integrations/common/coordination.md
+      - src/integrations/common/dispatch.md
+      - tests/unit/claude-assets.test.ts
+      - tests/unit/opencode-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/unit/opencode-assets.test.ts
+    result:
+      summary: T010 protocol rule installed — unrelated non-blocking issues surfaced
+        immediately for backlog capture via host workflow, no direct .pitway
+        edits, no mandatory CLI; docs-only, both drivers.
+      evidence: Tests  198 passed (198) | Start at  23:17:01 | Duration  296ms
+        (transform 69ms, setup 0ms, import 124ms, tests 197ms, environment 0ms)
+    attempts: 1
+    usage: null

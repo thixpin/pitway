@@ -1,0 +1,456 @@
+schema_version: 1
+sessions:
+  - id: rev-de2b2d1a8892
+    status: decided
+    created_at: 2026-08-22T13:37:16Z
+    roles:
+      - developer
+      - architect
+      - user
+    content_hash: sha256:caacc1bbe4b2889147362b4d16358d66f59ddadb527e89d97b6b2a6909975d1c
+    findings:
+      - role: developer
+        recorded_at: 2026-08-22T14:01:42Z
+        findings:
+          - severity: major
+            finding: T007's write_scope includes ".pitway/backlog.yaml", but the standing
+              project rule (AGENTS.md) is "Never edit .pitway/ directly."
+              Recording dogfood findings as backlog items must go through the
+              pitway CLI (e.g. `pitway backlog add`), not hand-editing the state
+              file; authorizing direct writes to .pitway/backlog.yaml invites
+              invalid/out-of-band state mutation and contradicts the governance
+              the milestone itself asserts (AC009).
+            targets:
+              - '"t007'
+              - ac007"
+            recommendation: Remove .pitway/backlog.yaml from write_scope; state that
+              findings are captured via `pitway backlog add` and dispositions
+              recorded only in the evidence doc.
+          - severity: major
+            finding: T005 anticipates that the --report passthrough gap may "live in adapter
+              mechanics rather than the shipped markdown" and instructs fixing
+              the mechanics "within this scope", yet write_scope contains only
+              markdown assets (src/integrations/opencode/commands/*) and one
+              test file — no adapter/source file that could implement argument
+              passthrough. As written, the most likely fix path is unauthorized
+              by the scope, forcing either a scope violation or a mid-task
+              amendment.
+            targets:
+              - '"t005'
+              - ac005"
+            recommendation: Identify the adapter/module that consumes the /milestone-status
+              template and add it to write_scope, or reword the objective to
+              defer any mechanics fix to a separate scoped amendment.
+          - severity: minor
+            finding: T003, T004 and T005 all write the same asset structure test files
+              (tests/unit/claude-assets.test.ts,
+              tests/unit/opencode-assets.test.ts) while T003 has no dependency
+              on T004 and T005 does not depend on T003, so unordered pairs
+              (T003||T004, T003||T005) can concurrently edit the same test
+              files. This undercuts the design decision's claim that the first
+              six tasks are parallel-safe; that claim only holds for the doc
+              files, not the shared test files.
+            targets:
+              - '"t003'
+              - t004
+              - t005"
+            recommendation: Order T003 before T004/T005 (or split assertions per task into
+              separate test files) if parallel dispatch is possible.
+          - severity: minor
+            finding: "src/cli/commands/backlog.ts appears in T001's, T008's, and T009's
+              write_scopes, but T001 is unordered relative to T008 (both
+              depend_on: []) and T009 is only ordered against T008. Concurrent
+              or interleaved edits to the backlog command from the footer task
+              and the filters task can conflict, and each task's verification
+              run exercises the other's in-flight changes to that file."
+            targets:
+              - '"t001'
+              - t008
+              - t009"
+            recommendation: Add T001->T008 ordering (or carve backlog-transition footer work
+              into a narrowly named function/file) so backlog.ts has a single
+              owner at a time.
+          - severity: minor
+            finding: 'Filter-refusal semantics are ambiguous for T008/AC010: "unknown filter
+              values refuse by name" collides with "empty results are a clean
+              no-items rendering, not an error". A well-formed but nonexistent
+              --milestone M999/--task T999 can reasonably be read either as an
+              "unknown value" (refuse) or as a valid query with zero matches
+              (empty table). Implementers and tests will resolve this
+              differently without a ruling.'
+            targets:
+              - '"t008'
+              - ac010"
+            recommendation: Specify the split explicitly, e.g. malformed syntax refuses;
+              well-formed but absent ids yield a clean empty result.
+          - severity: minor
+            finding: T003's write_scope lists the whole directories
+              src/integrations/{claude,opencode}/commands, which contain the
+              four files explicitly owned by T004/T005; the exclusion exists
+              only in the objective/AC prose, not in the scope data. An executor
+              honoring write_scope alone is authorized to edit files T004 owns
+              (and T004 is unordered with T003).
+            targets:
+              - '"t003'
+              - t004
+              - t005"
+            recommendation: Encode the exclusion in write_scope (enumerate the covered
+              files, or annotate the dirs as excluding
+              milestone-status.md/ms-status.md).
+          - severity: minor
+            finding: "T009's \"Markdown-ish formatting preserved where sensible\" (AC011:
+              \"readable terminal/Markdown-formatted text\") is subjective and
+              hard to pin with deterministic tests; 'sensible' gives no concrete
+              criterion for what formatting must survive (headings? bullets?
+              inline code?) versus what may be flattened."
+            targets:
+              - '"t009'
+              - ac011"
+            recommendation: Enumerate the constructs that must remain legible (e.g. bullets,
+              headings, code spans) and wrap-width behavior so snapshot tests
+              have a definite target.
+          - severity: minor
+            finding: T002 adds src/cli/format.ts to write_scope without stating what changes
+              there are for; if format.ts helpers are shared by other commands,
+              edits there could alter other commands' output, but T002's
+              verification only runs table-renderer and milestone-status tests —
+              cross-command regressions would surface only later at CT008's full
+              suite.
+            targets:
+              - '"t002'
+              - ac002"
+            recommendation: State format.ts's role in the objective, and either exclude it
+              or add a guard (snapshot/golden) test covering other consumers of
+              format.ts in T002's verification.
+        usage: null
+      - role: architect
+        recorded_at: 2026-08-22T14:01:42Z
+        findings:
+          - severity: major
+            finding: The "file-disjoint / parallel-safe" invariant claimed in the contract
+              body holds only for the command-doc markdown, not the declared
+              write_scopes. tests/unit/claude-assets.test.ts appears in the
+              write_scopes of T003, T004, T006 and T010, and
+              tests/unit/opencode-assets.test.ts in those of T003, T004, T005
+              and T010. At least three of these (T003, T004, T010) are mutually
+              dependency-free, so parallel dispatch can produce concurrent edits
+              and lost or conflicting structure-test assertions in exactly the
+              files meant to pin B009-B016, AC004, AC012.
+            targets:
+              - '"t003'
+              - t004
+              - t005
+              - t006
+              - t010"
+            recommendation: Serialize the asset-doc/test tasks (e.g., order T010 after
+              T004/T006, T003 relative to T004) or give each task its own
+              assertion file so write_scopes remain truly disjoint.
+          - severity: minor
+            finding: Write scopes mix granularities. T003 declares whole directories
+              (src/integrations/claude/commands,
+              src/integrations/opencode/commands) that subsume the four files
+              T004/T005 own singly; T005 similarly lists both the two specific
+              md files and their parent directory. The exclusions protecting
+              T004/T005 exist only in T003's prose objective, not in
+              machine-readable scope declarations, so any scope-overlap-based
+              conflict detection would still flag collisions among
+              T003/T004/T005.
+            targets:
+              - '"t003'
+              - t004
+              - t005"
+            recommendation: Express T003's scope as an explicit file list excluding the
+              T004/T005-owned files, or document how directory-level scopes
+              exclude owned children during dispatch.
+          - severity: minor
+            finding: "src/cli/commands/backlog.ts is mutated by three tasks without full
+              ordering: T001 (footer wiring for backlog transitions) and T008
+              (--milestone/--task filters) are mutually unordered, and T009
+              (table/show rendering) depends on T002+T008 but not on T001. Under
+              dependency-driven parallel dispatch, T001 and T008 can execute
+              concurrently against the same command module."
+            targets:
+              - '"t001'
+              - t008
+              - t009"
+            recommendation: Add T001 to T008's (and transitively T009's) dependencies, or
+              otherwise serialize all backlog.ts writers before enabling
+              parallel dispatch.
+          - severity: minor
+            finding: T007's write_scope names .pitway/backlog.yaml directly, implying
+              hand-editing of PitWay state, while the milestone's own discipline
+              routes discovered non-blocking findings through `pitway backlog
+              add` (AC012/T010) and standing project guidance forbids editing
+              .pitway/ directly. The scope declaration legitimizes a mutation
+              path the workflow elsewhere prohibits.
+            targets:
+              - '"t007'
+              - ac007"
+            recommendation: Record dogfood findings via pitway backlog add and drop the
+              raw-state path from the write scope unless direct edit is
+              explicitly justified in evidence.
+          - severity: minor
+            finding: Multi-driver skill resolution (B009) lands in
+              src/state/claude-assets.ts via listInstalledSkillNames -- a
+              claude-named module gaining opencode-aware semantics. Acceptable
+              under AC008's no-new-architecture constraint, but the
+              module/function names now understate their actual responsibility
+              (resolving skills across all installed drivers), a small
+              agent-agnostic naming inconsistency.
+            targets:
+              - '"t006"'
+            recommendation: Keep the change in place for this stabilization milestone;
+              record a future rename/rehome of the resolver as a backlog item
+              per AC012 practice.
+        usage: null
+      - role: user
+        recorded_at: 2026-08-22T14:01:43Z
+        findings:
+          - severity: major
+            finding: 'AC010/T008 leave the filter UX ambiguous in a way that creates a typo
+              trap: "unknown filter values refuse by name" sits alongside "empty
+              results are a clean no-items rendering, not an error", so a
+              well-formed but nonexistent id like --milestone M999 could
+              silently return a clean empty table indistinguishable from a
+              genuine no-match. Users cannot tell "nothing matches" from "I
+              mistyped the id", which is exactly the friction the filtering
+              feature is meant to remove.'
+            targets:
+              - ac010
+              - t008
+            recommendation: Refuse well-formed-but-unknown ids by name (listing valid
+              options where cheap); reserve clean-empty for genuinely
+              matching-nothing queries, and echo active filters in list output.
+          - severity: major
+            finding: "New backlog list filters will be undiscoverable from the installed
+              driver instructions: T008 adds --milestone/--task but its
+              write_scope contains no command-doc files, while T003 (which makes
+              docs \"accurate to the current CLI flags\") has no dependency on
+              T008 and can complete before the flags exist. After this milestone
+              ships, agents reading installed backlog.md usage blocks still
+              cannot see the new filters without falling back to --help -
+              directly undermining AC003's act-without-lookup goal for the
+              newest features."
+            targets:
+              - t003
+              - t008
+              - ac003
+            recommendation: Order T003 after T008 (or T009) so docs land against final
+              flags, or add backlog.md usage updates plus asset-test assertions
+              to T008/T009 scope.
+          - severity: minor
+            finding: "AC001's audit criterion is presence-only: every surface found missing
+              the footer must be wired. Combined with T001's candidate list
+              including tangential flows (task-discard, milestone-cancel,
+              backlog transitions), this risks mechanically stamping a
+              racing-progress line onto outputs where milestone progress adds
+              clutter rather than signal, e.g. after a cancel/discard completes.
+              No outcome in the audit lets a surface be judged not-applicable."
+            targets:
+              - ac001
+              - t001
+            recommendation: Permit explicit N/A verdicts with rationale in the audit table;
+              scope the footer to surfaces actively reporting live milestone
+              progress.
+          - severity: minor
+            finding: AC002/T002 default to byte-identical tables with divergences allowed
+              only when individually named and pinned. That bias freezes any
+              current rendering warts (misaligned columns, awkward truncation)
+              unless the implementer happens to notice and elevate each one
+              mid-task; users keep today's readability defects even though a
+              full rewrite of the rendering path is happening anyway.
+            targets:
+              - ac002
+              - t002
+            recommendation: Require T002 evidence to record an explicit keep-or-diverge
+              decision for every visible rendering defect observed during the
+              refactor, even when keeping.
+          - severity: minor
+            finding: AC011/T009 define show/list readability subjectively ("readable wrapped
+              terminal text", "Markdown-ish formatting preserved where
+              sensible"). Readability is the entire point of the task, yet
+              nothing tells implementers or reviewers which constructs must
+              survive (headings? bullets? code spans?) or how wrapping behaves,
+              so users get inconsistent description rendering across items and
+              future regressions pass unnoticed.
+            targets:
+              - ac011
+              - t009
+            recommendation: Enumerate the Markdown constructs that must remain legible plus
+              wrap-width behavior, and pin them with snapshot tests over
+              representative descriptions.
+          - severity: minor
+            finding: AC003 pins only that a usage block exists per command doc (structure
+              test asserts presence). It does not fix a common section name or
+              shape across the two driver sets' ~20 docs, so tests may pass on
+              any fenced block near the top and agents scanning multiple command
+              docs still pay re-learning cost per file - a missed consistency
+              win for the very audience B014 targets.
+            targets:
+              - ac003
+              - t003
+            recommendation: Standardize one heading/format for the usage block across both
+              command sets and assert that exact shape in the asset structure
+              tests.
+        usage: null
+    decision:
+      outcome: revision_requested
+      note: "Address the five majors and file-ownership/parallelism minors before
+        confirmation: no direct .pitway edits (T007), align T005 scope,
+        serialize asset-test/doc ownership, deterministic AC010 invalid-filter
+        behavior, document new filters in driver docs. No unrelated scope."
+      decided_at: 2026-08-22T14:14:28Z
+  - id: rev-9147febe9492
+    status: decided
+    created_at: 2026-08-22T14:23:41Z
+    roles:
+      - developer
+      - architect
+    content_hash: sha256:146d935bdd6f21532ff85b2b35f0cf4adb217fc5193d594db90e1c12c9900e7a
+    findings:
+      - role: developer
+        recorded_at: 2026-08-22T14:45:08Z
+        findings:
+          - severity: blocker
+            finding: "T003's write_scope last entry is one mangled string merging three
+              paths with ' - ' separators:
+              'src/integrations/opencode/commands/write-ms-artifacts.md -
+              tests/unit/claude-assets.test.ts -
+              tests/unit/opencode-assets.test.ts'. PitWay enforces write_scope
+              via exact string set membership (write-scope-check.ts; completion
+              staging in core/tasks/update.ts stages exactly declared files), so
+              none of the three real paths is actually declared. T003 must
+              extend both asset structure test files per its own ACs, but those
+              edits would be flagged out-of-scope and refused/unstaged at
+              completion ('write_scope mismatch'). The task is not executable as
+              written."
+            targets:
+              - t003
+              - ac003
+            recommendation: "Split the entry into three separate write_scope items:
+              src/integrations/opencode/commands/write-ms-artifacts.md,
+              tests/unit/claude-assets.test.ts,
+              tests/unit/opencode-assets.test.ts."
+          - severity: major
+            finding: "The revision's stated single-writer chain 'asset-test writers run T006
+              -> T008 -> T003 -> T010 -> T004 -> T005' is not encoded:
+              T010.depends_on is empty, yet T003 and T010 both write
+              tests/unit/claude-assets.test.ts and
+              tests/unit/opencode-assets.test.ts with no ordering edge between
+              them. Runtime parallel-eligibility would refuse concurrent
+              execution on scope overlap, so no corruption occurs, but the
+              invariant the revision introduced exists only as prose; ordering
+              is left to refusal friction or manual sequencing rather than the
+              declared graph."
+            targets:
+              - t010
+              - t003
+            recommendation: Add 'T003' to T010.depends_on so the documented chain is
+              actually enforced by the dependency graph.
+          - severity: major
+            finding: AC003's usage-block requirement is unowned for the four status docs.
+              Currently milestone-status.md and ms-status.md in BOTH driver sets
+              contain no invocation example at all and point to '--help for
+              flags' (the exact pattern AC003 restricts). T003 explicitly
+              excludes these four files, while T004/T005 objectives and ACs
+              cover only the relay rule and --report passthrough, never B014
+              usage blocks. If T003's structure test asserts usage blocks per
+              doc across all docs, its own verification fails; if it exempts
+              them, no task ever adds the blocks and AC003 cannot fully pass.
+            targets:
+              - ac003
+              - t003
+              - t004
+              - t005
+            recommendation: Explicitly assign usage-block additions for claude status docs
+              to T004 and opencode status docs to T005 (or have T003's assertion
+              exclude them plus record who closes the gap).
+          - severity: minor
+            finding: CT011 (AC011 verification) omits tests/unit/backlog-render.test.ts, the
+              dedicated unit test file T009 creates for the list/show rendering
+              work; it runs only backlog integration, table-renderer, and
+              backlog-state tests. T009's own verification detail includes the
+              file, so the contract-level pin is narrower than the task-level
+              one, leaving the renderer unit coverage unpinned at milestone
+              verification.
+            targets:
+              - ct011
+              - ac011
+              - t009
+            recommendation: Add tests/unit/backlog-render.test.ts to CT011's command.
+        usage: null
+      - role: architect
+        recorded_at: 2026-08-22T14:45:08Z
+        findings:
+          - severity: major
+            finding: The revision's claimed single-writer chain 'T006 -> T008 -> T003 ->
+              T010 -> T004 -> T005' is not what the dependency graph encodes.
+              T010.depends_on is empty, so T010 is unordered relative to T003
+              even though both claim tests/unit/claude-assets.test.ts AND
+              tests/unit/opencode-assets.test.ts, and unordered relative to T006
+              even though both claim tests/unit/claude-assets.test.ts. T004's
+              fan-in [T003, T010] serializes only T004 itself. If these tasks
+              execute concurrently per the parallel-safety invariant the Design
+              Decisions section claims, lost updates in the two asset structure
+              test files are possible.
+            targets:
+              - t003
+              - t004
+              - t006
+              - t010
+              - ac008
+            recommendation: "Add the missing edges so the chain is total: T010 depends_on
+              [T003, T006] (or add T003->T010 and T006->T010 individually)."
+          - severity: major
+            finding: "T003's write_scope enumeration is malformed: its final entry is one
+              string 'src/integrations/opencode/commands/write-ms-artifacts.md -
+              tests/unit/claude-assets.test.ts -
+              tests/unit/opencode-assets.test.ts' concatenating three paths with
+              ' - ' separators instead of three array entries. Consequently the
+              two asset structure test files, which T003's objective explicitly
+              requires extending ('extend the asset structure tests to assert
+              each command doc carries a usage block') and which its
+              verification command runs, are not cleanly enumerated as writable
+              paths. This undermines the revision's core claim that T003
+              enumerates every file explicitly."
+            targets:
+              - t003
+              - ac003
+            recommendation: Split the mashed entry into three proper write_scope entries so
+              scope enforcement sees each path.
+          - severity: minor
+            finding: AC003 requires usage blocks in EVERY installed command instruction, but
+              the four status docs (claude and opencode milestone-status.md /
+              ms-status.md) are excluded from T003 and owned by T004/T005, whose
+              acceptance criteria mandate only the relay rule (T004) and
+              --report passthrough + footer relay (T005), not a usage block. If
+              T003's extended structure tests assert usage blocks across all
+              command docs, T004/T005 will hit failures they have no criterion
+              to fix; if the assertion covers only T003-owned docs, AC003 is
+              silently unmet for the four files.
+            targets:
+              - ac003
+              - t003
+              - t004
+              - t005
+            recommendation: Add an explicit usage-block criterion to T004 and T005, or state
+              that T004/T005 inherit AC003 coverage for the four files they own.
+          - severity: minor
+            finding: The Design Decisions prose chain also asserts a 'T006 -> T008' ordering
+              edge that does not exist (T008.depends_on is [T001]). Harmless
+              today because T006 and T008 share no files, but the milestone's
+              design record misstates the actual graph, which weakens the
+              document as the authority for future serialization reasoning.
+            targets:
+              - t006
+              - t008
+            recommendation: Correct the prose to describe fan-in at T003 ([T006, T008])
+              rather than a linear T006->T008 edge.
+        usage: null
+    decision:
+      outcome: revision_requested
+      note: "Fix all five findings: split T003's mangled scope entry into exact paths;
+        encode T010 depends_on [T003]; assign AC003 usage blocks for the four
+        status docs to T004/T005; add backlog-render.test.ts to CT011; correct
+        the Design Decisions graph prose. Scope unchanged."
+      decided_at: 2026-08-22T14:58:29Z

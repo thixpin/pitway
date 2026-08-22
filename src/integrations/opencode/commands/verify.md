@@ -4,6 +4,12 @@ description: "PitWay: Run approved command checks, or record a manual/review res
 
 # verify
 
+```sh
+pitway verify [id] [--status] [--json]
+pitway verify [id] --check <ctid> [--json]
+pitway verify [id] --check <ctid> --pass|--fail --evidence <text> [--json]
+```
+
 Runs the milestone's approved `command` checks and records the results;
 `--check <id> --pass|--fail --evidence <text>` records a `manual`/`review`
 check a human (or you, on the human's behalf, for a `review`-type check)

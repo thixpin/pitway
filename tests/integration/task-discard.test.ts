@@ -236,9 +236,13 @@ describe('pitway task-discard (M014/T008)', () => {
     }
 
     expect(caught).toBeUndefined();
-    expect(calls).toHaveLength(1);
+    // T001 now emits the racing footer as a second console.log line in human mode
+    expect(calls.length).toBeGreaterThanOrEqual(1);
     expect(calls[0]?.[0]).toContain('was already gone');
     expect(calls[0]?.[0]).toContain('failed → ready allows re-dispatch');
+    if (calls.length === 2) {
+      expect(String(calls[1]?.[0])).toMatch(/Next:|Complete|·/);
+    }
   });
 
   it('renders the removed human message when the worktree exists (worktreeRemoved true)', async () => {

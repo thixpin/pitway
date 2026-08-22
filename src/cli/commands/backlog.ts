@@ -4,8 +4,10 @@ import { promoteBacklogItem, type BacklogPromoteView } from '../../core/backlog/
 import { archiveBacklogItem, type BacklogArchiveView } from '../../core/backlog/archive.js';
 import { listBacklogItems } from '../../core/backlog/list.js';
 import { showBacklogItem } from '../../core/backlog/show.js';
-import type { BacklogItem, BacklogStatus } from '../../state/schemas.js';
+import type { BacklogItem, BacklogReference, BacklogStatus } from '../../state/schemas.js';
 import { renderOutput } from '../output.js';
+import { renderTable } from '../table.js';
+import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
 
 export interface CommandDeps {
   root?: string;
@@ -16,12 +18,164 @@ function renderAddHuman(view: BacklogAddView): string {
   return `🔧 ${view.id} recorded as ${view.status}.`;
 }
 
-function renderItemHuman(item: BacklogItem): string {
-  return `🔧 ${item.id} [${item.status}] ${item.title} — ${item.reason}`;
+export function formatSource(source: BacklogReference): string {
+  if (source.task !== null && source.task !== undefined) {
+    // source.milestone is guaranteed present when task is present
+    return `${source.milestone}/${source.task}`;
+  }
+  if (source.milestone !== null && source.milestone !== undefined) return source.milestone;
+  return '—';
 }
 
-function renderListHuman(items: BacklogItem[]): string {
-  return items.length === 0 ? 'No backlog items recorded.' : items.map(renderItemHuman).join('\n');
+const WRAP_WIDTH = 80;
+
+/**
+ * Word-wrap text at ~80 columns while preserving Markdown-ish structure.
+ * - Blank lines preserved
+ * - Headings (#), bullet lists (-, *, 1.) keep their prefix on first line
+ *   and continuation lines are indented to align with content
+ * - Otherwise normal word-wrap at spaces; long words without spaces are
+ *   hard-broken to avoid exceeding width
+ */
+export function wrapText(text: string, width: number = WRAP_WIDTH): string {
+  if (text === '') return '';
+  const rawLines = text.split('\n');
+  const out: string[] = [];
+
+  for (const raw of rawLines) {
+    if (raw.trim() === '') {
+      out.push('');
+      continue;
+    }
+
+    // Detect markdown prefix on this logical line
+    // Heading: #..###### + space
+    const headingMatch = raw.match(/^(\s*#{1,6}\s+)/);
+    if (headingMatch) {
+      const prefix = headingMatch[1]!;
+      const rest = raw.slice(prefix.length);
+      // Headings are short; wrap rest normally but keep heading marker only on first line
+      if (raw.length <= width) {
+        out.push(raw);
+      } else {
+        const wrapped = wrapWords(rest, width - prefix.length, width, prefix, ''.padEnd(prefix.length, ' '));
+        out.push(...wrapped);
+      }
+      continue;
+    }
+
+    const bulletMatch = raw.match(/^(\s*)([-*]\s+|\d+\.\s+)/);
+    if (bulletMatch) {
+      const prefix = bulletMatch[0]!;
+      const indent = ' '.repeat(prefix.length);
+      const content = raw.slice(prefix.length);
+      if (raw.length <= width) {
+        out.push(raw);
+      } else {
+        const wrapped = wrapWords(content, width - prefix.length, width - indent.length, prefix, indent);
+        out.push(...wrapped);
+      }
+      continue;
+    }
+
+    // Plain paragraph line
+    if (raw.length <= width) {
+      out.push(raw);
+    } else {
+      const wrapped = wrapWords(raw, width, width, '', '');
+      out.push(...wrapped);
+    }
+  }
+
+  return out.join('\n');
+}
+
+function wrapWords(
+  content: string,
+  firstWidth: number,
+  subsequentWidth: number,
+  firstPrefix: string,
+  contPrefix: string,
+): string[] {
+  if (content.trim() === '') return [firstPrefix.trimEnd()];
+  const words = content.split(/\s+/).filter((w) => w.length > 0);
+  const lines: string[] = [];
+  let current = '';
+  let isFirstLine = true;
+
+  function availableWidth(): number {
+    return isFirstLine ? firstWidth : subsequentWidth;
+  }
+  function prefix(): string {
+    return isFirstLine ? firstPrefix : contPrefix;
+  }
+
+  for (const word of words) {
+    const candidate = current === '' ? word : `${current} ${word}`;
+    if (candidate.length <= availableWidth()) {
+      current = candidate;
+    } else {
+      // flush current
+      if (current !== '') {
+        lines.push(`${prefix()}${current}`);
+        isFirstLine = false;
+        current = '';
+      }
+      // If single word longer than available width, hard-break it
+      if (word.length > availableWidth()) {
+        let remaining = word;
+        const w = availableWidth();
+        while (remaining.length > w) {
+          lines.push(`${prefix()}${remaining.slice(0, w)}`);
+          isFirstLine = false;
+          remaining = remaining.slice(w);
+        }
+        current = remaining;
+      } else {
+        current = word;
+      }
+    }
+  }
+  if (current !== '' || lines.length === 0) {
+    lines.push(`${prefix()}${current}`);
+  }
+  return lines;
+}
+
+export function renderItemHuman(item: BacklogItem): string {
+  const lines: string[] = [];
+  lines.push(`${item.id} [${item.status}] ${item.title}`);
+  lines.push(`Source: ${formatSource(item.source)}`);
+  lines.push(`Status: ${item.status}`);
+  if (item.promoted_to) {
+    lines.push(`Promoted to: ${formatSource(item.promoted_to)}`);
+  }
+  if (item.archived_reason) {
+    lines.push(`Archived: ${item.archived_reason}`);
+  }
+  lines.push('');
+  lines.push(wrapText(item.reason, WRAP_WIDTH));
+  return lines.join('\n');
+}
+
+export function renderListHuman(
+  items: BacklogItem[],
+  filters?: { status?: string; milestone?: string; task?: string },
+): string {
+  const parts: string[] = [];
+  if (filters?.status !== undefined) parts.push(`status=${filters.status}`);
+  if (filters?.milestone !== undefined) parts.push(`milestone=${filters.milestone}`);
+  if (filters?.task !== undefined) parts.push(`task=${filters.task}`);
+  const header = parts.length > 0 ? `Backlog (filtered: ${parts.join(', ')})` : null;
+  if (items.length === 0) {
+    const body = 'No backlog items recorded.';
+    return header ? `${header}\n${body}` : body;
+  }
+  const headers = ['ID', 'Status', 'Source', 'Title'];
+  const rows = items.map((item) => [item.id, item.status, formatSource(item.source), item.title]);
+  const tableLines = renderTable(headers, rows);
+  const body = tableLines.join('\n');
+  return header ? `${header}\n${body}` : body;
 }
 
 function renderPromoteHuman(view: BacklogPromoteView): string {
@@ -68,20 +222,40 @@ export function registerBacklogCommand(program: Command, deps: CommandDeps = {})
         sourceTask: options.task,
       });
       write(renderOutput(view, { json: options.json }, renderAddHuman));
+      if (!options.json) {
+        const footer = getFooterForActiveMilestone(root);
+        if (footer !== null) write(footer);
+      }
     });
 
   backlog
     .command('list')
-    .description('List backlog items, optionally filtered by status.')
+    .description('List backlog items, optionally filtered by status, milestone, or task.')
     .option('--status <status>', 'filter: pending | promoted | archived')
+    .option('--milestone <id>', 'filter: source milestone (e.g. M001)')
+    .option('--task <id>', 'filter: source task (e.g. T001)')
     .option('--json', 'output machine-readable JSON')
-    .action((options: { status?: string; json?: boolean }) => {
+    .action((options: { status?: string; milestone?: string; task?: string; json?: boolean }) => {
       const root = deps.root ?? process.cwd();
       if (options.status !== undefined && !['pending', 'promoted', 'archived'].includes(options.status)) {
         throw new Error(`backlog list --status must be pending, promoted, or archived; got ${options.status}`);
       }
-      const items = listBacklogItems(root, options.status as BacklogStatus | undefined);
-      write(renderOutput(items, { json: options.json }, renderListHuman));
+      if (options.milestone !== undefined && !/^M\d{3}$/.test(options.milestone)) {
+        throw new Error(`backlog list --milestone must match M000; got ${options.milestone}`);
+      }
+      if (options.task !== undefined && !/^T\d{3}$/.test(options.task)) {
+        throw new Error(`backlog list --task must match T000; got ${options.task}`);
+      }
+      const items = listBacklogItems(root, {
+        status: options.status as BacklogStatus | undefined,
+        milestone: options.milestone,
+        task: options.task,
+      });
+      const filters =
+        options.status !== undefined || options.milestone !== undefined || options.task !== undefined
+          ? { status: options.status, milestone: options.milestone, task: options.task }
+          : undefined;
+      write(renderOutput(items, { json: options.json }, (data) => renderListHuman(data, filters)));
     });
 
   backlog
@@ -107,6 +281,10 @@ export function registerBacklogCommand(program: Command, deps: CommandDeps = {})
       const root = deps.root ?? process.cwd();
       const view = promoteBacklogItem(root, id, { taskId: options.task, milestoneId: options.milestone });
       write(renderOutput(view, { json: options.json }, renderPromoteHuman));
+      if (!options.json) {
+        const footer = getFooterForActiveMilestone(root);
+        if (footer !== null) write(footer);
+      }
     });
 
   backlog
@@ -118,5 +296,9 @@ export function registerBacklogCommand(program: Command, deps: CommandDeps = {})
       const root = deps.root ?? process.cwd();
       const view = archiveBacklogItem(root, id, options.reason);
       write(renderOutput(view, { json: options.json }, renderArchiveHuman));
+      if (!options.json) {
+        const footer = getFooterForActiveMilestone(root);
+        if (footer !== null) write(footer);
+      }
     });
 }

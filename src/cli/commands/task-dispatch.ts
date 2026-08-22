@@ -1,6 +1,7 @@
 import type { Command } from 'commander';
 import { dispatchTask, type TaskDispatchView } from '../../core/tasks/dispatch.js';
 import { renderOutput } from '../output.js';
+import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
 
 // AC004/T004 (M014): the --json output is the worker handoff envelope only
 // (id, worktree path, branch, created-from revision) -- it never embeds the
@@ -32,5 +33,9 @@ export function registerTaskDispatchCommand(program: Command, deps: CommandDeps 
       const root = deps.root ?? process.cwd();
       const view = dispatchTask(root, id);
       write(renderOutput(view, { json: options.json }, renderTaskDispatchHuman));
+      if (!options.json) {
+        const footer = getFooterForActiveMilestone(root);
+        if (footer !== null) write(footer);
+      }
     });
 }

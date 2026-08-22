@@ -11,6 +11,7 @@ import { aggregateUsage, type UsageAggregate } from '../../core/metrics/aggregat
 import { resolveCommitSha } from '../../git/trailers.js';
 import { renderOutput } from '../output.js';
 import { taskStatusLabel } from '../format.js';
+import { renderTable } from '../table.js';
 import type { MilestoneStatus, Task, TaskStatus, UsageFile } from '../../state/schemas.js';
 
 // UX-only (Claude Code command-discoverability quick-change): execution mode
@@ -198,15 +199,15 @@ export function buildProgressReportView(root: string, milestoneId: string): Prog
 // convention rather than leaving one as a table with no usage and the other
 // as usage-per-row with no table.
 function renderProgressReportTaskTable(tasks: ProgressReportView['tasks']): string[] {
-  const rows = tasks.map((t) => {
-    const execution = t.executionMode ?? '—';
-    return `| ${t.id} | ${t.label} | ${execution} | ${t.statusLabel} | ${formatTokenValue(t.tokens)} |`;
-  });
-  return [
-    '| Task | Label | Execution | Status | Tokens |',
-    '|------|-------|-----------|--------|--------|',
-    ...rows,
-  ];
+  const headers = ['Task', 'Label', 'Execution', 'Status', 'Tokens'];
+  const rows = tasks.map((t) => [
+    t.id,
+    t.label,
+    t.executionMode ?? '—',
+    t.statusLabel,
+    formatTokenValue(t.tokens),
+  ]);
+  return renderTable(headers, rows);
 }
 
 export function renderProgressReportHuman(view: ProgressReportView): string {
@@ -269,11 +270,14 @@ function withProgressBar(footer: string, percent: number): string {
 }
 
 function renderTaskTable(tasks: MilestoneStatusView['tasks']): string[] {
-  const rows = tasks.map((t) => {
-    const progress = t.status === 'completed' ? '100%' : '—';
-    return `| ${t.id} | ${taskStatusLabel(t.status)} | ${progress} | ${t.executionMode ?? '—'} |`;
-  });
-  return ['| Task | Status | Progress | Execution |', '|------|--------|----------|-----------|', ...rows];
+  const headers = ['Task', 'Status', 'Progress', 'Execution'];
+  const rows = tasks.map((t) => [
+    t.id,
+    taskStatusLabel(t.status),
+    t.status === 'completed' ? '100%' : '—',
+    t.executionMode ?? '—',
+  ]);
+  return renderTable(headers, rows);
 }
 
 export function renderMilestoneStatusHuman(view: MilestoneStatusView): string {

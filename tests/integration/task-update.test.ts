@@ -1194,8 +1194,12 @@ describe('pitway task-update default CommandDeps fallbacks (M024/T005)', () => {
       calls = logSpy.mock.calls;
       logSpy.mockRestore();
     }
-    expect(calls).toHaveLength(1);
+    expect(calls.length).toBeGreaterThanOrEqual(1);
     expect(String(calls[0]![0])).toContain('Blocked');
+    // M025/T001: human output now appends racing footer as second write when confirmed
+    if (calls.length === 2) {
+      expect(String(calls[1]![0])).toMatch(/^\s*(🏎️|🏁|🔧) \d+% · ✅/);
+    }
     expect(task('T001').status).toBe('blocked');
   });
 

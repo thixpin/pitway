@@ -5,6 +5,12 @@ argument-hint: <approve|commit|cancel> <milestone> [vr-id]
 
 # verification-repair
 
+```sh
+pitway verification-repair approve <milestone> [--file <path> ...] [--check <id> ...] --change-log <text> [--json]
+pitway verification-repair commit <milestone> <vr-id> [--json]
+pitway verification-repair cancel <milestone> <vr-id> [--json]
+```
+
 Use only for the exact narrow window M008's `6f8b5e6` exception covered:
 every non-cancelled task in the target milestone is `completed`, the
 milestone itself is still `in_progress` (not yet `milestone-complete`d),
@@ -27,4 +33,4 @@ Two phases, always in this order:
 `verification-repair cancel <milestone> <vr-id>` abandons a still-pending
 repair.
 
-See `../protocol-driver.md`. Run `pitway verification-repair --help` for flags.
+See `../protocol-driver.md`. Run `pitway verification-repair --help` or `pitway verification-repair <subcommand> --help` for flags and details.

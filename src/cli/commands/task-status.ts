@@ -74,10 +74,13 @@ export function registerTaskStatusCommand(program: Command, deps: CommandDeps = 
         const milestoneId = resolveActiveMilestone(root);
         const contract = loadContract(root, milestoneId);
         const tasksFile = loadTasks(root, milestoneId);
-        // AC003/T003: pre-dispatch context gate -- State (what's actually
-        // installed), then Core (pure comparison), composed here before the
-        // bundle is built. A complete no-op when the task declares no
-        // required_skills, byte-for-byte matching pre-M011 behavior.
+        // AC003/T003 + M025/T006 (B009): pre-dispatch context gate -- State
+        // (what's actually installed across every installed driver skills
+        // dir -- .claude/skills U .opencode/skills, sorted deduped, each
+        // filtered by SKILL.md), then Core (pure comparison), composed here
+        // before the bundle is built. A complete no-op when the task
+        // declares no required_skills, byte-for-byte matching pre-M011
+        // behavior.
         const task = findTask(tasksFile.tasks, id);
         const available = listInstalledSkillNames(root);
         assertRequiredSkillsAvailable(task.required_skills ?? [], available);

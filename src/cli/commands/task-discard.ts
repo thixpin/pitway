@@ -1,6 +1,7 @@
 import type { Command } from 'commander';
 import { discardTask, type TaskDiscardView } from '../../core/tasks/discard.js';
 import { renderOutput } from '../output.js';
+import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
 
 function renderTaskDiscardHuman(view: TaskDiscardView): string {
   return (
@@ -26,5 +27,9 @@ export function registerTaskDiscardCommand(program: Command, deps: CommandDeps =
       const root = deps.root ?? process.cwd();
       const view = discardTask(root, id, options.reason);
       write(renderOutput(view, { json: options.json }, renderTaskDiscardHuman));
+      if (!options.json) {
+        const footer = getFooterForActiveMilestone(root);
+        if (footer !== null) write(footer);
+      }
     });
 }

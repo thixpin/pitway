@@ -51,3 +51,23 @@ describe('assertRequiredSkillsAvailable', () => {
     }
   });
 });
+
+// M025/T006 (B009): union is deduplicated/sorted at the State layer;
+// Core only compares sets. This pins that duplicate available entries do
+// not mask a missing skill and that a deduplicated union still satisfies.
+describe('assertRequiredSkillsAvailable with deduplicated union', () => {
+  it('treats a deduplicated available list as satisfying the requirement', () => {
+    expect(() =>
+      assertRequiredSkillsAvailable(['debugging'], ['debugging', 'debugging']),
+    ).not.toThrow();
+  });
+
+  it('still refuses by name when a required skill is absent from the union', () => {
+    try {
+      assertRequiredSkillsAvailable(['debugging', 'testing'], ['debugging']);
+      expect.unreachable();
+    } catch (error) {
+      expect((error as Error).message).toContain('testing');
+    }
+  });
+});
