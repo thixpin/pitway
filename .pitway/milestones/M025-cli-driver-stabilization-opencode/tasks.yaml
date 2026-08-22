@@ -333,7 +333,7 @@ tasks:
       outside the agent's task. This task closes only after the dogfood run has
       actually happened and the evidence names the concrete commands and outputs
       used."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -360,7 +360,16 @@ tasks:
       strategy: manual
       detail: Developer reviews docs/evidence/M025/opencode-dogfood.md against the
         real run.
-    result: null
+    result:
+      summary: "[truncated] fooding evidence run — real run via installed OpenCode
+        driver, 384-line evidence doc capturing discovery, contract handling,
+        task execution (6 worktree/4 inline), verification, backlog
+        filtering/rendering, skills gate; 13 findings dispositioned
+        fixed/backlog/accepted, no scope expansion."
+      evidence: docs/evidence/M025/opencode-dogfood.md — 384 lines, 13 findings, full
+        suite green, tables+footer rendered, filters combinable, skills union
+        verified.
+    attempts: 1
     usage: null
   - id: T008
     name: "Backlog list filters: --milestone and --task (developer-directed)"
