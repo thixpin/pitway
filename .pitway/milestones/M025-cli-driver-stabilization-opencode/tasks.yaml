@@ -204,7 +204,7 @@ tasks:
       commands/milestone-status.md and commands/ms-status.md (the opencode
       copies belong to T005). Docs-only; extend the asset structure tests to pin
       the rule's presence."
-    status: ready
+    status: completed
     depends_on:
       - T003
       - T010
@@ -228,7 +228,13 @@ tasks:
       strategy: command
       detail: npx vitest run tests/unit/claude-assets.test.ts
         tests/unit/opencode-assets.test.ts
-    result: null
+    result:
+      summary: T004 driver report style codified — protocol-driver verbatim relay +
+        footer habit, claude status docs gain usage blocks and relay rule; asset
+        tests pin.
+      evidence: Tests  202 passed (202) | Start at  23:22:08 | Duration  267ms
+        (transform 66ms, setup 0ms, import 115ms, tests 195ms, environment 0ms)
+    attempts: 1
     usage: null
   - id: T005
     name: "OpenCode adapter fidelity: --report handling + footer relay (B013, B015)"
@@ -243,7 +249,7 @@ tasks:
       existing workflow for backlog capture instead of expanding this task --
       never a silent scope violation. Covered by opencode asset/adapter tests
       asserting the argument passthrough and the relay requirements."
-    status: waiting
+    status: ready
     depends_on:
       - T004
     acceptance_criteria:

@@ -403,6 +403,42 @@ describe('M025 T003 command docs carry usage blocks (B014)', () => {
   });
 });
 
+// M025/T004 (AC004/B011): verbatim relay + footer habit rule in protocol-driver and claude milestone-status/ms-status
+describe('M025 T004 driver report style verbatim relay + footer habit (AC004/B011)', () => {
+  it('protocol-driver.md mandates verbatim table+footer relay and the routine-update footer closing line', () => {
+    const text = shippedContent('protocol-driver.md').toString('utf8');
+    expect(text).toContain('reproduce the rendered table and racing footer as-is');
+    expect(text).toContain('annotations may surround');
+    expect(text).toContain('never prose summaries');
+    expect(text).toContain('end routine progress updates with the footer');
+  });
+
+  it('claude milestone-status.md carries the relay rule and a usage block', () => {
+    const text = shippedContent('commands/milestone-status.md').toString('utf8');
+    expect(text).toContain('reproduce the rendered table and racing footer as-is');
+    expect(text).toContain('annotations may surround');
+    expect(text).toContain('never prose summaries');
+    expect(text).toContain('end routine progress updates with the footer');
+    expect(text).toMatch(/```sh/);
+    expect(text).toMatch(/pitway milestone-status/);
+    expect(text).toMatch(/--report/);
+    expect(text).toMatch(/--json/);
+  });
+
+  it('claude ms-status.md carries the relay rule and a usage block and stays byte-identical to milestone-status.md', () => {
+    const text = shippedContent('commands/ms-status.md').toString('utf8');
+    expect(text).toContain('reproduce the rendered table and racing footer as-is');
+    expect(text).toContain('annotations may surround');
+    expect(text).toContain('never prose summaries');
+    expect(text).toContain('end routine progress updates with the footer');
+    expect(text).toMatch(/```sh/);
+    expect(text).toMatch(/pitway milestone-status/);
+    expect(text).toMatch(/--report/);
+    expect(text).toMatch(/--json/);
+    expect(shippedContent('commands/ms-status.md')).toEqual(shippedContent('commands/milestone-status.md'));
+  });
+});
+
 // M023/T001/AC003(a): ONE-TIME MIGRATION CHECK. This inline sha256 manifest
 // pins every asset path + content hash exactly as shipped BEFORE this
 // milestone moved the driver-agnostic assets from src/integrations/claude/
@@ -426,7 +462,7 @@ const PRE_M023_ASSET_MANIFEST: ReadonlyArray<readonly [string, string]> = [
   ['commands/milestone-list.md', '085229a691673a20a5d69820534e2a6dbffdb842f47863f0c86ca9d2b63f1790'],
   ['commands/milestone-merge.md', '0c38d2e3f6fde90000fa2461f2d77fd522cdc558cf9608c039639791c4e8a981'],
   ['commands/milestone-review.md', '6fea5970c3dacf4f9bf96cf6c4ca3f495ad993606b07b15aa35278bd65e7920b'],
-  ['commands/milestone-status.md', '916252ecf23efdd45f93264e7a729a9bbe0114775cf03374732b3fc651626197'],
+  ['commands/milestone-status.md', 'fd591acc69047eb4dceb43d14cc8d8a040acbd893b21f39a8c82299567eebb0c'],
   ['commands/ms-add.md', 'bc0653d519cda796ebf9a3e6e2046ab6b5461f895717d6814089133c2ebfc8b6'],
   ['commands/ms-cancel.md', '097d46f142860f6215ed0808ecaa1a61f4947d23d12425b32bbe287e6b8d09ed'],
   ['commands/ms-complete.md', '00bb60d02e2a9cd6f7f052ed83e273b0a2f513902f582927309cb82d1bec7c9b'],
@@ -434,7 +470,7 @@ const PRE_M023_ASSET_MANIFEST: ReadonlyArray<readonly [string, string]> = [
   ['commands/ms-list.md', '085229a691673a20a5d69820534e2a6dbffdb842f47863f0c86ca9d2b63f1790'],
   ['commands/ms-merge.md', '0c38d2e3f6fde90000fa2461f2d77fd522cdc558cf9608c039639791c4e8a981'],
   ['commands/ms-review.md', '6fea5970c3dacf4f9bf96cf6c4ca3f495ad993606b07b15aa35278bd65e7920b'],
-  ['commands/ms-status.md', '916252ecf23efdd45f93264e7a729a9bbe0114775cf03374732b3fc651626197'],
+  ['commands/ms-status.md', 'fd591acc69047eb4dceb43d14cc8d8a040acbd893b21f39a8c82299567eebb0c'],
   ['commands/quick-change.md', '949e37404e672b0856aebae7f2c426b1f54aed64645f3767dc28abd3c54a37c3'],
   ['commands/resume.md', 'df2e0da7669c478b29ec7aa5b430562240948f7802c03d4830ca2ab72f84709d'],
   ['commands/task-add.md', 'aa281cc1715d7f07ddd6e54685ba51e8691aed87ac4895e6823a33b079da48c4'],
@@ -453,7 +489,7 @@ const PRE_M023_ASSET_MANIFEST: ReadonlyArray<readonly [string, string]> = [
   ['dispatch.md', '42d51189e54eb5fe44954e94b466cb3da39b3900c95566e1a0a75826b0247054'],
   ['interactive-ux.md', 'e8cc6c74b807247ff2f9b35abb5d85622f904b462b5ac4c2a0b20be4f2587aa1'],
   ['lsp-guidance.md', 'e2fc2650c5f53b1ff569db8a340a96d9e6975bc4e2eea5c0a36a745a1fe18b78'],
-  ['protocol-driver.md', '9ace6b8f6ce05227cf54711da2ac341a3316004dae94ed4ea96fdde3abc2855c'],
+  ['protocol-driver.md', 'b38cd14ede27c9d52cada87eb4641dcbe1a33324a379571fd31bc37616aae35c'],
   ['protocol-worker.md', '44fc562967c7a7563010a421af311cc3699157af2d5b0f174d34d7afb1681a60'],
   ['report-format.md', '1f78522fe1c9cfad3ff9afa1b3d915e00dd640d2433a52ce63544dde1d6e8dbf'],
   ['skills/NOTICE.md', '8d5dd0d6fb2753abf21aef4e98a3a2969dfac37dea91f059d117424da0dc5976'],

@@ -81,6 +81,12 @@ one-line racing footer — `🏎️ ~<workload>% · ✅ <completed>/<total> · N
 footer and no footer-explanation text of any kind; the message simply
 ends.
 
+When relaying `pitway milestone-status <id>` or `pitway resume` output to
+the developer, reproduce the rendered table and racing footer as-is —
+annotations may surround the verbatim block, but never prose summaries
+that replace the table or footer. This verbatim relay is a rule, not a
+habit. Once a milestone is confirmed, end routine progress updates with the footer line taken from the rendered `footer` field above — the footer habit for every routine update.
+
 Read-only surfaces: `pitway verify <id> --status` (latest recorded result
 per check, executes nothing); `pitway milestone-status <id> --report`
 (the full structured Progress Report, when the developer asks for one).
