@@ -179,3 +179,69 @@ items:
     resolved_at: null
     promoted_to: null
     archived_reason: null
+  - id: B010
+    title: Racing footer missing from ms-status report and other views
+    reason: "Developer-reported 2026-08-22: the one-line racing progress footer
+      (M013's computeRacingFooter -- the permanent driver-UX element, e.g. '82%
+      . 4/6 . Next: T005') is missing from the milestone-status --report output
+      and is also not shown in other places where it should appear. Investigate
+      which command outputs are missing the footer (report view, and audit every
+      surface that renders milestone progress -- milestone-status default vs
+      --report, resume, and any human-render path added since M013, e.g.
+      milestone-merge/backlog/task-dispatch outputs) against
+      protocol-driver.md's Progress reporting rule (footer non-null once a
+      milestone is confirmed), and wire the footer consistently into every
+      missing surface."
+    status: archived
+    source:
+      milestone: M024
+      task: null
+    created_at: 2026-08-22T07:15:42.532Z
+    resolved_at: 2026-08-22T07:19:01.318Z
+    promoted_to: null
+    archived_reason: "Recharacterized after developer correction 2026-08-22: the CLI
+      command output is correct (milestone-status/resume do render the racing
+      footer) -- the gap was the DRIVER's own chat report rendering omitting the
+      footer line from routine progress updates. That is exactly the discipline
+      protocol-driver.md's Progress reporting section already mandates and M013
+      disclosed PitWay cannot enforce (it can prove the rendering is correct,
+      never that a driver session follows the habit). No CLI change needed; the
+      driver applies the habit directly."
+  - id: B011
+    title: Codify driver report style (table + footer relay) in protocol
+    reason: "Supersedes archived B010 with the enforceable half, per developer
+      directive 2026-08-22: two real driver rendering misses occurred in the
+      same session (the racing footer omitted from routine chat updates, then
+      the milestone-status per-task table summarized away into prose on an
+      /ms-status request). The CLI output is correct in both cases -- the gap is
+      driver discipline, and protocol-driver.md's Progress reporting section
+      currently mandates only the footer habit loosely. Strengthen the installed
+      protocol text (protocol-driver.md Progress reporting, plus
+      commands/milestone-status.md and commands/ms-status.md) to explicitly
+      require: when relaying milestone-status/resume output to the developer,
+      reproduce the command's rendered table and racing footer as-is (verbatim
+      structure, annotations added around them, never replacing them with
+      prose), and end routine progress updates with the footer line once a
+      milestone is confirmed. Docs-only change; PitWay still cannot verify a
+      driver session follows it (M013's standing disclosure) -- the point is
+      making the rule explicit and installed rather than session-local memory."
+    status: pending
+    source:
+      milestone: M024
+      task: null
+    created_at: 2026-08-22T07:22:11.724Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B012
+    title: Add CLI table renderer
+    reason: Add a reusable terminal table renderer with consistent column alignment,
+      wrapping, Unicode support, and tests; refactor milestone-status to use it.
+    status: pending
+    source:
+      milestone: M024
+      task: null
+    created_at: 2026-08-22T07:56:24.096Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null

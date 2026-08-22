@@ -36,4 +36,11 @@ describe('backlog item state machine (M018/T002)', () => {
   it('error message reports "(none — terminal state)" for a terminal status', () => {
     expect(() => transitionBacklogItem('archived', 'pending')).toThrowError(/terminal state/);
   });
+
+  it('rejects a self-transition from pending, naming the real allowed targets (not the terminal text)', () => {
+    expect(canTransitionBacklogItem('pending', 'pending')).toBe(false);
+    expect(() => transitionBacklogItem('pending', 'pending')).toThrowError(
+      /allowed target states: promoted, archived/,
+    );
+  });
 });

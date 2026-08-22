@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveContract, saveState } from '../../src/state/store.js';
 import { appendJournalEntry, readJournal, reconcilePending } from '../../src/state/journal.js';
 import { derivePending, resolveTargetPath } from '../../src/core/journal/operations.js';
@@ -171,6 +171,108 @@ describe('pitway auto-run status reasons', () => {
     await runAutoRun(['enable', 'M005', '--json']);
     const { lines } = await runAutoRun(['status', 'M005', '--json']);
     expect(JSON.parse(lines.join('\n'))).toMatchObject({ authorized: true, reason: null });
+  });
+});
+
+// M024/T002 (AC003): resolve-active-milestone and hash guards, the human
+// render paths (no --json), and the CommandDeps default fallbacks.
+describe('pitway auto-run guards', () => {
+  it('enable refuses when no milestone id is given and no milestone is active', async () => {
+    saveState(root, { schema_version: 1, active_milestone: null, milestones: [] });
+    const { error } = await runAutoRun(['enable', '--json']);
+    expect(error?.message).toMatch(/no active milestone; run milestone-add first/);
+    expect(readJournal(root)).toHaveLength(0);
+  });
+
+  it('disable and status also refuse with no active milestone and no explicit id', async () => {
+    saveState(root, { schema_version: 1, active_milestone: null, milestones: [] });
+    expect((await runAutoRun(['disable', '--json'])).error?.message).toMatch(/no active milestone/);
+    expect((await runAutoRun(['status', '--json'])).error?.message).toMatch(/no active milestone/);
+  });
+
+  it('enable refuses an in_progress milestone with no verification_approved_hash recorded', async () => {
+    setupMilestone(baseFrontmatter({ verification_approved_hash: null }));
+    const { error } = await runAutoRun(['enable', 'M005', '--json']);
+    expect(error?.message).toMatch(/no verification_approved_hash recorded/);
+    expect(readJournal(root)).toHaveLength(0);
+  });
+});
+
+describe('pitway auto-run human output (no --json)', () => {
+  it('enable renders the enabled line with the recorded hash', async () => {
+    setupMilestone(baseFrontmatter());
+    const { lines, error } = await runAutoRun(['enable', 'M005']);
+    expect(error).toBeUndefined();
+    expect(lines).toEqual([`🔁 Auto-run enabled for M005 at ${HASH_A}.`]);
+  });
+
+  it('a second enable renders the already-authorized line', async () => {
+    setupMilestone(baseFrontmatter());
+    await runAutoRun(['enable', 'M005']);
+    const { lines, error } = await runAutoRun(['enable', 'M005']);
+    expect(error).toBeUndefined();
+    expect(lines).toEqual([`🔁 Auto-run already authorized for M005 at ${HASH_A}.`]);
+  });
+
+  it('disable renders the disabled line', async () => {
+    setupMilestone(baseFrontmatter());
+    const { lines, error } = await runAutoRun(['disable', 'M005']);
+    expect(error).toBeUndefined();
+    expect(lines).toEqual(['🔁 Auto-run disabled for M005.']);
+  });
+
+  it('status renders the authorized line once enabled', async () => {
+    setupMilestone(baseFrontmatter());
+    await runAutoRun(['enable', 'M005']);
+    const { lines, error } = await runAutoRun(['status', 'M005']);
+    expect(error).toBeUndefined();
+    expect(lines).toEqual(['🔁 Auto-run is authorized for M005.']);
+  });
+
+  it('status renders the NOT-authorized line with the reason before any enable', async () => {
+    setupMilestone(baseFrontmatter());
+    const { lines, error } = await runAutoRun(['status', 'M005']);
+    expect(error).toBeUndefined();
+    expect(lines).toEqual(['🔁 Auto-run is NOT authorized for M005: never enabled.']);
+  });
+});
+
+describe('pitway auto-run default deps (no deps object: process.cwd() root, console.log write)', () => {
+  async function runDefault(args: string[]): Promise<{ calls: unknown[][]; caught?: unknown }> {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerAutoRunCommand(program);
+      await program.parseAsync(['node', 'pitway', 'auto-run', ...args]);
+    } catch (error) {
+      caught = error;
+    } finally {
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+    return { calls, caught };
+  }
+
+  it('enable, disable, and status all resolve root from process.cwd() and write via console.log', async () => {
+    setupMilestone(baseFrontmatter());
+
+    const enabled = await runDefault(['enable', 'M005', '--json']);
+    expect(enabled.caught).toBeUndefined();
+    expect(enabled.calls).toHaveLength(1);
+    expect(JSON.parse(enabled.calls[0]?.[0] as string)).toMatchObject({ outcome: 'enabled', hash: HASH_A });
+
+    const status = await runDefault(['status', 'M005', '--json']);
+    expect(status.caught).toBeUndefined();
+    expect(JSON.parse(status.calls[0]?.[0] as string)).toMatchObject({ authorized: true });
+
+    const disabled = await runDefault(['disable', 'M005', '--json']);
+    expect(disabled.caught).toBeUndefined();
+    expect(JSON.parse(disabled.calls[0]?.[0] as string)).toMatchObject({ outcome: 'disabled', hash: null });
   });
 });
 

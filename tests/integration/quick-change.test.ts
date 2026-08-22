@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
@@ -489,5 +489,213 @@ describe('quick-change after a fresh, uncommitted pitway init (T005/AC005)', () 
     } finally {
       rmSync(freshRoot, { recursive: true, force: true });
     }
+  });
+});
+
+// M024/T002 (AC003): the CLI wiring's human-render paths (no --json), the
+// create-option guards, the status unknown-id guard, and the CommandDeps
+// default fallbacks (no deps object: root falls back to process.cwd(),
+// write falls back to console.log) -- mirrors task-verify.test.ts's
+// chdir+spy harness.
+describe('quick-change CLI human output (no --json)', () => {
+  async function human(args: string[]): Promise<{ lines: string[]; error?: Error }> {
+    return run(['quick-change', ...args], root);
+  }
+
+  it('create/approve render the id, status, and objective line', async () => {
+    const created = await human([
+      'create',
+      '--objective',
+      'Fix the regression',
+      '--scope',
+      'target.txt',
+      '--verify',
+      PASSING_VERIFY,
+    ]);
+    expect(created.error).toBeUndefined();
+    expect(created.lines).toHaveLength(1);
+    expect(created.lines[0]).toMatch(/^🔧 qc-[0-9a-f]+ \(draft\) — Fix the regression$/);
+    const id = created.lines[0]!.split(' ')[1]!;
+
+    const approved = await human(['approve', id]);
+    expect(approved.error).toBeUndefined();
+    expect(approved.lines).toEqual([`🔧 ${id} (approved) — Fix the regression`]);
+  });
+
+  it('run renders the passed line on a pass and the failed line on a fail', async () => {
+    const id = idOf((await create()).lines);
+    await approve(id);
+
+    const failed = await human(['run', id]);
+    expect(failed.error).toBeUndefined();
+    expect(failed.lines).toEqual([`🔧 ${id} run failed.`]);
+
+    writeFileSync(join(root, 'target.txt'), 'FIXED\n');
+    const passed = await human(['run', id]);
+    expect(passed.error).toBeUndefined();
+    expect(passed.lines).toEqual([`🔧 ${id} run passed.`]);
+  });
+
+  it('commit renders the committed line, then the already-committed line on a repeat', async () => {
+    const id = idOf((await create()).lines);
+    await approve(id);
+    writeFileSync(join(root, 'target.txt'), 'FIXED\n');
+    await doRun(id);
+
+    const committed = await human(['commit', id]);
+    expect(committed.error).toBeUndefined();
+    const sha = git(['rev-parse', 'HEAD'], root).trim();
+    expect(committed.lines).toEqual([`🔧 Committed ${id} at ${sha}.`]);
+
+    const again = await human(['commit', id]);
+    expect(again.error).toBeUndefined();
+    expect(again.lines).toEqual([`🔧 ${id} already committed at ${sha}.`]);
+  });
+
+  it('cancel and promote render their human lines', async () => {
+    const id = idOf((await create('Cancel me')).lines);
+    const cancelled = await human(['cancel', id]);
+    expect(cancelled.error).toBeUndefined();
+    expect(cancelled.lines).toEqual([`🔧 ${id} (cancelled) — Cancel me`]);
+
+    const id2 = idOf((await create('Promote me')).lines);
+    const promoted = await human(['promote', id2]);
+    expect(promoted.error).toBeUndefined();
+    expect(promoted.lines).toEqual([`🔧 ${id2} promoted; draft a milestone contract for: Promote me`]);
+  });
+
+  it('status renders the empty-state line, the full list, and the single-item line', async () => {
+    const empty = await human(['status']);
+    expect(empty.error).toBeUndefined();
+    expect(empty.lines).toEqual(['No quick-changes recorded.']);
+
+    const idA = idOf((await create('First fix')).lines);
+    const idB = idOf((await create('Second fix')).lines);
+
+    const listed = await human(['status']);
+    expect(listed.error).toBeUndefined();
+    expect(listed.lines.join('\n').split('\n')).toEqual([
+      `🔧 ${idA} (draft) — First fix`,
+      `🔧 ${idB} (draft) — Second fix`,
+    ]);
+
+    const single = await human(['status', idA]);
+    expect(single.error).toBeUndefined();
+    expect(single.lines).toEqual([`🔧 ${idA} (draft) — First fix`]);
+  });
+});
+
+describe('quick-change CLI guards', () => {
+  it('create refuses without --objective, naming the flag', async () => {
+    const { error } = await run(
+      ['quick-change', 'create', '--verify', PASSING_VERIFY, '--scope', 'target.txt', '--json'],
+      root,
+    );
+    expect(error?.message).toMatch(/quick-change create requires --objective <text>/);
+  });
+
+  it('create refuses without --verify, naming the flag', async () => {
+    const { error } = await run(
+      ['quick-change', 'create', '--objective', 'Fix it', '--scope', 'target.txt', '--json'],
+      root,
+    );
+    expect(error?.message).toMatch(/quick-change create requires --verify <command>/);
+  });
+
+  it('status refuses an unknown change id by name', async () => {
+    const { error } = await status('qc-doesnotexist');
+    expect(error?.message).toMatch(/unknown quick-change qc-doesnotexist/);
+  });
+});
+
+describe('quick-change CLI default deps (no deps object: process.cwd() root, console.log write)', () => {
+  async function runDefault(args: string[]): Promise<{ calls: unknown[][]; caught?: unknown }> {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerQuickChangeCommand(program);
+      await program.parseAsync(['node', 'pitway', 'quick-change', ...args]);
+    } catch (error) {
+      caught = error;
+    } finally {
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+    return { calls, caught };
+  }
+
+  function jsonOf(calls: unknown[][]): Record<string, unknown> {
+    expect(calls).toHaveLength(1);
+    return JSON.parse(calls[0]?.[0] as string) as Record<string, unknown>;
+  }
+
+  it('create/approve/run/commit/status all resolve root from process.cwd() and write via console.log', async () => {
+    const created = await runDefault([
+      'create',
+      '--objective',
+      'Fix via defaults',
+      '--scope',
+      'target.txt',
+      '--verify',
+      PASSING_VERIFY,
+      '--json',
+    ]);
+    expect(created.caught).toBeUndefined();
+    const id = jsonOf(created.calls).id as string;
+    expect(id).toMatch(/^qc-/);
+
+    const approved = await runDefault(['approve', id, '--json']);
+    expect(approved.caught).toBeUndefined();
+    expect(jsonOf(approved.calls).status).toBe('approved');
+
+    writeFileSync(join(root, 'target.txt'), 'FIXED\n');
+    const ran = await runDefault(['run', id, '--json']);
+    expect(ran.caught).toBeUndefined();
+    expect(jsonOf(ran.calls).status).toBe('pass');
+
+    const committed = await runDefault(['commit', id, '--json']);
+    expect(committed.caught).toBeUndefined();
+    expect(jsonOf(committed.calls).outcome).toBe('committed');
+
+    const shown = await runDefault(['status', id, '--json']);
+    expect(shown.caught).toBeUndefined();
+    expect(jsonOf(shown.calls).status).toBe('committed');
+  });
+
+  it('cancel and promote also resolve root from process.cwd() and write via console.log', async () => {
+    const createdA = await runDefault([
+      'create',
+      '--objective',
+      'Cancel via defaults',
+      '--scope',
+      'target.txt',
+      '--verify',
+      PASSING_VERIFY,
+      '--json',
+    ]);
+    const idA = jsonOf(createdA.calls).id as string;
+    const cancelled = await runDefault(['cancel', idA, '--json']);
+    expect(cancelled.caught).toBeUndefined();
+    expect(jsonOf(cancelled.calls).status).toBe('cancelled');
+
+    const createdB = await runDefault([
+      'create',
+      '--objective',
+      'Promote via defaults',
+      '--scope',
+      'target.txt',
+      '--verify',
+      PASSING_VERIFY,
+      '--json',
+    ]);
+    const idB = jsonOf(createdB.calls).id as string;
+    const promoted = await runDefault(['promote', idB, '--json']);
+    expect(promoted.caught).toBeUndefined();
+    expect(jsonOf(promoted.calls).status).toBe('promoted');
   });
 });

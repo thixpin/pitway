@@ -2,8 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli, registerAllCommands } from '../../src/cli/index.js';
+import { registerBacklogCommand } from '../../src/cli/commands/backlog.js';
 import { addBacklogItem, BacklogError, resolveActiveMilestoneStrict } from '../../src/core/backlog/add.js';
 import { promoteBacklogItem } from '../../src/core/backlog/promote.js';
 import { archiveBacklogItem } from '../../src/core/backlog/archive.js';
@@ -287,6 +288,14 @@ describe('backlog promote', () => {
   it('refuses promoting an unknown backlog item', () => {
     expect(() => promoteBacklogItem(root, 'B404', { taskId: 'T001' })).toThrowError(/B404/);
   });
+
+  it('promotes only the named item, leaving sibling items untouched', () => {
+    addBacklogItem(root, { title: 'One', reason: 'R' });
+    addBacklogItem(root, { title: 'Two', reason: 'R' });
+    promoteBacklogItem(root, 'B001', { taskId: 'T001' });
+    expect(showBacklogItem(root, 'B001').status).toBe('promoted');
+    expect(showBacklogItem(root, 'B002').status).toBe('pending');
+  });
 });
 
 describe('backlog archive', () => {
@@ -314,6 +323,18 @@ describe('backlog archive', () => {
     addBacklogItem(root, { title: 'X', reason: 'Y' });
     promoteBacklogItem(root, 'B001', { taskId: 'T001' });
     expect(() => archiveBacklogItem(root, 'B001', 'reason')).toThrowError(/promoted/);
+  });
+
+  it('refuses archiving an unknown backlog item', () => {
+    expect(() => archiveBacklogItem(root, 'B404', 'reason')).toThrowError(/B404 not found/);
+  });
+
+  it('archives only the named item, leaving sibling items untouched', () => {
+    addBacklogItem(root, { title: 'One', reason: 'R' });
+    addBacklogItem(root, { title: 'Two', reason: 'R' });
+    archiveBacklogItem(root, 'B001', 'done');
+    expect(showBacklogItem(root, 'B001').status).toBe('archived');
+    expect(showBacklogItem(root, 'B002').status).toBe('pending');
   });
 });
 
@@ -378,6 +399,127 @@ describe('backlog reconciliation via the existing pending/fold machinery (AC003/
 
     expect(pendingBacklogEntries()).toHaveLength(0);
     expect(commitCount(root)).toBe(before + 1); // exactly one commit: T001's own completion
+  });
+});
+
+// M024/T002 (AC003): the CLI wiring's human-render paths (no --json) and
+// CommandDeps default fallbacks (no deps object: root falls back to
+// process.cwd(), write falls back to console.log) -- exercised through the
+// real commander program, mirroring task-verify.test.ts's chdir+spy harness.
+describe('backlog CLI human output (no --json)', () => {
+  it('add renders the recorded id and status as a human line', async () => {
+    const { lines, error } = await run(['backlog', 'add', '--title', 'X', '--reason', 'Y'], root);
+    expect(error).toBeUndefined();
+    expect(lines).toEqual(['🔧 B001 recorded as pending.']);
+  });
+
+  it('list renders one line per item with status, title, and reason', async () => {
+    addBacklogItem(root, { title: 'First thing', reason: 'Deferred A' });
+    addBacklogItem(root, { title: 'Second thing', reason: 'Deferred B' });
+    const { lines, error } = await run(['backlog', 'list'], root);
+    expect(error).toBeUndefined();
+    expect(lines.join('\n').split('\n')).toEqual([
+      '🔧 B001 [pending] First thing — Deferred A',
+      '🔧 B002 [pending] Second thing — Deferred B',
+    ]);
+  });
+
+  it('list renders the empty-state line when nothing is recorded', async () => {
+    const { lines, error } = await run(['backlog', 'list'], root);
+    expect(error).toBeUndefined();
+    expect(lines).toEqual(['No backlog items recorded.']);
+  });
+
+  it('list --status filters through the CLI, and refuses an unknown status by name', async () => {
+    addBacklogItem(root, { title: 'Keep', reason: 'R' });
+    addBacklogItem(root, { title: 'Gone', reason: 'R' });
+    archiveBacklogItem(root, 'B002', 'done elsewhere');
+
+    const filtered = await run(['backlog', 'list', '--status', 'archived'], root);
+    expect(filtered.error).toBeUndefined();
+    expect(filtered.lines).toEqual(['🔧 B002 [archived] Gone — R']);
+
+    const bad = await run(['backlog', 'list', '--status', 'bogus'], root);
+    expect(bad.error?.message).toMatch(/must be pending, promoted, or archived; got bogus/);
+  });
+
+  it('show renders the single-item line', async () => {
+    addBacklogItem(root, { title: 'Thing', reason: 'Why' });
+    const { lines, error } = await run(['backlog', 'show', 'B001'], root);
+    expect(error).toBeUndefined();
+    expect(lines).toEqual(['🔧 B001 [pending] Thing — Why']);
+  });
+
+  it('promote renders the target milestone/task line', async () => {
+    addBacklogItem(root, { title: 'Thing', reason: 'Why' });
+    const { lines, error } = await run(['backlog', 'promote', 'B001', '--task', 'T001'], root);
+    expect(error).toBeUndefined();
+    expect(lines).toEqual(['🔧 B001 promoted to M001/T001.']);
+  });
+
+  it('archive renders the archived line', async () => {
+    addBacklogItem(root, { title: 'Thing', reason: 'Why' });
+    const { lines, error } = await run(['backlog', 'archive', 'B001', '--reason', 'obsolete'], root);
+    expect(error).toBeUndefined();
+    expect(lines).toEqual(['🔧 B001 archived.']);
+  });
+
+  it('add/show honor --json through the CLI wiring too', async () => {
+    const added = await run(['backlog', 'add', '--title', 'X', '--reason', 'Y', '--json'], root);
+    expect(added.error).toBeUndefined();
+    expect(JSON.parse(added.lines[0]!)).toEqual({ id: 'B001', status: 'pending' });
+
+    const shown = await run(['backlog', 'show', 'B001', '--json'], root);
+    expect(shown.error).toBeUndefined();
+    expect(JSON.parse(shown.lines[0]!)).toMatchObject({ id: 'B001', title: 'X', reason: 'Y' });
+  });
+});
+
+describe('backlog CLI default deps (no deps object: process.cwd() root, console.log write)', () => {
+  async function runDefault(args: string[]): Promise<{ calls: unknown[][]; caught?: unknown }> {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const cwdBefore = process.cwd();
+    process.chdir(root);
+    let caught: unknown;
+    let calls: unknown[][] = [];
+    try {
+      const program = buildCli();
+      registerBacklogCommand(program);
+      await program.parseAsync(['node', 'pitway', 'backlog', ...args]);
+    } catch (error) {
+      caught = error;
+    } finally {
+      calls = logSpy.mock.calls;
+      process.chdir(cwdBefore);
+      logSpy.mockRestore();
+    }
+    return { calls, caught };
+  }
+
+  it('every subcommand resolves root from process.cwd() and writes via console.log', async () => {
+    const added = await runDefault(['add', '--title', 'X', '--reason', 'Y', '--json']);
+    expect(added.caught).toBeUndefined();
+    expect(added.calls).toHaveLength(1);
+    expect(JSON.parse(added.calls[0]?.[0] as string)).toEqual({ id: 'B001', status: 'pending' });
+
+    const listed = await runDefault(['list', '--json']);
+    expect(listed.caught).toBeUndefined();
+    expect((JSON.parse(listed.calls[0]?.[0] as string) as unknown[])).toHaveLength(1);
+
+    const shown = await runDefault(['show', 'B001', '--json']);
+    expect(shown.caught).toBeUndefined();
+    expect(JSON.parse(shown.calls[0]?.[0] as string)).toMatchObject({ id: 'B001' });
+
+    const promoted = await runDefault(['promote', 'B001', '--task', 'T001', '--json']);
+    expect(promoted.caught).toBeUndefined();
+    expect(JSON.parse(promoted.calls[0]?.[0] as string)).toMatchObject({ status: 'promoted' });
+
+    const addedAgain = await runDefault(['add', '--title', 'Z', '--reason', 'W', '--json']);
+    expect(addedAgain.caught).toBeUndefined();
+
+    const archived = await runDefault(['archive', 'B002', '--reason', 'done', '--json']);
+    expect(archived.caught).toBeUndefined();
+    expect(JSON.parse(archived.calls[0]?.[0] as string)).toEqual({ id: 'B002', status: 'archived' });
   });
 });
 
