@@ -135,3 +135,47 @@ items:
       milestone: M021
       task: T002
     archived_reason: null
+  - id: B008
+    title: Deduplicate init-generated CLAUDE.md vs AGENTS.md content
+    reason: "pitway init writes AGENTS.md and CLAUDE.md with the same 5
+      SHARED_BULLETS duplicated verbatim in both
+      (src/state/root-instructions.ts), and CLAUDE.md's closing line even says
+      'See AGENTS.md for the shared instructions above' -- so a driver that
+      reads both files (several do, per docs/evidence/M022: Copilot reads
+      AGENTS.md and CLAUDE.md; OpenCode falls back to CLAUDE.md) ingests
+      identical content twice. Developer-reported 2026-08-22. Fix direction per
+      M022's own finding (claude-code.md section 4): Claude Code's documented
+      AGENTS.md bridge is the @AGENTS.md import -- make CLAUDE_MD_CONTENT a thin
+      pointer (@AGENTS.md import + the .claude/protocol-driver.md pointer),
+      shared bullets living only in AGENTS.md. Migration consideration: changing
+      the generated content makes existing installed copies classify as
+      'conflict' (preserved-with-warning) rather than 'identical' -- disclose,
+      don't silently churn user repos."
+    status: promoted
+    source:
+      milestone: M023
+      task: null
+    created_at: 2026-08-22T03:55:41.444Z
+    resolved_at: 2026-08-22T03:58:05.794Z
+    promoted_to:
+      milestone: M023
+      task: T004
+    archived_reason: null
+  - id: B009
+    title: required_skills gate resolves against .claude/skills/ only
+    reason: src/core/tasks/skills.ts's pre-dispatch gate compares required_skills
+      against installed skills discovered by listInstalledSkillNames, which
+      reads .claude/skills/ only; with the OpenCode driver installed via pitway
+      init --opencode, a required_skills declaration is never checked against
+      .opencode/skills/. PitWay has no current-driver state to decide which
+      directory to resolve against, so there is no principled fix yet. Disclosed
+      by M023/AC009 as an intentionally unaddressed limitation, by design; pick
+      up if it ever becomes load-bearing.
+    status: pending
+    source:
+      milestone: M023
+      task: T003
+    created_at: 2026-08-22T04:43:48.885Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null

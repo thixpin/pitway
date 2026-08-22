@@ -98,7 +98,10 @@ describe('validateSkillFrontmatter (pure, synthetic inputs only)', () => {
 // Positive case: reads every real vendored SKILL.md, read-only. No
 // writeFileSync/rmSync/renameSync anywhere in this file.
 describe('vendored skills structural validation (real files, read-only)', () => {
-  const skillsRoot = fileURLToPath(new URL('../../src/integrations/claude/skills/', import.meta.url));
+  // M023/T001: the vendored skills are driver-agnostic and live under
+  // src/integrations/common/ (Agent Skills open standard), no longer under
+  // the claude-specific directory.
+  const skillsRoot = fileURLToPath(new URL('../../src/integrations/common/skills/', import.meta.url));
   const directories = readdirSync(skillsRoot, { withFileTypes: true })
     .filter((e) => e.isDirectory())
     .map((e) => e.name)

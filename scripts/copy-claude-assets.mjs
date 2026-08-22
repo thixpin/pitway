@@ -13,8 +13,12 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..');
-const sourceDir = join(repoRoot, 'src', 'integrations', 'claude');
-const destDir = join(repoRoot, 'dist', 'integrations', 'claude');
+// M023/T001: copies the whole integrations tree (claude/, common/, and any
+// future driver directory) -- dist/state/driver-assets.js resolves assets
+// from dist/integrations/<driver>/ and dist/integrations/common/, so both
+// tiers must ship.
+const sourceDir = join(repoRoot, 'src', 'integrations');
+const destDir = join(repoRoot, 'dist', 'integrations');
 
 function copyRecursive(srcDir, destDirPath) {
   const entries = readdirSync(srcDir, { withFileTypes: true });

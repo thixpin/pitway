@@ -1,0 +1,109 @@
+schema_version: 1
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-22T04:44:29Z
+    evidence: Tests  15 passed (15) | Start at  11:44:29 | Duration  120ms
+      (transform 16ms, setup 0ms, import 23ms, tests 5ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 962
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-22T04:44:30Z
+    evidence: Tests  79 passed (79) | Start at  11:44:29 | Duration  198ms
+      (transform 28ms, setup 0ms, import 40ms, tests 77ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 571
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-22T04:44:36Z
+    evidence: Tests  130 passed (130) | Start at  11:44:30 | Duration  6.13s
+      (transform 63ms, setup 0ms, import 85ms, tests 6.08s, environment 0ms)
+    recorded_by: command
+    duration_ms: 6494
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-22T04:44:39Z
+    evidence: Tests  34 passed (34) | Start at  11:44:37 | Duration  2.85s
+      (transform 347ms, setup 0ms, import 461ms, tests 2.31s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3247
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-22T04:44:40Z
+    evidence: Tests  7 passed (7) | Start at  11:44:40 | Duration  134ms (transform
+      25ms, setup 0ms, import 34ms, tests 25ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 526
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-22T04:44:41Z
+    evidence: Tests  8 passed (8) | Start at  11:44:40 | Duration  486ms (transform
+      226ms, setup 0ms, import 319ms, tests 94ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 856
+    termination_reason: exited
+  - check: CT010
+    status: fail
+    at: 2026-08-22T04:46:25Z
+    evidence: >-
+      failures: × a pre-existing, already-committed AGENTS.md with different
+      content is never to
+
+      413| | 414|       await addDraftMilestone(freshRoot, false); |
+      ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+    recorded_by: command
+    duration_ms: 103927
+    termination_reason: exited
+  - check: CT011
+    status: pass
+    at: 2026-08-22T04:46:28Z
+    evidence: Tests  51 passed (51) | Start at  11:46:25 | Duration  2.62s
+      (transform 294ms, setup 0ms, import 415ms, tests 2.18s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3138
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-22T04:47:43Z
+    evidence: "CLAUDE.md diff reviewed: the MVP-boundary sentence matches the
+      conversation-approved wording exactly; the worker's one disclosed
+      normalization (em-dash matching both the file's typography and the
+      approved conversation text; the contract file's own double-hyphen is the
+      YAML-flattened form) accepted and recorded in T001's completion evidence.
+      Core's provider-agnostic sentence untouched."
+    recorded_by: developer
+  - check: CT005
+    status: pass
+    at: 2026-08-22T04:47:44Z
+    evidence: "src/integrations/opencode/commands/ reviewed against
+      docs/evidence/M022/opencode.md AND T002's mandated live-upstream recheck
+      (all three items confirmed against opencode.ai before any asset was
+      written): 32 docs (24 canonical + 8 ms-* byte-parallel aliases,
+      test-enforced), description frontmatter quoted for strict YAML,
+      argument-hint correctly dropped as Claude-only. Skills/protocol docs
+      resolve to common/ with no override -- reinforced by the upstream finding
+      that OpenCode natively reads .claude/skills/ and .agents/skills/."
+    recorded_by: developer
+  - check: CT009
+    status: pass
+    at: 2026-08-22T04:47:44Z
+    evidence: "src/core/tasks/skills.ts: git diff empty across the entire milestone
+      (verified per-task at T001 integration and re-checked at completion).
+      Limitation recorded in T003's completion evidence and filed as B009 via
+      pitway backlog add."
+    recorded_by: developer
+  - check: CT010
+    status: pass
+    at: 2026-08-22T04:49:27Z
+    evidence: Tests  1483 passed (1483) | Start at  11:47:33 | Duration  113.13s
+      (transform 4.73s, setup 0ms, import 17.43s, tests 758.84s, environment
+      11ms)
+    recorded_by: command
+    duration_ms: 114758
+    termination_reason: exited

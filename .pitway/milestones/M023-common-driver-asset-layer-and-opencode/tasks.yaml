@@ -1,0 +1,321 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Common asset layer + Claude Code regression safety
+    objective: "Introduce src/integrations/common/ and move the 6 skill SKILL.md
+      files + skills/NOTICE.md + 7 protocol docs (protocol-driver.md,
+      protocol-worker.md, dispatch.md, coordination.md, report-format.md,
+      lsp-guidance.md, interactive-ux.md) there verbatim from
+      src/integrations/claude/ -- byte-identical content, only relocated.
+      src/integrations/claude/ keeps only its own 24 canonical command docs and
+      8 ms-*.md aliases (32 files total). Add the resolution function in a new
+      module, src/state/driver-assets.ts (named explicitly per the pre-confirm
+      architect review -- never 'a sibling module' left open), implementing the
+      driver-then-common fallback lookup described in the contract's AC002 -- a
+      flat, static, hardcoded two-driver (claude, opencode) lookup, no manifest
+      file, no dynamic driver discovery, no template/compile step;
+      claude-assets.ts's existing exported functions delegate to it (or
+      re-export) with unchanged signatures. Update every call site that
+      currently assumes a single src/integrations/claude/ source
+      (src/cli/commands/init.ts, src/git/baseline.ts,
+      src/core/milestones/confirm.ts if it needs a direct change,
+      src/cli/commands/task-status.ts, src/state/managed-init-paths.ts) so
+      Claude Code's installed output stays byte-for-byte identical to today.
+      src/core/tasks/skills.ts is NOT a call site and must NOT be touched -- it
+      reads the installed .claude/skills/ destination, which this source-tree
+      move never changes; AC009/CT009 are authoritative. The AC003 byte-parity
+      check is an inline sha256 hash manifest inside
+      tests/unit/claude-assets.test.ts (no separate fixture file): a one-time
+      M023 migration check over every pre-refactor asset path+content, PLUS the
+      durable resolution-equivalence test (claude overrides union common
+      fallbacks, driver wins on collision, equals the installed set) that
+      outlives it. Amend CLAUDE.md's MVP boundary sentence to the exact wording
+      in this contract's Background (AC004). Do NOT add any OpenCode assets in
+      this task -- prove the refactor is safe standalone first."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - src/integrations/common/ exists with the 14 relocated files,
+        byte-identical to their pre-move content
+      - src/integrations/claude/ retains only its 24 canonical command docs and
+        8 ms-*.md aliases (32 files)
+      - src/state/driver-assets.ts implements driver-then-common fallback as a
+        flat static lookup, no dynamic discovery/manifest/template/compile step;
+        claude-assets.ts's existing exports keep unchanged signatures
+      - src/core/tasks/skills.ts has an empty git diff
+      - a one-time inline hash-manifest migration test proves Claude Code's
+        resolved installed asset set (paths + content) is byte-identical to
+        before this task, and a durable resolution-equivalence test asserts
+        claude-overrides-union-common equals the installed set
+      - CLAUDE.md's MVP-boundary sentence is amended to the exact approved
+        wording
+      - no OpenCode-specific asset exists yet
+    write_scope:
+      - src/integrations/common/skills/architecture-review/SKILL.md
+      - src/integrations/common/skills/bug-fix/SKILL.md
+      - src/integrations/common/skills/code-quality-review/SKILL.md
+      - src/integrations/common/skills/debugging/SKILL.md
+      - src/integrations/common/skills/NOTICE.md
+      - src/integrations/common/skills/security-audit/SKILL.md
+      - src/integrations/common/skills/testing/SKILL.md
+      - src/integrations/common/coordination.md
+      - src/integrations/common/dispatch.md
+      - src/integrations/common/interactive-ux.md
+      - src/integrations/common/lsp-guidance.md
+      - src/integrations/common/protocol-driver.md
+      - src/integrations/common/protocol-worker.md
+      - src/integrations/common/report-format.md
+      - src/integrations/claude/skills/architecture-review/SKILL.md
+      - src/integrations/claude/skills/bug-fix/SKILL.md
+      - src/integrations/claude/skills/code-quality-review/SKILL.md
+      - src/integrations/claude/skills/debugging/SKILL.md
+      - src/integrations/claude/skills/NOTICE.md
+      - src/integrations/claude/skills/security-audit/SKILL.md
+      - src/integrations/claude/skills/testing/SKILL.md
+      - src/integrations/claude/coordination.md
+      - src/integrations/claude/dispatch.md
+      - src/integrations/claude/interactive-ux.md
+      - src/integrations/claude/lsp-guidance.md
+      - src/integrations/claude/protocol-driver.md
+      - src/integrations/claude/protocol-worker.md
+      - src/integrations/claude/report-format.md
+      - src/state/driver-assets.ts
+      - src/state/claude-assets.ts
+      - src/cli/commands/init.ts
+      - src/git/baseline.ts
+      - src/core/milestones/confirm.ts
+      - src/cli/commands/task-status.ts
+      - src/state/managed-init-paths.ts
+      - CLAUDE.md
+      - tests/unit/skills-structure.test.ts
+      - tests/unit/claude-assets.test.ts
+      - tests/integration/init.test.ts
+      - tests/integration/build-bin.test.ts
+      - tests/unit/managed-init-paths.test.ts
+      - scripts/copy-claude-assets.mjs
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/skills-structure.test.ts
+        tests/unit/claude-assets.test.ts tests/integration/init.test.ts
+        tests/integration/build-bin.test.ts
+        tests/unit/managed-init-paths.test.ts
+    result:
+      summary: Common asset layer landed with proven Claude Code byte parity -- 14
+        assets relocated to src/integrations/common/, driver-then-common
+        resolution in new src/state/driver-assets.ts, CLAUDE.md MVP boundary
+        amended. One disclosed build-script ripple, approved via task-amend.
+      evidence: Tests  170 passed (170) | Start at  11:13:03 | Duration  6.08s
+        (transform 571ms, setup 0ms, import 810ms, tests 7.67s, environment 0ms)
+    attempts: 1
+    usage:
+      total_tokens: 106822
+  - id: T002
+    name: OpenCode driver assets and init support
+    objective: "FIRST, before writing any asset: recheck OpenCode's install layout
+      and command frontmatter shape against its live upstream docs
+      (opencode.ai), and record the recheck outcome (confirmed, or corrected
+      with specifics) in completion evidence -- the M022 evidence snapshot is
+      the starting point, never the sole authority (pre-confirm architect
+      finding: single-sourced circular verification). Then ship
+      OpenCode-specific command docs under src/integrations/opencode/commands/
+      -- all 32 mirrors (24 canonical + 8 ms-* aliases), one per existing Claude
+      Code command doc, re-wrapped in OpenCode's own documented convention (one
+      markdown file per command, filename becomes /name) -- content mirrors each
+      source command doc's description and pitway-invocation instruction. Skills
+      and protocol docs resolve to common/ entirely for OpenCode; do not create
+      an OpenCode override for them unless a real, disclosed incompatibility is
+      found (name it explicitly in completion evidence if so). Add an opt-in
+      OpenCode installation flag to pitway init (additive, Claude stays
+      default-on), installing the resolved OpenCode asset set into .opencode/:
+      skills at .opencode/skills/<name>/SKILL.md, commands at
+      .opencode/commands/<name>.md, and the 7 protocol docs at
+      .opencode/<name>.md -- mirroring .claude/'s own root-level protocol doc
+      layout (AC006's explicit destination spec, the developer-approved
+      recommended option). Extend src/git/baseline.ts's managed-dirty-path
+      recognition (currently .claude/-only) to also recognize installed
+      .opencode/ managed paths, so milestone-confirm/quick-change create don't
+      refuse on a freshly-installed OpenCode asset set. The resolution wiring
+      lives in src/state/driver-assets.ts (in scope here too)."
+    status: completed
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - the live-upstream layout/frontmatter recheck ran first and its outcome
+        (confirmed or corrected) is in completion evidence
+      - all 32 OpenCode command docs (24 canonical + 8 ms-* aliases) exist, in
+        OpenCode's own documented convention, content-equivalent to their Claude
+        Code source
+      - skills and protocol docs are not overridden for OpenCode unless a real
+        incompatibility is disclosed
+      - pitway init supports an opt-in OpenCode installation path installing
+        skills, commands, and the 7 root-level protocol docs into .opencode/ at
+        their AC006-specified destinations
+      - milestone-confirm/quick-change create do not refuse on a freshly
+        pitway-init --opencode'd repo's own managed .opencode/ paths
+    write_scope:
+      - src/cli/commands/init.ts
+      - src/git/baseline.ts
+      - src/integrations/opencode/commands/auto-run.md
+      - src/integrations/opencode/commands/backlog.md
+      - src/integrations/opencode/commands/milestone-add.md
+      - src/integrations/opencode/commands/milestone-cancel.md
+      - src/integrations/opencode/commands/milestone-complete.md
+      - src/integrations/opencode/commands/milestone-confirm.md
+      - src/integrations/opencode/commands/milestone-list.md
+      - src/integrations/opencode/commands/milestone-merge.md
+      - src/integrations/opencode/commands/milestone-review.md
+      - src/integrations/opencode/commands/milestone-status.md
+      - src/integrations/opencode/commands/ms-add.md
+      - src/integrations/opencode/commands/ms-cancel.md
+      - src/integrations/opencode/commands/ms-complete.md
+      - src/integrations/opencode/commands/ms-confirm.md
+      - src/integrations/opencode/commands/ms-list.md
+      - src/integrations/opencode/commands/ms-merge.md
+      - src/integrations/opencode/commands/ms-review.md
+      - src/integrations/opencode/commands/ms-status.md
+      - src/integrations/opencode/commands/quick-change.md
+      - src/integrations/opencode/commands/resume.md
+      - src/integrations/opencode/commands/task-add.md
+      - src/integrations/opencode/commands/task-amend.md
+      - src/integrations/opencode/commands/task-discard.md
+      - src/integrations/opencode/commands/task-dispatch.md
+      - src/integrations/opencode/commands/task-integrate.md
+      - src/integrations/opencode/commands/task-status.md
+      - src/integrations/opencode/commands/task-update.md
+      - src/integrations/opencode/commands/task-verify.md
+      - src/integrations/opencode/commands/usage-add.md
+      - src/integrations/opencode/commands/verification-repair.md
+      - src/integrations/opencode/commands/verify.md
+      - src/integrations/opencode/commands/write-ms-artifacts.md
+      - src/state/claude-assets.ts
+      - src/state/driver-assets.ts
+      - src/state/managed-init-paths.ts
+      - tests/integration/build-bin.test.ts
+      - tests/integration/init.test.ts
+      - tests/unit/claude-assets.test.ts
+      - tests/unit/managed-init-paths.test.ts
+      - tests/unit/opencode-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/opencode-assets.test.ts
+        tests/integration/init.test.ts tests/integration/build-bin.test.ts
+        tests/unit/managed-init-paths.test.ts
+    result:
+      summary: OpenCode driver shipped -- 32 command docs in OpenCode's own verified
+        convention, opt-in pitway init --opencode, .opencode/ managed-path
+        git-safety recognition. No skill/protocol-doc overrides needed.
+      evidence: Tests  136 passed (136) | Start at  11:37:07 | Duration  6.39s
+        (transform 504ms, setup 0ms, import 739ms, tests 8.75s, environment 0ms)
+    attempts: 1
+    usage:
+      total_tokens: 123263
+  - id: T003
+    name: Cross-driver structural verification and dogfood disclosure
+    objective: Write a real end-to-end structural test proving every logical asset
+      resolves to the correct source and destination path for both drivers, that
+      installing both drivers into the same repo produces no destination-path
+      collision, and -- the stray-override guard from the pre-confirm architect
+      review -- that every file in a driver directory either shadows an existing
+      common/ relative path or belongs to that driver's declared driver-specific
+      class (commands/*.md including ms-*.md); anything else (e.g. a typo'd
+      override filename that would silently install as a NEW asset instead of
+      shadowing) fails the test by name. The expected command set is derived
+      from glob discovery of claude/commands/, never a hardcoded count. Write
+      docs/evidence/M023/opencode-dogfood-followup.md disclosing plainly that
+      real, end-to-end OpenCode-driven dogfood (an actual OpenCode session
+      executing a real PitWay milestone) was NOT performed by this milestone --
+      no OpenCode CLI is available in this environment -- and naming it as a
+      manual, developer-run follow-up. Add a backlog item (pitway backlog add)
+      recording the required_skills gate's .claude/-only limitation (AC009) as a
+      disclosed, unaddressed gap for a future milestone to pick up if it ever
+      becomes load-bearing.
+    status: completed
+    depends_on:
+      - T001
+      - T002
+    acceptance_criteria:
+      - a real test proves correct source/destination resolution for both
+        drivers and zero path collision when both are installed together
+      - the stray-override guard fails by name on any driver-directory file that
+        neither shadows common/ nor belongs to the declared driver-specific
+        class, with the expected set derived from glob discovery rather than a
+        hardcoded count
+      - opencode-dogfood-followup.md states plainly that no real OpenCode
+        session was run, and names the manual follow-up explicitly
+      - a new backlog item records the required_skills .claude/-only limitation
+    write_scope:
+      - tests/integration/multi-driver-assets.test.ts
+      - docs/evidence/M023/opencode-dogfood-followup.md
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/multi-driver-assets.test.ts
+    result:
+      summary: Cross-driver structural verification landed (8 tests incl. the
+        stray-override guard proven to bite); honest dogfood-not-performed
+        disclosure written; required_skills limitation filed as B009.
+      evidence: Tests  8 passed (8) | Start at  11:43:55 | Duration  563ms (transform
+        260ms, setup 0ms, import 360ms, tests 114ms, environment 0ms)
+    attempts: 1
+    usage:
+      total_tokens: 71356
+  - id: T004
+    name: "B008: dedupe init-generated CLAUDE.md vs AGENTS.md"
+    objective: "Restructure pitway init's root instruction files around a delimited
+      PitWay-managed block, per AC011's five cases (a)-(e), fixing B008's
+      duplication and enabling the future pitway update's
+      only-modify-PitWay's-portion contract. In src/state/root-instructions.ts:
+      (a) dedup -- CLAUDE.md's PitWay content becomes a thin pointer via Claude
+      Code's documented @AGENTS.md import bridge
+      (docs/evidence/M022/claude-code.md section 4) plus the
+      .claude/protocol-driver.md pointer; the 5 SHARED_BULLETS live only in
+      AGENTS.md's content. (b) managed block -- each file's PitWay content is
+      wrapped in <!-- pitway:managed:start --> / <!-- pitway:managed:end -->
+      markers (invisible in rendered markdown), the only region PitWay ever owns
+      in these files. (c) append -- when AGENTS.md or CLAUDE.md already exists
+      without a managed block and is not a known legacy PitWay-generated form,
+      init APPENDS the marked block to the existing file (replacing the former
+      preserve-untouched behavior for these two files, explicit developer
+      directive 2026-08-22). (d) legacy migration -- a file byte-equal to a
+      known prior PitWay-generated form (the pre-B008 full-content constants) is
+      rewritten to the new marked form outright, never appended-to. (e)
+      present-but-differing managed block -- init leaves the file unmodified and
+      reports it (the future update command's job, which stays out of scope).
+      Update tests/unit/root-instructions.test.ts with real cases for all five
+      behaviors, and tests/integration/init.test.ts where it asserts the old
+      content verbatim."
+    status: completed
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - CLAUDE.md's managed-block content no longer contains the SHARED_BULLETS
+        text -- it imports AGENTS.md via the @AGENTS.md bridge and keeps the
+        .claude/protocol-driver.md pointer
+      - both files' PitWay content is delimited by the pitway:managed:start/end
+        HTML-comment markers
+      - a pre-existing user-authored file without a managed block gets the
+        marked block APPENDED, its own content untouched above it
+      - a file byte-equal to a known legacy PitWay-generated form is rewritten
+        to the new marked form outright, never appended-to
+      - a file whose managed block exists but differs is left unmodified and
+        reported
+      - no template engine or general rewrite mechanism is introduced -- plain
+        string constants and marker search, exactly in the existing module's
+        style
+    write_scope:
+      - src/state/root-instructions.ts
+      - tests/unit/root-instructions.test.ts
+      - tests/integration/init.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/root-instructions.test.ts
+        tests/integration/init.test.ts
+    result:
+      summary: B008 delivered with the full managed-block design (AC011 cases a-e) --
+        CLAUDE.md dedup via the @AGENTS.md bridge, pitway:managed markers,
+        append on user-authored files, legacy migration, differing-block
+        preservation.
+      evidence: Tests  43 passed (43) | Start at  11:23:38 | Duration  2.20s
+        (transform 286ms, setup 0ms, import 393ms, tests 1.77s, environment 0ms)
+    attempts: 1
+    usage:
+      total_tokens: 81346
