@@ -229,7 +229,7 @@ tasks:
       recording the required_skills gate's .claude/-only limitation (AC009) as a
       disclosed, unaddressed gap for a future milestone to pick up if it ever
       becomes load-bearing.
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -249,8 +249,15 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/integration/multi-driver-assets.test.ts
-    result: null
-    usage: null
+    result:
+      summary: Cross-driver structural verification landed (8 tests incl. the
+        stray-override guard proven to bite); honest dogfood-not-performed
+        disclosure written; required_skills limitation filed as B009.
+      evidence: Tests  8 passed (8) | Start at  11:43:55 | Duration  563ms (transform
+        260ms, setup 0ms, import 360ms, tests 114ms, environment 0ms)
+    attempts: 1
+    usage:
+      total_tokens: 71356
   - id: T004
     name: "B008: dedupe init-generated CLAUDE.md vs AGENTS.md"
     objective: "Restructure pitway init's root instruction files around a delimited

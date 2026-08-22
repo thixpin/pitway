@@ -161,3 +161,21 @@ items:
       milestone: M023
       task: T004
     archived_reason: null
+  - id: B009
+    title: required_skills gate resolves against .claude/skills/ only
+    reason: src/core/tasks/skills.ts's pre-dispatch gate compares required_skills
+      against installed skills discovered by listInstalledSkillNames, which
+      reads .claude/skills/ only; with the OpenCode driver installed via pitway
+      init --opencode, a required_skills declaration is never checked against
+      .opencode/skills/. PitWay has no current-driver state to decide which
+      directory to resolve against, so there is no principled fix yet. Disclosed
+      by M023/AC009 as an intentionally unaddressed limitation, by design; pick
+      up if it ever becomes load-bearing.
+    status: pending
+    source:
+      milestone: M023
+      task: T003
+    created_at: 2026-08-22T04:43:48.885Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
