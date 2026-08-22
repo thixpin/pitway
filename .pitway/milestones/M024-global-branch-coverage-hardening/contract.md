@@ -2,10 +2,10 @@
 schema_version: 1
 id: M024
 title: Global Branch Coverage Hardening
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-22T05:55:49Z
-verification_approved_hash: sha256:e2d25f941540b2be7eeceb03936dac4c21dd4cd4c8d02ee59dba6e4c7dda9d29
+verification_approved_hash: sha256:7cbb64b38d83b46d58bbfbbfb62183e3fbffc9928c233b380b6cf268b61c9331
 base_branch: main
 base_revision: 5410b92f4c78aefc270a5152d49cc8f54418c2c3
 acceptance_criteria:
@@ -135,6 +135,7 @@ verification:
     criterion: AC009
     type: command
     command: npm run build && npm test && npx tsc --noEmit
+    timeout_ms: 900000
 ---
 
 # M024: Global Branch Coverage Hardening
@@ -166,6 +167,11 @@ definition, disclosed structural exceptions) scales to the full tree here.
 
 ## Change Log
 
+- 2026-08-22: CT007 timeout ceiling raised to 900000ms (developer-approved):
+  the full-suite check genuinely needs ~7 minutes and the 120s default timed
+  it out mid-run after it had passed end-to-end manually (88 files / 1685
+  tests green; build and tsc --noEmit clean). Per-check ceiling only, per the
+  M019/T002 timeout_ms mechanism; no scope or criterion change.
 - 2026-08-22: Initial draft.
 - 2026-08-22: Drafting-error correction (worker-disclosed during T002 and
   T004, the same class both times): five test-file paths in CT002/CT004
