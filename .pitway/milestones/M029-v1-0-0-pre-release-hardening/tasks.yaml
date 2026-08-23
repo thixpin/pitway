@@ -156,7 +156,7 @@ tasks:
       gates, commit trailers) versus installed-instruction-only (approval-gate
       obedience, footer habits), matching protocol disclosures. Docs/CI only; no
       app code."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -170,7 +170,16 @@ tasks:
     verification:
       strategy: command
       detail: npx tsc --noEmit && npx vitest run tests/integration/npm-pack.test.ts
-    result: null
+    result:
+      summary: "[truncated] d: smoke gate (npm pack -> temp install -> pitway init ->
+        assert config.yaml) fails the publish on regression; tag pushes now
+        create a GitHub Release attaching the tarball (dispatch runs skip);
+        README gains the enforces-vs-driver-discipline Limitations callout.
+        Docs/CI only, no app code."
+      evidence: workflow YAML parses clean; npx tsc --noEmit clean;
+        tests/integration/npm-pack.test.ts 29 passed; manual review of
+        publish.yml steps per CT004
+    attempts: 1
     usage: null
   - id: T005
     name: Final gate — full build/suite/typecheck + snapshot touch
@@ -179,7 +188,7 @@ tasks:
       confirm tree cleanliness and that IMPLEMENTATION_PLAN.md's status snapshot
       gains one sentence noting M029 prepared the repository for the developer's
       1.0.0 bump/tag decision. No other plan edits.
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002
