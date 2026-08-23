@@ -15,7 +15,7 @@ tasks:
       ms-confirm, task-add, task-amend, milestone-review, ms-review,
       task-update), preserving alias byte-parity. Update the claude-assets hash
       manifest for changed assets. No Core/CLI/schema changes.
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - draft-formats.md exists with six formats, each example passing the real
@@ -63,5 +63,13 @@ tasks:
       detail: npx vitest run tests/unit/draft-formats.test.ts
         tests/unit/claude-assets.test.ts tests/unit/opencode-assets.test.ts
         tests/unit/codex-assets.test.ts
-    result: null
+    result:
+      summary: "[truncated] , task-add, task-amend, findings); validation test
+        extracts fenced blocks and runs them through
+        parseContractFile/taskSchema/reviewRecordInputSchema; pointer lines
+        added to all 10 affected command docs across 3 drivers with alias
+        parity; hash manifest refreshed (10 updated + 1 new entry)"
+      evidence: Tests  293 passed (293) | Start at  13:33:43 | Duration  351ms
+        (transform 191ms, setup 0ms, import 425ms, tests 409ms, environment 1ms)
+    attempts: 1
     usage: null

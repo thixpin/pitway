@@ -16,5 +16,7 @@ is required to replace files already at the destination; without it the
 command refuses rather than clobbering something that might not be yours to
 overwrite.
 
+Draft contract/tasks file formats: `../draft-formats.md`.
+
 See `../protocol-driver.md`. Run `pitway write-ms-artifacts --help` for
 flags.

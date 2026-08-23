@@ -69,6 +69,8 @@ implementation or runtime verification; reconciling findings is always
 yours, never Core's. Decide before `milestone-complete` — a decided
 session keeps the review record readable against what actually shipped.
 
+Findings file format: `../draft-formats.md`.
+
 See `../protocol-driver.md`'s "Milestone review" section for the honesty
 disclosures this command's design rests on. Run `pitway milestone-review
 --help` for flags.

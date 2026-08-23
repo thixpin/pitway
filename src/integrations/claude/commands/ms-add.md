@@ -24,4 +24,6 @@ touches git. It only works while `<id>` is still `draft`; once confirmed,
 use `milestone-confirm --amend` instead. To abandon a draft permanently
 instead of correcting it, use `milestone-cancel`.
 
+
+Draft contract/tasks file formats: `../draft-formats.md`.
 Run `pitway milestone-add --help` for flags.
