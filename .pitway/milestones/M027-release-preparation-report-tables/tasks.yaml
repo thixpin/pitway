@@ -87,7 +87,7 @@ tasks:
       tests). Update the three driver asset test files' expectations for the new
       body text. Docs-only; detection-and-record discipline, not runtime
       prevention."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - protocol-driver.md decision-gate MUST language present; honesty
@@ -110,7 +110,15 @@ tasks:
       strategy: command
       detail: npx vitest run tests/unit/claude-assets.test.ts
         tests/unit/opencode-assets.test.ts tests/unit/codex-assets.test.ts
-    result: null
+    result:
+      summary: "[truncated]  installed driver assets — protocol-driver.md every-driver
+        MUST + honesty limit, and the gate instruction added to all 6
+        confirm/ms-confirm docs (claude/opencode/codex), parity preserved; hash
+        manifest updated for the 3 legitimately changed assets; new content pins
+        in claude-assets tests"
+      evidence: Tests  285 passed (285) | Start at  11:51:28 | Duration  277ms
+        (transform 122ms, setup 0ms, import 206ms, tests 277ms, environment 0ms)
+    attempts: 1
     usage: null
   - id: T004
     name: Docs reconciliation + release metadata (B023) — final gate
@@ -125,7 +133,7 @@ tasks:
       Curate package.json keywords for discovery
       (CLI/AI-agent/workflow/driver/TDD terms); version stays 0.2.0; no publish.
       Runs last; its verification includes the full build+suite+tsc gate."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002
