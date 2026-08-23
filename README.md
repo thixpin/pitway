@@ -5,7 +5,7 @@
 
 [![npm version](https://img.shields.io/npm/v/pitway.svg)](https://www.npmjs.com/package/pitway)
 [![codecov](https://codecov.io/github/thixpin/pitway/branch/main/badge.svg)](https://app.codecov.io/github/thixpin/pitway)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
 PitWay is an npm-distributed CLI that controls the engineering process around AI coding agents — **it is not itself an agent**.
 
