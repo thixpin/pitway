@@ -23,4 +23,6 @@ next checkpoint commit. Inline `task-update <new-id> in_progress` works
 immediately; `task-dispatch` on any task refuses until a checkpoint (e.g. a
 sibling task's completion commit) folds the pending entry.
 
+Task file format: `../draft-formats.md`.
+
 See `../protocol-driver.md`. Run `pitway task-add --help` for flags.

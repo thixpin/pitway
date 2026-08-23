@@ -16,4 +16,6 @@ field changes) and `--change-log` (why); running the command is itself the
 approval, so only run it once the change is actually settled, not while
 still exploring options with the developer.
 
+Amendment object format: `../draft-formats.md`.
+
 See `../protocol-driver.md`. Run `pitway task-amend --help` for flags.

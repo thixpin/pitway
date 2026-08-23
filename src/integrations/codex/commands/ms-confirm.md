@@ -25,5 +25,7 @@ Log entry). It carries the exact same approval requirement: propose the
 change, get explicit developer approval in conversation, then run it —
 never as a way to route around a blocker without that approval.
 
+Contract/amendment and task file formats: `../draft-formats.md`.
+
 See `../protocol-driver.md` for the decision-gate rule this command
 enforces. Run `pitway milestone-confirm --help` for flags.

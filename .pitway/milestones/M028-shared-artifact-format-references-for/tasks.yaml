@@ -1,0 +1,75 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Draft-formats reference asset, pointers, and validation pins
+    objective: TDD. First write tests/unit/draft-formats.test.ts extracting fenced
+      yaml/markdown examples from src/integrations/common/draft-formats.md and
+      validating them against parseContractFile (contract + amend examples),
+      taskSchema (tasks.yaml and task-add examples), and reviewRecordInputSchema
+      (findings) -- RED because the asset does not exist. Then create
+      draft-formats.md with the six minimal validated examples (contract draft,
+      tasks draft, amend contract w/ Change Log entry, task-add single task,
+      task-amend partial object, review findings). Add a one-line pointer to
+      ../draft-formats.md in every affected command doc across claude/opencode/
+      codex (milestone-add, ms-add, write-ms-artifacts, milestone-confirm,
+      ms-confirm, task-add, task-amend, milestone-review, ms-review,
+      task-update), preserving alias byte-parity. Update the claude-assets hash
+      manifest for changed assets. No Core/CLI/schema changes.
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - draft-formats.md exists with six formats, each example passing the real
+        parser in the test
+      - failing-first validation test lands before the asset (RED→GREEN recorded)
+      - pointer lines present in all 10 command docs x 3 drivers; parity and
+        structure tests green
+      - hash manifest updated; zero Core/CLI diffs
+    write_scope:
+      - src/integrations/common/draft-formats.md
+      - src/integrations/claude/commands/milestone-add.md
+      - src/integrations/claude/commands/ms-add.md
+      - src/integrations/claude/commands/write-ms-artifacts.md
+      - src/integrations/claude/commands/milestone-confirm.md
+      - src/integrations/claude/commands/ms-confirm.md
+      - src/integrations/claude/commands/task-add.md
+      - src/integrations/claude/commands/task-amend.md
+      - src/integrations/claude/commands/milestone-review.md
+      - src/integrations/claude/commands/ms-review.md
+      - src/integrations/claude/commands/task-update.md
+      - src/integrations/opencode/commands/milestone-add.md
+      - src/integrations/opencode/commands/ms-add.md
+      - src/integrations/opencode/commands/write-ms-artifacts.md
+      - src/integrations/opencode/commands/milestone-confirm.md
+      - src/integrations/opencode/commands/ms-confirm.md
+      - src/integrations/opencode/commands/task-add.md
+      - src/integrations/opencode/commands/task-amend.md
+      - src/integrations/opencode/commands/milestone-review.md
+      - src/integrations/opencode/commands/ms-review.md
+      - src/integrations/opencode/commands/task-update.md
+      - src/integrations/codex/commands/milestone-add.md
+      - src/integrations/codex/commands/ms-add.md
+      - src/integrations/codex/commands/write-ms-artifacts.md
+      - src/integrations/codex/commands/milestone-confirm.md
+      - src/integrations/codex/commands/ms-confirm.md
+      - src/integrations/codex/commands/task-add.md
+      - src/integrations/codex/commands/task-amend.md
+      - src/integrations/codex/commands/milestone-review.md
+      - src/integrations/codex/commands/ms-review.md
+      - src/integrations/codex/commands/task-update.md
+      - tests/unit/draft-formats.test.ts
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/draft-formats.test.ts
+        tests/unit/claude-assets.test.ts tests/unit/opencode-assets.test.ts
+        tests/unit/codex-assets.test.ts
+    result:
+      summary: "[truncated] , task-add, task-amend, findings); validation test
+        extracts fenced blocks and runs them through
+        parseContractFile/taskSchema/reviewRecordInputSchema; pointer lines
+        added to all 10 affected command docs across 3 drivers with alias
+        parity; hash manifest refreshed (10 updated + 1 new entry)"
+      evidence: Tests  293 passed (293) | Start at  13:33:43 | Duration  351ms
+        (transform 191ms, setup 0ms, import 425ms, tests 409ms, environment 1ms)
+    attempts: 1
+    usage: null

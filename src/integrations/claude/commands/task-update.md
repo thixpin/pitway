@@ -26,5 +26,7 @@ usage (`../dispatch.md` step 8, `../protocol-driver.md` "Dispatch
 discipline"); never estimated or supplied for inline work with no runtime
 figure available.
 
+Result/usage payload shapes: `../draft-formats.md`.
+
 See `../protocol-driver.md` and `../dispatch.md`. Run
 `pitway task-update --help` for flags.

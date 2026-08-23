@@ -1,0 +1,40 @@
+schema_version: 1
+results:
+  - check: CT002
+    status: pass
+    at: 2026-08-23T06:34:11Z
+    evidence: Tests  7 passed (7) | Start at  13:34:10 | Duration  196ms (transform
+      32ms, setup 0ms, import 93ms, tests 13ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 771
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-23T06:34:11Z
+    evidence: Tests  286 passed (286) | Start at  13:34:11 | Duration  263ms
+      (transform 116ms, setup 0ms, import 186ms, tests 282ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 649
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-23T06:36:50Z
+    evidence: Tests  1984 passed (1984) | Start at  13:34:12 | Duration  157.23s
+      (transform 5.15s, setup 0ms, import 23.54s, tests 1057.75s, environment
+      12ms)
+    recorded_by: command
+    duration_ms: 159094
+    termination_reason: exited
+  - check: CT001
+    status: pass
+    at: 2026-08-23T06:37:06Z
+    evidence: "Reviewed draft-formats.md: all six formats present (draft contract,
+      tasks, amended contract, task-add, task-amend, findings), each minimal,
+      prose concise, examples pinned by CT002's parser validation"
+    recorded_by: developer
+  - check: CT005
+    status: pass
+    at: 2026-08-23T06:37:06Z
+    evidence: No amendments applied to this contract post-confirm; T001 executed
+      exactly as drafted
+    recorded_by: developer
