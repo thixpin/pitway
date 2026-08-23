@@ -2,7 +2,7 @@
 schema_version: 1
 id: M027
 title: Release Preparation — Report Tables, Approval Gates, Docs Reconciliation
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-23T04:34:31Z
 verification_approved_hash: sha256:fb7b980e5d45d3015fff57bed02a9afa5083be7190c08f5e313446efd724da34
