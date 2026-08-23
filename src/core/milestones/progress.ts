@@ -7,7 +7,7 @@ export interface MilestoneProgress {
 
 // Deterministic: completed required tasks / total required tasks. A
 // cancelled task is no longer required, so it counts toward neither side.
-// No estimation and no per-task percentages — see IMPLEMENTATION_PLAN.md §12.
+// No estimation and no per-task percentages — see docs/archive/IMPLEMENTATION_PLAN-v1.0.md §12.
 export function computeMilestoneProgress(tasks: Task[]): MilestoneProgress {
   const required = tasks.filter((t) => t.status !== 'cancelled');
   const completed = required.filter((t) => t.status === 'completed');

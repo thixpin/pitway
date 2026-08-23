@@ -1,3 +1,11 @@
+<!--
+FROZEN AT v1.0.0-rc (2026-08-23). This document is an ARCHIVAL DESIGN RECORD:
+the 15 approved architectural decisions, §17 answers, and the delivered-milestone
+rationale chain. It is never updated anymore.
+
+Living state: `pitway resume` / `pitway milestone-status <id>` / `.pitway/` state.
+Open work: `.pitway/backlog.yaml` (`pitway backlog list`).
+-->
 # PitWay Implementation Plan (§56)
 
 Status: **approved by the developer on 2026-08-18**, with all five §17 open questions resolved (answers recorded inline in §17). Implementation proceeds via the bootstrap milestone map below, starting with the M001 contract.

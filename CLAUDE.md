@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status: Bootstrap Phase
 
-PitWay is being built here, and **PitWay is developed using its own workflow** (dogfooding). The authoritative documents are `IMPLEMENTATION_PLAN.md` (approved 2026-08-18; includes the confirmed architectural decisions and the milestone map) and the workflow state in `.pitway/`.
+PitWay is being built here, and **PitWay is developed using its own workflow** (dogfooding). The authoritative sources are the workflow state in `.pitway/` (milestones, contracts, backlog) — the original design record is archived at `docs/archive/IMPLEMENTATION_PLAN-v1.0.md` (frozen; never updated).
 
 - Milestones M001–M003 follow the **manual PitWay protocol**: milestone/contract/task artifacts are hand-authored in `.pitway/` following schema v1, commits carry `PitWay-Milestone:` / `PitWay-Task:` trailers, and TDD + atomic-commit rules apply from the first commit. From M004 onward, PitWay manages its own development.
 - **Never write implementation code outside a confirmed milestone task.** A milestone's contract must be presented to the developer and explicitly approved in conversation before its baseline commit or any task work.

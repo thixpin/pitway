@@ -26,7 +26,7 @@ export interface TaskContextBundle {
 
 // The minimal set an execution agent needs and nothing else: no milestone
 // history, no other tasks' full detail — only each dependency's concise
-// result summary. See IMPLEMENTATION_PLAN.md §8/§20.
+// result summary. See docs/archive/IMPLEMENTATION_PLAN-v1.0.md §8/§20.
 export function buildTaskContextBundle(
   contract: ContractFrontmatter,
   tasks: Task[],

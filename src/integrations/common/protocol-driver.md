@@ -136,7 +136,7 @@ usage, extract it and pass it via `--usage` on the completing
 `task-update` call (`dispatch.md` step 8) — a driver-integration
 requirement, not documentation-only prose, and one any future driver
 adapter inherits as part of PitWay's provider-agnostic Agent Interface
-(`IMPLEMENTATION_PLAN.md` §8). Never estimate, derive, or fabricate a
+(`docs/archive/IMPLEMENTATION_PLAN-v1.0.md` §8). Never estimate, derive, or fabricate a
 figure when none was reported; inline execution has no task-scoped figure
 to extract, so its `usage` correctly stays `null`/`N/A` (§12, decision 8)
 — this rule closes the propagation gap, it does not touch that boundary.
