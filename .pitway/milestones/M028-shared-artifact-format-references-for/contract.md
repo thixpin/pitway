@@ -2,7 +2,7 @@
 schema_version: 1
 id: M028
 title: Shared Artifact Format References for Driver Assets
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-23T06:24:34Z
 verification_approved_hash: sha256:b7c63a6526424402cada446c84a0de14740d7214fc5d0771016396685d3d0369
