@@ -6,6 +6,8 @@ import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
 import { parseContractFile } from '../../state/contract-file.js';
 import { reconcilePending } from '../../state/journal.js';
 import { computeLatestCheckResults } from '../verification/status.js';
+import { loadBacklog, saveBacklog } from '../../state/store.js';
+import { appendBacklogArchiveRecord } from '../../state/journal.js';
 import {
   loadContract,
   loadState,
@@ -172,7 +174,9 @@ export function completeMilestone(root: string, milestoneId: string): MilestoneC
   // commit of their own) is expected to ride along in this completion
   // commit rather than being refused as unrelated dirt.
   const journalExpected = classifyDirtyPaths(root, { journalMilestone: milestoneId }).expected;
-  const expectedPaths = [...new Set([...completionPaths(root, milestoneId), ...journalExpected])];
+  const expectedPaths = [
+    ...new Set([...completionPaths(root, milestoneId), '.pitway/backlog.yaml', ...journalExpected]),
+  ];
   const expectedBranch = expectedMilestoneBranch(contract);
   // AC005/T005 (M012): bounds every lookup below to since..HEAD when tracked.
   const since = contract.frontmatter.base_revision ?? undefined;
@@ -191,6 +195,37 @@ export function completeMilestone(root: string, milestoneId: string): MilestoneC
     // AC003/T003 (M012): checked before any state write below -- a
     // wrong-branch attempt leaves nothing dirty, not even the status write.
     assertOnMilestoneBranch(root, expectedBranch);
+
+    // B024: Core-enforced backlog closure -- a promoted item whose target task
+    // completed inside THIS milestone is auto-archived here (journal-recorded,
+    // riding the completion commit), so closure never depends on driver memory.
+    // Items promoted to tasks that did not complete, and everything else, are
+    // left untouched for the driver/developer to reconcile.
+    const backlog = loadBacklog(root);
+    let backlogDirty = false;
+    for (const item of backlog.items) {
+      if (item.status !== 'promoted' || item.promoted_to?.milestone !== milestoneId) continue;
+      const targetTask = loadTasks(root, milestoneId).tasks.find(
+        (t) => t.id === item.promoted_to!.task,
+      );
+      if (targetTask?.status !== 'completed') continue;
+      const reason = `auto-closed: promoted work completed via ${milestoneId} completion`;
+      const updatedItem = {
+        ...item,
+        status: 'archived' as const,
+        resolved_at: new Date().toISOString(),
+        archived_reason: reason,
+      };
+      appendBacklogArchiveRecord(root, {
+        id: `ba-${Date.now().toString(16)}${Math.floor(Math.random() * 1e6).toString(16)}`,
+        target: item.id,
+        reason,
+        at: updatedItem.resolved_at,
+      });
+      backlog.items = backlog.items.map((i) => (i.id === item.id ? updatedItem : i));
+      backlogDirty = true;
+    }
+    if (backlogDirty) saveBacklog(root, backlog);
 
     // One persisted status write: in_progress -> review -> completed collapsed.
     const finalStatus = transitionMilestone(transitionMilestone(status, 'review'), 'completed');

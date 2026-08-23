@@ -227,6 +227,114 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
+describe('milestone-complete auto-closes promoted backlog items whose work completed (B024)', () => {
+  function writeBacklog(items: string): void {
+    writeFileSync(
+      join(root, '.pitway', 'backlog.yaml'),
+      `schema_version: 1\nitems:\n${items}`,
+    );
+  }
+
+  it('auto-archives a promoted item whose target task completed in this milestone', async () => {
+    await confirmed();
+    writeTaskStatuses('completed', 'cancelled');
+    await recordAllChecks();
+    writeBacklog(
+      [
+        '  - id: B001',
+        '    title: Promoted and finished',
+        "    reason: Discovered mid-flight.",
+        '    status: promoted',
+        '    source:',
+        '      milestone: M001',
+        '      task: null',
+        '    created_at: 2026-08-23T00:00:00Z',
+        '    resolved_at: 2026-08-23T00:00:01Z',
+        '    promoted_to:',
+        '      milestone: M001',
+        '      task: T001',
+        '    archived_reason: null',
+      ].join('\n') + '\n',
+    );
+    git(['add', '.pitway/backlog.yaml'], root);
+    git(['commit', '-q', '-m', 'seed backlog'], root);
+
+    const before = commitCount(root);
+    const { error } = await run(['milestone-complete', 'M001'], root);
+    expect(error).toBeUndefined();
+
+    const backlogText = readFileSync(join(root, '.pitway', 'backlog.yaml'), 'utf8');
+    expect(backlogText).toMatch(/id: B001[\s\S]*status: archived/);
+    expect(backlogText).toMatch(/auto-closed: promoted work completed via M001 completion/);
+    // The auto-close rides the completion commit -- no extra commit, tree clean.
+    expect(commitCount(root)).toBe(before + 1);
+    expect(headFiles(root)).toContain('.pitway/backlog.yaml');
+    // Journal entry checkpointed by the same commit.
+    const pending = derivePending(readJournal(root));
+    expect(pending.filter((e) => e.type === 'backlog_recording')).toHaveLength(0);
+  });
+
+  it('keeps a promoted item whose target task did not complete (cancelled work stays for triage)', async () => {
+    await confirmed();
+    // T001 completes; T002 is cancelled -- the only way a target task can be
+    // not-completed at a successful completion gate.
+    writeTaskStatuses('completed', 'cancelled');
+    await recordAllChecks();
+    writeBacklog(
+      [
+        '  - id: B001',
+        '    title: Promoted but unfinished',
+        "    reason: Discovered.",
+        '    status: promoted',
+        '    source:',
+        '      milestone: M001',
+        '      task: null',
+        '    created_at: 2026-08-23T00:00:00Z',
+        '    resolved_at: 2026-08-23T00:00:01Z',
+        '    promoted_to:',
+        '      milestone: M001',
+        '      task: T002',
+        '    archived_reason: null',
+      ].join('\n') + '\n',
+    );
+    git(['add', '.pitway/backlog.yaml'], root);
+    git(['commit', '-q', '-m', 'seed backlog'], root);
+
+    const { error } = await run(['milestone-complete', 'M001'], root);
+    expect(error).toBeUndefined();
+    const backlogText = readFileSync(join(root, '.pitway', 'backlog.yaml'), 'utf8');
+    expect(backlogText).toMatch(/status: promoted/);
+    expect(backlogText).not.toMatch(/auto-closed/);
+  });
+
+  it('leaves unrelated pending items untouched', async () => {
+    await confirmed();
+    writeTaskStatuses('completed', 'cancelled');
+    await recordAllChecks();
+    writeBacklog(
+      [
+        '  - id: B001',
+        '    title: Still pending',
+        "    reason: Deferred.",
+        '    status: pending',
+        '    source:',
+        '      milestone: M001',
+        '      task: null',
+        '    created_at: 2026-08-23T00:00:00Z',
+        '    resolved_at: null',
+        '    promoted_to: null',
+        '    archived_reason: null',
+      ].join('\n') + '\n',
+    );
+    git(['add', '.pitway/backlog.yaml'], root);
+    git(['commit', '-q', '-m', 'seed backlog'], root);
+
+    const { error } = await run(['milestone-complete', 'M001'], root);
+    expect(error).toBeUndefined();
+    expect(readFileSync(join(root, '.pitway', 'backlog.yaml'), 'utf8')).toMatch(/status: pending/);
+  });
+});
+
 describe('pitway milestone-complete gates (AC005)', () => {
   it('refuses a milestone that is not in_progress', async () => {
     const contract = join(root, 'draft-contract.md');

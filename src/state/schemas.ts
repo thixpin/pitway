@@ -468,10 +468,12 @@ export const backlogItemSchema = z
         });
       }
     } else if (item.status === 'archived') {
-      if (item.resolved_at === null || item.archived_reason === null || item.promoted_to !== null) {
+      // M029-followup (B024): promoted_to is retained as provenance when an
+      // auto-closed promotion archives -- closure no longer requires nulling it.
+      if (item.resolved_at === null || item.archived_reason === null) {
         ctx.addIssue({
           code: 'custom',
-          message: 'an archived item requires resolved_at/archived_reason and no promoted_to',
+          message: 'an archived item requires resolved_at/archived_reason',
           path: ['status'],
         });
       }
