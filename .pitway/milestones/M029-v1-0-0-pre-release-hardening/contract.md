@@ -2,7 +2,7 @@
 schema_version: 1
 id: M029
 title: v1.0.0 Pre-Release Hardening
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-23T07:26:09Z
 verification_approved_hash: sha256:9c9d31df1907112eac0b76972990b2a5dce102e49cc952bdbe99a61441057298
