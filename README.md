@@ -33,13 +33,13 @@ The result: agents move fast, and the engineering process stays in control of wh
 
 ## How It Works
 
-![PitWay workflow: Requirement to Milestone to Contract to Milestone Review to Human Approval to Task Graph, then TDD to Task Verification to Task Commit repeating, then Final Full Test to Milestone Complete](./docs/assets/workflow.svg)
+![PitWay workflow: BRS/Backlog into Milestone (Contract ⇄ Milestone Review) through the Human Approval gate to the Task Graph, TDD → Task Verification → Task Commit repeating with a Backlog exit, then Final Full Test (failure loops through milestone revision), Milestone Complete, and an opt-in Quick Change lane for small bounded fixes against a completed milestone, ending at Milestone Merge](./docs/assets/workflow.svg)
 
 <sub>Source: [`docs/assets/workflow.mmd`](./docs/assets/workflow.mmd) (Mermaid) — rendered to SVG so it displays on npmjs.com too, which doesn't render Mermaid.</sub>
 
 **Workflow Lifecycle:**
 
-`Requirement` → `Milestone` → `Contract` → `Milestone Review` → `Human Approval` → `Task Graph` → [`TDD` ⇄ `Task Verification` → `Task Commit`]* → `Final Full Test` → `Milestone Complete`
+`Requirement` → `Milestone` (`Contract` ⇄ `Milestone Review`) → `Human Approval` → `Task Graph` → [`TDD` ⇄ `Task Verification` → `Task Commit`]* → `Final Full Test` (fail ⇒ revision loop) → `Milestone Complete` → `Milestone Merge` — plus a `Quick Change` lane for small bounded fixes against an already-completed milestone.
 
 - **Workflow Enforcement:** Validates state transitions and enforces task write boundaries.
 - **Two-Tier Verification:** Runs targeted verification for each task, followed by a mandatory full test suite before closing the milestone.

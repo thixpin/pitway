@@ -7,6 +7,7 @@ import { saveContract, saveTasks, saveUsage, saveVerificationResults } from '../
 import { appendTaskVerifyEvidenceRecord } from '../../src/state/journal.js';
 import { buildCli } from '../../src/cli/index.js';
 import { registerMilestoneStatusCommand } from '../../src/cli/commands/milestone-status.js';
+import { displayWidth } from '../../src/cli/table.js';
 import type { ContractFrontmatter, Task } from '../../src/state/schemas.js';
 
 function git(args: string[], cwd: string): string {
@@ -105,7 +106,7 @@ describe('pitway milestone-status', () => {
     // sanctioned exceptions.
     const header = output.split('\n\n')[0]!;
     expect(header).not.toContain('%');
-    expect(output).toMatch(/\| Task \| Status \| Progress \| Execution \|/);
+    expect(output).toMatch(/^\| Task\s+\| Status\s+\| Progress\s+\| Execution\s+\|$/m);
     expect(output).toMatch(/🏎️ \[[█░]{20}\] \d+% · ✅/);
   });
 
@@ -122,7 +123,10 @@ describe('pitway milestone-status', () => {
     // T001 completed, T002 in_progress (never dispatched -> inline), T003
     // waiting (not started -> no execution mode), T004 cancelled (likewise)
     // -- the beforeEach fixture's own tasks, in their declared order.
-    expect(rows).toEqual([
+    // Whitespace-collapsed comparison: content per column is asserted here;
+    // the padded fixed-width SHAPE is asserted structurally in the B022
+    // tests below.
+    expect(rows.map((r) => r.replace(/\s+\|/g, ' |'))).toEqual([
       '| T001 | ✓ Completed | 100% | inline |',
       '| T002 | ● In Progress | — | inline |',
       '| T003 | ◌ Waiting | — | — |',
@@ -146,7 +150,8 @@ describe('pitway milestone-status', () => {
     registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
     await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001']);
 
-    expect(lines.join('\n')).toContain('| T002 | ● In Progress | — | worktree |');
+    // B022: cells are padded -- compare whitespace-collapsed.
+    expect(lines.join('\n').replace(/\s+\|/g, ' |')).toContain('| T002 | ● In Progress | — | worktree |');
   });
 
   it('shows "inline" execution for a dispatch that was later discarded and completed inline instead', async () => {
@@ -169,7 +174,7 @@ describe('pitway milestone-status', () => {
     registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
     await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001']);
 
-    expect(lines.join('\n')).toContain('| T002 | ● In Progress | — | inline |');
+    expect(lines.join('\n').replace(/\s+\|/g, ' |')).toContain('| T002 | ● In Progress | — | inline |');
   });
 
   it('renders the progress bar at the minimum band (10%, freshly confirmed) and clamps within 0-100%', async () => {
@@ -344,10 +349,13 @@ describe('pitway milestone-status --report (M013/T006)', () => {
     expect(output).toContain('✓ Completed · verified');
     // B005 (qc-404ee3e9): the report's task list is a table with a Tokens
     // column, aligned with plain milestone-status's own table format.
-    expect(output).toContain('| Task | Label | Execution | Status | Tokens |');
-    expect(output).toContain('| T001 | Config schema | — | ✓ Completed · verified | 100 |');
-    expect(output).toContain('| T002 | ');
-    expect(output).toContain('| N/A |');
+    const tableLines = output.split('\n').filter((l) => l.startsWith('|'));
+    const collapsed = tableLines.map((l) => l.replace(/\s+\|/g, ' |'));
+    const hasHeader = collapsed.some((l) => /^\| Task \| Label \| Execution \| Status \| Tokens \|$/.test(l));
+    const hasT001 = collapsed.some((l) => /\| T001 \| Config schema \| — \| ✓ Completed · verified \|\s+100 \|$/.test(l));
+    const hasT002 = collapsed.some((l) => l.startsWith('| T002 | '));
+    const hasNA = collapsed.some((l) => /\|\s+N\/A \|$/.test(l));
+    expect(hasHeader && hasT001 && hasT002 && hasNA).toBe(true);
     const lines = output.split('\n');
     expect(lines[lines.length - 1]).toMatch(/^🏎️ \d+% · ✅/);
   });
@@ -542,5 +550,54 @@ describe('pitway milestone-status default CommandDeps fallbacks', () => {
     expect(caught).toBeUndefined();
     expect(calls).toHaveLength(1);
     expect(String(calls[0]?.[0])).toContain('🏁 Milestone M001 — Test Milestone');
+  });
+});
+
+// B022 (M027/T001): both milestone-status views render their task tables as
+// content-aware fixed-width padded columns -- every line of a table has the
+// same per-column display width (header, dashed separator, and data cells
+// alike), instead of compact raw markdown pipes.
+describe('pitway milestone-status padded fixed-width tables (B022)', () => {
+  function tableLines(output: string): string[] {
+    return output.split('\n').filter((l) => l.startsWith('|'));
+  }
+
+  function assertFixedWidth(lines: string[]): void {
+    expect(lines.length).toBeGreaterThanOrEqual(3); // header + separator + >=1 row
+    const cols = lines.map((l) => l.split('|').slice(1, -1));
+    const colCount = cols[0]!.length;
+    expect(colCount).toBeGreaterThan(1);
+    for (const c of cols) expect(c.length).toBe(colCount);
+    for (let i = 0; i < colCount; i++) {
+      const widths = new Set(cols.map((c) => displayWidth(c[i] ?? '')));
+      expect([...widths]).toHaveLength(1);
+      expect(widths.values().next().value).toBeGreaterThan(0);
+    }
+  }
+
+  it('plain milestone-status renders a fixed-width padded task table', async () => {
+    const program = buildCli();
+    const lines: string[] = [];
+    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001']);
+    assertFixedWidth(tableLines(lines.join('\n')));
+    // Padding actually happens: the header row pads the narrow Task column to
+    // the widest cell (the 4-char ids equal it here), while Status stretches.
+    expect(lines.join('\n')).toMatch(/^\| Task \| Status\s{2,}\|/m);
+  });
+
+  it('--report renders its five-column table fixed-width as well', async () => {
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [
+        task({ id: 'T001', name: 'Config schema', status: 'completed' }),
+        task({ id: 'T002', status: 'ready', depends_on: ['T001'] }),
+      ],
+    });
+    const program = buildCli();
+    const lines: string[] = [];
+    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001', '--report']);
+    assertFixedWidth(tableLines(lines.join('\n')));
   });
 });

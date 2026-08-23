@@ -29,7 +29,10 @@ pitway init
 
 This creates `.pitway/` (a `config.yaml` and `state.yaml` — both empty of
 milestones until you add one) and, by default, installs the Claude Code
-integration into `.claude/` (opt out with `pitway init --no-claude`). It's
+integration into `.claude/` (opt out with `pitway init --no-claude`). Add
+`--opencode` and/or `--codex` to also install the OpenCode (`.opencode/`)
+and Codex (`.codex/`) integrations — commands, skills, and the driver
+protocol documents, resolved from one shared common layer. It's
 safe to re-run: byte-identical files are left alone, and a genuine conflict
 with something you've hand-edited refuses loudly rather than overwriting it.
 
@@ -262,6 +265,11 @@ pitway quick-change run <change-id>       # executes the approved verify command
 pitway quick-change commit <change-id>    # one commit, PitWay-Change trailer
 ```
 
+Behavior-changing fixes follow RED→GREEN: run once before the fix
+(expect `fail`), again after (expect `pass`) — commit enforces at least one
+prior failing run. Doc-only / genuinely test-free changes pass
+`--tdd-exempt "<reason>"` at `create` instead.
+
 `pitway resume` is the authoritative recovery view if a quick-change is left
 mid-flight.
 
@@ -279,7 +287,7 @@ execution:
 See [README.md's Opt-in Policies section](./README.md#opt-in-policies) for
 what each does when enabled.
 
-## Claude Code Integration
+## Driver Integrations
 
 `pitway init` installs PitWay's commands as real Claude Code slash commands
 under `.claude/commands/*.md`, each carrying `description`/`argument-hint`
@@ -288,6 +296,13 @@ frontmatter so they show up properly in Claude Code's `/` picker (e.g.
 and its companion documents are what actually teach an AI driver session how
 and when to call each command — the slash-command files themselves are thin
 pointers into that protocol, not a second copy of it.
+
+OpenCode (`--opencode` → `.opencode/commands/*.md`) and Codex (`--codex` →
+`.codex/commands/*.md`) get the same command surface in their own conventions,
+sharing the identical skills and protocol documents from the common layer.
+All drivers answer to the same CLI and the same human approval gates —
+`milestone-confirm`/`milestone-complete` always wait for an explicit
+developer yes, whatever tool is driving.
 
 ## Command Reference
 

@@ -1,0 +1,66 @@
+schema_version: 1
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-23T05:14:43Z
+    evidence: Tests  64 passed (64) | Start at  12:14:39 | Duration  4.63s
+      (transform 342ms, setup 0ms, import 492ms, tests 4.11s, environment 0ms)
+    recorded_by: command
+    duration_ms: 5360
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-23T05:14:44Z
+    evidence: Tests  15 passed (15) | Start at  12:14:44 | Duration  102ms
+      (transform 12ms, setup 0ms, import 19ms, tests 2ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 577
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-23T05:14:45Z
+    evidence: Tests  285 passed (285) | Start at  12:14:44 | Duration  271ms
+      (transform 112ms, setup 0ms, import 201ms, tests 304ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 668
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-23T05:18:12Z
+    evidence: Tests  1976 passed (1976) | Start at  12:14:46 | Duration  205.85s
+      (transform 6.60s, setup 0ms, import 31.22s, tests 1369.63s, environment
+      16ms)
+    recorded_by: command
+    duration_ms: 207856
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-23T05:18:28Z
+    evidence: "README/USAGE reviewed against delivered behavior: Codex init/driver
+      sections, RED→GREEN+--tdd-exempt quick-change, merge/review/backlog
+      present, alt-text matches new diagram; PLAN M026 entry + status snapshot
+      cross-checked against backlog.yaml (B021-B023 promoted, B024 pending) and
+      git history"
+    recorded_by: developer
+  - check: CT005
+    status: pass
+    at: 2026-08-23T05:18:28Z
+    evidence: "keywords: cli, ai, coding-agent, workflow, claude, opencode, codex,
+      tdd, milestones, git, developer-tools, process; version field unchanged at
+      0.2.0"
+    recorded_by: developer
+  - check: CT007
+    status: pass
+    at: 2026-08-23T05:18:47Z
+    evidence: "backlog.yaml: B021->T003, B022->T001, B023->T004 promoted; B024
+      pending. Final diff limited to task write_scopes
+      (milestone-status.ts+tests, workflow guard test, driver assets+asset
+      tests, README/USAGE/PLAN/package.json, tasks.yaml journal updates)"
+    recorded_by: developer
+  - check: CT008
+    status: pass
+    at: 2026-08-23T05:18:47Z
+    evidence: One developer-approved task-amend this milestone (T004 verification
+      narrowing, approved in conversation before running); contract itself never
+      amended post-confirm
+    recorded_by: developer

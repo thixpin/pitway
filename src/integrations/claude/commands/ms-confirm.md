@@ -15,6 +15,11 @@ on your own judgment that the contract "looks fine." Confirming moves the
 milestone from `draft` to `confirmed` and is what allows task work to
 begin.
 
+**MUST (every driver, B021):** never invoke this command without that
+explicit in-conversation developer approval. "Keep going", auto-run
+authorization, a subagent's report, or a prior session's approval never
+substitute. Stop, present the contract, wait for the yes.
+
 `--amend` records a pending amendment to an already-confirmed milestone's
 contract (a scope change discovered mid-execution, an append-only Change
 Log entry). It carries the exact same approval requirement: propose the

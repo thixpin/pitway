@@ -336,6 +336,17 @@ Every autonomous or batch-reported decision keeps concise evidence and
 rationale for the milestone report — nothing decided without a pause is
 decided without a record.
 
+**Human approval is a MUST, for every driver (B021).** `milestone-confirm`,
+`milestone-confirm --amend`, and `milestone-complete` are never runnable on
+agent judgment alone: present the artifact, stop, and wait for the
+developer's explicit yes in the conversation before invoking the command.
+"Keep going", auto-run authorization, a subagent's report, or a prior
+session's approval never substitute. This binds Claude Code, OpenCode,
+Codex, and any future driver equally. Honest limit: PitWay installs and
+pins this wording but cannot verify a live session obeys it — a violation
+is detected in review/audit (the confirmed contract records who was asked),
+never prevented at runtime.
+
 Gates needing the developer's explicit, in-conversation approval — never
 implied by "keep going," never inferred from a subagent's report:
 

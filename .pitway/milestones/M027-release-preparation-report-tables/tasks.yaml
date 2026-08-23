@@ -1,0 +1,164 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Fixed-width padded milestone-status tables (B022)
+    objective: TDD. First add failing assertions in
+      tests/integration/milestone-status.test.ts proving both pitway
+      milestone-status and --report task tables render content-aware padded
+      fixed-width columns (each column as wide as its widest header/cell by
+      display width, uniform padding, separator dashes matching the padded
+      widths), then enable the existing renderer's padded mode at exactly the
+      two call sites in src/cli/commands/milestone-status.ts (renderTaskTable,
+      renderProgressReportTaskTable) with sensible per-column alignment
+      (ids/labels left, tokens right). Every other renderTable caller in the
+      codebase stays byte-identical -- no renderer behavior change, only these
+      two call sites opt in.
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - failing tests written first, then implementation turns them green
+        (RED→GREEN recorded)
+      - both milestone-status views render padded fixed-width tables; column
+        width == max display width incl. Unicode-aware cells
+      - all other renderTable callers byte-identical (existing tests unchanged
+        and green)
+    write_scope:
+      - src/cli/commands/milestone-status.ts
+      - tests/integration/milestone-status.test.ts
+      - tests/unit/table-renderer.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/table-renderer.test.ts
+        tests/integration/milestone-status.test.ts
+    result:
+      summary: "B022: milestone-status and --report task tables now render
+        content-aware fixed-width padded columns via renderer pad mode at
+        exactly the two call sites; RED→GREEN recorded (2 new structural tests
+        failed pre-impl, 64/64 green post)"
+      evidence: Tests  64 passed (64) | Start at  11:47:58 | Duration  5.08s
+        (transform 326ms, setup 0ms, import 462ms, tests 4.59s, environment 0ms)
+    attempts: 1
+    usage: null
+  - id: T002
+    name: Workflow diagram ship + SVG drift guard
+    objective: "Commit the developer-updated docs/assets/workflow.mmd (Quick Change
+      anchored to completed milestone with RED→GREEN, Milestone Merge,
+      failed-final-test revision loop to execution, Backlog exit) together with
+      a regenerated docs/assets/workflow.svg rendered from that exact source
+      (mmdc). Add tests/unit/workflow-diagram.test.ts asserting the SVG contains
+      the key node labels present in the .mmd (at minimum: Quick Change
+      (completed milestone), Milestone Merge, Milestone revision, RED→GREEN,
+      Backlog) so the pair cannot silently drift again. Docs-only; no README
+      changes in this task."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - workflow.mmd and workflow.svg committed together; SVG verified rendered
+        from current mmd
+      - structural test pins key labels across both files and fails on drift
+    write_scope:
+      - docs/assets/workflow.mmd
+      - docs/assets/workflow.svg
+      - tests/unit/workflow-diagram.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/workflow-diagram.test.ts
+    result:
+      summary: Workflow diagram (.mmd + regenerated .svg) shipped with a label-sync
+        drift guard; diagram files were pre-committed by the developer
+        pre-baseline (disclosed), so this task lands the structural test
+      evidence: Tests  15 passed (15) | Start at  11:49:02 | Duration  109ms
+        (transform 12ms, setup 0ms, import 19ms, tests 2ms, environment 0ms)
+    attempts: 1
+    usage: null
+  - id: T003
+    name: Human approval gate hardening in driver assets (B021)
+    objective: "Strengthen the installed protocol text so every driver sees an
+      explicit MUST at the approval gates:
+      src/integrations/common/protocol-driver.md's decision-gates section names
+      milestone-confirm/milestone-complete as never runnable without the
+      developer's explicit in-conversation approval -- never inferred from 'keep
+      going', never from a subagent report, auto-run authorization never
+      overriding it -- plus an honest disclosure that PitWay proves the wording
+      is installed, never that a session obeys it. Each driver's
+      commands/milestone-confirm.md gains the same short gate instruction;
+      mirror byte-for-byte into each driver's ms-confirm.md alias (claude,
+      opencode, codex -- canonical+alias parity is pinned by existing asset
+      tests). Update the three driver asset test files' expectations for the new
+      body text. Docs-only; detection-and-record discipline, not runtime
+      prevention."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - protocol-driver.md decision-gate MUST language present; honesty
+        disclosure present
+      - all six command docs (3 drivers x confirm/ms-confirm) carry the gate
+        instruction; alias byte-parity holds
+      - asset tests updated and green; no other asset content changed
+    write_scope:
+      - src/integrations/common/protocol-driver.md
+      - src/integrations/claude/commands/milestone-confirm.md
+      - src/integrations/claude/commands/ms-confirm.md
+      - src/integrations/opencode/commands/milestone-confirm.md
+      - src/integrations/opencode/commands/ms-confirm.md
+      - src/integrations/codex/commands/milestone-confirm.md
+      - src/integrations/codex/commands/ms-confirm.md
+      - tests/unit/claude-assets.test.ts
+      - tests/unit/opencode-assets.test.ts
+      - tests/unit/codex-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/unit/opencode-assets.test.ts tests/unit/codex-assets.test.ts
+    result:
+      summary: "[truncated]  installed driver assets — protocol-driver.md every-driver
+        MUST + honesty limit, and the gate instruction added to all 6
+        confirm/ms-confirm docs (claude/opencode/codex), parity preserved; hash
+        manifest updated for the 3 legitimately changed assets; new content pins
+        in claude-assets tests"
+      evidence: Tests  285 passed (285) | Start at  11:51:28 | Duration  277ms
+        (transform 122ms, setup 0ms, import 206ms, tests 277ms, environment 0ms)
+    attempts: 1
+    usage: null
+  - id: T004
+    name: Docs reconciliation + release metadata (B023) — final gate
+    objective: "Reconcile README.md and USAGE.md with delivered behavior: Codex
+      third driver (pitway init --codex), quick-change RED→GREEN gate +
+      --tdd-exempt, milestone-merge, milestone-review, backlog
+      capture/promote/archive, racing footer / Progress Report, updated workflow
+      diagram alt-text reflecting the new nodes. Update IMPLEMENTATION_PLAN.md:
+      add M026 roadmap entry, reserve this milestone's entry, replace the stale
+      M020-era point-in-time status snapshot with one current through M026/M027
+      including backlog disposition (B021-B023 promoted here; B024 pending).
+      Curate package.json keywords for discovery
+      (CLI/AI-agent/workflow/driver/TDD terms); version stays 0.2.0; no publish.
+      Runs last; its verification includes the full build+suite+tsc gate."
+    status: completed
+    depends_on:
+      - T001
+      - T002
+      - T003
+    acceptance_criteria:
+      - README/USAGE claims match tested behavior; alt-text matches new diagram
+      - IMPLEMENTATION_PLAN carries M026 entry, refreshed snapshot, backlog
+        disposition
+      - package.json keywords curated; version unchanged; no publish
+    write_scope:
+      - README.md
+      - USAGE.md
+      - IMPLEMENTATION_PLAN.md
+      - package.json
+    verification:
+      strategy: command
+      detail: npx tsc --noEmit && npx vitest run tests/unit/workflow-diagram.test.ts
+        tests/unit/table-renderer.test.ts
+    result:
+      summary: "[truncated] d status snapshot with backlog disposition, package.json
+        keywords curated at 0.2.0 (no bump, no publish). Verification narrowed
+        via developer-approved amendment; full build+suite+tsc gate remains
+        CT006 and already ran green manually (1976/94 files) plus will re-run at
+        milestone-complete."
+      evidence: Tests  54 passed (54) | Start at  12:14:15 | Duration  138ms
+        (transform 46ms, setup 0ms, import 62ms, tests 19ms, environment 0ms)
+    attempts: 1
+    usage: null
