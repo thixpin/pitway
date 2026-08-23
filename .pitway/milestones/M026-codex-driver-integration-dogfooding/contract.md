@@ -2,7 +2,7 @@
 schema_version: 1
 id: M026
 title: Codex Driver Integration & Dogfooding
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-22T18:21:52Z
 verification_approved_hash: sha256:a380fdb1e4aefbf34b8dc385a296158660216de05a88737162cdeff730729a8c
