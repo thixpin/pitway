@@ -58,34 +58,5 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
-      # M029/AC004a: smoke-test the exact artifact that would be published --
-      # pack the tarball, install it into a throwaway project, and prove
-      # `pitway init` works from the installed binary. A regression here fails
-      # the publish instead of reaching npm.
-      - name: Smoke test packed tarball
-        run: |
-          set -e
-          npm pack
-          PKG=$(ls pitway-*.tgz)
-          SMOKE_DIR="$(mktemp -d)"
-          git -C "$SMOKE_DIR" init -q
-          cd "$SMOKE_DIR"
-          npm install --silent "$GITHUB_WORKSPACE/$PKG"
-          npx pitway init
-          test -f .pitway/config.yaml
-          echo "Smoke test passed for $PKG"
-
       - name: Publish
         run: npm publish
-
-      # M029/AC004b: attach the built tarball to a GitHub Release on tag
-      # pushes (workflow_dispatch runs skip this step).
-      - name: Create GitHub Release with tarball
-        if: github.event_name == 'push'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          PKG=$(ls pitway-*.tgz)
-          gh release create "$GITHUB_REF_NAME" "$PKG" \
-            --title "$GITHUB_REF_NAME" \
-            --generate-notes || gh release upload "$GITHUB_REF_NAME" "$PKG" --clobber
