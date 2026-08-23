@@ -50,7 +50,7 @@ tasks:
       (completed milestone), Milestone Merge, Milestone revision, RED→GREEN,
       Backlog) so the pair cannot silently drift again. Docs-only; no README
       changes in this task."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - workflow.mmd and workflow.svg committed together; SVG verified rendered
@@ -63,7 +63,13 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/unit/workflow-diagram.test.ts
-    result: null
+    result:
+      summary: Workflow diagram (.mmd + regenerated .svg) shipped with a label-sync
+        drift guard; diagram files were pre-committed by the developer
+        pre-baseline (disclosed), so this task lands the structural test
+      evidence: Tests  15 passed (15) | Start at  11:49:02 | Duration  109ms
+        (transform 12ms, setup 0ms, import 19ms, tests 2ms, environment 0ms)
+    attempts: 1
     usage: null
   - id: T003
     name: Human approval gate hardening in driver assets (B021)
