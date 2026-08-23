@@ -30,10 +30,18 @@ export function registerTaskVerifyCommand(program: Command, deps: CommandDeps = 
     .command('task-verify <id>')
     .description("Run an in_progress task's approved verification command and persist a formal evidence record.")
     .option('--typecheck <command>', 'an additional typecheck command to run and record alongside verification')
+    .option('--timeout <ms>', 'budget for the verification/typecheck command in ms (1000..3600000; default 120000)')
     .option('--json', 'output machine-readable JSON')
-    .action((id: string, options: { typecheck?: string; json?: boolean }) => {
+    .action((id: string, options: { typecheck?: string; timeout?: string; json?: boolean }) => {
       const root = deps.root ?? process.cwd();
-      const view = runTaskVerify(root, id, { typecheckCommand: options.typecheck });
+      let timeoutMs: number | undefined;
+      if (options.timeout !== undefined) {
+        timeoutMs = Number(options.timeout);
+        if (!Number.isInteger(timeoutMs)) {
+          throw new Error(`invalid --timeout "${options.timeout}": must be an integer (1000..3600000 ms)`);
+        }
+      }
+      const view = runTaskVerify(root, id, { typecheckCommand: options.typecheck, timeoutMs });
       write(renderOutput(view, { json: options.json }, renderTaskVerifyHuman));
     });
 }

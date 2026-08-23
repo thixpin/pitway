@@ -62,6 +62,59 @@ function commitAll(message: string): void {
   git(['commit', '-q', '-m', message], repo);
 }
 
+describe('runTaskVerify --timeout (M029/T001, AC001)', () => {
+  function setupCommandTask(detail: string): void {
+    mkdirSync(join(repo, 'src'), { recursive: true });
+    writeFileSync(join(repo, 'src', 'thing.ts'), 'export const x = 1;\n');
+    commitAll('baseline with src/thing.ts');
+    setTasks([baseTask({ verification: { strategy: 'command', detail } })]);
+  }
+
+  it('rejects a timeout below the 1000ms lower bound', () => {
+    expect(() => runTaskVerify(repo, 'T001', { timeoutMs: 999 })).toThrow(
+      TaskVerifyError,
+    );
+    expect(() => runTaskVerify(repo, 'T001', { timeoutMs: 999 })).toThrow(/1000/);
+  });
+
+  it('rejects a timeout above the 3600000ms upper bound', () => {
+    expect(() => runTaskVerify(repo, 'T001', { timeoutMs: 3_600_001 })).toThrow(/3600000/);
+  });
+
+  it('applies an explicit timeout to the verification command (platform-neutral)', () => {
+    // Node timer one-liner: crosses a 1500ms budget on every platform.
+    setupCommandTask('node -e "setTimeout(() => process.exit(0), 3000)"');
+    const record = runTaskVerify(repo, 'T001', { timeoutMs: 1500 });
+    expect(record.terminationReason).toBe('timeout');
+  });
+
+  it('a command within the explicit budget passes normally', () => {
+    setupCommandTask('node -e "setTimeout(() => process.exit(0), 50)"');
+    const record = runTaskVerify(repo, 'T001', { timeoutMs: 5000 });
+    expect(record.exitCode).toBe(0);
+    expect(record.terminationReason).toBe('exited');
+  });
+
+  it('applies the explicit timeout to the typecheck command as well', () => {
+    setupCommandTask('exit 0');
+    const record = runTaskVerify(repo, 'T001', {
+      typecheckCommand: 'node -e "setTimeout(() => process.exit(0), 3000)"',
+      timeoutMs: 1500,
+    });
+    // The typecheck evidence record carries no terminationReason field -- a
+    // timed-out command never exits, so its exitCode is the observable null.
+    expect(record.typecheck?.exitCode).toBeNull();
+  });
+
+  it('default stays the documented 120000ms when no option is given', () => {
+    // A fast command under default budget still exits cleanly -- pins that
+    // omitting the option keeps today's behavior byte-for-byte.
+    setupCommandTask('exit 0');
+    const record = runTaskVerify(repo, 'T001');
+    expect(record.terminationReason).toBe('exited');
+  });
+});
+
 describe('runTaskVerify (AC001)', () => {
   it('refuses when the task is not in_progress', () => {
     setTasks([baseTask({ status: 'ready' })]);

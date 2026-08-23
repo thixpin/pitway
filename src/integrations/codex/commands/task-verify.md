@@ -5,11 +5,11 @@ description: "PitWay: Run an in_progress task's approved verification command an
 # task-verify
 
 ```sh
-pitway task-verify <id> [--typecheck <command>] [--json]
+pitway task-verify <id> [--typecheck <command>] [--timeout <ms>] [--json]
 ```
 
 Runs an `in_progress` task's own approved `command`/`tdd` verification
-command (plus an optional `--typecheck <command>`) and persists a
+command (plus optional `--typecheck <command>` and `--timeout <ms>` -- 1000..3600000, default 120000) and persists a
 **verification record** — a full `task_verify_evidence` journal entry
 covering the run's exit code, pass/fail counts, and a fingerprint of the
 task's declared `write_scope`/`relevant_files`. Each record is named by an

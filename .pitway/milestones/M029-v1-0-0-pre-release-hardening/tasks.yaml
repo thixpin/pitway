@@ -16,7 +16,7 @@ tasks:
       default stays DEFAULT_TIMEOUT_MS. Update commands/task-verify.md in all
       three drivers (+ms alias if one exists -- none does) with the new flag,
       refresh the claude-assets hash manifest."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - RED tests land first and fail before implementation; GREEN after
@@ -38,7 +38,15 @@ tasks:
       detail: npx vitest run tests/unit/task-verify.test.ts
         tests/integration/task-verify.test.ts tests/unit/claude-assets.test.ts
         tests/unit/opencode-assets.test.ts tests/unit/codex-assets.test.ts
-    result: null
+    result:
+      summary: "task-verify --timeout flag: 1000..3600000ms bounds validated before
+        any state access, default 120000 unchanged, threaded to verification +
+        typecheck execution; platform-neutral node-timer proofs; docs x3 drivers
+        + manifest refresh. RED first (4 failing) then GREEN."
+      evidence: Tests  334 passed (334) | Start at  14:35:32 | Duration  17.37s
+        (transform 666ms, setup 0ms, import 1.11s, tests 28.10s, environment
+        0ms)
+    attempts: 1
     usage: null
   - id: T002
     name: Release hygiene — merged branches and stale worktree
@@ -130,7 +138,7 @@ tasks:
       gates, commit trailers) versus installed-instruction-only (approval-gate
       obedience, footer habits), matching protocol disclosures. Docs/CI only; no
       app code."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
