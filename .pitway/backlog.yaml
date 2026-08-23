@@ -398,13 +398,15 @@ items:
     reason: Prevent Claude/OpenCode/Codex or any future driver from auto-confirming
       or bypassing explicit developer approval before milestone execution.
       Discovered during M026 review; needs driver-agnostic enforcement.
-    status: pending
+    status: promoted
     source:
       milestone: M026
       task: null
     created_at: 2026-08-22T18:19:54.614Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-23T04:26:56.379Z
+    promoted_to:
+      milestone: M027
+      task: T003
     archived_reason: null
   - id: B022
     title: Fix ms-status --report table formatting to fixed-width
@@ -412,26 +414,30 @@ items:
       Calculate each column width from the maximum cell content length, then
       apply consistent column padding/alignment so the CLI report renders as a
       readable fixed-width table instead of raw Markdown.
-    status: pending
+    status: promoted
     source:
       milestone: M026
       task: null
     created_at: 2026-08-22T18:41:46.723Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-23T04:26:56.028Z
+    promoted_to:
+      milestone: M027
+      task: T001
     archived_reason: null
   - id: B023
     title: Documentation reconciliation — README and usage alignment
     reason: Reflect all completed changes and current behavior in README.md and
       usage.md, keeping installation, commands, workflow, driver integrations,
       and current capabilities aligned with the implementation.
-    status: pending
+    status: promoted
     source:
       milestone: M026
       task: null
     created_at: 2026-08-22T18:44:13.501Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-23T04:26:56.727Z
+    promoted_to:
+      milestone: M027
+      task: T004
     archived_reason: null
   - id: B024
     title: Auto-promotion/close lifecycle for backlog items

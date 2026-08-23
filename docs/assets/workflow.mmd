@@ -1,13 +1,25 @@
 flowchart TD
 
-    subgraph PLAN[" "]
+    A["📋<br/>BRS/Backlog"]
+
+    subgraph PLAN["🏁 Milestone"]
         direction LR
-        A["📋<br/>Requirement"] --> B["🏁<br/>Milestone"]
-        B --> C["📜<br/>Contract"]
+        C["📜<br/>Contract"]
         C --> R["⚖️<br/>Milestone Review"]
         R -. 🔄 .-> C
     end
 
+    B["🔧<br/>small bounded fix"]
+    subgraph QUICK["⚡ Quick Change (completed milestone)"]
+        direction TD
+        TTD["🛠<br/>TDD (RED→GREEN)"]
+        TTD --> QC2["🔍<br/>Verify"]
+        QC2 --> QC3["🏎️<br/>Commit"]
+        QC2 -. 🔄 .-> TTD
+    end
+    B --> QUICK
+
+    A --> PLAN
     PLAN --> D{{"🚦<br/>Human Approval"}}
     D --> E["📝<br/>Task Graph"]
 
@@ -18,15 +30,18 @@ flowchart TD
         G --> H["🏎️<br/>Task Commit"]
     end
 
+    E --> EXECUTE
     EXECUTE --> I["🧪<br/>Final Full Test"]
     I --> J["🏆<br/>Milestone Complete"]
+    J --> K["🔀<br/>Milestone Merge"]
+
+    I -.-> MR["⚖️<br/>Milestone revision"]
+    MR -.-> EXECUTE
+    
+    G -. 🔄 .-> F
 
     EXECUTE .-> BL["📥<br/>Backlog"]
 
-
-    G -. 🔄 .-> F
-    E --> EXECUTE
-    I -. 🔄 .-> EXECUTE
-
     style PLAN fill:none,stroke:#333,stroke-width:2px
+    style QUICK fill:none,stroke:#333,stroke-width:2px
     style EXECUTE fill:none,stroke:#333,stroke-width:2px
