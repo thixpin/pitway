@@ -406,3 +406,46 @@ items:
     resolved_at: null
     promoted_to: null
     archived_reason: null
+  - id: B022
+    title: Fix ms-status --report table formatting to fixed-width
+    reason: ms-status --report currently renders raw Markdown table syntax.
+      Calculate each column width from the maximum cell content length, then
+      apply consistent column padding/alignment so the CLI report renders as a
+      readable fixed-width table instead of raw Markdown.
+    status: pending
+    source:
+      milestone: M026
+      task: null
+    created_at: 2026-08-22T18:41:46.723Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B023
+    title: Documentation reconciliation — README and usage alignment
+    reason: Reflect all completed changes and current behavior in README.md and
+      usage.md, keeping installation, commands, workflow, driver integrations,
+      and current capabilities aligned with the implementation.
+    status: pending
+    source:
+      milestone: M026
+      task: null
+    created_at: 2026-08-22T18:44:13.501Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B024
+    title: Auto-promotion/close lifecycle for backlog items
+    reason: When backlog items are promoted into a milestone, and when their
+      milestone/work is completed, the expected automatic lifecycle transitions
+      (promotion, completion, closure) should happen without requiring the
+      driver to manually perform state updates. Ensure the behavior is
+      driver-independent and enforced by PitWay core rather than relying on the
+      AI driver to remember lifecycle commands.
+    status: pending
+    source:
+      milestone: M026
+      task: null
+    created_at: 2026-08-22T18:46:22.772Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null

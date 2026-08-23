@@ -139,7 +139,7 @@ tasks:
       update relevant docs (README.md, IMPLEMENTATION_PLAN.md) in a strictly
       limited, Codex-only diff. No unrelated backlog fixes and no changes to
       existing drivers beyond T001-T002.
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -162,5 +162,13 @@ tasks:
       detail: npx vitest run tests/integration/codex-dogfood.test.ts
         tests/unit/codex-assets.test.ts && npm run build && npm test && npx tsc
         --noEmit
-    result: null
+    result:
+      summary: Codex dogfooding evidence, limitations, and docs completed
+      evidence: npx vitest run tests/integration/codex-dogfood.test.ts
+        tests/unit/codex-assets.test.ts -> 84 passed; npm run build + npx tsc
+        --noEmit green; npm test full suite 1959 passed (93 files);
+        docs/evidence/M026/codex-dogfood.md and codex-limitations.md created
+        with honest scoping; README updated for Codex driver; B021-B024 captured
+        via backlog
+    attempts: 1
     usage: null

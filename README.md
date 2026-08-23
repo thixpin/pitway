@@ -12,7 +12,7 @@ PitWay is an npm-distributed CLI that controls the engineering process around AI
 - **Agents** drive the interaction
 - **PitWay** controls workflow state, engineering boundaries, verification, and traceability
 
-> 💡 **Driver Support:** Claude Code (installed by default) and OpenCode (opt-in) driver integrations ship as text assets from a shared common layer — skills and protocol documents are defined once and resolved per driver. PitWay's Core remains provider-agnostic.
+> 💡 **Driver Support:** Claude Code (installed by default), OpenCode (opt-in), and Codex (opt-in) driver integrations ship as text assets from a shared common layer — skills and protocol documents are defined once and resolved per driver. PitWay's Core remains provider-agnostic.
 
 ---
 
@@ -62,6 +62,7 @@ pitway init
 - PitWay initializes `.pitway/` and installs the Claude Code integration by default.
 - Use `pitway init --no-claude` to opt out of the Claude Code integration.
 - Use `pitway init --opencode` to also install the OpenCode integration (`.opencode/` — commands, skills, and driver protocol documents).
+- Use `pitway init --codex` to also install the Codex integration (`.codex/` — commands, skills, and driver protocol documents).
 - `init` also creates root `AGENTS.md`/`CLAUDE.md` instruction files. PitWay's content lives inside an explicit `<!-- pitway:managed:start/end -->` block — if you already have your own `AGENTS.md` or `CLAUDE.md`, the block is appended and your content is left intact; PitWay only ever owns the marked block.
 
 ### 2. Resume Workflow
@@ -94,6 +95,7 @@ For a hands-on walkthrough of the whole workflow — drafting a contract, confir
 - **Usage Guide:** See [USAGE.md](./USAGE.md) for a hands-on walkthrough — installation, your first milestone end to end, inspecting state, mid-flight corrections, and a full command reference table.
 - **Claude Code:** `pitway init` installs PitWay's commands as real Claude Code slash commands (`.claude/commands/*.md`, each carrying `description`/`argument-hint` metadata for the `/` picker), alongside the driver protocol documents that explain how and when to use them.
 - **OpenCode:** `pitway init --opencode` installs the same command surface in OpenCode's own convention (`.opencode/commands/*.md`) plus the shared skills and protocol documents. Skills and protocol content come from the common layer — defined once, never forked per driver.
+- **Codex:** `pitway init --codex` installs the same command surface in Codex's convention (`.codex/commands/*.md`) plus the shared skills and protocol documents. Skills and protocol content come from the common layer — defined once, never forked per driver.
 
 ---
 
