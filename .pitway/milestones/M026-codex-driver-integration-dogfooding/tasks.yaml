@@ -1,0 +1,174 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Codex driver registration and command assets
+    objective: Register Codex as the third driver in src/state/driver-assets.ts
+      (hardcode DRIVERS = ['claude','opencode','codex'] and
+      DRIVER_DESTINATION_DIRS[codex]='.codex'; keep the flat static two-tier
+      lookup driver-then-common, no dynamic discovery, no manifest, no template
+      engine, no Core AI-provider code). Ship Codex command docs under
+      src/integrations/codex/commands/ -- 24 canonical + 8 ms-* aliases = 32
+      files -- in PitWay's native markdown command-doc format (description
+      frontmatter, pitway invocation), content-mirroring the existing Claude
+      command docs for the same PitWay surface. Skills and protocol docs are NOT
+      overridden for Codex; they resolve to common/ entirely unless a real,
+      disclosed incompatibility is found (name it in evidence if so). Ensure
+      stray-override guard passes (every file in codex/ either shadows common/
+      or is in the declared driver-specific class commands/*.md).
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - DRIVERS includes codex and DRIVER_DESTINATION_DIRS maps codex to .codex
+      - 32 Codex command docs exist (24 canonical + 8 ms aliases), description
+        frontmatter present, pitway invocation correct
+      - Skills and protocol docs for Codex resolve to common/ (no unnecessary
+        overrides); stray-override guard passes
+      - No Core AI-provider code, no new adapter model, no dynamic registration
+    write_scope:
+      - src/state/driver-assets.ts
+      - src/integrations/codex/commands/auto-run.md
+      - src/integrations/codex/commands/backlog.md
+      - src/integrations/codex/commands/milestone-add.md
+      - src/integrations/codex/commands/milestone-cancel.md
+      - src/integrations/codex/commands/milestone-complete.md
+      - src/integrations/codex/commands/milestone-confirm.md
+      - src/integrations/codex/commands/milestone-list.md
+      - src/integrations/codex/commands/milestone-merge.md
+      - src/integrations/codex/commands/milestone-review.md
+      - src/integrations/codex/commands/milestone-status.md
+      - src/integrations/codex/commands/ms-add.md
+      - src/integrations/codex/commands/ms-cancel.md
+      - src/integrations/codex/commands/ms-complete.md
+      - src/integrations/codex/commands/ms-confirm.md
+      - src/integrations/codex/commands/ms-list.md
+      - src/integrations/codex/commands/ms-merge.md
+      - src/integrations/codex/commands/ms-review.md
+      - src/integrations/codex/commands/ms-status.md
+      - src/integrations/codex/commands/quick-change.md
+      - src/integrations/codex/commands/resume.md
+      - src/integrations/codex/commands/task-add.md
+      - src/integrations/codex/commands/task-amend.md
+      - src/integrations/codex/commands/task-discard.md
+      - src/integrations/codex/commands/task-dispatch.md
+      - src/integrations/codex/commands/task-integrate.md
+      - src/integrations/codex/commands/task-status.md
+      - src/integrations/codex/commands/task-update.md
+      - src/integrations/codex/commands/task-verify.md
+      - src/integrations/codex/commands/usage-add.md
+      - src/integrations/codex/commands/verification-repair.md
+      - src/integrations/codex/commands/verify.md
+      - src/integrations/codex/commands/write-ms-artifacts.md
+      - tests/unit/codex-assets.test.ts
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/codex-assets.test.ts
+        tests/unit/claude-assets.test.ts
+    result:
+      summary: Codex driver registered and 32 command docs shipped; codex-assets tests
+        pass, claude-assets hash fixed
+      evidence: Tests  204 passed (204) | Start at  01:24:30 | Duration  247ms
+        (transform 68ms, setup 0ms, import 116ms, tests 183ms, environment 0ms)
+    attempts: 1
+    usage: null
+  - id: T002
+    name: Init --codex, coexistence, and managed paths
+    objective: "Extend pitway init to support --codex (opt-in, additive alongside
+      --opencode and default-on Claude): classify/install the resolved Codex
+      asset set into .codex/ (skills at .codex/skills/<name>/SKILL.md, commands
+      at .codex/commands/<name>.md, protocol docs at .codex/<name>.md
+      root-level, mirroring .claude/.opencode layout per AC004). Ensure existing
+      drivers remain unaffected (Claude default-on, --no-claude, Opencode
+      --opencode still byte-identical) and all three drivers coexist without
+      destination collisions (disjoint .claude/.opencode/.codex) and each
+      resolves from its correct PitWay-managed source (driver wins on collision,
+      common fallback otherwise). Extend src/state/managed-init-paths.ts (via
+      listSafeManagedDirtyPaths) to also recognize installed .codex/ managed
+      paths so milestone-confirm/quick-change create do not refuse on a fresh
+      Codex install. Extend src/state/claude-assets.ts listInstalledSkillNames
+      (the required_skills pre-dispatch gate) to check .codex/skills alongside
+      .claude/skills and .opencode/skills. Note: src/git/baseline.ts requires no
+      change (generic extraExpectedPaths param); skill gate lives in
+      src/state/claude-assets.ts, not src/core/tasks/skills.ts."
+    status: completed
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - pitway init --codex installs correct Codex assets to .codex/ at
+        specified destinations
+      - pitway init --codex --opencode and --codex --no-claude coexist without
+        collision; existing drivers unaffected
+      - Generated Codex assets resolve from correct PitWay-managed source
+        (driver vs common)
+      - milestone-confirm/quick-change create do not refuse on fresh Codex
+        install (managed dirty paths)
+      - required_skills gate checks .codex/skills alongside other drivers
+    write_scope:
+      - src/cli/commands/init.ts
+      - src/state/managed-init-paths.ts
+      - src/state/claude-assets.ts
+      - tests/integration/init.test.ts
+      - tests/integration/multi-driver-assets.test.ts
+      - tests/unit/managed-init-paths.test.ts
+      - tests/unit/skills.test.ts
+      - tests/integration/task-status.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/init.test.ts
+        tests/integration/multi-driver-assets.test.ts
+        tests/unit/managed-init-paths.test.ts tests/unit/skills.test.ts
+    result:
+      summary: Init --codex, coexistence, managed paths and skill gate extended for
+        Codex
+      evidence: Tests  64 passed (64) | Start at  01:31:03 | Duration  3.48s
+        (transform 685ms, setup 0ms, import 1.00s, tests 3.07s, environment 0ms)
+    attempts: 1
+    usage: null
+  - id: T003
+    name: Codex dogfooding, evidence, and docs
+    objective: Execute a real Codex-driven PitWay workflow end-to-end (at least one
+      milestone/task) through the installed Codex driver and capture transcript
+      evidence in docs/evidence/M026/codex-dogfood.md (honestly scoped to what
+      is executable -- Codex CLI availability and sandbox limits -- and not
+      claiming a live Codex session when run via emulation). Record
+      Codex-specific findings/limitations in
+      docs/evidence/M026/codex-limitations.md and/or backlog items (at least the
+      .agents/skills vs .codex/skills conflict, TOML agents vs markdown,
+      deprecated custom prompts, sandbox/approval differences), not silently
+      expanding scope. Add focused tests if needed for dogfood coverage and
+      update relevant docs (README.md, IMPLEMENTATION_PLAN.md) in a strictly
+      limited, Codex-only diff. No unrelated backlog fixes and no changes to
+      existing drivers beyond T001-T002.
+    status: completed
+    depends_on:
+      - T001
+      - T002
+    acceptance_criteria:
+      - docs/evidence/M026/codex-dogfood.md exists with real workflow evidence
+        and honest scoping
+      - docs/evidence/M026/codex-limitations.md exists dispositioning at least
+        four Codex findings; backlog items created where appropriate
+      - No silent scope expansion; no unrelated changes
+      - Docs updated in a strictly limited diff; full suite and tsc still green
+    write_scope:
+      - docs/evidence/M026/codex-dogfood.md
+      - docs/evidence/M026/codex-limitations.md
+      - README.md
+      - IMPLEMENTATION_PLAN.md
+      - tests/integration/codex-dogfood.test.ts
+      - tests/unit/codex-dogfood.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/codex-dogfood.test.ts
+        tests/unit/codex-assets.test.ts && npm run build && npm test && npx tsc
+        --noEmit
+    result:
+      summary: Codex dogfooding evidence, limitations, and docs completed
+      evidence: npx vitest run tests/integration/codex-dogfood.test.ts
+        tests/unit/codex-assets.test.ts -> 84 passed; npm run build + npx tsc
+        --noEmit green; npm test full suite 1959 passed (93 files);
+        docs/evidence/M026/codex-dogfood.md and codex-limitations.md created
+        with honest scoping; README updated for Codex driver; B021-B024 captured
+        via backlog
+    attempts: 1
+    usage: null

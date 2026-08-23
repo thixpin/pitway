@@ -1,0 +1,74 @@
+schema_version: 1
+results:
+  - check: CT002
+    status: pass
+    at: 2026-08-23T03:23:37Z
+    evidence: Tests  204 passed (204) | Start at  10:23:37 | Duration  263ms
+      (transform 73ms, setup 0ms, import 122ms, tests 183ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 899
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-23T03:23:38Z
+    evidence: Tests  204 passed (204) | Start at  10:23:38 | Duration  230ms
+      (transform 66ms, setup 0ms, import 101ms, tests 163ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 639
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-23T03:23:42Z
+    evidence: Tests  57 passed (57) | Start at  10:23:38 | Duration  3.54s
+      (transform 692ms, setup 0ms, import 1.04s, tests 3.13s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3957
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-23T03:23:43Z
+    evidence: Tests  35 passed (35) | Start at  10:23:42 | Duration  604ms
+      (transform 377ms, setup 0ms, import 522ms, tests 133ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 1013
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-23T03:26:26Z
+    evidence: Tests  1959 passed (1959) | Start at  10:23:44 | Duration  160.95s
+      (transform 5.46s, setup 0ms, import 21.70s, tests 1086.87s, environment
+      17ms)
+    recorded_by: command
+    duration_ms: 162798
+    termination_reason: exited
+  - check: CT001
+    status: pass
+    at: 2026-08-23T03:26:35Z
+    evidence: Contract Background cites docs/evidence/M022/codex.md and
+      comparison.md; no new research repeated, gaps noted in
+      codex-limitations.md
+    recorded_by: developer
+  - check: CT006
+    status: pass
+    at: 2026-08-23T03:26:44Z
+    evidence: "codex-dogfood.md reviewed against real run: command discovery, asset
+      resolution, init --codex, task lifecycle (T001 240afec, T002 724c816, T003
+      e32440a), verification green; emulation honestly disclosed (no Codex CLI
+      binary in environment)"
+    recorded_by: developer
+  - check: CT007
+    status: pass
+    at: 2026-08-23T03:26:44Z
+    evidence: codex-limitations.md dispositioned 4+ findings (.agents vs .codex
+      skills path, TOML agents, deprecated prompts, sandbox/approval) plus
+      hardcoded-literals follow-up; B021-B024 captured via backlog; no silent
+      scope expansion
+    recorded_by: developer
+  - check: CT009
+    status: pass
+    at: 2026-08-23T03:26:53Z
+    evidence: Contract never amended post-confirm; review session rev-30bf8d024c9f
+      decided accepted 2026-08-22 before developer-approved confirm; T001
+      amended twice with explicit developer approval recorded in conversation
+      before each task-amend ran
+    recorded_by: developer

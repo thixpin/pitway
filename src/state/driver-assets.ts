@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 // two-tier lookup over a hardcoded driver list -- no dynamic driver
 // discovery or registration, no manifest file, no template engine, no
 // translation/compile step, no plugin or adapter framework.
-export const DRIVERS = ['claude', 'opencode'] as const;
+export const DRIVERS = ['claude', 'opencode', 'codex'] as const;
 export type Driver = (typeof DRIVERS)[number];
 
 // Both tiers live alongside this compiled module: src/integrations/ in the
@@ -79,13 +79,14 @@ export function resolveDriverAssetSource(driver: Driver, asset: string): string 
 }
 
 // M023/T002/AC006: each driver's repo-relative installation directory. The
-// destination layout is identical for both drivers -- <dir>/<relativePath>
+// destination layout is identical for every driver -- <dir>/<relativePath>
 // exactly mirrors the resolved source set's relative layout, so skills land
 // at <dir>/skills/<name>/SKILL.md, commands at <dir>/commands/<name>.md,
 // and the protocol docs at <dir>/<name>.md (root-level).
 const DRIVER_DESTINATION_DIRS: Record<Driver, string> = {
   claude: '.claude',
   opencode: '.opencode',
+  codex: '.codex',
 };
 
 export function driverDestinationDir(driver: Driver): string {
