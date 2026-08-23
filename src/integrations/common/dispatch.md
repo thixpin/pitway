@@ -51,8 +51,8 @@ materially ambiguous.
    dispatch's own tool result reports runtime usage** (a token-count
    figure the harness attaches to the dispatch result), extract it and
    pass it as `--usage '{"total_tokens": N, ...}'` on this same call — a
-   MUST, not optional (`protocol-driver.md` "Dispatch discipline",
-   `docs/archive/IMPLEMENTATION_PLAN-v1.0.md` §8/§12). Inline execution has no such figure
+   MUST, not optional (`protocol-driver.md` "Dispatch discipline"). Inline
+   execution has no such figure
    to extract; leave `--usage` unset there — `usage` correctly stays
    `null`. Never estimate, derive, or fabricate a number when none was
    reported.
@@ -77,7 +77,8 @@ bundle itself.
 
 **No runtime read-enforcement exists.** `context_files` names what a
 worker is expected to read; nothing in PitWay prevents reads outside it
-(advisory-only by decision, M008 — see `docs/archive/IMPLEMENTATION_PLAN-v1.0.md` §8).
+(advisory-only by design: PitWay proves what it declares ships, never that
+a worker's reads obey the list).
 
 ## Write scope is enforced, on both ends
 

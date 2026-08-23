@@ -135,10 +135,10 @@ whenever a dispatched worker/subagent's own tool result reports runtime
 usage, extract it and pass it via `--usage` on the completing
 `task-update` call (`dispatch.md` step 8) — a driver-integration
 requirement, not documentation-only prose, and one any future driver
-adapter inherits as part of PitWay's provider-agnostic Agent Interface
-(`docs/archive/IMPLEMENTATION_PLAN-v1.0.md` §8). Never estimate, derive, or fabricate a
+adapter inherits as part of PitWay's provider-agnostic Agent Interface.
+Never estimate, derive, or fabricate a
 figure when none was reported; inline execution has no task-scoped figure
-to extract, so its `usage` correctly stays `null`/`N/A` (§12, decision 8)
+to extract, so its `usage` correctly stays `null`/`N/A` (measured-only principle)
 — this rule closes the propagation gap, it does not touch that boundary.
 
 **An empty or non-standard worker report is never completion evidence**
