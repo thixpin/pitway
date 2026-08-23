@@ -13,7 +13,7 @@ tasks:
       (ids/labels left, tokens right). Every other renderTable caller in the
       codebase stays byte-identical -- no renderer behavior change, only these
       two call sites opt in.
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - failing tests written first, then implementation turns them green
@@ -30,7 +30,14 @@ tasks:
       strategy: command
       detail: npx vitest run tests/unit/table-renderer.test.ts
         tests/integration/milestone-status.test.ts
-    result: null
+    result:
+      summary: "B022: milestone-status and --report task tables now render
+        content-aware fixed-width padded columns via renderer pad mode at
+        exactly the two call sites; RED→GREEN recorded (2 new structural tests
+        failed pre-impl, 64/64 green post)"
+      evidence: Tests  64 passed (64) | Start at  11:47:58 | Duration  5.08s
+        (transform 326ms, setup 0ms, import 462ms, tests 4.59s, environment 0ms)
+    attempts: 1
     usage: null
   - id: T002
     name: Workflow diagram ship + SVG drift guard

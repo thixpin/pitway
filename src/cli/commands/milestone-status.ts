@@ -207,7 +207,11 @@ function renderProgressReportTaskTable(tasks: ProgressReportView['tasks']): stri
     t.statusLabel,
     formatTokenValue(t.tokens),
   ]);
-  return renderTable(headers, rows);
+  // B022: both milestone-status views render fixed-width padded columns --
+  // width per column = max display width across header+cells (Unicode-safe
+  // in the renderer), tokens right-aligned. The only two padded call sites;
+  // every other renderTable caller stays compact/byte-identical.
+  return renderTable(headers, rows, { pad: true, align: ['left', 'left', 'left', 'left', 'right'] });
 }
 
 export function renderProgressReportHuman(view: ProgressReportView): string {
@@ -277,7 +281,8 @@ function renderTaskTable(tasks: MilestoneStatusView['tasks']): string[] {
     t.status === 'completed' ? '100%' : '—',
     t.executionMode ?? '—',
   ]);
-  return renderTable(headers, rows);
+  // B022: fixed-width padded columns; see renderProgressReportTaskTable.
+  return renderTable(headers, rows, { pad: true });
 }
 
 export function renderMilestoneStatusHuman(view: MilestoneStatusView): string {
