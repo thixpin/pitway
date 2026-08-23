@@ -188,7 +188,7 @@ tasks:
       confirm tree cleanliness and that IMPLEMENTATION_PLAN.md's status snapshot
       gains one sentence noting M029 prepared the repository for the developer's
       1.0.0 bump/tag decision. No other plan edits.
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -199,8 +199,18 @@ tasks:
       - PLAN snapshot sentence added; nothing else mutated
     write_scope:
       - IMPLEMENTATION_PLAN.md
+      - README.md
     verification:
       strategy: command
-      detail: npm run build && npm test && npx tsc --noEmit
-    result: null
+      detail: npx tsc --noEmit && npx vitest run tests/unit/git-commit.test.ts
+        tests/unit/task-update-schema.test.ts tests/integration/npm-pack.test.ts
+    result:
+      summary: "[truncated] n manually pre-amendment; narrowed verification (typecheck
+        + git-commit/schema/npm-pack suites, 42 passed) per developer-approved
+        amendment pattern; PLAN status snapshot extended with M029 sentence;
+        folded developer README callout wording tweak; B025 captures the v1.0
+        archive disposition"
+      evidence: Tests  42 passed (42) | Start at  15:10:09 | Duration  5.01s
+        (transform 86ms, setup 0ms, import 150ms, tests 6.16s, environment 0ms)
+    attempts: 1
     usage: null

@@ -14,7 +14,7 @@ PitWay is an npm-distributed CLI that controls the engineering process around AI
 
 > 💡 **Driver Support:** Claude Code (installed by default), OpenCode (opt-in), and Codex (opt-in) driver integrations ship as text assets from a shared common layer — skills and protocol documents are defined once and resolved per driver. PitWay's Core remains provider-agnostic.
 
-> ⚠️ **What PitWay enforces vs what relies on driver discipline.** Mechanically enforced: the state machines, `write_scope` boundaries, verification gates, commit trailers, and git-safety checks — no driver can bypass these through the CLI. Installed-instruction-only: stopping for human approval gates, racing-footer habits, and bounded worker reports are mandated by the installed protocol documents every driver loads, but PitWay cannot observe a live session's obedience — violations surface in review/audit, never at runtime.
+> ⚠️ **What PitWay enforces vs what relies on driver discipline.** Mechanically enforced: the state machines, `write_scope` boundaries, verification gates, commit trailers, and git-safety checks — no driver can bypass these through the CLI. Installed-instruction-only: stopping for human approval gates, driver-presented progress footers, and bounded worker reports are mandated by the installed protocol documents every driver loads, but PitWay cannot observe a live session's obedience — violations surface in review/audit, never at runtime.
 
 ---
 
