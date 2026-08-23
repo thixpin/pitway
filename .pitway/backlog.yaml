@@ -455,3 +455,19 @@ items:
     resolved_at: null
     promoted_to: null
     archived_reason: null
+  - id: B025
+    title: Archive IMPLEMENTATION_PLAN.md at v1.0.0 release
+    reason: Freeze the plan as a historical design record (15 architectural
+      decisions, milestone rationale) at
+      docs/archive/IMPLEMENTATION_PLAN-v1.0.md during the 1.0.0 release step;
+      living status already authoritative in .pitway/ milestones + backlog.
+      Update references in CLAUDE.md/README and stop per-milestone snapshot
+      reconciliation thereafter.
+    status: pending
+    source:
+      milestone: M029
+      task: null
+    created_at: 2026-08-23T08:09:44.245Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null

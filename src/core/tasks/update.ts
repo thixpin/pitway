@@ -52,6 +52,10 @@ function milestoneSince(root: string, milestoneId: string): string | undefined {
 export class TaskUpdateError extends Error {}
 
 export interface TaskUpdateInputs {
+  // M029/T003 (AC003): runtime-reported driver/model traceability, stored in
+  // PitWay-owned evidence (tasks.yaml) -- never added to Git trailers.
+  driver?: string;
+  model?: string;
   resultPath?: string;
   messagePath?: string;
   // Measured token usage as a JSON string: {input_tokens?, output_tokens?, total_tokens}.
@@ -520,6 +524,18 @@ function completeTask(
     status: 'completed',
     result: finalResult,
     usage: accumulateUsage(task.usage, usageDelta),
+    // M029/T003 (AC003): traceability metadata accepted on the completing
+    // transition too -- same validation, never reaching Git trailers.
+    ...(inputs.driver !== undefined
+      ? (inputs.driver.length < 1 || inputs.driver.length > 80
+          ? (() => { throw new TaskUpdateError('--driver must be a string of 1..80 characters'); })()
+          : { driver: inputs.driver })
+      : {}),
+    ...(inputs.model !== undefined
+      ? (inputs.model.length < 1 || inputs.model.length > 80
+          ? (() => { throw new TaskUpdateError('--model must be a string of 1..80 characters'); })()
+          : { model: inputs.model })
+      : {}),
   };
   // AC010: promote any waiting dependent whose dependencies are now all
   // completed within this same persisted write, so the completion commit
@@ -588,6 +604,20 @@ export function updateTask(
   // transition throws (naming the allowed targets) before anything is written.
   const next = transitionTask(task.status, target);
   const updated: Task = { ...task, status: next };
+  // M029/T003: attach/refresh traceability metadata on any non-completion
+  // transition when supplied; absent flags leave prior values untouched.
+  if (inputs.driver !== undefined) {
+    if (inputs.driver.length < 1 || inputs.driver.length > 80) {
+      throw new TaskUpdateError('--driver must be a string of 1..80 characters');
+    }
+    updated.driver = inputs.driver;
+  }
+  if (inputs.model !== undefined) {
+    if (inputs.model.length < 1 || inputs.model.length > 80) {
+      throw new TaskUpdateError('--model must be a string of 1..80 characters');
+    }
+    updated.model = inputs.model;
+  }
   if (target === 'in_progress') {
     // AC014/M005-T004: execution starts here — the tree must be clean except
     // tasks.yaml and any path already materialized by a pending journal entry

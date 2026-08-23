@@ -19,6 +19,10 @@ export class TaskVerifyError extends Error {}
 
 export interface RunTaskVerifyInputs {
   typecheckCommand?: string;
+  // M029/T001 (AC001): optional explicit budget for both the verification
+  // command and the typecheck. Default stays DEFAULT_TIMEOUT_MS (120000ms);
+  // bounds mirror the contract check-timeout schema (1s..1h).
+  timeoutMs?: number;
 }
 
 // Fixed, documented marker for a declared path that does not exist on disk
@@ -195,6 +199,17 @@ export function runTaskVerify(
   taskId: string,
   inputs: RunTaskVerifyInputs = {},
 ): JournalTaskVerifyEvidence {
+  let timeoutMs = DEFAULT_TIMEOUT_MS;
+  if (inputs.timeoutMs !== undefined) {
+    const t = inputs.timeoutMs;
+    if (!Number.isInteger(t) || t < 1000 || t > 3_600_000) {
+      throw new TaskVerifyError(
+        `invalid --timeout ${inputs.timeoutMs}: must be an integer between 1000 and 3600000 ms`,
+      );
+    }
+    timeoutMs = t;
+  }
+
   const milestoneId = resolveActiveMilestone(root);
   const tasksFile = loadTasks(root, milestoneId);
   const task = findTask(tasksFile.tasks, taskId);
@@ -226,7 +241,7 @@ export function runTaskVerify(
   const fingerprint = { entries: buildFingerprint(root, declaredPaths) };
 
   const start = Date.now();
-  const result = executeCommand(task.verification.detail, { cwd: root, timeoutMs: DEFAULT_TIMEOUT_MS });
+  const result = executeCommand(task.verification.detail, { cwd: root, timeoutMs });
   const durationMs = Date.now() - start;
   const combined = `${result.stdout}${result.stderr}`;
   const counts = parseTestCounts(combined);
@@ -235,7 +250,7 @@ export function runTaskVerify(
 
   let typecheck: JournalTaskVerifyEvidence['typecheck'];
   if (inputs.typecheckCommand !== undefined) {
-    const tcResult = executeCommand(inputs.typecheckCommand, { cwd: root, timeoutMs: DEFAULT_TIMEOUT_MS });
+    const tcResult = executeCommand(inputs.typecheckCommand, { cwd: root, timeoutMs });
     typecheck = {
       command: inputs.typecheckCommand,
       exitCode: tcResult.exitCode,

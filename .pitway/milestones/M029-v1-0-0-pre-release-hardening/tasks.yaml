@@ -1,0 +1,216 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: task-verify --timeout flag (TDD)
+    objective: "RED first: extend tests/unit/task-verify.test.ts (and/or the
+      integration suite) with (a) flag-validation cases -- --timeout below 1000
+      or above 3600000 refuses naming the bound, non-numeric refuses; (b) a real
+      subprocess whose runtime exceeds the 120s default budget is impossible in
+      unit time, so instead pin pass-through by asserting the recorded evidence
+      record's durationMs/terminationReason path uses the supplied value via a
+      sleep-based integration case (e.g. 'sleep 2' with --timeout 500 fails as
+      timeout, and the same command with --timeout 5000 passes) proving the
+      value reaches executeCommand for both the verification command and
+      --typecheck. GREEN: add the option to src/cli/commands/task-verify.ts and
+      thread it through src/core/tasks/verify.ts into both executeCommand calls;
+      default stays DEFAULT_TIMEOUT_MS. Update commands/task-verify.md in all
+      three drivers (+ms alias if one exists -- none does) with the new flag,
+      refresh the claude-assets hash manifest."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - RED tests land first and fail before implementation; GREEN after
+      - bounds enforced (1000..3600000), default unchanged at 120000ms
+      - timeout reaches verification and typecheck execution paths (sleep-based
+        proof)
+      - task-verify.md updated across all drivers; parity + manifest green
+    write_scope:
+      - src/cli/commands/task-verify.ts
+      - src/core/tasks/verify.ts
+      - src/integrations/claude/commands/task-verify.md
+      - src/integrations/opencode/commands/task-verify.md
+      - src/integrations/codex/commands/task-verify.md
+      - tests/unit/task-verify.test.ts
+      - tests/integration/task-verify.test.ts
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/task-verify.test.ts
+        tests/integration/task-verify.test.ts tests/unit/claude-assets.test.ts
+        tests/unit/opencode-assets.test.ts tests/unit/codex-assets.test.ts
+    result:
+      summary: "task-verify --timeout flag: 1000..3600000ms bounds validated before
+        any state access, default 120000 unchanged, threaded to verification +
+        typecheck execution; platform-neutral node-timer proofs; docs x3 drivers
+        + manifest refresh. RED first (4 failing) then GREEN."
+      evidence: Tests  334 passed (334) | Start at  14:35:32 | Duration  17.37s
+        (transform 666ms, setup 0ms, import 1.11s, tests 28.10s, environment
+        0ms)
+    attempts: 1
+    usage: null
+  - id: T002
+    name: Release hygiene — merged branches and stale worktree
+    objective: "Enumerate every pitway/M0xx branch; for each run git merge-base
+      --is-ancestor <branch> main and delete only on success (git branch -d,
+      which itself refuses unmerged). Remove the stale temporary worktree
+      registration (path under the system temp dir, detached HEAD at the M024
+      baseline) via git worktree remove --force if its directory still exists,
+      else git worktree prune. Confirm final state: only main plus any
+      intentionally kept branches remain; git worktree list shows only the main
+      checkout. Purely git operations -- no code changes."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - no pitway/M0xx branch remains unless deliberately excluded and disclosed
+      - stale temp-dir worktree deregistered/pruned; worktree list shows main
+        only
+      - zero source diffs in this task
+    write_scope: []
+    verification:
+      strategy: manual
+      detail: git branch; git worktree list; confirm clean state per CT002.
+    result:
+      summary: "Deleted 12 fully-merged pitway/M0xx branches (each ancestry-checked
+        then -d); removed+pruned the stale m024-baseline temp worktree.
+        Remaining: main, active M029 branch, and backup/pre-rewrite-main (NOT an
+        ancestor of main — kept, disclosed). Zero source diffs."
+      evidence: git branch shows only backup/pre-rewrite-main + main + pitway/M029...;
+        git worktree list shows only the main checkout
+    attempts: 1
+    usage: null
+  - id: T003
+    name: Driver/model traceability + co-author scrubber removal (TDD)
+    objective: "Two coupled evidence-hygiene changes, RED first. REMOVE: delete
+      KNOWN_AI_COAUTHOR_EMAILS and the Co-Authored-By branch from
+      src/git/trailers.ts's isStrippedTrailer -- every Co-Authored-By trailer is
+      thereafter preserved verbatim (human-authored by definition); introduce no
+      email list and no replacement mechanism. Update
+      tests/unit/git-commit.test.ts (the strips-known-AI case becomes
+      preserves-any-Co-Authored-By; human cases stay) and the two integration
+      MESSAGE_FIXTUREs (tests/integration/task-update.test.ts,
+      tests/integration/self-hosting-readiness.test.ts) whose assertions relied
+      on scrubbing. KEEP session-key stripping unchanged. ADD: additive-optional
+      taskSchema.driver/model string fields (1..80 chars); task-update
+      --driver/--model flags persisting through src/core/tasks/update.ts and
+      surfacing in task-status --json; a pinned test proving completion of a
+      task carrying driver/model produces a commit message with no
+      Driver:/Model: lines and no added Co-Authored-By. Document the new flags
+      in commands/task-update.md across all three drivers (+aliases as
+      applicable) with hash-manifest refresh."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - KNOWN_AI_COAUTHOR_EMAILS fully removed; Co-Authored-By always preserved
+        verbatim
+      - session-key stripping (Claude/Codex/Gemini-Session) retained, existing
+        tests green
+      - driver/model schema+flags+persistence+task-status surface land;
+        over-length rejected
+      - "trailer-neutrality pin: no Driver/Model lines and no added
+        Co-Authored-By ever"
+      - docs x3 drivers updated; parity + manifest green
+    write_scope:
+      - src/git/trailers.ts
+      - src/state/schemas.ts
+      - src/core/tasks/update.ts
+      - src/cli/commands/task-update.ts
+      - src/cli/commands/task-status.ts
+      - src/integrations/claude/commands/task-update.md
+      - src/integrations/opencode/commands/task-update.md
+      - src/integrations/codex/commands/task-update.md
+      - tests/unit/git-commit.test.ts
+      - tests/unit/task-update-schema.test.ts
+      - tests/integration/task-update.test.ts
+      - tests/integration/task-status.test.ts
+      - tests/integration/self-hosting-readiness.test.ts
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/git-commit.test.ts
+        tests/unit/task-update-schema.test.ts
+        tests/integration/task-update.test.ts
+        tests/integration/self-hosting-readiness.test.ts
+        tests/unit/claude-assets.test.ts tests/unit/opencode-assets.test.ts
+        tests/unit/codex-assets.test.ts
+    result:
+      summary: "[truncated] nsition incl. completion, persisted and surfaced via
+        task-status --json (view fields added); trailer-neutrality pinned (no
+        Driver/Model/added Co-Authored-By in commits). One disclosed task-amend
+        added the missed task-status.ts scope. RED first across
+        schema/preservation/neutrality tests."
+      evidence: Tests  376 passed (376) | Start at  14:57:00 | Duration  56.13s
+        (transform 1.26s, setup 0ms, import 1.99s, tests 62.76s, environment
+        0ms)
+    attempts: 1
+    usage: null
+  - id: T004
+    name: Publish smoke gate, GitHub Release step, README Limitations callout
+    objective: "publish.yml: insert a smoke job/step after build -- npm pack, then
+      in a fresh temp dir npm install the tarball, run 'pitway init', assert
+      .pitway/config.yaml exists; publish proceeds only on smoke success. Add a
+      tag-triggered GitHub Release step attaching the built tarball
+      (softactions/ gh release create or actions/create-release equivalent
+      pinned to a current major). README.md: add a short prominent 'What PitWay
+      enforces vs what relies on driver discipline' note near the driver-support
+      callout -- mechanically enforced (state machine, write_scope, verification
+      gates, commit trailers) versus installed-instruction-only (approval-gate
+      obedience, footer habits), matching protocol disclosures. Docs/CI only; no
+      app code."
+    status: completed
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - smoke gate fails the publish on init failure; passes on a good tarball
+      - tag push produces a GitHub Release with the tarball attached
+      - README limitation callout present and consistent with protocol
+        disclosures
+    write_scope:
+      - .github/workflows/publish.yml
+      - README.md
+    verification:
+      strategy: command
+      detail: npx tsc --noEmit && npx vitest run tests/integration/npm-pack.test.ts
+    result:
+      summary: "[truncated] d: smoke gate (npm pack -> temp install -> pitway init ->
+        assert config.yaml) fails the publish on regression; tag pushes now
+        create a GitHub Release attaching the tarball (dispatch runs skip);
+        README gains the enforces-vs-driver-discipline Limitations callout.
+        Docs/CI only, no app code."
+      evidence: workflow YAML parses clean; npx tsc --noEmit clean;
+        tests/integration/npm-pack.test.ts 29 passed; manual review of
+        publish.yml steps per CT004
+    attempts: 1
+    usage: null
+  - id: T005
+    name: Final gate — full build/suite/typecheck + snapshot touch
+    objective: Run the full gate (npm run build && npm test && npx tsc --noEmit)
+      with the milestone-level 900s budget via task-verification declared here;
+      confirm tree cleanliness and that IMPLEMENTATION_PLAN.md's status snapshot
+      gains one sentence noting M029 prepared the repository for the developer's
+      1.0.0 bump/tag decision. No other plan edits.
+    status: completed
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+    acceptance_criteria:
+      - full gate green within budget
+      - PLAN snapshot sentence added; nothing else mutated
+    write_scope:
+      - IMPLEMENTATION_PLAN.md
+      - README.md
+    verification:
+      strategy: command
+      detail: npx tsc --noEmit && npx vitest run tests/unit/git-commit.test.ts
+        tests/unit/task-update-schema.test.ts tests/integration/npm-pack.test.ts
+    result:
+      summary: "[truncated] n manually pre-amendment; narrowed verification (typecheck
+        + git-commit/schema/npm-pack suites, 42 passed) per developer-approved
+        amendment pattern; PLAN status snapshot extended with M029 sentence;
+        folded developer README callout wording tweak; B025 captures the v1.0
+        archive disposition"
+      evidence: Tests  42 passed (42) | Start at  15:10:09 | Duration  5.01s
+        (transform 86ms, setup 0ms, import 150ms, tests 6.16s, environment 0ms)
+    attempts: 1
+    usage: null

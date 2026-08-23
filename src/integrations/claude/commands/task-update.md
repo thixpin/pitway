@@ -28,5 +28,7 @@ figure available.
 
 Result/usage payload shapes: `../draft-formats.md`.
 
+--driver <name> / --model <id>: runtime-reported traceability stored in PitWay evidence (tasks.yaml, task-status --json); never added to Git trailers.
+
 See `../protocol-driver.md` and `../dispatch.md`. Run
 `pitway task-update --help` for flags.

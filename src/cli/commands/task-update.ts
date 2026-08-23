@@ -38,12 +38,14 @@ export function registerTaskUpdateCommand(program: Command, deps: CommandDeps = 
       '--evidence <id>',
       'use a specific task-verify evidence record by id, instead of implicit selection',
     )
+    .option('--driver <name>', 'runtime-reported driving agent name, stored in PitWay evidence (1..80 chars)')
+    .option('--model <id>', 'runtime-reported model id, stored in PitWay evidence (1..80 chars)')
     .option('--json', 'output machine-readable JSON')
     .action(
       (
         id: string,
         status: string,
-        options: { result?: string; message?: string; usage?: string; evidence?: string; json?: boolean },
+        options: { result?: string; message?: string; usage?: string; evidence?: string; driver?: string; model?: string; json?: boolean },
       ) => {
         const root = deps.root ?? process.cwd();
         const view = updateTask(root, id, status, {
@@ -51,6 +53,8 @@ export function registerTaskUpdateCommand(program: Command, deps: CommandDeps = 
           messagePath: options.message,
           usage: options.usage,
           evidenceId: options.evidence,
+          driver: options.driver,
+          model: options.model,
         });
         write(renderOutput(view, { json: options.json }, renderTaskUpdateHuman));
         if (!options.json) {

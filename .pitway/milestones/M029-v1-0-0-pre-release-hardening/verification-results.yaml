@@ -1,0 +1,50 @@
+schema_version: 1
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-23T08:11:22Z
+    evidence: Tests  334 passed (334) | Start at  15:11:04 | Duration  18.01s
+      (transform 684ms, setup 0ms, import 1.10s, tests 29.15s, environment 0ms)
+    recorded_by: command
+    duration_ms: 18655
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-23T08:12:19Z
+    evidence: Tests  70 passed (70) | Start at  15:11:23 | Duration  56.02s
+      (transform 415ms, setup 0ms, import 604ms, tests 56.60s, environment 0ms)
+    recorded_by: command
+    duration_ms: 56565
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-23T08:16:14Z
+    evidence: Tests  1996 passed (1996) | Start at  15:12:20 | Duration  232.57s
+      (transform 5.62s, setup 0ms, import 32.73s, tests 1549.93s, environment
+      21ms)
+    recorded_by: command
+    duration_ms: 235055
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-23T08:16:40Z
+    evidence: git branch -> backup/pre-rewrite-main (unmerged, kept+disclosed),
+      main, pitway/M029 only; git worktree list -> single main checkout; 12
+      merged M0xx branches deleted via ancestry-checked -d
+    recorded_by: developer
+  - check: CT004
+    status: pass
+    at: 2026-08-23T08:16:40Z
+    evidence: "publish.yml reviewed: smoke job packs tarball, installs into mktemp
+      dir with fresh git init, runs npx pitway init and asserts
+      .pitway/config.yaml before publish; tag-push step creates GitHub Release
+      attaching tarball (dispatch skips); README Limitations callout matches
+      AC004c wording"
+    recorded_by: developer
+  - check: CT006
+    status: pass
+    at: 2026-08-23T08:16:41Z
+    evidence: "Two task-amends applied: T005 verification narrowing + scope fold-in
+      of developer README tweak, both developer-approved in conversation before
+      running; contract itself never amended post-confirm"
+    recorded_by: developer

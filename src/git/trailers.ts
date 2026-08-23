@@ -4,7 +4,6 @@ import { git, GitError } from './exec.js';
 // (including a Co-Authored-By naming someone called "Claude") must never be
 // stripped; only these exact keys and exact known AI addresses are removed.
 const SESSION_TRAILER_KEYS = ['Claude-Session', 'Codex-Session', 'Gemini-Session'];
-const KNOWN_AI_COAUTHOR_EMAILS = ['noreply@anthropic.com'];
 
 const TRAILER_LINE = /^([A-Za-z0-9-]+):\s?(.*)$/;
 
@@ -25,13 +24,7 @@ function isStrippedTrailer(line: string): boolean {
   const match = TRAILER_LINE.exec(line);
   if (!match) return false;
   const [, key, value] = match;
-  if (SESSION_TRAILER_KEYS.includes(key!)) return true;
-  if (key === 'Co-Authored-By') {
-    const emailMatch = /<([^>]+)>/.exec(value!);
-    const email = emailMatch?.[1]?.toLowerCase();
-    if (email && KNOWN_AI_COAUTHOR_EMAILS.includes(email)) return true;
-  }
-  return false;
+  return SESSION_TRAILER_KEYS.includes(key!);
 }
 
 // Appends only the given PitWay trailers, stripping the closed set of
