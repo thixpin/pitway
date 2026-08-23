@@ -273,9 +273,9 @@ prior failing run. Doc-only / genuinely test-free changes pass
 `pitway resume` is the authoritative recovery view if a quick-change is left
 mid-flight.
 
-## Opt-in Policies
+## Workflow Policies
 
-Both live in `.pitway/config.yaml`, both off by default:
+Both live in `.pitway/config.yaml`; `pitway init` writes them with the recommended values:
 
 ```yaml
 git:

@@ -156,7 +156,7 @@ async function run(args: string[]): Promise<{ lines: string[]; error?: Error }> 
 // folds it in -- an uncommitted config.yaml would (correctly) trip the
 // clean-tree check at dispatch. Matches the real flow: enabling parallel
 // execution is a committed repository policy, not an ad hoc toggle.
-async function confirmMilestone(strategy?: 'parallel_worktrees'): Promise<void> {
+async function confirmMilestone(strategy?: 'parallel_worktrees' | 'sequential'): Promise<void> {
   if (strategy) {
     saveConfig(root, { ...loadConfig(root), execution: { strategy } });
   }
@@ -238,7 +238,9 @@ describe('pitway task-dispatch (M014/T004)', () => {
   });
 
   it('refuses under sequential strategy with a clear diagnostic', async () => {
-    await confirmMilestone();
+    // Option B: init now writes parallel_worktrees explicitly, so the
+    // conservative mode is set here rather than relied on as a fallback.
+    await confirmMilestone('sequential');
     const result = await run(['task-dispatch', 'T001']);
     expect(result.error?.message).toContain('parallel_worktrees');
     expect(result.error?.message).toContain('sequential');

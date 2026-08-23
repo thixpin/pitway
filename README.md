@@ -101,12 +101,19 @@ For a hands-on walkthrough of the whole workflow — drafting a contract, confir
 
 ---
 
-## Opt-in Policies
+## Workflow Policies
 
-Two repository-level policies live in `.pitway/config.yaml`, both absent by default and both byte-identical to today's behavior until a project opts in:
+Two repository-level policies live in `.pitway/config.yaml`. `pitway init` generates them with the recommended workflow enabled (with explanatory comments in the file):
 
-- **`git.branch_strategy: main | milestone`** — `main` (the default) commits every milestone directly to the current branch, exactly as before this option existed. `milestone` gives each milestone its own dedicated branch instead, checked out for the milestone's full lifecycle; once completed, `pitway milestone-merge <id>` lands the branch into its base branch with full git-safety checks and idempotent re-runs.
-- **`execution.strategy: sequential | parallel_worktrees`** — `sequential` (the default) runs one task at a time, inline, exactly as before this option existed. `parallel_worktrees` allows dispatching independent, dependency-free, disjoint-`write_scope` tasks concurrently, each into its own temporary Git worktree; PitWay validates eligibility and integrates each result as a diff-apply — never a merge — so the resulting mainline history stays indistinguishable from sequential execution.
+```yaml
+git:
+  branch_strategy: milestone     # each milestone gets its own dedicated branch
+execution:
+  strategy: parallel_worktrees   # independent tasks dispatch concurrently
+```
+
+- **`git.branch_strategy: main | milestone`** — `milestone` (the generated default) gives each milestone its own dedicated branch, checked out for the milestone's full lifecycle; once completed, `pitway milestone-merge <id>` lands the branch into its base branch with full git-safety checks and idempotent re-runs. Set `main` to commit milestones directly to the current branch instead.
+- **`execution.strategy: sequential | parallel_worktrees`** — `parallel_worktrees` (the generated default) lets independent, dependency-free, disjoint-`write_scope` tasks dispatch concurrently, each into its own temporary Git worktree; PitWay validates eligibility and integrates each result as a diff-apply — never a merge — so the resulting mainline history stays indistinguishable from sequential execution. Set `sequential` to run one task at a time, inline.
 
 ---
 

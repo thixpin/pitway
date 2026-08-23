@@ -87,9 +87,19 @@ describe('pitway init', () => {
   it('creates exactly config.yaml and state.yaml in a clean repo', async () => {
     const { error } = await runInit(root);
     expect(error).toBeUndefined();
-    const config = parse(readFileSync(join(root, '.pitway', 'config.yaml'), 'utf8'));
+    const configRaw = readFileSync(join(root, '.pitway', 'config.yaml'), 'utf8');
+    const config = parse(configRaw);
     const state = parse(readFileSync(join(root, '.pitway', 'state.yaml'), 'utf8'));
-    expect(config).toEqual({ schema_version: 1 });
+    // Option B defaults (developer directive): generated config carries the
+    // recommended workflow explicitly, with explanatory comments.
+    expect(config).toEqual({
+      schema_version: 1,
+      git: { branch_strategy: 'milestone' },
+      execution: { strategy: 'parallel_worktrees' },
+    });
+    expect(configRaw).toContain('# Each confirmed milestone works on its own');
+    expect(configRaw).toContain('branch_strategy: milestone');
+    expect(configRaw).toContain('strategy: parallel_worktrees');
     expect(state).toEqual({ schema_version: 1, active_milestone: null, milestones: [] });
     const entries = execFileSync('ls', ['-A', join(root, '.pitway')]).toString().trim().split('\n');
     expect(entries.sort()).toEqual(['config.yaml', 'state.yaml']);

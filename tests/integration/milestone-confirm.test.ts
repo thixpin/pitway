@@ -652,13 +652,15 @@ function setBranchStrategy(strategy: 'main' | 'milestone'): void {
 }
 
 describe('pitway milestone-confirm with branch_strategy: milestone (M012/T002)', () => {
-  it('leaves base_branch/base_revision null and creates no branch when git is absent from config (default main)', async () => {
-    const before = git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim();
+  it('creates the milestone branch when git is absent from config (runtime fallback is Option B)', async () => {
+    const startRevision = git(['rev-parse', 'HEAD'], root).trim();
     await confirmed();
     const contract = loadContract(root, 'M001');
-    expect(contract.frontmatter.base_branch ?? null).toBeNull();
-    expect(contract.frontmatter.base_revision ?? null).toBeNull();
-    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe(before);
+    expect(contract.frontmatter.base_branch).not.toBeNull();
+    expect(contract.frontmatter.base_revision).toBe(startRevision);
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe(
+      'pitway/M001-confirmable-milestone',
+    );
   });
 
   it('leaves base_branch/base_revision null and creates no branch under explicit branch_strategy: main', async () => {

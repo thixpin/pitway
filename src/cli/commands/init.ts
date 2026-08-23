@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { assertGitWorkTree } from '../../git/exec.js';
 import { classifyClaudeAssets, installClaudeAssets } from '../../state/claude-assets.js';
@@ -14,8 +14,28 @@ import {
   applyRootInstructionFiles,
   type ApplyRootInstructionFilesResult,
 } from '../../state/root-instructions.js';
-import { StateStoreError, loadConfig, loadState, saveConfig, saveState } from '../../state/store.js';
+import { StateStoreError, loadConfig, loadState, saveState } from '../../state/store.js';
 import { renderOutput } from '../output.js';
+
+
+// Option B defaults (developer directive): the generated config makes the
+// recommended workflow explicit -- every milestone on its own branch,
+// disjoint-scope tasks dispatching concurrently. Both fields are ordinary
+// schema-validated values; the conservative modes ('main', 'sequential')
+// remain available by editing these two lines.
+const CONFIG_YAML_TEMPLATE = [
+  'schema_version: 1',
+  'git:',
+  '  # Each confirmed milestone works on its own pitway/<id>-<slug> branch;',
+  "  # integrate with 'pitway milestone-merge <id>'. Use 'main' to commit",
+  '  # milestones directly to the current branch instead.',
+  '  branch_strategy: milestone',
+  'execution:',
+  '  # Independent tasks with disjoint write scopes dispatch concurrently into',
+  "  # temporary worktrees. Use 'sequential' to run one task at a time.",
+  '  strategy: parallel_worktrees',
+  '',
+].join('\n');
 
 type Probe = 'ok' | 'missing' | 'invalid';
 
@@ -137,7 +157,10 @@ export function runInit(
   }
 
   if (config === 'missing' && state === 'missing') {
-    saveConfig(root, { schema_version: 1 });
+    // Written from the template (not yaml.stringify) so the generated file
+    // carries explanatory comments next to the two policy fields.
+    mkdirSync(join(root, '.pitway'), { recursive: true });
+    writeFileSync(join(root, '.pitway', 'config.yaml'), CONFIG_YAML_TEMPLATE);
     saveState(root, { schema_version: 1, active_milestone: null, milestones: [] });
     return finish(true, 'Initialized .pitway/ (config.yaml, state.yaml).');
   }

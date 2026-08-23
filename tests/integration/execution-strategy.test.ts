@@ -182,9 +182,10 @@ describe('execution strategy sequential default (M014/T001)', () => {
     git(['commit', '-q', '-m', 'init'], root);
     await run(['init', '--no-claude'], root);
 
+    // Option B: init now writes the execution block explicitly.
     const config = loadConfig(root);
-    expect(config.execution).toBeUndefined();
-    saveConfig(root, { ...config, execution: { strategy: 'parallel_worktrees' } });
-    expect(loadConfig(root).execution?.strategy).toBe('parallel_worktrees');
+    expect(config.execution?.strategy).toBe('parallel_worktrees');
+    saveConfig(root, { ...config, execution: { strategy: 'sequential' } });
+    expect(loadConfig(root).execution?.strategy).toBe('sequential');
   });
 });

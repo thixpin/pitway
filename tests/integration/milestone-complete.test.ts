@@ -10,7 +10,7 @@ import { registerMilestoneCompleteCommand } from '../../src/cli/commands/milesto
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
 import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js';
 import { registerVerifyCommand } from '../../src/cli/commands/verify.js';
-import { loadContract, loadState } from '../../src/state/store.js';
+import { loadConfig, loadContract, loadState, saveConfig } from '../../src/state/store.js';
 import { deterministicBranchName } from '../../src/core/milestones/confirm.js';
 import { recordUsage } from '../../src/core/metrics/aggregate.js';
 import { derivePending } from '../../src/core/journal/operations.js';
@@ -728,9 +728,9 @@ describe('pitway milestone-complete merge-ready state (M012/T006)', () => {
   });
 
   it('does not affect main-strategy completion behavior at all (regression)', async () => {
-    // Every test above this describe block already exercises main strategy
-    // (the shared confirmed()/completed() helpers never set branch_strategy);
-    // this is one more explicit assertion that no branch bookkeeping leaks in.
+    // Main strategy is now opt-in (Option B init defaults), so this explicit
+    // regression sets it directly rather than relying on absence.
+    saveConfig(root, { schema_version: 1, git: { branch_strategy: 'main' } });
     await completed();
     const contract = loadContract(root, 'M001');
     expect(contract.frontmatter.base_branch ?? null).toBeNull();
