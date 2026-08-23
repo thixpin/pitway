@@ -58,7 +58,7 @@ tasks:
       else git worktree prune. Confirm final state: only main plus any
       intentionally kept branches remain; git worktree list shows only the main
       checkout. Purely git operations -- no code changes."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - no pitway/M0xx branch remains unless deliberately excluded and disclosed
@@ -69,7 +69,14 @@ tasks:
     verification:
       strategy: manual
       detail: git branch; git worktree list; confirm clean state per CT002.
-    result: null
+    result:
+      summary: "Deleted 12 fully-merged pitway/M0xx branches (each ancestry-checked
+        then -d); removed+pruned the stale m024-baseline temp worktree.
+        Remaining: main, active M029 branch, and backup/pre-rewrite-main (NOT an
+        ancestor of main — kept, disclosed). Zero source diffs."
+      evidence: git branch shows only backup/pre-rewrite-main + main + pitway/M029...;
+        git worktree list shows only the main checkout
+    attempts: 1
     usage: null
   - id: T003
     name: Driver/model traceability + co-author scrubber removal (TDD)
