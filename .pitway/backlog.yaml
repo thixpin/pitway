@@ -447,14 +447,17 @@ items:
       driver to manually perform state updates. Ensure the behavior is
       driver-independent and enforced by PitWay core rather than relying on the
       AI driver to remember lifecycle commands.
-    status: pending
+    status: archived
     source:
       milestone: M026
       task: null
     created_at: 2026-08-22T18:46:22.772Z
-    resolved_at: null
+    resolved_at: 2026-08-23T08:37:55.442Z
     promoted_to: null
-    archived_reason: null
+    archived_reason: "Not quick-change-shaped: auto-promotion/close touches Core
+      completion semantics and journal discipline (multi-file, behavior change).
+      Correct mechanism per protocol-driver.md is a one-task corrective
+      milestone; captured for that path instead of forcing a bounded fix."
   - id: B025
     title: Archive IMPLEMENTATION_PLAN.md at v1.0.0 release
     reason: Freeze the plan as a historical design record (15 architectural
@@ -463,11 +466,14 @@ items:
       living status already authoritative in .pitway/ milestones + backlog.
       Update references in CLAUDE.md/README and stop per-milestone snapshot
       reconciliation thereafter.
-    status: pending
+    status: archived
     source:
       milestone: M029
       task: null
     created_at: 2026-08-23T08:09:44.245Z
-    resolved_at: null
+    resolved_at: 2026-08-23T08:37:33.874Z
     promoted_to: null
-    archived_reason: null
+    archived_reason: "Done via qc-1dbbd540 (659d06c): plan frozen at
+      docs/archive/IMPLEMENTATION_PLAN-v1.0.md with all references updated;
+      follow-up qc-eb95b199 (020f98b) made distributed protocol docs fully
+      self-contained"
