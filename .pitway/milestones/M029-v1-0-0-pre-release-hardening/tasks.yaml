@@ -97,7 +97,7 @@ tasks:
       Driver:/Model: lines and no added Co-Authored-By. Document the new flags
       in commands/task-update.md across all three drivers (+aliases as
       applicable) with hash-manifest refresh."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - KNOWN_AI_COAUTHOR_EMAILS fully removed; Co-Authored-By always preserved
@@ -114,12 +114,14 @@ tasks:
       - src/state/schemas.ts
       - src/core/tasks/update.ts
       - src/cli/commands/task-update.ts
+      - src/cli/commands/task-status.ts
       - src/integrations/claude/commands/task-update.md
       - src/integrations/opencode/commands/task-update.md
       - src/integrations/codex/commands/task-update.md
       - tests/unit/git-commit.test.ts
       - tests/unit/task-update-schema.test.ts
       - tests/integration/task-update.test.ts
+      - tests/integration/task-status.test.ts
       - tests/integration/self-hosting-readiness.test.ts
       - tests/unit/claude-assets.test.ts
     verification:
@@ -130,7 +132,16 @@ tasks:
         tests/integration/self-hosting-readiness.test.ts
         tests/unit/claude-assets.test.ts tests/unit/opencode-assets.test.ts
         tests/unit/codex-assets.test.ts
-    result: null
+    result:
+      summary: "[truncated] nsition incl. completion, persisted and surfaced via
+        task-status --json (view fields added); trailer-neutrality pinned (no
+        Driver/Model/added Co-Authored-By in commits). One disclosed task-amend
+        added the missed task-status.ts scope. RED first across
+        schema/preservation/neutrality tests."
+      evidence: Tests  376 passed (376) | Start at  14:57:00 | Duration  56.13s
+        (transform 1.26s, setup 0ms, import 1.99s, tests 62.76s, environment
+        0ms)
+    attempts: 1
     usage: null
   - id: T004
     name: Publish smoke gate, GitHub Release step, README Limitations callout

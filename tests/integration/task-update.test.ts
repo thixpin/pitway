@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { parse } from 'yaml';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
+import { registerTaskStatusCommand } from '../../src/cli/commands/task-status.js';
 import { registerTaskUpdateCommand as registerTaskUpdateBare } from '../../src/cli/commands/task-update.js';
 import { hasVerifiedEvidence, updateTask, TaskUpdateError } from '../../src/core/tasks/update.js';
 import { saveState } from '../../src/state/store.js';
@@ -323,6 +324,54 @@ describe('pitway task-update non-committing transitions (AC017)', () => {
   });
 });
 
+describe('task-update --driver/--model traceability (M029/T003, AC003)', () => {
+  beforeEach(async () => {
+    await inReview();
+  });
+
+  it('persists driver/model and surfaces them in task-status --json', async () => {
+    // inReview() already left T001 in review; re-supplying review is an
+    // illegal self-transition, and review only exits to completed. Set the
+    // metadata on the completing transition instead -- the flags are accepted
+    // there too (any transition), then read back via task-status.
+    const result = join(scratch, 'result.yaml');
+    const message = join(scratch, 'message.txt');
+    writeFileSync(result, 'summary: s\nevidence: e\n');
+    writeFileSync(message, 'task: complete T001\n\nDone.\n');
+    const { error } = await update([
+      'T001', 'completed',
+      '--driver', 'opencode', '--model', 'gpt-5-codex',
+      '--result', result, '--message', message,
+    ]);
+    expect(error).toBeUndefined();
+    const t = task('T001');
+    expect(t.driver).toBe('opencode');
+    expect(t.model).toBe('gpt-5-codex');
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerTaskStatusCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'task-status', 'T001', '--json']);
+    const view = JSON.parse(lines.join('')) as { driver?: string; model?: string };
+    expect(view.driver).toBe('opencode');
+    expect(view.model).toBe('gpt-5-codex');
+  });
+
+  it('completion of a driver/model task adds no Driver:/Model:/Co-Authored-By lines to the commit', async () => {
+    await update(['T001', 'review', '--driver', 'codex', '--model', 'xhigh']);
+    const result = join(scratch, 'result.yaml');
+    const message = join(scratch, 'message.txt');
+    writeFileSync(result, 'summary: s\nevidence: e\n');
+    writeFileSync(message, 'task: complete T001\n\nDone.\n');
+    const { error } = await update(['T001', 'completed', '--result', result, '--message', message]);
+    expect(error).toBeUndefined();
+    const committed = headMessage(root);
+    expect(committed).not.toMatch(/^Driver:/m);
+    expect(committed).not.toMatch(/^Model:/m);
+    expect(committed).not.toMatch(/Co-Authored-By/);
+  });
+});
+
 describe('pitway task-update to completed (AC015, AC016)', () => {
   beforeEach(async () => {
     await inReview();
@@ -381,7 +430,13 @@ describe('pitway task-update to completed (AC015, AC016)', () => {
     expect(message).toContain('PitWay-Milestone: M001');
     expect(message).toContain('PitWay-Task: T001');
     expect(message).not.toMatch(/Claude-Session/);
-    expect(message).not.toMatch(/noreply@anthropic\.com/);
+    // M029/AC003: session keys are still stripped, but Co-Authored-By lines
+    // are human-authored by definition and preserved verbatim -- PitWay
+    // maintains no AI co-author identity.
+    expect(message).toContain('Co-Authored-By: Claude <noreply@anthropic.com>');
+    // M029/AC003: no email scrubbing -- the human-style Co-Authored-By line
+    // is preserved verbatim; PitWay adds none of its own.
+    expect(message).toContain('Co-Authored-By: Claude <noreply@anthropic.com>');
     expect(git(['status', '--porcelain'], root).trim()).toBe('');
   });
 

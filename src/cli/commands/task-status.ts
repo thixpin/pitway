@@ -12,6 +12,9 @@ export interface TaskStatusView {
   name: string | null;
   status: Task['status'];
   dependsOn: string[];
+  // M029/T003 (AC003): runtime-reported traceability, null when absent.
+  driver: string | null;
+  model: string | null;
   result: Task['result'];
 }
 
@@ -41,6 +44,8 @@ export function buildTaskStatusView(root: string, taskId: string): TaskStatusVie
     name: task.name ?? null,
     status: task.status,
     dependsOn: task.depends_on,
+    driver: task.driver ?? null,
+    model: task.model ?? null,
     result: task.result,
   };
 }

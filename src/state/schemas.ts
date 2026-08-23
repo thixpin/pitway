@@ -171,6 +171,11 @@ export const taskSchema = z
       .strictObject({ summary: z.string().min(1), evidence: z.string().min(1) })
       .nullable(),
     attempts: z.number().int().nonnegative().optional(),
+    // M029/T003 (AC003): additive-optional driver/model traceability --
+    // runtime-reported by the driving agent, stored in PitWay-owned evidence
+    // (tasks.yaml), surfaced via task-status; never added to Git trailers.
+    driver: z.string().min(1).max(80).optional(),
+    model: z.string().min(1).max(80).optional(),
     usage: taskUsageSchema,
   })
   .superRefine((task, ctx) => {

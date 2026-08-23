@@ -33,10 +33,10 @@ describe('composeMessage', () => {
     expect(result).toContain('PitWay-Task: T001');
   });
 
-  it('strips a Co-Authored-By line matching a known AI email exactly', () => {
+  it('preserves every Co-Authored-By trailer verbatim -- PitWay maintains no AI co-author identity (M029/AC003)', () => {
     const input = 'feat: x\n\nCo-Authored-By: Claude <noreply@anthropic.com>';
     const result = composeMessage(input, {});
-    expect(result).not.toContain('Co-Authored-By');
+    expect(result).toContain('Co-Authored-By: Claude <noreply@anthropic.com>');
   });
 
   it('preserves a legitimate human Co-Authored-By trailer', () => {
