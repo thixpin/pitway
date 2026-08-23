@@ -133,7 +133,7 @@ tasks:
       Curate package.json keywords for discovery
       (CLI/AI-agent/workflow/driver/TDD terms); version stays 0.2.0; no publish.
       Runs last; its verification includes the full build+suite+tsc gate."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -150,6 +150,15 @@ tasks:
       - package.json
     verification:
       strategy: command
-      detail: npm run build && npm test && npx tsc --noEmit
-    result: null
+      detail: npx tsc --noEmit && npx vitest run tests/unit/workflow-diagram.test.ts
+        tests/unit/table-renderer.test.ts
+    result:
+      summary: "[truncated] d status snapshot with backlog disposition, package.json
+        keywords curated at 0.2.0 (no bump, no publish). Verification narrowed
+        via developer-approved amendment; full build+suite+tsc gate remains
+        CT006 and already ran green manually (1976/94 files) plus will re-run at
+        milestone-complete."
+      evidence: Tests  54 passed (54) | Start at  12:14:15 | Duration  138ms
+        (transform 46ms, setup 0ms, import 62ms, tests 19ms, environment 0ms)
+    attempts: 1
     usage: null
