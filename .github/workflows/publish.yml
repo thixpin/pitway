@@ -1,10 +1,9 @@
 name: Publish to npm
 
-# Two ways to run this: push a `v*` tag (e.g. `v0.1.1`) and it runs
-# automatically, or trigger it by hand from the Actions tab
-# ("Run workflow" -- workflow_dispatch). A tag-triggered run refuses if the
-# tag doesn't match package.json's version, so an accidental/stale tag can
-# never publish the wrong thing.
+# Git tag v* -> validate -> test + typecheck -> `npm stage publish`.
+# Approval happens on npmjs.com ("Staged Packages" tab, 2FA required) --
+# not here. `npm stage approve` can't run under OIDC, so this workflow
+# never attempts it.
 on:
   push:
     tags:
@@ -13,14 +12,12 @@ on:
 
 permissions:
   contents: read
-  # Trusted Publishing (OIDC): lets this workflow exchange a short-lived
-  # GitHub-issued identity token for npm publish credentials -- no NPM_TOKEN
-  # secret needed. Configured on npm's side against this exact repo +
-  # workflow filename (thixpin/pitway, publish.yml).
+  # Trusted Publishing (OIDC) -- no NPM_TOKEN secret. Configured on npm's
+  # side via `npm trust github --allow-stage-publish` (not --allow-publish).
   id-token: write
 
 jobs:
-  publish:
+  stage:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -29,20 +26,16 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Update npm (Trusted Publishing/OIDC needs npm >= 11.5.1)
-        # Pinned to the 11.x line, not @latest: npm 12 requires Node
-        # >=22.22.2/24.15.0/26, which this Node 20 runner doesn't have, and
-        # broke this exact step. npm 11.5.1's own engine requirement
-        # (^20.17.0 || >=22.9.0) is compatible with Node 20.
-        run: npm install -g npm@^11.5.1
+      - name: Update npm (staged publishing needs npm >= 11.15.0)
+        run: npm install -g npm@^11.15.0
 
-      - name: Verify the pushed tag matches package.json's version
+      - name: Validate release (tag matches package.json's version)
         if: github.event_name == 'push'
         run: |
           tag_version="${GITHUB_REF_NAME#v}"
@@ -52,11 +45,11 @@ jobs:
             exit 1
           fi
 
-      - name: Run tests
+      - name: Test release
         run: npm test
 
       - name: Typecheck
         run: npx tsc --noEmit
 
-      - name: Publish
-        run: npm publish
+      - name: Stage package
+        run: npm stage publish
