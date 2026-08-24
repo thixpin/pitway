@@ -7,11 +7,10 @@ drafts/
 
 # `pitway init`-installed output, not source. The real source lives at
 # src/integrations/claude/ (tracked) and is installed verbatim into a
-# managed repo's own .claude/ (never this one). /CLAUDE.md is hand-authored
-# and already tracked -- deliberately not listed here.
+# managed repo's own .claude/ (never this one). /CLAUDE.md and /AGENTS.md
+# are hand-authored and already tracked -- deliberately not listed here.
 /.claude/
 /.opencode/
-/AGENTS.md
 
 # Machine-local OpenCode configuration (developer's own, never tracked)
 opencode.json
