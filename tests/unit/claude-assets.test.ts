@@ -439,6 +439,47 @@ describe('M025 T004 driver report style verbatim relay + footer habit (AC004/B01
   });
 });
 
+// M031/T001 (AC001, AC005): documentation-presence regression test for the
+// new Sequential subagent dispatch section -- narrow contains/regex checks
+// against key phrases, never verbatim sentences, mirroring the M019
+// usage-propagation pattern above, so a future wording tweak doesn't break
+// this test. Written first and failing before the content exists (RED).
+describe('Sequential subagent dispatch (AC001, AC005)', () => {
+  it('dispatch.md documents the new Sequential subagent dispatch section', () => {
+    const text = shippedContent('dispatch.md').toString('utf8');
+    expect(text).toMatch(/[Ss]equential subagent dispatch/);
+  });
+
+  it('dispatch.md states the driver-agnostic resume-or-fresh-dispatch fallback', () => {
+    const text = shippedContent('dispatch.md').toString('utf8');
+    expect(text).toMatch(/resume[\s\S]{0,400}fresh/);
+  });
+
+  it('dispatch.md restates the usage-attribution MUST rule per dispatch/resume call', () => {
+    const text = shippedContent('dispatch.md').toString('utf8');
+    expect(text).toContain('--usage');
+    expect(text).toMatch(/per (dispatch|resume)/i);
+  });
+
+  it('dispatch.md states the AC005 context-isolation trade-off as its own distinct disclosure', () => {
+    const text = shippedContent('dispatch.md').toString('utf8');
+    expect(text).toMatch(/write_scope|enforced/);
+    expect(text).toMatch(/cannot enforce|cannot prevent/);
+  });
+
+  it('protocol-worker.md addendum keeps every Hard Rule unchanged for a resumed worker, including never calling pitway, with task authorization staying task-specific', () => {
+    const text = shippedContent('protocol-worker.md').toString('utf8');
+    expect(text).toMatch(/resumed/i);
+    expect(text).toMatch(/never call `?pitway`?/i);
+    expect(text).toMatch(/task-specific/);
+  });
+
+  it('protocol-driver.md points to the new dispatch.md subsection from Dispatch discipline', () => {
+    const text = shippedContent('protocol-driver.md').toString('utf8');
+    expect(text).toMatch(/[Ss]equential subagent dispatch/);
+  });
+});
+
 // M023/T001/AC003(a): ONE-TIME MIGRATION CHECK. This inline sha256 manifest
 // pins every asset path + content hash exactly as shipped BEFORE this
 // milestone moved the driver-agnostic assets from src/integrations/claude/
@@ -486,12 +527,12 @@ const PRE_M023_ASSET_MANIFEST: ReadonlyArray<readonly [string, string]> = [
   ['commands/verify.md', '52b73c2b87cf76d8511ee5d0681ecba3066f9bb65a67cf8405b13c73c1313e28'],
   ['commands/write-ms-artifacts.md', 'e86d1c8243789948fbb4fa98bcb050acb77b4fc34fc6c32d25af276b905a11cd'],
   ['coordination.md', 'b7af25661169ec0dc0caca9f7a395c23f71b97f22d9a9bca0cb9673968c0500f'],
-  ['dispatch.md', 'cb2880f2ce1fc2cf4af98a9b32fb154c4c393bf702ac5fd045de7314650f055c'],
+  ['dispatch.md', 'f7a5b90226872cc4536ed46ee6239c9b82b42187f37a51306716c010416ae495'],
 ['draft-formats.md', '6acdab2c76b7f7dfddfd715fd61d51a126d1f9945b8b11023ef0a50b0856df21'],
   ['interactive-ux.md', 'e8cc6c74b807247ff2f9b35abb5d85622f904b462b5ac4c2a0b20be4f2587aa1'],
   ['lsp-guidance.md', 'e2fc2650c5f53b1ff569db8a340a96d9e6975bc4e2eea5c0a36a745a1fe18b78'],
-  ['protocol-driver.md', '8b335ca297ccb74befd7819feebba5597687961b3406258b17f2d1b80d8f1d3d'],
-  ['protocol-worker.md', '44fc562967c7a7563010a421af311cc3699157af2d5b0f174d34d7afb1681a60'],
+  ['protocol-driver.md', '94e0396b4413ff1a191aa88c35bf205fceb7dd217c9e230f4c200d1bc640f309'],
+  ['protocol-worker.md', '8aa76eac4952afc447cd090356680aa372eed15edcbe16e6728a64ff330b3393'],
   ['report-format.md', '1f78522fe1c9cfad3ff9afa1b3d915e00dd640d2433a52ce63544dde1d6e8dbf'],
   ['skills/NOTICE.md', '8d5dd0d6fb2753abf21aef4e98a3a2969dfac37dea91f059d117424da0dc5976'],
   ['skills/architecture-review/SKILL.md', 'd3c79781c122f8c60ad00fc35ad050dc260fa9b4d57c28217386fda1fd39a7cc'],

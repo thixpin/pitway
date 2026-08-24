@@ -41,6 +41,18 @@ beyond what it and this document say.
   (summary and evidence are capped on the way in; keep them dense rather
   than exhaustive).
 
+## Resumed for a later task in a chain
+
+If the driver resumes you — the same worker identity — for a subsequent
+task in a sequential dispatch chain, every Hard Rule above stays unchanged:
+in particular, you still never call `pitway` or touch `.pitway/`. Task
+authorization stays task-specific: carry forward none of a prior task's
+write scope or acceptance criteria into the next task's execution — only
+the new bundle you were just handed defines what you may touch and what
+you're judged against. (Ambient context you happen to retain from a prior
+turn is a separate matter, governed by `dispatch.md`'s "Context-isolation
+trade-off", not by this Hard-Rule addendum.)
+
 ## Discovering unrelated, non-blocking issues
 
 If mid-task you discover an issue that is **unrelated, non-blocking** — it does not prevent you from completing your declared objective and acceptance criteria and it is not within your task's own scope — **do not expand scope to fix it**. **Surface/report it immediately** in your report, naming the discovering task (your task id) with enough detail for triage, so it is captured as a backlog item through the existing PitWay workflow/host mechanism (e.g., the driver/host records it via `pitway backlog add`) instead of expanding the current task's scope.
