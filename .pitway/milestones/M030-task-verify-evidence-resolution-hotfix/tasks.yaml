@@ -166,7 +166,7 @@ tasks:
       PRE_M023_ASSET_MANIFEST to match the new content. Run this milestone's
       full-suite/typecheck gate via 'pitway task-verify T003 --timeout 900000'
       (task-verify's default 120000ms budget is too short for build+test+tsc)."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -188,16 +188,21 @@ tasks:
       - src/integrations/codex/commands/task-verify.md
       - src/integrations/opencode/commands/task-update.md
       - src/integrations/opencode/commands/task-verify.md
-      - .claude/protocol-driver.md
-      - .claude/commands/task-update.md
-      - .claude/commands/task-verify.md
-      - .opencode/commands/task-update.md
-      - .opencode/commands/task-verify.md
       - tests/unit/claude-assets.test.ts
+      - src/core/tasks/update.ts
     verification:
       strategy: command
       detail: npx vitest run tests/unit/claude-assets.test.ts
         tests/unit/opencode-assets.test.ts tests/unit/codex-assets.test.ts &&
         npm run build && npm test && npx tsc --noEmit
-    result: null
+    result:
+      summary: "[truncated] nce) and widened write_scope to include
+        src/core/tasks/update.ts for a one-line non-null-assertion fix to a type
+        error tsc caught in T001's already-completed resolveTaskVerifyEvidence
+        (runtime-green, type-red -- zero behavior change). Full gate green:
+        2007/2007 tests, tsc --noEmit clean."
+      evidence: Tests  2007 passed (2007) | Start at  12:16:54 | Duration  170.85s
+        (transform 4.70s, setup 0ms, import 19.63s, tests 1158.89s, environment
+        11ms)
+    attempts: 1
     usage: null

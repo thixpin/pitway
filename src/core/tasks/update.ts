@@ -327,7 +327,10 @@ function resolveTaskVerifyEvidence(
   if (matches.length === 0) return undefined;
 
   const passing = [...matches].reverse().find(isExecutionPassing);
-  const selected = passing ?? matches[matches.length - 1];
+  // matches.length > 0 was just checked above, so the fallback index is
+  // always in bounds; the non-null assertion documents that invariant for
+  // noUncheckedIndexedAccess rather than widening selected's type.
+  const selected = passing ?? matches[matches.length - 1]!;
   validateTaskVerifyEvidence(root, task, selected);
   return selected;
 }

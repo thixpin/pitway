@@ -201,3 +201,17 @@ checked-clean confirmation of AC001's pass/fail/staleness boundary (no
 change). Recorded in `reviews.yaml` under this milestone.
 
 ## Change Log
+
+- 2026-08-24: T003's `write_scope` amended to drop `.claude/protocol-driver.md`,
+  `.claude/commands/task-update.md`, `.claude/commands/task-verify.md`,
+  `.opencode/commands/task-update.md`, `.opencode/commands/task-verify.md`.
+  Discovered mid-task: `.gitignore` excludes `/.claude/` and `/.opencode/` at
+  the repo root ("local dogfood installs, never the tracked product output;
+  `src/integrations/<driver>/` is the real shipped asset source, installed
+  verbatim into *other* repos, never this one") -- `task-verify` correctly
+  refuses a declared write_scope path that is git-ignored, since it can never
+  be committed. AC003's text is unaffected (it never named these specific
+  paths as write_scope, only as "this repo's own installed dogfood copies"
+  to update); those five files were still edited to stay in sync for local
+  convenience, but sit outside git's purview and outside any verifiable task
+  scope. Developer-approved before this amendment ran.

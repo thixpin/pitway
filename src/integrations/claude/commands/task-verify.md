@@ -19,22 +19,29 @@ ad hoc independent rerun-and-eyeball of the verification command — see
 `../protocol-driver.md`. It does not replace your own diff/write_scope
 review, which still happens first, every time.
 
-Must run while the task is still `in_progress` — before `pitway task-update
-<id> review`, not after (`review`'s own `tasks.yaml` rewrite never
-invalidates a recorded evidence record).
+Must run while the task is `in_progress` — before `pitway task-update <id>
+review`, not after (`review`'s own `tasks.yaml` rewrite never invalidates a
+recorded evidence record). If completion later refuses because no recorded
+record resolves cleanly, `pitway task-update <id> in_progress` is a legal
+recovery transition from `review` — run `task-verify` again from there to
+produce a fresh record.
 
 `pitway task-update <id> completed` then resolves one record — implicitly,
-the newest one for this task, or explicitly via `--evidence <id>` — and
-validates it (task identity, run success, attempt match, command match,
-write_scope match, fingerprint match) before completing. On success, its
-captured evidence unconditionally becomes the **persisted result
-evidence** — the final, capped string that lands in `task.result.evidence`
-— replacing whatever `--result`'s file carried for that field.
+the newest one whose own run passed (searched newest-to-oldest, so a later
+failing re-run never masks an earlier passing record), or explicitly via
+`--evidence <id>` (strict: no such search, a failing or stale record named
+explicitly still refuses) — and validates it (task identity, run success,
+attempt match, command match, write_scope match, fingerprint match) before
+completing. On success, its captured evidence unconditionally becomes the
+**persisted result evidence** — the final, capped string that lands in
+`task.result.evidence` — replacing whatever `--result`'s file carried for
+that field.
 
 **Once any evidence record exists for a task, plain `--result`/`--message`
-completion can no longer bypass it.** The only way forward is a fresh,
-passing `task-verify` run producing a newer valid record. This is not a
-documented escape hatch; there isn't one.
+completion can no longer bypass it.** But a task is never permanently
+stuck: if no recorded record resolves cleanly at completion, recover with
+`pitway task-update <id> in_progress`, then run `task-verify` again to
+produce a fresh, valid record.
 
 See `../protocol-driver.md` and `../dispatch.md`. Run `pitway task-verify
 --help` for flags.

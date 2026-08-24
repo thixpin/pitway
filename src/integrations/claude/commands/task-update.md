@@ -20,6 +20,14 @@ commit its files atomically, `blocked`/`failed` when a worker couldn't
 proceed. `--result`'s `summary`/`evidence` are capped on the way in — see
 `../report-format.md`.
 
+`in_progress` is also a legal *recovery* transition from `review` — for a
+task stuck there because `completed` couldn't resolve any valid
+`task-verify` evidence. Unlike the fresh-start case, this tolerates the
+task's own already-dirty `write_scope`/`relevant_files` paths (carried over
+uncommitted from the original attempt); any other unrelated dirty path
+still refuses. The same applies to `failed`/`blocked → ready → in_progress`
+retries. See `../task-verify.md`.
+
 `--usage <json>` accumulates measured token usage onto the task — a MUST
 when completing a dispatched worker's task and its tool result reported
 usage (`../dispatch.md` step 8, `../protocol-driver.md` "Dispatch
