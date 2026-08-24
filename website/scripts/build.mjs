@@ -379,6 +379,21 @@ export async function copyWorkflowDiagram(svgPath, outDir, fileName = "workflow.
   return outputPath;
 }
 
+/**
+ * Developer-only entry point (never run in CI, never part of `main()`):
+ * re-render docs/assets/workflow.mmd via mmdc and overwrite the committed
+ * docs/assets/workflow.svg in place. Run by hand after editing
+ * workflow.mmd (`npm run generate:workflow-svg`), then commit the result.
+ */
+async function regenerateWorkflowDiagram() {
+  const outputPath = await renderWorkflowDiagram(
+    WORKFLOW_MMD,
+    path.dirname(WORKFLOW_SVG),
+    path.basename(WORKFLOW_SVG),
+  );
+  console.log(`Regenerated ${outputPath}`);
+}
+
 async function main() {
   await fsp.rm(OUT_DIR, { recursive: true, force: true });
   await fsp.mkdir(OUT_DIR, { recursive: true });
@@ -399,7 +414,10 @@ const isMain =
   process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
 
 if (isMain) {
-  main().catch((err) => {
+  const task = process.argv.includes("--regen-workflow-diagram")
+    ? regenerateWorkflowDiagram
+    : main;
+  task().catch((err) => {
     console.error(err);
     process.exitCode = 1;
   });

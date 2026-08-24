@@ -10,6 +10,7 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
+    "generate:workflow-svg": "node scripts/build.mjs --regen-workflow-diagram",
     "check:seo": "node scripts/check-seo.mjs",
     "check:a11y": "node scripts/check-a11y.mjs"
   },
