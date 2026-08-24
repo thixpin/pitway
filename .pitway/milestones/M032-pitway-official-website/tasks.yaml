@@ -250,7 +250,7 @@ tasks:
       PitWay icon/brand assets (none exist beyond docs/assets/workflow.svg,
       confirmed by inspection) rather than introducing an unrelated icon system
       without cause."
-    status: in_progress
+    status: completed
     depends_on:
       - T002
       - T003
@@ -276,7 +276,17 @@ tasks:
         breakpoints for the specified visual identity, responsive layout
         (including docs section nav), keyboard-focus visibility, reduced-motion
         behavior, and Mermaid SVG readability in context.
-    result: null
+    result:
+      summary: "[truncated] found the CSS itself is correct but never reaches the
+        page: build.mjs's <head> wrapper has no stylesheet <link> and never
+        copies these files into the build output -- a real gap outside this
+        task's write_scope, now tracked as T012 (depends_on this task's files,
+        sequenced after T008/T011)."
+      evidence: website/styles/tokens.css, layout.css, typography.css reviewed against
+        AC005's color/breakpoint/focus/motion requirements -- all present and
+        correctly authored. Live browser load of the built homepage confirmed
+        the known T012 gap (unstyled render) rather than any defect in these
+        three files themselves.
     attempts: 1
     usage: null
   - id: T004
@@ -296,7 +306,7 @@ tasks:
       Document a manual-check list (keyboard navigation, reduced-motion
       behavior, video captions if any video ships) that automated tooling cannot
       verify."
-    status: waiting
+    status: ready
     depends_on:
       - T002
       - T003
@@ -567,4 +577,97 @@ tasks:
         --allow-scripts-pending` to review, or `npm approve-scripts <pkg>` to
         allow."
     attempts: 1
+    usage: null
+  - id: T011
+    name: Transparent edge-label backgrounds on the canonical diagram
+    objective: "Fix the second visual bug the developer flagged inspecting the live
+      website (docs/assets/workflow.mmd's classDef fix from T010 only covered
+      node text): the 🔄 loop-icon edge labels on the three dotted retry arrows
+      (R -.->C, QC2-.->TTD, G-.->F) render with an opaque near-white background
+      chip on the website's #111629 dark background. Root-caused by rendering
+      the current build: build.mjs's theme config sets
+      themeVariables.edgeLabelBackground to DIAGRAM_NODE_FILL (#E8EEF7, a light
+      color) for Mermaid's base theme, and the generated SVG's <style> block
+      carries that value into four rules -- .edgeLabel, .edgeLabel p, .edgeLabel
+      rect (background-color and fill), and .labelBkg (as an rgba() of the same
+      color, not hex) -- none of which are overridden to transparent the way
+      T007 already overrides .node path's fill. Extend renderWorkflowDiagram's
+      existing SVG post-process step (the same regex-replace technique already
+      used for .node path and the stroke/cluster-label fixes, immediately before
+      the file is rewritten) to also drive those four edge-label rules to
+      transparent -- overrideCssColor already handles the three hex-color rules;
+      .labelBkg's rgba() form needs its own small replace since overrideCssColor
+      only matches hex. Do not touch node fill/stroke/text color, cluster
+      styling, or workflow.mmd itself -- this is a build.mjs-only SVG
+      post-process addition, sequenced after T008 specifically to avoid a
+      concurrent edit on that same file."
+    status: waiting
+    depends_on:
+      - T008
+    acceptance_criteria:
+      - "the generated SVG's .edgeLabel, .edgeLabel p, and .edgeLabel rect
+        background-color/fill rules render as transparent, not #E8EEF7"
+      - the generated SVG's .labelBkg background-color rule renders as
+        transparent, not rgba(232, 238, 247, 0.5)
+      - node fill/stroke/text, cluster label color, and arrowhead color (all
+        fixed by earlier tasks) are unchanged
+      - a regression test in website/scripts/build.test.mjs pins the four
+        edge-label rules as transparent, alongside the existing .node path
+        transparency assertion
+      - root npm test, npm run build, and npx tsc --noEmit remain green and
+        unaffected
+    write_scope:
+      - website/scripts/build.mjs
+      - website/scripts/build.test.mjs
+    verification:
+      strategy: command
+      detail: cd website && npm ci && npm run build && cd .. && npm run build && npm
+        test && npx tsc --noEmit
+    result: null
+    usage: null
+  - id: T012
+    name: Wire T005's CSS into the built site's head
+    objective: "Fix a real gap found during T005's own manual verification (built
+      and visually loaded the homepage: it renders completely unstyled --
+      default browser rendering, no dark background, no accent colors, no
+      responsive layout -- because none of it ever loads).
+      website/styles/tokens.css, layout.css, and typography.css are correct and
+      complete (T005's own write_scope), but build.mjs's renderMarkdownToHtml
+      wrapper only emits charset/viewport/title into <head> and OUT_DIR never
+      receives the CSS files copied into it -- confirmed by grepping build.mjs
+      and both templates for \"styles/\"/\".css\": zero matches, and by grepping
+      the built dist HTML's <head> for a stylesheet <link>: none exists. Extend
+      build.mjs to (1) copy the three CSS files from website/styles/ into the
+      build output (e.g. dist/styles/) unmodified, and (2) emit a <link
+      rel=\"stylesheet\"> for each in every generated page's <head>, in cascade
+      order (tokens.css first -- layout.css and typography.css both consume its
+      custom properties -- then layout.css, then typography.css). Do not modify
+      website/styles/*.css themselves (T005's own scope, already correct), the
+      Mermaid diagram rendering path (T007/T010/T011's scope), or introduce a
+      CSS bundler/ build step beyond a plain file copy. Sequenced after both
+      T008 and T011 (both edit build.mjs) to avoid a concurrent edit on that
+      file."
+    status: waiting
+    depends_on:
+      - T008
+      - T011
+    acceptance_criteria:
+      - every built page's <head> contains a <link rel="stylesheet"> for
+        tokens.css, layout.css, and typography.css, in that cascade order
+      - the three CSS files land in the build output directory byte-identical to
+        their website/styles/ source
+      - website/styles/tokens.css, layout.css, and typography.css themselves are
+        unchanged
+      - a regression test in website/scripts/build.test.mjs pins the per-page
+        stylesheet links and the copied CSS output
+      - root npm test, npm run build, and npx tsc --noEmit remain green and
+        unaffected
+    write_scope:
+      - website/scripts/build.mjs
+      - website/scripts/build.test.mjs
+    verification:
+      strategy: command
+      detail: cd website && npm ci && npm run build && cd .. && npm run build && npm
+        test && npx tsc --noEmit
+    result: null
     usage: null

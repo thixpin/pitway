@@ -1,0 +1,263 @@
+/*
+ * Typography for the PitWay website: strong headings, generous line-height
+ * for prose, a monospace terminal voice for inline code/fences.
+ *
+ * Targets real markup emitted by website/scripts/build.mjs (marked) from
+ * website/content/**\/*.md and the embedded chrome those files carry --
+ * verified against website/templates/homepage.html, website/templates/
+ * docs.html, and the built website/dist/**\/*.html output. No class names
+ * are guessed: plain elements (h1-h4, p, ul/ol, code, pre, a, blockquote)
+ * plus the real .docs-* / .skip-link classes and #hero/#problem/etc.
+ * section ids used by the homepage and docs pages.
+ */
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 700;
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* Homepage hero h1 (#hero h1) and docs page h1 (main#main-content > h1,
+   the page's only h1 per T002/T003's heading-hierarchy contract). */
+#hero h1 {
+  font-size: var(--text-3xl);
+  margin: 0 0 var(--space-4);
+}
+
+.docs-main main#main-content h1 {
+  font-size: var(--text-2xl);
+  margin: 0 0 var(--space-5);
+}
+
+/* Homepage section headings (#problem h2, #how-it-works h2, etc.). */
+main#main-content section h2 {
+  font-size: var(--text-xl);
+  margin: 0 0 var(--space-4);
+}
+
+.docs-main main#main-content h2 {
+  font-size: var(--text-lg);
+  margin: var(--space-7) 0 var(--space-3);
+}
+
+.docs-main main#main-content h3 {
+  font-size: var(--text-base);
+  margin: var(--space-6) 0 var(--space-2);
+  color: var(--color-text-primary);
+}
+
+#hero p {
+  color: var(--color-text-secondary);
+  font-size: var(--text-lg);
+  max-width: var(--prose-max-width);
+}
+
+#hero p:first-of-type {
+  color: var(--color-text-primary);
+  font-size: var(--text-lg);
+  font-weight: 500;
+}
+
+main#main-content section p,
+main#main-content section li {
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.docs-main main#main-content p,
+.docs-main main#main-content li {
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  max-width: var(--prose-max-width);
+}
+
+main#main-content section ol {
+  padding-left: var(--space-5);
+}
+
+main#main-content section ol li {
+  margin-bottom: var(--space-3);
+}
+
+main#main-content section ol strong {
+  color: var(--color-text-primary);
+}
+
+/* Links: default state everywhere in the document, tuned for the terminal
+   accent. Focus styles live alongside these so every link picks them up. */
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-accent-strong);
+  text-decoration: underline;
+}
+
+/* Visible keyboard-focus style for every focusable element on the site
+   (nav links, CTA links, sidebar/breadcrumb/prev-next links, skip link). */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--focus-outline-color);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
+}
+
+/* Inline code and fenced code blocks (marked renders fences as
+   <pre><code class="language-*">...</code></pre>, verified in
+   website/dist/getting-started/index.html). */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--color-accent-strong);
+  background: var(--color-bg-inset);
+  padding: 0.15em 0.4em;
+  border-radius: var(--radius-sm);
+}
+
+pre {
+  font-family: var(--font-mono);
+  background: var(--color-bg-inset);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  line-height: var(--line-height-relaxed);
+}
+
+/* Docs breadcrumb trail (nav.docs-breadcrumbs > a, span[aria-hidden],
+   span[aria-current="page"]). */
+.docs-breadcrumbs {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.docs-breadcrumbs a {
+  color: var(--color-text-secondary);
+}
+
+.docs-breadcrumbs a:hover {
+  color: var(--color-accent);
+}
+
+.docs-breadcrumbs span[aria-hidden] {
+  margin: 0 var(--space-2);
+  color: var(--color-text-tertiary);
+}
+
+.docs-breadcrumbs span[aria-current="page"] {
+  color: var(--color-text-primary);
+}
+
+/* Docs sidebar text (p.docs-sidebar-title, p.docs-sidebar-section, links). */
+.docs-sidebar-title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  margin: 0 0 var(--space-5);
+}
+
+.docs-sidebar-title a {
+  color: var(--color-text-primary);
+}
+
+.docs-sidebar-section {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-tertiary);
+  margin: var(--space-5) 0 var(--space-2);
+}
+
+.docs-sidebar ul {
+  list-style: none;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+}
+
+.docs-sidebar a {
+  display: block;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.docs-sidebar a:hover {
+  color: var(--color-text-primary);
+}
+
+.docs-sidebar a[aria-current="page"] {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+/* Prev/next navigation labels (nav.docs-prevnext > a[rel]). */
+.docs-prevnext a {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* Skip-to-content link: real markup on both page types --
+   a[href="#main-content"] with class "skip-link" in docs.html, and an
+   unclassed <a href="#main-content"> as the homepage's first link (see
+   website/content/pages/index.md line 22 / dist/pages/index.html). The
+   attribute selector below covers both without guessing a class that the
+   homepage doesn't actually use. */
+a[href="#main-content"] {
+  font-weight: 600;
+}
+
+/* Homepage primary nav (header nav[aria-label="Primary"] ul li a) and
+   footer links. */
+header nav[aria-label="Primary"] a,
+footer a {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+header nav[aria-label="Primary"] a:hover,
+footer a:hover {
+  color: var(--color-accent);
+}
+
+footer p {
+  color: var(--color-text-tertiary);
+  font-size: var(--text-xs);
+}
+
+/* Prefers-reduced-motion: this file's only motion is the color transition
+   on `a`. Disable it (and any other transition/animation introduced across
+   the three CSS files) for users who've asked for reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
