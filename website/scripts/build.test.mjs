@@ -294,6 +294,25 @@ test("generates sitemap.xml and robots.txt from whatever HTML pages exist", asyn
   }
 });
 
+test("excludes 404.html from the sitemap while still building it as a page", async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "pitway-website-"));
+  try {
+    await fs.writeFile(path.join(tmpDir, "index.html"), "<html></html>", "utf8");
+    await fs.writeFile(path.join(tmpDir, "404.html"), "<html></html>", "utf8");
+
+    const { urlPaths } = await generateSitemapAndRobots({
+      outDir: tmpDir,
+      siteUrl: "https://example.com",
+    });
+    assert.deepEqual(urlPaths, ["/"]);
+
+    const sitemap = await fs.readFile(path.join(tmpDir, "sitemap.xml"), "utf8");
+    assert.doesNotMatch(sitemap, /404\.html/);
+  } finally {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test("generates an empty-but-valid sitemap/robots when no pages exist yet", async () => {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "pitway-website-"));
   try {

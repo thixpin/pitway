@@ -63,7 +63,12 @@ export async function generateSitemapAndRobots({
   siteUrl = DEFAULT_SITE_URL,
 }) {
   const htmlFiles = await findHtmlFiles(outDir);
-  const urlPaths = htmlFiles.map((file) => toUrlPath(outDir, file)).sort();
+  // 404.html is an error page, not a real destination -- standard practice
+  // is to keep it out of the sitemap entirely.
+  const urlPaths = htmlFiles
+    .filter((file) => path.basename(file) !== "404.html")
+    .map((file) => toUrlPath(outDir, file))
+    .sort();
 
   await fs.writeFile(
     path.join(outDir, "sitemap.xml"),

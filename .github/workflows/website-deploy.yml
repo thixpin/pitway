@@ -104,3 +104,8 @@ jobs:
 #      values from steps 1-2 (Settings -> Secrets and variables -> Actions
 #      -> Variables). Once AWS_DEPLOY_ROLE_ARN is non-empty, the `deploy`
 #      job above starts running on every push to the website branch.
+#   4. Set the S3 bucket's static-website-hosting ErrorDocument to
+#      404.html (dist/404.html is already built and synced by the `deploy`
+#      job above; only the bucket's own error-document setting is a
+#      one-time, external, console/CLI-side step, not something this
+#      workflow can configure).
