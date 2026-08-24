@@ -352,7 +352,10 @@ describe('pitway milestone-status --report (M013/T006)', () => {
     const tableLines = output.split('\n').filter((l) => l.startsWith('|'));
     const collapsed = tableLines.map((l) => l.replace(/\s+\|/g, ' |'));
     const hasHeader = collapsed.some((l) => /^\| Task \| Label \| Execution \| Status \| Tokens \|$/.test(l));
-    const hasT001 = collapsed.some((l) => /\| T001 \| Config schema \| — \| ✓ Completed · verified \|\s+100 \|$/.test(l));
+    // B028: T001 is completed with no worktree_integrate record, so its real
+    // execution mode is "inline" -- not the em-dash placeholder the report
+    // view previously hardcoded for every task regardless of actual mode.
+    const hasT001 = collapsed.some((l) => /\| T001 \| Config schema \| inline \| ✓ Completed · verified \|\s+100 \|$/.test(l));
     const hasT002 = collapsed.some((l) => l.startsWith('| T002 | '));
     const hasNA = collapsed.some((l) => /\|\s+N\/A \|$/.test(l));
     expect(hasHeader && hasT001 && hasT002 && hasNA).toBe(true);
@@ -370,6 +373,38 @@ describe('pitway milestone-status --report (M013/T006)', () => {
       tasks: Array<{ id: string; label: string }>;
     };
     expect(view.tasks[0]!.label).toBe(`${'x'.repeat(60)}…`);
+  });
+
+  // B028: buildProgressReportView hardcoded executionMode: null for every
+  // task, so --report's Execution column always rendered an em dash
+  // regardless of how a task actually ran -- unlike plain milestone-status,
+  // which correctly calls resolveExecutionMode. Same fixture/assertion shape
+  // as the plain-view "worktree"/"inline" tests above, run through --report.
+  it('shows the real per-task execution mode in --report, not always an em dash', async () => {
+    const { appendWorktreeIntegrateRecord } = await import('../../src/state/journal.js');
+    appendWorktreeIntegrateRecord(root, {
+      id: 'wti-report-test',
+      dispatchId: 'wtd-report-test',
+      milestone: 'M001',
+      taskId: 'T002',
+      workerSha: 'a'.repeat(40),
+      at: new Date().toISOString(),
+    });
+
+    const view = JSON.parse(await runStatus(['--report', '--json'])) as {
+      tasks: Array<{ id: string; executionMode: string | null }>;
+    };
+    expect(view.tasks.find((t) => t.id === 'T001')).toMatchObject({ executionMode: 'inline' });
+    expect(view.tasks.find((t) => t.id === 'T002')).toMatchObject({ executionMode: 'worktree' });
+    expect(view.tasks.find((t) => t.id === 'T003')).toMatchObject({ executionMode: null });
+
+    const output = await runStatus(['--report']);
+    const collapsed = output
+      .split('\n')
+      .filter((l) => l.startsWith('|'))
+      .map((l) => l.replace(/\s+\|/g, ' |'));
+    expect(collapsed.some((l) => l.startsWith('| T001 | ') && l.includes(' inline '))).toBe(true);
+    expect(collapsed.some((l) => l.startsWith('| T002 | ') && l.includes(' worktree '))).toBe(true);
   });
 });
 
