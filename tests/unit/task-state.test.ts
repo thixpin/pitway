@@ -20,6 +20,7 @@ const LEGAL: Array<[TaskStatus, TaskStatus]> = [
   ['ready', 'in_progress'],
   ['in_progress', 'review'],
   ['review', 'completed'],
+  ['review', 'in_progress'],
   ['in_progress', 'blocked'],
   ['blocked', 'ready'],
   ['in_progress', 'failed'],

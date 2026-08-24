@@ -305,6 +305,44 @@ describe('pitway task-update to in_progress (AC014)', () => {
     expect(retry.error).toBeUndefined();
     expect(task('T001').attempts).toBe(1);
   });
+
+  // M030/T002 (AC002): a genuine first attempt (attempts 0/undefined) keeps
+  // the dirty-tree check strict -- write_scope dirt is never expected before
+  // any work has actually started. This locks in AC014/M005-T004's original
+  // guarantee under the new attempts-based mechanism.
+  it('refuses a fresh first attempt with unexpected write_scope dirt (AC014 unweakened)', async () => {
+    touchRelevantFile();
+    const { error } = await update(['T001', 'in_progress']);
+    expect(error?.message).toMatch(/src\/a\.ts/);
+    expect(task('T001').status).toBe('ready');
+    expect(task('T001').attempts).toBeUndefined();
+  });
+
+  // M030/T002 (AC002): failed/blocked -> ready -> in_progress retry hits the
+  // same dirty-tree check as review recovery, and never commits either --
+  // this was a live, pre-existing gap (reproduced against a clean scratch
+  // repo on main during this milestone's architect review) before this fix.
+  it('failed -> ready -> in_progress retry tolerates the write_scope dirt carried over from the failed attempt', async () => {
+    await update(['T001', 'in_progress']);
+    touchRelevantFile();
+    await update(['T001', 'failed']);
+    await update(['T001', 'ready']);
+    const { error } = await update(['T001', 'in_progress']);
+    expect(error).toBeUndefined();
+    expect(task('T001').status).toBe('in_progress');
+    expect(task('T001').attempts).toBe(2);
+  });
+
+  it('blocked -> ready -> in_progress retry tolerates the write_scope dirt carried over from the blocked attempt', async () => {
+    await update(['T001', 'in_progress']);
+    touchRelevantFile();
+    await update(['T001', 'blocked']);
+    await update(['T001', 'ready']);
+    const { error } = await update(['T001', 'in_progress']);
+    expect(error).toBeUndefined();
+    expect(task('T001').status).toBe('in_progress');
+    expect(task('T001').attempts).toBe(2);
+  });
 });
 
 describe('pitway task-update non-committing transitions (AC017)', () => {
@@ -858,13 +896,18 @@ describe('pitway task-update start tolerates pending journal entries materialize
   });
 });
 
-// T002/AC001: task-update's evidence integration. Implicit-by-default,
-// selection-then-validate: the newest task_verify_evidence record for this
-// milestone+task is selected (never filtered by attempt/command/
-// write_scope/fingerprint), then validated once; any mismatch refuses
-// completion outright, naming exactly what differs, never searching backward
-// to an older record that happens to match. No record at all falls through
-// to the existing --result/--message path, unchanged.
+// T002/AC001 (M013), extended M030/T001 (AC001): task-update's evidence
+// integration. Implicit-by-default, selection-then-validate: matches are
+// searched newest-to-oldest for the first record whose *execution* passed
+// (terminationReason exited, exitCode 0, no typecheck failure) -- a later
+// execution-failing record never masks an earlier execution-passing one.
+// That single selected candidate then undergoes the existing full staleness
+// validation (task identity, attempt, command, write_scope, fingerprint)
+// exactly as before; a staleness mismatch on it still refuses immediately,
+// naming exactly what differs, never searching further back past a
+// staleness failure. When no record's execution passed at all, selection
+// refuses citing the newest record's own failing-run error. No record at
+// all falls through to the existing --result/--message path, unchanged.
 describe('pitway task-update integrates task-verify evidence (T002/AC001)', () => {
   beforeEach(async () => {
     await inReview();
@@ -977,6 +1020,48 @@ describe('pitway task-update integrates task-verify evidence (T002/AC001)', () =
     expect(task('T001').status).toBe('review');
   });
 
+  // M030/T001 (AC001): the masking-bug regression -- a later execution-
+  // failing record must never mask an earlier execution-passing, valid one.
+  it('a single later execution-failing record never masks an earlier passing one', async () => {
+    appendEvidence();
+    appendEvidence({ exitCode: 1 });
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(task('T001').result).toEqual({
+      summary: 'Implemented the thing.',
+      evidence: 'captured evidence from a real verify run',
+    });
+  });
+
+  it('multiple later execution-failing records never mask an earlier passing one', async () => {
+    appendEvidence();
+    appendEvidence({ exitCode: 1 });
+    appendEvidence({ terminationReason: 'timeout' });
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(task('T001').result).toEqual({
+      summary: 'Implemented the thing.',
+      evidence: 'captured evidence from a real verify run',
+    });
+  });
+
+  it('when several records all fail, refuses citing the newest one specifically', async () => {
+    appendEvidence({ exitCode: 1 });
+    const newestId = appendEvidence({ terminationReason: 'timeout' });
+    const { error } = await completeT001();
+    expect(error?.message).toMatch(/failing run/i);
+    expect(error?.message).toContain(newestId);
+    expect(task('T001').status).toBe('review');
+  });
+
+  it('explicit --evidence at a failing id still refuses, unchanged (no backward search)', async () => {
+    const failingId = appendEvidence({ exitCode: 1 });
+    appendEvidence();
+    const { error } = await completeT001(['--evidence', failingId]);
+    expect(error?.message).toMatch(/failing run/i);
+    expect(task('T001').status).toBe('review');
+  });
+
   it('refuses when write_scope/relevant_files no longer matches what the evidence covers', async () => {
     appendEvidence({ fingerprint: { entries: [{ path: 'src/other.ts', state: 'missing', hash: 'MISSING' }] } });
     const { error } = await completeT001();
@@ -989,6 +1074,31 @@ describe('pitway task-update integrates task-verify evidence (T002/AC001)', () =
     const { error } = await completeT001(['--evidence', id]);
     expect(error?.message).toMatch(/task mismatch/);
     expect(task('T001').status).toBe('review');
+  });
+
+  // M030/T002 (AC002): a task stuck in review with no valid evidence can
+  // recover to in_progress, producing a fresh record; the recovery
+  // transition itself must tolerate the task's own already-dirty
+  // write_scope file (carried over uncommitted from the original attempt).
+  it('review -> in_progress recovers a task whose only evidence failed, producing a new valid record', async () => {
+    appendEvidence({ exitCode: 1 });
+    const blocked = await completeT001();
+    expect(blocked.error?.message).toMatch(/failing run/i);
+    expect(task('T001').status).toBe('review');
+
+    const recovered = await update(['T001', 'in_progress']);
+    expect(recovered.error).toBeUndefined();
+    expect(task('T001').status).toBe('in_progress');
+    expect(task('T001').attempts).toBe(2);
+
+    appendEvidence({ attempts: 2 });
+    expect((await update(['T001', 'review'])).error).toBeUndefined();
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(task('T001').result).toEqual({
+      summary: 'Implemented the thing.',
+      evidence: 'captured evidence from a real verify run',
+    });
   });
 });
 

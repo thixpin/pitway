@@ -224,6 +224,15 @@ function buildFingerprint(root: string, declaredPaths: string[]): JournalTaskVer
   });
 }
 
+// M030/T001 (AC001): a record's execution outcome alone, independent of
+// staleness -- shared by validateTaskVerifyEvidence's pass/fail check below
+// and resolveTaskVerifyEvidence's backward search, so the two never define
+// "passing" differently.
+function isExecutionPassing(record: JournalTaskVerifyEvidence): boolean {
+  const typecheckFailed = record.typecheck !== undefined && record.typecheck.exitCode !== 0;
+  return record.terminationReason === 'exited' && record.exitCode === 0 && !typecheckFailed;
+}
+
 // Selection-then-validate (T002/AC001): validates a single already-selected
 // candidate record, naming exactly what differs on any mismatch -- never
 // falling back to search for an older record that happens to match.
@@ -233,8 +242,8 @@ function validateTaskVerifyEvidence(root: string, task: Task, record: JournalTas
       `evidence record ${record.id} is stale: task mismatch (recorded for ${record.taskId}, current task ${task.id})`,
     );
   }
-  const typecheckFailed = record.typecheck !== undefined && record.typecheck.exitCode !== 0;
-  if (record.terminationReason !== 'exited' || record.exitCode !== 0 || typecheckFailed) {
+  if (!isExecutionPassing(record)) {
+    const typecheckFailed = record.typecheck !== undefined && record.typecheck.exitCode !== 0;
     throw new TaskUpdateError(
       `evidence record ${record.id} represents a failing run (terminationReason=${record.terminationReason}, ` +
         `exitCode=${record.exitCode}${typecheckFailed ? `, typecheck.exitCode=${record.typecheck?.exitCode}` : ''})`,
@@ -277,13 +286,21 @@ function validateTaskVerifyEvidence(root: string, task: Task, record: JournalTas
   }
 }
 
-// Implicit: newest record for this milestone+task, by append order --
-// selection never filters by attempt/command/write_scope/fingerprint, only
-// milestone+task identity. Explicit (--evidence <id>): the id alone is the
-// lookup key, never a milestone/task filter -- an unknown id is its own
-// distinct refusal, separate from a found-but-diverged record's mismatch
-// refusal. No record at all (implicit, nothing matches; explicit, never
-// supplied) falls through to the existing --result/--message path unchanged.
+// Implicit (M030/T001, AC001): matches are searched newest-to-oldest by
+// append order for the first record whose *execution* passed
+// (isExecutionPassing) -- so a later execution-failing record never masks
+// an earlier execution-passing one. That single candidate then undergoes
+// the same validateTaskVerifyEvidence staleness check as before; a
+// staleness mismatch on it still refuses immediately, citing that record --
+// the backward search never crosses into staleness, it only skips
+// execution-failing records. When no record's execution passed at all,
+// falls through to the newest record's own failing-run error, matching
+// today's behavior. Explicit (--evidence <id>): the id alone is the lookup
+// key, never a milestone/task filter, and never a backward search -- an
+// unknown id is its own distinct refusal, separate from a found-but-
+// diverged record's mismatch refusal. No record at all (implicit, nothing
+// matches; explicit, never supplied) falls through to the existing
+// --result/--message path unchanged.
 function resolveTaskVerifyEvidence(
   root: string,
   milestoneId: string,
@@ -307,10 +324,15 @@ function resolveTaskVerifyEvidence(
   const matches = records.filter(
     (r) => isEvidence(r) && r.milestone === milestoneId && r.taskId === task.id,
   ) as JournalTaskVerifyEvidence[];
-  const record = matches.length > 0 ? matches[matches.length - 1] : undefined;
-  if (record === undefined) return undefined;
-  validateTaskVerifyEvidence(root, task, record);
-  return record;
+  if (matches.length === 0) return undefined;
+
+  const passing = [...matches].reverse().find(isExecutionPassing);
+  // matches.length > 0 was just checked above, so the fallback index is
+  // always in bounds; the non-null assertion documents that invariant for
+  // noUncheckedIndexedAccess rather than widening selected's type.
+  const selected = passing ?? matches[matches.length - 1]!;
+  validateTaskVerifyEvidence(root, task, selected);
+  return selected;
 }
 
 // AC007 (M013): evidence-honest labeling for a completed task -- there is no
@@ -627,9 +649,26 @@ export function updateTask(
     // it has no commit of its own, and no other task could ever start to
     // reach the completion checkpoint that would fold it in. Attempts
     // increments exactly once per (re)start, deterministically.
-    const journalExpected = classifyDirtyPaths(root, { journalMilestone: milestoneId }).expected;
-    assertDirtySubset(root, [tasksRepoPath(root, milestoneId), ...journalExpected]);
-    updated.attempts = (task.attempts ?? 0) + 1;
+    //
+    // M030/T002 (AC002): a RETRY into in_progress -- from review (recovery),
+    // or from ready after failed/blocked -- carries genuinely dirty
+    // write_scope/relevant_files from the task's own prior, uncommitted
+    // attempt (none of review/failed/blocked ever commit). taskAttempts > 0
+    // is true exactly on a retry (attempts is immutable outside this one
+    // increment, per task-amend's AMENDABLE_FIELDS), so it uniformly grants
+    // the task's own declared paths expected-dirty status via
+    // classifyDirtyPaths' purpose-built taskWriteScope/verifiedCleanStart
+    // option, without needing to know which prior status led here. A
+    // genuine first attempt (taskAttempts === 0) keeps verifiedCleanStart
+    // false, leaving this guarantee exactly as strict as before.
+    const taskAttempts = task.attempts ?? 0;
+    const classified = classifyDirtyPaths(root, {
+      journalMilestone: milestoneId,
+      taskWriteScope: task.write_scope ?? task.relevant_files ?? [],
+      verifiedCleanStart: taskAttempts > 0,
+    });
+    assertDirtySubset(root, [tasksRepoPath(root, milestoneId), ...classified.expected]);
+    updated.attempts = taskAttempts + 1;
   }
   // AC017: every non-completion write touches tasks.yaml only and never commits.
   persistTask(root, milestoneId, tasksFile, updated);

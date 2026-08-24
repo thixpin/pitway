@@ -1,0 +1,208 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Fix evidence-selection pass/fail masking (TDD)
+    objective: "RED: extend tests/integration/task-update.test.ts's evidence-
+      integration describe block with cases proving a later execution-failing
+      task_verify_evidence record currently masks an earlier passing one (single
+      failing record on top, then multiple failing records on top), and add a
+      case proving explicit --evidence at a failing id still refuses (not
+      previously covered for the explicit path). GREEN: in
+      src/core/tasks/update.ts, extract a small isExecutionPassing predicate
+      (terminationReason === 'exited', exitCode === 0, no typecheck failure)
+      reused by validateTaskVerifyEvidence's existing pass/fail check; rewrite
+      resolveTaskVerifyEvidence's implicit path to search matches
+      newest-to-oldest, select the first execution-passing record found, run the
+      existing full validateTaskVerifyEvidence on that single selected candidate
+      exactly as today (a staleness mismatch on it still refuses immediately, no
+      further backward search), and when no record's execution passed at all,
+      fall back to the newest record's own failing-run error. Leave the explicit
+      --evidence path (single record, no search) untouched. Update the describe
+      block's own doc comment, which currently documents the old 'never falls
+      back' behavior, to state the pass/fail-only boundary precisely. Do not
+      modify the existing 'refuses citing the newer diverged record, never
+      falling back to an older matching one' test -- it must stay green
+      unmodified as the staleness boundary proof. Ownership note: this task's
+      update.ts edits are confined to
+      resolveTaskVerifyEvidence/validateTaskVerifyEvidence and their helpers
+      (~lines 227-314); T002 separately touches the target === 'in_progress'
+      branch (~lines 621-633) in the same file for its own, unrelated reason --
+      the two never edit the same lines."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - a single later execution-failing record never masks an earlier
+        execution-passing, valid one
+      - multiple later execution-failing records never mask an earlier
+        execution-passing, valid one
+      - no execution-passing record at all still refuses, citing the newest
+        record's own failing-run error, including when several records all fail
+      - explicit --evidence at a failing id still refuses, unchanged
+      - the existing diverged-command (staleness) test passes unmodified
+      - no task_verify_evidence journal record is ever mutated, overwritten, or
+        deleted
+    write_scope:
+      - src/core/tasks/update.ts
+      - tests/integration/task-update.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/integration/task-update.test.ts
+    result:
+      summary: "[truncated] g, shared by the validation check and the new selection
+        search. 5 new regression tests (masking by one/multiple failing records,
+        newest-failing-cited-when-none-pass, explicit --evidence still strict);
+        all 61 tests in the file pass, including the untouched diverged-command
+        staleness test."
+      evidence: Tests  61 passed (61) | Start at  11:59:58 | Duration  64.18s
+        (transform 305ms, setup 0ms, import 433ms, tests 63.65s, environment
+        0ms)
+    attempts: 1
+    usage: null
+  - id: T002
+    name: Unified in_progress-recovery dirty-tree fix (TDD)
+    objective: "RED: add the review -> in_progress pair to
+      tests/unit/task-state.test.ts's LEGAL transitions table (the file's
+      exhaustive illegal-pairs check is derived automatically from ALL_STATUSES
+      minus LEGAL, so this single addition also proves every other pairing
+      into/out of review stays refused; failed -> ready and blocked -> ready ->
+      in_progress are already legal, no table change needed for them). In
+      tests/integration/task-update.test.ts add: (1) an integration test driving
+      in_progress with a real dirty write_scope file present, a failing
+      task-verify run, review, a blocked completion attempt (refuses -- no
+      execution-passing record), task-update <id> in_progress (recovery), a
+      fresh task-verify run that passes, review, then completed -- asserting
+      attempts increments on recovery exactly as any other transition into
+      in_progress, and that the newly produced record is the one selected on
+      completion (assert the exact refusal reason at the blocked-completion step
+      deliberately -- the newest record's failing-run error, per T001's
+      resolution semantics); (2) a test proving failed -> ready -> in_progress
+      retry with a real dirty write_scope file succeeds (this currently fails on
+      main -- confirm RED by running it against the unmodified code first); (3)
+      the same for blocked -> ready -> in_progress; (4) a test proving a fresh
+      ready -> in_progress FIRST attempt with an unexpected dirty write_scope
+      file still refuses (locks in AC014/M005-T004's original guarantee under
+      the new mechanism). GREEN: in src/core/tasks/state-machine.ts, change the
+      review transitions entry to ['in_progress', 'completed']. In
+      src/core/tasks/update.ts's target === 'in_progress' branch (~lines
+      621-633) only: replace the current classifyDirtyPaths(root, {
+      journalMilestone: milestoneId }) call with classifyDirtyPaths(root, {
+      journalMilestone: milestoneId, taskWriteScope: task.write_scope ??
+      task.relevant_files ?? [], verifiedCleanStart: (task.attempts ?? 0) > 0 })
+      -- reusing src/git/safety.ts's existing, previously-unused taskWriteScope/
+      verifiedCleanStart option instead of a hand-rolled check, and reading
+      task.attempts BEFORE it is incremented below. attempts > 0 uniformly
+      covers review, failed, and blocked recovery (attempts is immutable outside
+      this one increment path -- confirm task-amend's AMENDABLE_FIELDS still
+      excludes it) without inspecting which specific prior status led here;
+      attempts 0/undefined (a genuine first attempt) keeps verifiedCleanStart
+      false, leaving AC014's original strictness unweakened. Leave the
+      completion-commit safety guard (the ambiguous-state check in completeTask)
+      untouched. Ownership note: this is a distinct region of update.ts from
+      T001's resolveTaskVerifyEvidence/validateTaskVerifyEvidence change (~lines
+      227-314) -- confirm the diff touches no lines T001 touched."
+    status: completed
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - review -> in_progress is legal; every other pairing into or out of
+        review stays refused exactly as before
+      - attempts increments on recovery, identically to every other transition
+        into in_progress
+      - the in_progress dirty-tree check reuses classifyDirtyPaths'
+        taskWriteScope/verifiedCleanStart option (no new hand-rolled dirty
+        check), keyed on attempts > 0, and accepts the task's own write_scope
+        carryover for review, failed, and blocked recovery alike
+      - a fresh ready -> in_progress first attempt with unexpected write_scope
+        dirt still refuses, proving AC014's guarantee is unweakened
+      - a full review recovery cycle (fail, recover, re-verify, succeed) is
+        proven end to end with a real dirty file on disk
+      - failed -> ready -> in_progress and blocked -> ready -> in_progress retry
+        with a real dirty write_scope file both succeed (RED confirmed against
+        unmodified code first, since this is a pre-existing defect)
+      - the existing completion-commit safety guard is unchanged
+      - this task's update.ts edit is confined to the target === 'in_progress'
+        branch and touches none of T001's resolveTaskVerifyEvidence/
+        validateTaskVerifyEvidence lines
+    write_scope:
+      - src/core/tasks/state-machine.ts
+      - src/core/tasks/update.ts
+      - tests/unit/task-state.test.ts
+      - tests/integration/task-update.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/unit/task-state.test.ts
+        tests/integration/task-update.test.ts
+    result:
+      summary: "[truncated] the architect-review-confirmed pre-existing failed/blocked
+        retry dirty-tree gap into the same fix. 7 new/changed tests (1
+        state-machine edge + fresh-attempt-still-refuses + failed-retry-succeeds
+        + blocked-retry-succeeds + full review-recovery cycle); all 138 tests
+        across both files pass."
+      evidence: Tests  138 passed (138) | Start at  12:05:51 | Duration  69.03s
+        (transform 307ms, setup 0ms, import 471ms, tests 68.50s, environment
+        0ms)
+    attempts: 1
+    usage: null
+  - id: T003
+    name: Docs + milestone gate
+    objective: "Update CLAUDE.md's binding task-states line to add review ->
+      in_progress (mirroring the existing milestone-level review ->
+      in_progress-on-failed-verification pattern already documented there).
+      Update src/integrations/common/protocol-driver.md and the
+      task-update.md/task-verify.md command docs in all three drivers (claude,
+      codex, opencode) to document the recovery path, and rewrite
+      task-verify.md's 'implicitly, the newest one for this task' and 'The only
+      way forward is a fresh, passing task-verify run ... This is not a
+      documented escape hatch; there isn't one' passages, which this fix
+      supersedes. Mirror the same content into this repo's own installed dogfood
+      copies: .claude/protocol-driver.md (preserving its existing local
+      IMPLEMENTATION_PLAN.md references -- merge, don't overwrite wholesale),
+      .claude/commands/task-update.md, .claude/commands/task-verify.md,
+      .opencode/commands/task-update.md, .opencode/commands/task-verify.md (no
+      .codex/ directory is installed in this repo, so only the
+      src/integrations/codex source needs editing). Regenerate the affected
+      sha256 entries (protocol-driver.md, commands/task-update.md,
+      commands/task-verify.md) in tests/unit/claude-assets.test.ts's
+      PRE_M023_ASSET_MANIFEST to match the new content. Run this milestone's
+      full-suite/typecheck gate via 'pitway task-verify T003 --timeout 900000'
+      (task-verify's default 120000ms budget is too short for build+test+tsc)."
+    status: completed
+    depends_on:
+      - T001
+      - T002
+    acceptance_criteria:
+      - CLAUDE.md, protocol-driver.md, and both command docs across all three
+        drivers document the recovery path accurately
+      - task-verify.md no longer claims selection is unconditionally
+        newest-first or that there is no escape hatch
+      - this repo's own installed dogfood copies match, with
+        .claude/protocol-driver.md's local references preserved
+      - claude-assets hash manifest entries match the new content
+      - full suite and tsc --noEmit are green; working tree clean at completion
+    write_scope:
+      - CLAUDE.md
+      - src/integrations/common/protocol-driver.md
+      - src/integrations/claude/commands/task-update.md
+      - src/integrations/claude/commands/task-verify.md
+      - src/integrations/codex/commands/task-update.md
+      - src/integrations/codex/commands/task-verify.md
+      - src/integrations/opencode/commands/task-update.md
+      - src/integrations/opencode/commands/task-verify.md
+      - tests/unit/claude-assets.test.ts
+      - src/core/tasks/update.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/unit/opencode-assets.test.ts tests/unit/codex-assets.test.ts &&
+        npm run build && npm test && npx tsc --noEmit
+    result:
+      summary: "[truncated] nce) and widened write_scope to include
+        src/core/tasks/update.ts for a one-line non-null-assertion fix to a type
+        error tsc caught in T001's already-completed resolveTaskVerifyEvidence
+        (runtime-green, type-red -- zero behavior change). Full gate green:
+        2007/2007 tests, tsc --noEmit clean."
+      evidence: Tests  2007 passed (2007) | Start at  12:16:54 | Duration  170.85s
+        (transform 4.70s, setup 0ms, import 19.63s, tests 1158.89s, environment
+        11ms)
+    attempts: 1
+    usage: null

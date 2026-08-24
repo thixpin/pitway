@@ -6,7 +6,7 @@ const TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   ready: ['in_progress', 'cancelled'],
   in_progress: ['review', 'blocked', 'failed'],
   blocked: ['ready'],
-  review: ['completed'],
+  review: ['in_progress', 'completed'],
   completed: [],
   failed: ['ready'],
   cancelled: [],

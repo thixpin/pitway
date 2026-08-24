@@ -86,6 +86,14 @@ shows non-command checks as pending regardless of what is recorded —
 trust the write (or `verify <id> --status`); don't re-invoke bare `verify`
 expecting recorded manual results.
 
+**A task stuck in `review` with no evidence that resolves cleanly at
+completion is not a dead end.** `task-update <id> completed` implicitly
+selects the newest `task_verify_evidence` record whose own run passed
+(never masked by a later failing re-run); if none passed, or the selected
+record has gone stale, completion refuses. Recover with `task-update <id>
+in_progress` — a legal transition from `review` — then run `task-verify`
+again to produce a fresh record before returning to `review`.
+
 ## Progress reporting
 
 Routine updates are "ADD-style": resumed/current task, current action,

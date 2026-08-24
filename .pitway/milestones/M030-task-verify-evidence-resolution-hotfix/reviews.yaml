@@ -1,0 +1,107 @@
+schema_version: 1
+sessions:
+  - id: rev-7de68f0780d0
+    status: open
+    created_at: 2026-08-24T04:33:10Z
+    roles:
+      - architect
+    content_hash: sha256:fe860d4a610de6dc057e739c5ac41bbaa4ee500be599c94b90a30fc95749e955
+    findings:
+      - role: architect
+        recorded_at: 2026-08-24T04:35:26Z
+        findings:
+          - severity: major
+            finding: >
+              AC002's review -> in_progress recovery exists specifically because
+              a task's own write_scope stays genuinely dirty across a
+              review-state hold (review never commits). But failed/blocked ->
+              ready -> in_progress is structurally identical: failed/blocked
+              also never commits, and the code path a retry re-enters
+              (updateTask's target === 'in_progress' dirty-tree check, update.ts
+              ~621-633) is the exact same unmodified check today.
+              tests/integration/task-update.test.ts's existing "increments
+              deterministically across the retry cycle" test (line ~285) only
+              proves this because it never dirties a real write_scope file, so
+              it does not demonstrate the failed/blocked retry path actually
+              tolerates leftover uncommitted work. The contract explicitly
+              declares this out of scope without stating whether it was checked,
+              and no backlog item records it. If failed/blocked retry has the
+              identical latent defect, this hotfix papers over the symptom in
+              one of two symmetric cases only.
+            targets:
+              - ac002
+              - t002
+            recommendation: >
+              Before merging, add/confirm a test proving failed/blocked -> ready
+              -> in_progress retry with a real dirty write_scope file either
+              already works or is a known, separately tracked gap; capture via
+              `pitway backlog` if confirmed broken, rather than leaving it
+              silently unaddressed.
+          - severity: minor
+            finding: >
+              src/git/safety.ts's classifyDirtyPaths already defines a
+              purpose-built taskWriteScope/verifiedCleanStart mechanism ("a path
+              is expected from taskWriteScope only when verifiedCleanStart is
+              true... the task must have actually started from a verified clean
+              tree for its write scope to mean anything") with its
+              concurrent-edit limitation already documented and tested — but it
+              is currently unused anywhere in the codebase. T002 instead
+              proposes a third, hand-rolled expected-dirty check inline in
+              update.ts's target === 'in_progress' branch, alongside the two
+              existing local assertDirtySubset implementations (update.ts,
+              verify.ts). This is semantically almost exactly what the unused
+              mechanism was built for (a task's own write_scope being
+              expected-dirty because it legitimately started clean once), yet
+              doesn't reuse it.
+            targets:
+              - ac002
+              - t002
+            recommendation: >
+              Consider wiring the review-recovery tolerance through
+              classifyDirtyPaths' existing taskWriteScope/verifiedCleanStart
+              option instead of a fourth ad hoc dirty-path check, to avoid
+              further duplicating this logic across three-plus call sites.
+          - severity: minor
+            finding: >
+              resume.ts's residue/next-task classification
+              (src/cli/commands/resume.ts, resolveNextTask in
+              src/core/milestones/footer.ts) only surfaces
+              in_progress-without-dispatch as an actionable "residue" and picks
+              nextTask only from in_progress/ready statuses. A task newly stuck
+              in review with no valid evidence (the exact scenario AC002 is
+              built to unblock) is not surfaced by resume as needing the new
+              task-update <id> in_progress recovery — it is only visible via the
+              raw task list. AC003's scope is docs-only and does not touch
+              resume.ts.
+            targets:
+              - ac002
+              - ac003
+              - t002
+              - t003
+            recommendation: >
+              Not required for this hotfix, but worth a backlog note: consider a
+              resume.ts residue class for a task stuck in review with no
+              execution-passing evidence, mirroring the existing
+              inline-or-interrupted in_progress residue.
+          - severity: minor
+            finding: >
+              AC001's backward-search boundary (skip newer execution-failing
+              records only, then run full staleness validation on the single
+              newest execution-passing candidate, no further backward search on
+              staleness failure) is well-defined and correctly implementable:
+              isExecutionPassing cleanly separates from
+              validateTaskVerifyEvidence's existing five staleness checks
+              (task/attempt/command/write_scope/fingerprint), and the existing
+              "refuses citing the newer diverged record" regression test
+              (task-update.test.ts ~942) is verified to still pass under the new
+              algorithm since a command-mismatch record has exitCode 0 by
+              default and is therefore still the selected (newest,
+              execution-passing) candidate. No correctness gap found here —
+              recorded as a checked-clean item, not a defect.
+            targets:
+              - ac001
+              - t001
+            recommendation: No action needed; confirms the design's stated boundary is sound
+              as specified.
+        usage: null
+    decision: null
