@@ -53,10 +53,10 @@ const nowSeconds = (): string => new Date().toISOString().replace(/\.\d{3}Z$/, '
 // resolving against the current on-disk listing is correct even when
 // looking up content at a past commit via git show (mirrors the same
 // pattern already used in task-update.ts/complete.ts).
-export const verificationRepairsRepoPath = (root: string, milestoneId: string): string =>
+const verificationRepairsRepoPath = (root: string, milestoneId: string): string =>
   `.pitway/milestones/${resolveMilestoneDirName(root, milestoneId)}/verification-repairs.yaml`;
 
-export const verificationResultsRepoPath = (root: string, milestoneId: string): string =>
+const verificationResultsRepoPath = (root: string, milestoneId: string): string =>
   `.pitway/milestones/${resolveMilestoneDirName(root, milestoneId)}/verification-results.yaml`;
 
 // Structurally owned exclusively by milestone-confirm/--amend, task-update,

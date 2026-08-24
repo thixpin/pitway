@@ -1,6 +1,5 @@
 import type { Command } from 'commander';
-import { loadContract, loadReviews, loadTasks, loadUsage } from '../../state/store.js';
-import { computeReviewUsageTotal } from '../../core/reviews/roles.js';
+import { loadContract, loadTasks, loadUsage } from '../../state/store.js';
 import { readJournal } from '../../state/journal.js';
 import { computeMilestoneProgress, type MilestoneProgress } from '../../core/milestones/progress.js';
 import { computeRacingFooter, resolveNextTask } from '../../core/milestones/footer.js';
@@ -13,7 +12,7 @@ import { resolveCommitSha } from '../../git/trailers.js';
 import { renderOutput } from '../output.js';
 import { taskStatusLabel } from '../format.js';
 import { renderTable } from '../table.js';
-import type { MilestoneStatus, ReviewsFile, Task, TaskStatus, UsageFile } from '../../state/schemas.js';
+import type { MilestoneStatus, Task, TaskStatus, UsageFile } from '../../state/schemas.js';
 
 // UX-only (Claude Code command-discoverability quick-change): execution mode
 // is read-only, derived from the journal's own worktree_integrate records —
@@ -69,7 +68,7 @@ export function buildMilestoneStatusView(root: string, milestoneId: string): Mil
     status: contract.frontmatter.status,
     progress,
     baselineSha: resolveCommitSha(root, { milestone: milestoneId, ...(since !== undefined ? { since } : {}) }) ?? null,
-    aggregate: aggregateUsage(tasksFile.tasks, loadUsage(root, milestoneId), loadReviews(root, milestoneId)),
+    aggregate: aggregateUsage(tasksFile.tasks, loadUsage(root, milestoneId)),
     tasks: tasksFile.tasks.map((t) => ({
       id: t.id,
       status: t.status,
@@ -99,10 +98,6 @@ export interface TokenBreakdown {
   task: number | null;
   planning: number | null;
   qa: number | null;
-  // B026: recorded milestone-review usage, summed across every session's
-  // latest-per-role recording (computeReviewUsageTotal) -- null when no
-  // review usage has ever been recorded for this milestone.
-  review: number | null;
   total: number | null;
   missing: number;
 }
@@ -142,7 +137,7 @@ function taskStatusLabelForReport(root: string, milestoneId: string, task: Task)
   return hasVerifiedEvidence(root, milestoneId, task) ? `${base} · verified` : base;
 }
 
-function computeTokenBreakdown(tasks: Task[], usage: UsageFile, reviews: ReviewsFile): TokenBreakdown {
+function computeTokenBreakdown(tasks: Task[], usage: UsageFile): TokenBreakdown {
   let taskTotal = 0;
   let taskMeasured = false;
   let missing = 0;
@@ -159,13 +154,10 @@ function computeTokenBreakdown(tasks: Task[], usage: UsageFile, reviews: Reviews
   if (usage.planning === null) missing += 1;
   if (usage.qa === null) missing += 1;
 
-  const reviewUsage = computeReviewUsageTotal(reviews);
-  missing += reviewUsage.missing;
+  const measured = taskMeasured || planning !== null || qa !== null;
+  const total = measured ? taskTotal + (planning ?? 0) + (qa ?? 0) : null;
 
-  const measured = taskMeasured || planning !== null || qa !== null || reviewUsage.total !== null;
-  const total = measured ? taskTotal + (planning ?? 0) + (qa ?? 0) + (reviewUsage.total ?? 0) : null;
-
-  return { task: taskMeasured ? taskTotal : null, planning, qa, review: reviewUsage.total, total, missing };
+  return { task: taskMeasured ? taskTotal : null, planning, qa, total, missing };
 }
 
 export function buildProgressReportView(root: string, milestoneId: string): ProgressReportView {
@@ -175,9 +167,8 @@ export function buildProgressReportView(root: string, milestoneId: string): Prog
   const progress = computeMilestoneProgress(tasksFile.tasks);
   const verificationPassed = allChecksPassed(contract, computeLatestCheckResults(root, milestoneId));
   const workloadPercent = computeWorkloadPercentage(contract.frontmatter.status, progress, verificationPassed);
-  const reviews = loadReviews(root, milestoneId);
-  const aggregate = aggregateUsage(tasksFile.tasks, usage, reviews);
-  const breakdown = computeTokenBreakdown(tasksFile.tasks, usage, reviews);
+  const aggregate = aggregateUsage(tasksFile.tasks, usage);
+  const breakdown = computeTokenBreakdown(tasksFile.tasks, usage);
   const activeTask = tasksFile.tasks.find((t) => t.status === 'in_progress')?.id ?? null;
 
   return {
@@ -190,11 +181,7 @@ export function buildProgressReportView(root: string, milestoneId: string): Prog
     tasks: tasksFile.tasks.map((t) => ({
       id: t.id,
       label: taskLabel(t),
-      // B028: this hardcoded null regardless of how a task actually ran,
-      // rendering the report's Execution column as an em dash for every
-      // task -- unlike buildMilestoneStatusView above, which correctly
-      // calls resolveExecutionMode.
-      executionMode: resolveExecutionMode(root, milestoneId, t),
+      executionMode: null,
       statusLabel: taskStatusLabelForReport(root, milestoneId, t),
       tokens: t.usage !== null ? t.usage.total_tokens : null,
     })),
@@ -247,7 +234,6 @@ export function renderProgressReportHuman(view: ProgressReportView): string {
   lines.push(`  task: ${formatTokenValue(view.tokenBreakdown.task)}`);
   lines.push(`  planning: ${formatTokenValue(view.tokenBreakdown.planning)}`);
   lines.push(`  qa: ${formatTokenValue(view.tokenBreakdown.qa)}`);
-  lines.push(`  review: ${formatTokenValue(view.tokenBreakdown.review)}`);
   lines.push(`  total: ${formatTokenValue(view.tokenBreakdown.total)}`);
   lines.push(`  missing: ${view.tokenBreakdown.missing}`);
   if (view.footer !== null) lines.push('', view.footer);

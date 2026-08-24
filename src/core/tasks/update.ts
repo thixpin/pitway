@@ -9,7 +9,6 @@ import { git } from '../../git/exec.js';
 import { checkWorkingTreeClean, classifyDirtyPaths } from '../../git/safety.js';
 import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
 import { trimTail } from '../verification/text-trim.js';
-import { verificationRepairsRepoPath, verificationResultsRepoPath } from '../verification/repair.js';
 import { formatIssues } from '../../state/contract-file.js';
 import {
   readJournal,
@@ -454,16 +453,7 @@ function completeTask(
   // commit of their own — see src/core/metrics/aggregate.ts and
   // src/core/milestones/confirm.ts) is expected to ride along in this
   // completion commit rather than being refused as unrelated dirt.
-  const journalExpected = classifyDirtyPaths(root, {
-    journalMilestone: milestoneId,
-    // B029: same rationale as the in_progress transition above -- a prior
-    // verify run's dirty verification-results.yaml/verification-repairs.yaml
-    // rides along into this completion commit rather than refusing it.
-    pendingTransitionPaths: [
-      verificationResultsRepoPath(root, milestoneId),
-      verificationRepairsRepoPath(root, milestoneId),
-    ],
-  }).expected;
+  const journalExpected = classifyDirtyPaths(root, { journalMilestone: milestoneId }).expected;
   const expectedPaths = [
     ...new Set([...(task.write_scope ?? task.relevant_files ?? []), tasksPath, ...journalExpected]),
   ];
@@ -676,14 +666,6 @@ export function updateTask(
       journalMilestone: milestoneId,
       taskWriteScope: task.write_scope ?? task.relevant_files ?? [],
       verifiedCleanStart: taskAttempts > 0,
-      // B029: a `pitway verify` run between tasks leaves verification-
-      // results.yaml (and, mid-repair, verification-repairs.yaml) dirty
-      // with no journal entry of its own (deliberately -- see journal.ts) --
-      // always expected here, never gated on write_scope/verifiedCleanStart.
-      pendingTransitionPaths: [
-        verificationResultsRepoPath(root, milestoneId),
-        verificationRepairsRepoPath(root, milestoneId),
-      ],
     });
     assertDirtySubset(root, [tasksRepoPath(root, milestoneId), ...classified.expected]);
     updated.attempts = taskAttempts + 1;

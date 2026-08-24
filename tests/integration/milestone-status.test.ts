@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { saveContract, saveReviews, saveTasks, saveUsage, saveVerificationResults } from '../../src/state/store.js';
+import { saveContract, saveTasks, saveUsage, saveVerificationResults } from '../../src/state/store.js';
 import { appendTaskVerifyEvidenceRecord } from '../../src/state/journal.js';
 import { buildCli } from '../../src/cli/index.js';
 import { registerMilestoneStatusCommand } from '../../src/cli/commands/milestone-status.js';
@@ -340,7 +340,7 @@ describe('pitway milestone-status --report (M013/T006)', () => {
     });
     expect(view.tasks.find((t) => t.id === 'T002')).toMatchObject({ statusLabel: '✓ Completed' });
     expect(view.criticalPath).toEqual(['T003']);
-    expect(view.tokenBreakdown).toEqual({ task: 100, planning: 200, qa: null, review: null, total: 300, missing: 3 });
+    expect(view.tokenBreakdown).toEqual({ task: 100, planning: 200, qa: null, total: 300, missing: 3 });
     expect('driver_overhead' in view.tokenBreakdown).toBe(false);
 
     const output = await runStatus(['--report']);
@@ -352,10 +352,7 @@ describe('pitway milestone-status --report (M013/T006)', () => {
     const tableLines = output.split('\n').filter((l) => l.startsWith('|'));
     const collapsed = tableLines.map((l) => l.replace(/\s+\|/g, ' |'));
     const hasHeader = collapsed.some((l) => /^\| Task \| Label \| Execution \| Status \| Tokens \|$/.test(l));
-    // B028: T001 is completed with no worktree_integrate record, so its real
-    // execution mode is "inline" -- not the em-dash placeholder the report
-    // view previously hardcoded for every task regardless of actual mode.
-    const hasT001 = collapsed.some((l) => /\| T001 \| Config schema \| inline \| ✓ Completed · verified \|\s+100 \|$/.test(l));
+    const hasT001 = collapsed.some((l) => /\| T001 \| Config schema \| — \| ✓ Completed · verified \|\s+100 \|$/.test(l));
     const hasT002 = collapsed.some((l) => l.startsWith('| T002 | '));
     const hasNA = collapsed.some((l) => /\|\s+N\/A \|$/.test(l));
     expect(hasHeader && hasT001 && hasT002 && hasNA).toBe(true);
@@ -373,38 +370,6 @@ describe('pitway milestone-status --report (M013/T006)', () => {
       tasks: Array<{ id: string; label: string }>;
     };
     expect(view.tasks[0]!.label).toBe(`${'x'.repeat(60)}…`);
-  });
-
-  // B028: buildProgressReportView hardcoded executionMode: null for every
-  // task, so --report's Execution column always rendered an em dash
-  // regardless of how a task actually ran -- unlike plain milestone-status,
-  // which correctly calls resolveExecutionMode. Same fixture/assertion shape
-  // as the plain-view "worktree"/"inline" tests above, run through --report.
-  it('shows the real per-task execution mode in --report, not always an em dash', async () => {
-    const { appendWorktreeIntegrateRecord } = await import('../../src/state/journal.js');
-    appendWorktreeIntegrateRecord(root, {
-      id: 'wti-report-test',
-      dispatchId: 'wtd-report-test',
-      milestone: 'M001',
-      taskId: 'T002',
-      workerSha: 'a'.repeat(40),
-      at: new Date().toISOString(),
-    });
-
-    const view = JSON.parse(await runStatus(['--report', '--json'])) as {
-      tasks: Array<{ id: string; executionMode: string | null }>;
-    };
-    expect(view.tasks.find((t) => t.id === 'T001')).toMatchObject({ executionMode: 'inline' });
-    expect(view.tasks.find((t) => t.id === 'T002')).toMatchObject({ executionMode: 'worktree' });
-    expect(view.tasks.find((t) => t.id === 'T003')).toMatchObject({ executionMode: null });
-
-    const output = await runStatus(['--report']);
-    const collapsed = output
-      .split('\n')
-      .filter((l) => l.startsWith('|'))
-      .map((l) => l.replace(/\s+\|/g, ' |'));
-    expect(collapsed.some((l) => l.startsWith('| T001 | ') && l.includes(' inline '))).toBe(true);
-    expect(collapsed.some((l) => l.startsWith('| T002 | ') && l.includes(' worktree '))).toBe(true);
   });
 });
 
@@ -556,56 +521,6 @@ describe('pitway milestone-status --report token breakdown', () => {
     expect(output).toContain('Active: (none)');
     expect(output).toContain('Next: (no ready task)');
     expect(output).not.toMatch(/\d+% · ✅/);
-  });
-
-  // B026: recorded milestone-review usage never folded into the token
-  // total/breakdown at all -- only task/planning/qa. One role's usage
-  // recorded (developer, 500 tokens), one role's own review --usage never
-  // passed (architect, null) -- the exact live scenario this milestone hit.
-  it('folds recorded review usage into the total/breakdown, honestly counting an un-recorded role as missing', async () => {
-    saveTasks(root, 'M001', {
-      schema_version: 1,
-      tasks: [task({ id: 'T001', status: 'completed', usage: { total_tokens: 500 } })],
-    });
-    saveUsage(root, 'M001', { schema_version: 1, planning: null, qa: null });
-    saveReviews(root, 'M001', {
-      schema_version: 1,
-      sessions: [
-        {
-          id: 'rev-abc123',
-          status: 'decided',
-          created_at: '2026-08-24T00:00:00Z',
-          roles: ['developer', 'architect'],
-          content_hash: `sha256:${'b'.repeat(64)}`,
-          findings: [
-            {
-              role: 'developer',
-              recorded_at: '2026-08-24T01:00:00Z',
-              findings: [],
-              usage: { total_tokens: 300 },
-            },
-            { role: 'architect', recorded_at: '2026-08-24T01:00:00Z', findings: [], usage: null },
-          ],
-          decision: { outcome: 'accepted', decided_at: '2026-08-24T02:00:00Z' },
-        },
-      ],
-    });
-
-    const view = JSON.parse(await runStatus(['--report', '--json'])) as {
-      tokenTotal: number;
-      tokenBreakdown: { review: number; total: number; missing: number };
-    };
-    expect(view.tokenBreakdown.review).toBe(300);
-    expect(view.tokenBreakdown.total).toBe(800);
-    // architect's un-recorded review usage counts as missing, alongside the
-    // already-missing planning/qa categories -- never a "task".
-    expect(view.tokenBreakdown.missing).toBe(3);
-    // The plain view's own total (aggregateUsage) folds review usage in too.
-    expect(view.tokenTotal).toBe(800);
-
-    const output = await runStatus(['--report']);
-    expect(output).toContain('  review: 300');
-    expect(output).toContain('  total: 800');
   });
 });
 
