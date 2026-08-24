@@ -157,6 +157,11 @@ journaled verification record (`commands/task-verify.md`). `task-verify`
 replaces the ad hoc rerun-and-eyeball; it never replaces your own
 diff/write_scope review, which comes first, every time.
 
+For a genuine dependency chain within a milestone, `dispatch.md`'s
+"Sequential subagent dispatch" section covers reusing a resumed worker
+identity across the chain's tasks and the context-isolation trade-off
+that comes with it.
+
 ## Parallel dispatch (execution.strategy: parallel_worktrees)
 
 Applies only when the committed `config.yaml` sets `execution.strategy:

@@ -42,7 +42,7 @@ tasks:
       dispatch.md, protocol-worker.md, and protocol-driver.md in
       tests/unit/claude-assets.test.ts's PRE_M023_ASSET_MANIFEST to match the
       new content."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - dispatch.md's new section covers scope, savings, driver-agnostic
@@ -75,5 +75,17 @@ tasks:
       detail: npx vitest run tests/unit/claude-assets.test.ts
         tests/unit/opencode-assets.test.ts tests/unit/codex-assets.test.ts &&
         npm run build && npm test && npx tsc --noEmit
-    result: null
-    usage: null
+    result:
+      summary: "[truncated] .md's Dispatch discipline section. TDD: 6 new regression
+        tests in claude-assets.test.ts failed first (RED), then passed after the
+        doc content was written (GREEN). Hash manifest entries for all three
+        docs refreshed and independently verified against disk. No
+        Core/CLI/schema files touched."
+      evidence: Tests  2013 passed (2013) | Start at  13:19:31 | Duration  193.61s
+        (transform 4.81s, setup 0ms, import 22.57s, tests 1310.83s, environment
+        14ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-sonnet-5
+    usage:
+      total_tokens: 89300

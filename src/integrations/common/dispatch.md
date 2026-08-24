@@ -90,6 +90,69 @@ a worker's reads obey the list).
   any dirty path lies outside that boundary, naming the offenders. A
   worker that ignored its write scope cannot complete the task.
 
+## Sequential subagent dispatch
+
+**Scope.** This applies only to a genuine dependency chain within a
+milestone — task B `depends_on` task A, and so on. It is never used to
+serialize two or more otherwise-parallel-eligible `ready` tasks with
+disjoint write scopes; those stay eligible for `parallel_worktrees` or
+independent dispatch exactly as today.
+
+**What it actually saves.** Only the dispatched subagent's own
+re-briefing/context-priming overhead across the chain — explicitly **not**
+a reduction in the driver's own per-task work, which stays the full
+existing dispatch sequence above (steps 1–8: confirm ready, task-update
+in_progress, gather the bundle, dispatch, diff/write_scope review,
+task-verify, task-update review, task-update completed) run once per task
+exactly as today.
+
+**Driver-agnostic behavior.** When the driving harness can resume a
+previously-dispatched subagent with its own retained context, reuse that
+identity for tasks 2+ in the chain, handing it only the new task's bundle
+(step 3, unchanged); when the harness cannot resume a prior subagent,
+dispatch a fresh worker per task exactly as the existing sequence already
+does. The behavioral contract is identical either way — nothing about
+correctness depends on which path a given driver takes.
+
+**Usage attribution.** Per dispatch/resume call, never estimated or split
+from an aggregate figure — the existing MUST rule (step 8 above) applies
+once per task in the chain, whether that task resumed a prior subagent or
+dispatched a fresh one.
+
+**Stop the chain on failure.** A task that does not complete cleanly (diff
+review or `task-verify` does not pass) stops the chain — the same
+subagent is not resumed for the next task until that one reaches
+`completed` through the normal recovery path (`blocked`/`failed`,
+`task-amend`, or a fresh attempt).
+
+**Visibility.** Results, evidence, status, and usage for every task in the
+chain remain visible via the normal task-status/milestone-status surfaces,
+since the driver itself runs every state-mutating command, exactly as for
+any other dispatch.
+
+**Context-isolation trade-off.** Reusing a resumed subagent's identity
+across a chain relaxes something PitWay otherwise leaves fully bounded —
+see below; this pointer does not itself restate that disclosure, so as
+not to dilute it into a bare unverifiability caveat.
+
+### Context-isolation trade-off
+
+- **Task authorization and isolation stay fully enforced**, regardless of
+  dispatch mode: `write_scope`, PitWay state access, the task lifecycle,
+  verification evidence, and usage attribution stay task-specific and
+  driver-controlled, exactly as today, for every task in a chain.
+- **Ambient context isolation is intentionally relaxed** for a resumed
+  subagent: prior tasks in the same delegated sequence may remain present
+  in the subagent's own context and may influence its reasoning on a
+  later task in that chain.
+- **This retention is the mechanism the feature relies on**, not an
+  accidental side effect — cutting re-briefing cost across the chain is
+  the intended benefit of reusing a resumed identity.
+- **PitWay cannot enforce or prevent that cross-task context influence**
+  inside a resumed harness session, nor verify how much of it actually
+  occurred — only the `write_scope` check at task-update completion
+  bounds the blast radius, and only for writes, never for reasoning.
+
 ## Parallel dispatch (worktree mode)
 
 Under `execution.strategy: parallel_worktrees`, `pitway task-dispatch
