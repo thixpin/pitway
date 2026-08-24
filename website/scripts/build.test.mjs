@@ -20,11 +20,13 @@ import {
   titleFromMarkdown,
   renderWorkflowDiagram,
   copyWorkflowDiagram,
+  copyFavicon,
   parseFrontMatter,
   buildContentPages,
   copyStylesheets,
   WORKFLOW_MMD,
   WORKFLOW_SVG,
+  FAVICON_FILE,
   WEBSITE_ROOT,
   STYLESHEET_FILES,
 } from "./build.mjs";
@@ -230,6 +232,21 @@ test("docs/assets/workflow.mmd itself is never copied into the build tree", asyn
     await renderWorkflowDiagram(WORKFLOW_MMD, tmpDir);
     const entries = await fs.readdir(tmpDir);
     assert.ok(!entries.includes("workflow.mmd"));
+  } finally {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("copies website/favicon.svg into the build output, and every page links it", async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "pitway-website-"));
+  try {
+    const outputPath = await copyFavicon(tmpDir);
+    const copied = await fs.readFile(outputPath ?? path.join(tmpDir, "favicon.svg"), "utf8");
+    const committed = await fs.readFile(FAVICON_FILE, "utf8");
+    assert.equal(copied, committed);
+
+    const html = renderMarkdownToHtml("# Fixture", { title: "Fixture" });
+    assert.match(html, /<link rel="icon" href="\/favicon\.svg" type="image\/svg\+xml">/);
   } finally {
     await fs.rm(tmpDir, { recursive: true, force: true });
   }

@@ -40,6 +40,7 @@ export const WORKFLOW_SVG = path.join(
   "assets",
   "workflow.svg",
 );
+export const FAVICON_FILE = path.join(WEBSITE_ROOT, "favicon.svg");
 
 // Diagram colors chosen to stay legible whether the SVG lands on a
 // #111629 (dark navy) or #FFFFFF (white) page background:
@@ -188,6 +189,7 @@ export function renderMarkdownToHtml(markdownSource, meta) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 ${stylesheetLinks}
 <title>${escapeHtml(title)}</title>${headExtra}
 </head>
@@ -204,6 +206,14 @@ export async function copyStylesheets(outDir) {
   for (const file of STYLESHEET_FILES) {
     await fsp.copyFile(path.join(STYLES_DIR, file), path.join(targetDir, file));
   }
+}
+
+/** Copy website/favicon.svg to <outDir>/favicon.svg, unmodified. */
+export async function copyFavicon(outDir) {
+  await fsp.mkdir(outDir, { recursive: true });
+  const outputPath = path.join(outDir, "favicon.svg");
+  await fsp.copyFile(FAVICON_FILE, outputPath);
+  return outputPath;
 }
 
 /** Convert every *.md file under contentDir to an *.html file under outDir, mirroring its relative path. Parses each file's optional front matter into the built page's real <head>. */
@@ -399,6 +409,7 @@ async function main() {
   await fsp.mkdir(OUT_DIR, { recursive: true });
 
   await copyStylesheets(OUT_DIR);
+  await copyFavicon(OUT_DIR);
   await buildContentPages(CONTENT_DIR, OUT_DIR);
 
   if (fs.existsSync(WORKFLOW_SVG)) {
