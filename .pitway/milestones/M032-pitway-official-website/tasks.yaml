@@ -1,0 +1,332 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Website scaffold & build pipeline
+    objective: "Create website/ as an independent npm project: package.json (own
+      deps, not a root workspace member; pre-declares ALL npm script entries
+      this milestone will ever need -- build, check:seo, check:a11y -- even
+      though check:seo's and check:a11y's target script files don't exist until
+      T004, so package.json is written exactly once and never touched again),
+      .gitignore (excludes the build output directory, e.g. website/dist/, plus
+      node_modules and other generated artifacts -- scoped to website/, not
+      relying on root .gitignore), and a build script that (a) converts Markdown
+      to HTML at build time using a minimal, dependency-light Markdown library,
+      (b) renders docs/assets/workflow.mmd -- read directly from its existing
+      location, never copied into website/ -- to a transparent-background SVG at
+      build time via a Mermaid CLI/renderer, using colors readable on both
+      #111629 and #FFFFFF, and (c) generates sitemap.xml and robots.txt into the
+      build output by walking whatever HTML pages exist at build time --
+      sitemap/ robots generation is a core, unconditional part of `npm run
+      build` from this task onward, not a separate manually-invoked step, so the
+      production build path always produces these files regardless of which
+      later tasks have landed. Verify the pipeline (including sitemap/robots
+      generation) against a test fixture (not real site content). Add a minimal
+      .github/workflows/website-build.yml that installs and builds website/ in
+      CI (validation only, no deploy -- that's T006). All build output is
+      generated at build time and never committed -- no committed file under
+      website/ is machine-generated. Confirm the root project's npm
+      test/build/tsc remain fully unaffected."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - website/ has its own package.json (with build, check:seo, and check:a11y
+        script entries all pre-declared) and .gitignore; root package.json has
+        no workspaces field and is otherwise untouched
+      - website/.gitignore excludes the build output directory; no generated
+        HTML/SVG/sitemap/robots/build artifact is committed anywhere under
+        website/
+      - website/ installs and builds independently (cd website && npm ci && npm
+        run build succeeds standalone)
+      - the build converts Markdown to HTML at build time only (no client-side
+        Markdown rendering), verified against a test fixture
+      - the build renders docs/assets/workflow.mmd to SVG at build time (no
+        browser-side Mermaid, no CDN), transparent background, no opaque
+        background rect, readable on
+      - docs/assets/workflow.mmd itself is not copied or duplicated into
+        website/ -- the build reads it from its existing location
+      - npm run build always generates sitemap.xml and robots.txt into the build
+        output from whatever pages currently exist -- this is unconditional, not
+        gated behind a separate script
+      - root npm test, npm run build, and npx tsc --noEmit remain green and
+        unaffected
+    write_scope:
+      - website/package.json
+      - website/package-lock.json
+      - website/.gitignore
+      - website/scripts/build.mjs
+      - website/scripts/sitemap.mjs
+      - website/scripts/build.test.mjs
+      - website/scripts/__fixtures__/sample.md
+      - .github/workflows/website-build.yml
+    verification:
+      strategy: command
+      detail: cd website && npm ci && npm run build && cd .. && npm run build && npm
+        test && npx tsc --noEmit
+    result: null
+    usage: null
+  - id: T002
+    name: Homepage & core messaging
+    objective: "Author the homepage as a self-contained template
+      (website/templates/homepage.html) with its own complete, semantic <head>
+      (title, charset, meta description, canonical URL, Open Graph tags -- real
+      values, not placeholders) and body: Hero (name, tagline, short
+      explanation, primary CTA, GitHub CTA), Problem, How PitWay Works (a
+      lightweight textual/visual step summary reusing the canonical
+      workflow.mmd's own stage names -- Plan/Review/Confirm/
+      Contract/Execute/Verify/Complete/Merge -- not the full dense diagram; the
+      full canonical SVG lives in T003's Workflow docs section where audience
+      context is established -- no second .mmd source is created either way),
+      Contract-Based Scope Control, Task Execution, Human + Agent, 'Resume
+      Across Coding Agents' (grounded wording -- PitWay is not a multi-agent
+      framework; describes resuming the same workflow state across a different
+      supported coding agent, e.g. via `pitway resume`, never claiming shared/
+      simultaneous multi-agent orchestration or AI context/token retention
+      beyond what PitWay actually persists), 'Durable Traceability' (grounded
+      wording, replacing any 'automatic documentation' framing -- PitWay records
+      workflow information and evidence as part of the development process via
+      git commits carrying PitWay-Milestone/PitWay-Task trailers and .pitway/
+      state that survives the AI session; never implies PitWay auto-generates
+      arbitrary project documentation), and the Brand Footer 'Built with PitWay
+      by thixpin. 🏎️'. Use correct semantic HTML (single h1, landmark elements,
+      no skipped heading levels) and ensure every interactive/navigable element
+      (CTAs, nav links) is a real focusable, keyboard-reachable element -- this
+      task owns its own implementation-level accessibility, not a later
+      retrofit. Ground every claim in README.md/USAGE.md content and verified
+      CLI behavior -- no invented terminology, no unsupported claims about AI
+      context/token retention. Build via T001's pipeline into valid HTML."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - homepage includes Hero, Problem, How PitWay Works (lightweight step
+        summary, not the full dense diagram), Contract-Based Scope Control, Task
+        Execution, Human + Agent, 'Resume Across Coding Agents', 'Durable
+        Traceability', and the Brand Footer
+      - the phrase 'Multi-Agent' is not used anywhere in a way that implies
+        simultaneous/orchestrated multi-agent operation; PitWay is never
+        positioned as a multi-agent framework
+      - the 'Durable Traceability' content describes git-trailer-based commit
+        traceability and .pitway/ state persistence -- never a claim that PitWay
+        auto-generates arbitrary documentation
+      - every factual/behavioral claim traces to README.md, USAGE.md, or
+        CLAUDE.md's state-machine section -- no invented terminology
+      - no claim about AI context/token retention beyond what PitWay actually
+        persists and resumes
+      - the page has its own real title, meta description, canonical URL, and
+        Open Graph tags; single h1; no skipped heading levels
+      - all CTAs/nav links are real, keyboard-focusable elements
+      - homepage builds to valid HTML via T001's pipeline
+    write_scope:
+      - website/content/pages/index.md
+      - website/data/homepage.yaml
+      - website/templates/homepage.html
+    verification:
+      strategy: review
+      detail: Build the homepage and review its rendered HTML against README.md,
+        USAGE.md, and CLAUDE.md's Architecture Constraints section for factual
+        accuracy, terminology accuracy (in particular the 'Resume Across Coding
+        Agents' and 'Durable Traceability' wording), and
+        semantic/keyboard-accessible structure.
+    result: null
+    usage: null
+  - id: T003
+    name: Documentation section
+    objective: "Author Getting Started (verified real first-run flow: npm install -g
+      pitway, then pitway init -- confirmed via a live init + resume run that
+      resume is not a meaningful first-run command on a fresh repo, so it is not
+      documented as one), Concepts (Milestones, Contracts, Tasks, Evidence,
+      Backlog, Worktrees -- 6 pages), Workflow (Review, Auto Run, Verification,
+      Completion, Merge -- 5 pages, featuring the full canonical
+      docs/assets/workflow.mmd SVG where audience context is established), and
+      Agents (Claude Code, OpenCode, Codex, Resume -- 4 pages, matching the
+      actual set of supported driver integrations) documentation pages as a
+      self-contained template (website/templates/docs.html) with its own
+      complete, semantic <head> (title, description, canonical, OG per page) and
+      body, reusing README.md/USAGE.md content rather than re-authoring a second
+      source of truth. The docs template includes a persistent, static (no
+      client-side search) section navigation -- e.g. an always-visible sidebar
+      tree of all 4 sections and their 16 pages, driven by
+      website/data/docs-nav.yaml -- in addition to breadcrumbs and previous/next
+      navigation, so moving between non-adjacent pages (e.g. Workflow > Merge to
+      Agents > Codex) never requires returning to a single index page first. All
+      navigation elements are real, keyboard-focusable elements -- this task
+      owns its own implementation-level accessibility, not a later retrofit."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - Getting Started documents npm install -g pitway then pitway init as the
+        verified first step; does not document pitway resume as a standalone
+        first-run command
+      - Concepts (6 pages), Workflow (5 pages, including the full canonical
+        workflow.mmd SVG), and Agents (4 pages) sections exist exactly as listed
+        in the objective, reusing README.md/USAGE.md content
+      - a persistent, static section navigation (all 4 sections/16 pages visible
+        without leaving the current page) exists in addition to breadcrumbs and
+        previous/next navigation; all are real focusable elements; no full-text
+        search is added
+      - each doc page has its own real title, meta description, canonical URL,
+        and Open Graph tags; valid heading hierarchy
+      - no page exists for a feature the repository doesn't actually support
+    write_scope:
+      - website/content/getting-started/index.md
+      - website/content/concepts/milestones.md
+      - website/content/concepts/contracts.md
+      - website/content/concepts/tasks.md
+      - website/content/concepts/evidence.md
+      - website/content/concepts/backlog.md
+      - website/content/concepts/worktrees.md
+      - website/content/workflow/review.md
+      - website/content/workflow/auto-run.md
+      - website/content/workflow/verification.md
+      - website/content/workflow/completion.md
+      - website/content/workflow/merge.md
+      - website/content/agents/claude-code.md
+      - website/content/agents/opencode.md
+      - website/content/agents/codex.md
+      - website/content/agents/resume.md
+      - website/content/docs-index.md
+      - website/data/docs-nav.yaml
+      - website/templates/docs.html
+    verification:
+      strategy: review
+      detail: Build the documentation pages and review them against USAGE.md and a
+        live `pitway init` + `pitway resume` run on a fresh repo, confirming the
+        persistent section navigation, breadcrumbs, prev/next, internal links,
+        and semantic/keyboard- accessible structure.
+    result: null
+    usage: null
+  - id: T005
+    name: Visual design & responsive styling
+    objective: "Implement the dark-first visual identity: deep navy (~#111629)
+      background, cyan/electric accent (~#64B8F7), off-white primary text, muted
+      blue-gray secondary text, developer-tool/ terminal aesthetic, strong
+      typography, generous spacing -- distinct from thixpin.me rather than a
+      copy of it. Style the REAL markup T002 and T003 produced -- this task runs
+      only once both exist, so selectors target the actual DOM/class structure
+      of templates/homepage.html and templates/docs.html, not a guess.
+      Responsive layout across mobile/tablet/desktop breakpoints with no
+      horizontal overflow, including the persistent docs section navigation from
+      T003. Implement visible keyboard-focus styles and a prefers-reduced-motion
+      media query -- this task owns the styling-layer implementation of those
+      accessibility requirements, not a later retrofit. Reuse any existing
+      PitWay icon/brand assets (none exist beyond docs/assets/workflow.svg,
+      confirmed by inspection) rather than introducing an unrelated icon system
+      without cause."
+    status: waiting
+    depends_on:
+      - T002
+      - T003
+    acceptance_criteria:
+      - color palette matches the specified dark-first identity (~#111629
+        background, ~#64B8F7 accent, off-white/muted-blue-gray text)
+      - styles target the actual class/DOM structure T002 and T003 produced, not
+        a placeholder guess
+      - layout is responsive with no horizontal overflow at defined
+        mobile/tablet/desktop breakpoints, including the docs section navigation
+      - every focusable element has a visible focus style; a
+        prefers-reduced-motion media query exists wherever motion/ animation
+        exists
+      - visual identity is distinct from thixpin.me, not a copy of it
+      - no second, unrelated icon system is introduced without cause
+    write_scope:
+      - website/styles/tokens.css
+      - website/styles/layout.css
+      - website/styles/typography.css
+    verification:
+      strategy: manual
+      detail: Manually review the built site at mobile, tablet, and desktop
+        breakpoints for the specified visual identity, responsive layout
+        (including docs section nav), keyboard-focus visibility, reduced-motion
+        behavior, and Mermaid SVG readability in context.
+    result: null
+    usage: null
+  - id: T004
+    name: SEO & accessibility audit tooling
+    objective: "Add website/scripts/check-seo.mjs -- reads T001-T003/T005's
+      already-built output ONLY (never edits a template, style, or content file
+      owned by another task) and validates: every built page has a title, meta
+      description, canonical URL, and Open Graph metadata; heading hierarchy is
+      valid (single h1, no skipped level) per page; sitemap.xml and robots.txt
+      exist in the build output (generated unconditionally by T001's build
+      pipeline, not by this task) and are well-formed. Add
+      website/scripts/check-a11y.mjs -- validates the built output for image alt
+      text and other automatable accessibility signals, including that T005's
+      focus-visible and reduced-motion CSS actually shipped. Both scripts are
+      pure audits over already-built HTML; neither this task nor either script
+      generates content or ever opens or edits a file owned by another task.
+      Document a manual-check list (keyboard navigation, reduced-motion
+      behavior, video captions if any video ships) that automated tooling cannot
+      verify."
+    status: waiting
+    depends_on:
+      - T002
+      - T003
+      - T005
+    acceptance_criteria:
+      - check-seo.mjs validates title/description/canonical/OG presence, heading
+        hierarchy, and sitemap/robots existence + well-formedness on every built
+        page -- validation only, no generation
+      - check-a11y.mjs validates automatable accessibility signals (e.g. image
+        alt text, presence of T005's focus-visible/reduced-motion CSS) from the
+        built output
+      - neither script, nor this task, generates sitemap/robots content or edits
+        any file owned by T001, T002, T003, or T005 -- both operate read-only on
+        build output
+      - a documented manual-check list exists for keyboard navigation, reduced
+        motion, and video captions
+    write_scope:
+      - website/scripts/check-seo.mjs
+      - website/scripts/check-a11y.mjs
+      - website/content/manual-checks.md
+    verification:
+      strategy: command
+      detail: cd website && npm run build && npm run check:seo && npm run check:a11y
+    result: null
+    usage: null
+  - id: T006
+    name: Hosting build+deploy pipeline (deploy-ready, not deployed)
+    objective: "Add .github/workflows/website-deploy.yml that runs website/'s full
+      production path -- npm run build (which unconditionally produces
+      sitemap.xml/robots.txt per T001), then npm run check:seo && npm run
+      check:a11y as a pre-deploy quality gate -- and is written to deploy that
+      exact build output to S3 fronted by CloudFront via AWS OIDC (no long-lived
+      AWS credential), matching this repository's existing workflow conventions
+      (actions/checkout, actions/setup-node with an explicit Node version,
+      minimal least-privilege permissions, explanatory header comments). This
+      task delivers a deploy-ready, workflow-validated pipeline, not a real
+      production deployment: no AWS OIDC trust, S3 bucket, CloudFront
+      distribution, or DNS for the target domain (pitway.thixpin.me) exists yet
+      (confirmed by inspection -- nothing AWS-related exists anywhere in this
+      repository today). The workflow's build-validate-audit steps run and pass
+      in CI regardless; the deploy step will not run for real until the
+      developer completes those external, one-time prerequisites, documented
+      plainly in the workflow's own comments. No backend, database,
+      authentication, or CMS."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+      - T005
+    acceptance_criteria:
+      - a GitHub Actions workflow runs build, check:seo, and check:a11y, then is
+        written to deploy that exact static output to S3/CloudFront via AWS OIDC
+      - the deployed artifact (as built by this same workflow) always contains
+        sitemap.xml and robots.txt -- no separate manual step required
+      - the workflow matches this repository's existing conventions
+        (checkout/setup-node versions, minimal permissions, header comments) as
+        seen in test.yml and publish.yml
+      - the workflow's build-validate-audit steps run and pass in CI regardless
+        of whether AWS OIDC trust, S3/CloudFront, or DNS are configured yet;
+        each external prerequisite is documented in-file
+      - this task does not claim, attempt, or verify a real production deployment
+      - no backend, database, authentication, or CMS is introduced
+    write_scope:
+      - .github/workflows/website-deploy.yml
+    verification:
+      strategy: command
+      detail: cd website && npm run build && npm run check:seo && npm run check:a11y
+    result: null
+    usage: null
