@@ -1,0 +1,92 @@
+<!--
+  Reference template for a PitWay documentation page.
+
+  website/scripts/build.mjs has no templating engine: it converts each
+  website/content/**/*.md file to HTML verbatim (Markdown -> HTML only) and
+  wraps the result in its own minimal generic <head> (charset, viewport,
+  <title> derived from the first ATX h1 -- nothing else). It does not read
+  this file at build time.
+
+  This file instead documents, as real markup, the shared chrome every page
+  under website/content/{getting-started,concepts,workflow,agents}/*.md and
+  website/content/docs-index.md implements by hand: each of those Markdown
+  files opens with a raw-HTML block (marked passes raw HTML through
+  unchanged) containing the per-page <meta>/<link> tags, the persistent
+  section sidebar, and breadcrumbs, and closes with a second raw-HTML block
+  containing prev/next navigation -- with the page's real Markdown content
+  (a "# Title" heading plus body) sandwiched in between, inside <main>.
+
+  The {{ ... }} placeholders below show what varies per page. The real
+  values for every page are driven by website/data/docs-nav.yaml (the
+  structured source of truth for the section/page tree, order, and titles)
+  -- when the nav changes, update docs-nav.yaml first, then propagate the
+  change into each affected content page's embedded HTML.
+
+  Everything else on this page (skip link, sidebar tree, breadcrumb trail,
+  prev/next links) is real, keyboard-focusable HTML, not a mockup -- this
+  file just shows the pattern once, in one place, rather than only inline
+  across 17 content files.
+-->
+
+<!-- Per-page <head> metadata, emitted as the first thing in <body> since
+     build.mjs's own <head> only provides charset/viewport/title. -->
+<meta name="description" content="{{ page.description }}">
+<link rel="canonical" href="https://pitway.thixpin.me{{ page.path }}">
+<meta property="og:type" content="article">
+<meta property="og:title" content="{{ page.title }} · PitWay Docs">
+<meta property="og:description" content="{{ page.description }}">
+<meta property="og:url" content="https://pitway.thixpin.me{{ page.path }}">
+<meta property="og:site_name" content="PitWay Docs">
+
+<a class="skip-link" href="#main-content">Skip to content</a>
+
+<div class="docs-layout">
+
+  <!-- Persistent, static section navigation: all 4 sections and their 16
+       pages, always visible, no client-side search. Same tree, same order,
+       on every page -- the {{ page.path }} link carries aria-current="page"
+       on whichever page is current. -->
+  <nav class="docs-sidebar" aria-label="Documentation sections">
+    <p class="docs-sidebar-title"><a href="{{ rel(docsIndex) }}">PitWay Docs</a></p>
+
+    {{#each sections}}
+    <p class="docs-sidebar-section">{{ section.label }}</p>
+    <ul>
+      {{#each section.pages}}
+      <li><a href="{{ rel(page.path) }}"{{#if isCurrent}} aria-current="page"{{/if}}>{{ page.title }}</a></li>
+      {{/each}}
+    </ul>
+    {{/each}}
+  </nav>
+
+  <div class="docs-main">
+
+    <!-- Breadcrumbs: Docs > [Section, when the section has more than one
+         page] > current page title. -->
+    <nav class="docs-breadcrumbs" aria-label="Breadcrumb">
+      <a href="{{ rel(docsIndex) }}">Docs</a>
+      <span aria-hidden="true">›</span>
+      <span>{{ section.label }}</span>
+      <span aria-hidden="true">›</span>
+      <span aria-current="page">{{ page.title }}</span>
+    </nav>
+
+    <main id="main-content">
+
+      <!-- Real Markdown content lives here in every content/*.md file:
+           a single "# {{ page.title }}" (the only h1 on the page -- also
+           what build.mjs derives its own <title> tag from) followed by
+           body content using ## for section headings, never skipping a
+           level. -->
+
+      <!-- Prev/next: a single linear chain across all 16 pages, section by
+           section, page by page, in docs-nav.yaml order. Getting
+           Started/index has no prev; Agents/resume has no next. -->
+      <nav class="docs-prevnext" aria-label="Page navigation">
+        <a rel="prev" href="{{ rel(prevPage.path) }}">← {{ prevPage.title }}</a>
+        <a rel="next" href="{{ rel(nextPage.path) }}">{{ nextPage.title }} →</a>
+      </nav>
+
+    </main>
+  </div>
+</div>

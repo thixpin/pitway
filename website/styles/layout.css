@@ -1,0 +1,267 @@
+/*
+ * Page/section layout for the PitWay website: homepage chrome (header/main/
+ * footer, real markup from website/content/pages/index.md and website/
+ * templates/homepage.html) and the docs section layout (div.docs-layout >
+ * nav.docs-sidebar + div.docs-main, real markup from every website/content/
+ * {getting-started,concepts,workflow,agents}/*.md file and website/
+ * templates/docs.html -- verified against built output in
+ * website/dist/getting-started/index.html).
+ *
+ * Breakpoints: mobile (default, <600px), tablet (>=600px), desktop
+ * (>=900px). The docs sidebar is persistent (always in the DOM, never
+ * hidden) at every breakpoint; it stacks above the content column below
+ * 900px and becomes a fixed-width side column at/above 900px.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--color-bg);
+  /* Prevent any wide child (long code fence, wide SVG) from ever
+     introducing page-level horizontal scroll. */
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  min-height: 100vh;
+}
+
+img,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ---------------------------------------------------------------------
+   Skip link -- real first focusable element on every page (both the
+   unclassed homepage version and docs.html's a.skip-link). Visually
+   hidden until focused, per standard skip-link pattern.
+   --------------------------------------------------------------------- */
+a[href="#main-content"] {
+  position: absolute;
+  top: -3rem;
+  left: var(--space-4);
+  z-index: 100;
+  background: var(--color-bg-raised);
+  color: var(--color-text-primary);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+}
+
+a[href="#main-content"]:focus-visible {
+  top: var(--space-4);
+}
+
+/* ---------------------------------------------------------------------
+   Homepage chrome: header, main sections, footer.
+   --------------------------------------------------------------------- */
+header {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-raised);
+}
+
+header nav[aria-label="Primary"] {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-5);
+}
+
+header nav[aria-label="Primary"] ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+}
+
+main#main-content {
+  display: block;
+}
+
+/* Homepage-only: main#main-content is a direct child of <body> (siblings:
+   skip link, header, footer -- see website/content/pages/index.md /
+   website/templates/homepage.html), unlike the docs layout where
+   main#main-content is nested inside .docs-main. The child combinator
+   below scopes these rules to the homepage without colliding with docs
+   pages. */
+body > main#main-content > section {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+body > main#main-content > section:last-child {
+  border-bottom: none;
+}
+
+body > main#main-content > section#hero {
+  padding-top: var(--space-9);
+  padding-bottom: var(--space-9);
+}
+
+#hero p {
+  margin: 0 0 var(--space-4);
+}
+
+/* Hero CTA row ("Get Started" / "View on GitHub"). */
+#hero p:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+#hero p:last-child a {
+  display: inline-block;
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+}
+
+#hero p:last-child a:first-child {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border-color: var(--color-accent);
+  font-weight: 600;
+}
+
+#hero p:last-child a:first-child:hover {
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+  color: var(--color-bg);
+  text-decoration: none;
+}
+
+#hero p:last-child a:last-child:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+  text-decoration: none;
+}
+
+footer {
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-raised);
+}
+
+footer p {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-2) var(--space-5);
+}
+
+/* ---------------------------------------------------------------------
+   Docs section layout: div.docs-layout > nav.docs-sidebar + div.docs-main
+   --------------------------------------------------------------------- */
+.docs-layout {
+  display: flex;
+  flex-direction: column;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-5);
+  gap: var(--space-6);
+}
+
+.docs-sidebar {
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  align-self: stretch;
+}
+
+.docs-main {
+  min-width: 0; /* allow wide children (pre, table) to shrink instead of overflow */
+}
+
+.docs-breadcrumbs {
+  margin-bottom: var(--space-5);
+}
+
+.docs-prevnext {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+
+.docs-prevnext-empty {
+  flex: 1;
+}
+
+/* Tablet and up: sidebar and content sit side by side; sidebar is
+   persistent and sticky so all 16 pages stay reachable while scrolling a
+   long page, satisfying the "no return to a single index page" contract
+   requirement. */
+@media (min-width: 900px) {
+  .docs-layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .docs-sidebar {
+    flex: 0 0 var(--docs-sidebar-width);
+    position: sticky;
+    top: var(--space-5);
+    max-height: calc(100vh - 2 * var(--space-5));
+    overflow-y: auto;
+  }
+
+  .docs-main {
+    flex: 1 1 auto;
+  }
+}
+
+/* Tablet breakpoint: widen section padding once there's room, without yet
+   moving to the side-by-side docs layout. */
+@media (min-width: 600px) {
+  body > main#main-content > section {
+    padding-left: var(--space-6);
+    padding-right: var(--space-6);
+  }
+
+  .docs-layout {
+    padding: var(--space-6);
+  }
+}
+
+/* Mobile: tighten the generous desktop spacing so sections and the docs
+   sidebar don't force horizontal scrolling on narrow viewports. */
+@media (max-width: 599px) {
+  body > main#main-content > section {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  body > main#main-content > section#hero {
+    padding-top: var(--space-7);
+    padding-bottom: var(--space-7);
+  }
+
+  .docs-layout {
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+
+  #hero p:last-child {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  header nav[aria-label="Primary"] ul {
+    gap: var(--space-2) var(--space-4);
+  }
+}
+
+/* prefers-reduced-motion: the sticky sidebar's scroll behavior and any
+   hover transitions declared in typography.css are covered by the single
+   global guard there; nothing in this file animates independently. */

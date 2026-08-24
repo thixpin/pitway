@@ -1,0 +1,22 @@
+{
+  "name": "pitway-website",
+  "private": true,
+  "version": "0.0.0",
+  "description": "PitWay's official website: static build pipeline (Markdown -> HTML, workflow diagram -> SVG, sitemap/robots).",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check:seo": "node scripts/check-seo.mjs",
+    "check:a11y": "node scripts/check-a11y.mjs"
+  },
+  "dependencies": {
+    "marked": "18.0.10"
+  },
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.16.0"
+  }
+}

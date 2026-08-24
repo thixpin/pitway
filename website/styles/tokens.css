@@ -1,0 +1,73 @@
+/*
+ * Design tokens for the PitWay website: dark-first developer-tool identity.
+ * Deep navy background, cyan/electric accent, off-white primary text,
+ * muted blue-gray secondary text. Distinct from thixpin.me -- this is a
+ * cooler, more saturated cyan-on-navy terminal palette, not a copy.
+ *
+ * Consumed by layout.css and typography.css. No selectors here beyond
+ * :root -- this file only declares custom properties.
+ */
+
+:root {
+  /* ---- Color: surfaces ---- */
+  --color-bg: #111629;            /* page background: deep navy */
+  --color-bg-raised: #161d35;     /* sidebar / cards / raised panels */
+  --color-bg-inset: #0c1020;      /* code blocks, inset/terminal surfaces */
+  --color-border: #232b47;        /* hairline borders/dividers */
+  --color-border-strong: #33406b; /* higher-contrast borders (focus adjacent) */
+
+  /* ---- Color: text ---- */
+  --color-text-primary: #f4f6fb;    /* off-white, body/headings */
+  --color-text-secondary: #8c97b8;  /* muted blue-gray, secondary copy */
+  --color-text-tertiary: #626e91;   /* breadcrumb separators, meta text */
+
+  /* ---- Color: accent ---- */
+  --color-accent: #64b8f7;        /* cyan/electric accent */
+  --color-accent-strong: #97d2ff; /* hover/active state of the accent */
+  --color-accent-bg: rgba(100, 184, 247, 0.12); /* accent wash for current/hover rows */
+
+  /* ---- Focus ---- */
+  --focus-ring: 0 0 0 3px rgba(100, 184, 247, 0.45);
+  --focus-outline-color: var(--color-accent);
+
+  /* ---- Typography ---- */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica,
+    Arial, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", "JetBrains Mono", Menlo,
+    Consolas, "Liberation Mono", monospace;
+
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1.0625rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.5rem;
+  --text-3xl: 3.25rem;
+
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.7;
+
+  /* ---- Spacing scale ---- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+  --space-9: 6rem;
+
+  /* ---- Layout ---- */
+  --content-max-width: 72rem;
+  --prose-max-width: 42rem;
+  --docs-sidebar-width: 17rem;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  /* ---- Motion (guarded globally by prefers-reduced-motion in layout.css) ---- */
+  --transition-fast: 150ms ease;
+}

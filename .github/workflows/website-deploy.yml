@@ -1,0 +1,106 @@
+name: Website Deploy
+
+# Builds, audits (check:seo/check:a11y), and deploys website/'s static
+# output to S3 fronted by CloudFront via AWS OIDC (no long-lived AWS
+# credential stored in this repository). Subsumes the validation role
+# website-build.yml used to cover separately (deleted as redundant): the
+# `build` job below now runs on every push AND every PR targeting the
+# website branch, so that coverage isn't lost. Deploy-ready, not yet
+# deployed: the `deploy` job is a no-op until the one-time external
+# prerequisites documented at the bottom of this file are completed by the
+# developer. The `build` job always runs and must always pass in CI
+# regardless of whether AWS is configured.
+on:
+  push:
+    branches: ["website"]
+  pull_request:
+    branches: ["website"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build website
+        run: npm run build
+
+      - name: Audit SEO metadata
+        run: npm run check:seo
+
+      - name: Audit accessibility signals
+        run: npm run check:a11y
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-dist
+          path: website/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # Never on pull_request (a PR only ever gets the build/audit job, never
+    # a deploy attempt), and a no-op until the developer completes the
+    # external setup below -- an empty AWS_DEPLOY_ROLE_ARN repository
+    # variable means there is no AWS OIDC trust relationship, S3 bucket, or
+    # CloudFront distribution to deploy to yet, so this job is skipped
+    # rather than failing CI.
+    if: github.event_name != 'pull_request' && vars.AWS_DEPLOY_ROLE_ARN != ''
+    permissions:
+      contents: read
+      id-token: write # AWS OIDC -- no long-lived AWS credential stored here
+    steps:
+      - name: Download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: website-dist
+          path: dist
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Sync build output to S3
+        run: aws s3 sync dist "s3://${{ vars.WEBSITE_S3_BUCKET }}" --delete
+
+      - name: Invalidate CloudFront cache
+        run: >-
+          aws cloudfront create-invalidation
+          --distribution-id "${{ vars.WEBSITE_CLOUDFRONT_DISTRIBUTION_ID }}"
+          --paths "/*"
+
+# One-time external prerequisites before `deploy` runs for real (none of
+# this exists yet, anywhere in this repository or in AWS, as of this task):
+#
+#   1. Create an S3 bucket for the built static site and a CloudFront
+#      distribution fronting it, with DNS for pitway.thixpin.me pointed at
+#      the distribution.
+#   2. Create an AWS IAM OIDC identity provider trusting
+#      token.actions.githubusercontent.com, and an IAM role trusting this
+#      repository (thixpin/pitway, ref refs/heads/website) with
+#      least-privilege permissions scoped to writing the S3 bucket above
+#      and creating CloudFront invalidations for the distribution above.
+#   3. Set repository variables AWS_DEPLOY_ROLE_ARN, AWS_REGION,
+#      WEBSITE_S3_BUCKET, and WEBSITE_CLOUDFRONT_DISTRIBUTION_ID to the
+#      values from steps 1-2 (Settings -> Secrets and variables -> Actions
+#      -> Variables). Once AWS_DEPLOY_ROLE_ARN is non-empty, the `deploy`
+#      job above starts running on every push to the website branch.

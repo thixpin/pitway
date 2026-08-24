@@ -1,0 +1,9 @@
+# Build output -- regenerated on every `npm run build`, never committed.
+dist/
+
+# Dependencies -- installed via `npm ci`, never committed.
+node_modules/
+
+# Local logs / OS cruft.
+npm-debug.log*
+.DS_Store

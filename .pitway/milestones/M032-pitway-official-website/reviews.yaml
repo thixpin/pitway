@@ -1,0 +1,180 @@
+schema_version: 1
+sessions:
+  - id: rev-952fdcac9c1f
+    status: decided
+    created_at: 2026-08-24T07:58:54Z
+    roles:
+      - ui-ux
+      - architect
+    content_hash: sha256:1ac8d4607a8bad99b5cfd4462dfba0d794cf4405a351ada3287dcc18788b0220
+    findings:
+      - role: ui-ux
+        recorded_at: 2026-08-24T08:01:36Z
+        findings:
+          - severity: major
+            finding: Homepage section "Multi-Agent Resume" (AC002/T002) uses the term
+              "Multi-Agent" while CLAUDE.md's own Non-goals section explicitly
+              states PitWay is "not a multi-agent framework." A first-time
+              visitor seeing "Multi-Agent Resume" on the homepage is likely to
+              read it as "orchestrates multiple AI agents working together,"
+              which is the opposite of what the project claims to be. This
+              directly conflicts with AC002's own requirement that no
+              invented/unsupported terminology appear on the page, even though
+              the underlying capability (resume across sessions and across
+              driver integrations -- Claude Code, OpenCode, Codex) is real and
+              well-grounded.
+            targets:
+              - ac002
+              - t002
+            recommendation: Rename the section to grounded language, e.g. "Resume Across
+              Sessions" or "Durable Resume," and confirm copy never implies
+              simultaneous multi-agent orchestration.
+          - severity: major
+            finding: Homepage section "Automatic Documentation" (AC002/T002) does not
+              correspond to any feature name in README.md, USAGE.md, or
+              CLAUDE.md -- I grepped all three for "automatic documentation" and
+              found no match. The real underlying capability (git commits with
+              PitWay-Milestone/PitWay-Task trailers, `.pitway/` state that
+              survives the AI session -- README's "A record that survives the
+              conversation") is about durable traceability, not documentation
+              generation. A visitor is likely to read "Automatic Documentation"
+              as "PitWay auto-generates docs/API references," a feature PitWay
+              does not have.
+            targets:
+              - ac002
+              - t002
+            recommendation: Rename to something traceable to source content, e.g. "Durable,
+              Traceable Records" or "A Record That Survives the Session,"
+              matching README's own phrasing.
+          - severity: major
+            finding: 'The documentation nav model is breadcrumbs + prev/next + one static
+              index page, explicitly no search, for what the contract itself
+              specifies as roughly 16 sub-pages (Getting Started + Concepts:
+              Milestones/Contracts/Tasks/Evidence/Backlog/Worktrees (6) +
+              Workflow: Review/Auto Run/Verification/Completion/Merge (5) +
+              Agents: Claude Code/OpenCode/Codex/Resume (4)). Nothing in
+              AC003/T003 mandates a persistent, always-visible section nav tree
+              -- only breadcrumbs (which show ancestry, not siblings) and
+              prev/next (which only move sequentially). At this page count,
+              jumping from e.g. Workflow > Merge to Agents > Codex means either
+              clicking "next" through unrelated pages or returning to a single
+              index page every time, which is real friction for a "no search"
+              site.'
+            targets:
+              - ac003
+              - t003
+            recommendation: Require a persistent section-level nav (e.g. always-visible
+              sidebar or in-page tree of the 4 sections/16 pages) in addition to
+              breadcrumbs/prev-next -- still no search, but no longer
+              hub-and-spoke.
+          - severity: major
+            finding: 'T002 (homepage markup) and T005 (dark-first styling: tokens.css,
+              layout.css, typography.css) both depend only on T001 and are
+              dependency-independent of each other, as are T003 and T005 --
+              meaning under parallel_worktrees execution they can be authored
+              concurrently with no shared file and no task that owns reconciling
+              their contract (class names, DOM structure, focus-visible hooks,
+              spacing scale). T004, the only task that runs after all three, is
+              explicitly audit-only ("never opens or edits a template, style, or
+              content file owned by another task") and cannot fix a markup/CSS
+              mismatch or inconsistent interaction pattern between the homepage
+              and docs templates. This risks each template reinventing its own
+              class/DOM conventions with nothing enforcing one coherent design
+              system across the site.'
+            targets:
+              - t002
+              - t003
+              - t004
+              - t005
+            recommendation: Either sequence T005 before T002/T003 (T002/T003 depend_on
+              T001,T005), or add a shared markup/class-naming contract (e.g. a
+              short design-tokens/BEM-convention doc in T001) that
+              T002/T003/T005 all build against.
+          - severity: minor
+            finding: docs/assets/workflow.mmd (reused verbatim per AC001/T001 for the
+              homepage's "How PitWay Works" section) is a dense flowchart -- 14+
+              nodes, emoji glyphs, nested subgraphs, and dotted cyclic
+              back-arrows (e.g. RED->GREEN loops, milestone-revision loop) --
+              built for README's developer audience who already has context.
+              Nothing in AC002/T002 asks for a simplified or annotated variant
+              for a zero-context homepage visitor; embedding it unmodified may
+              not aid a first-time visitor's comprehension even though it is
+              factually accurate and its contrast/theming is otherwise handled
+              correctly by T001.
+            targets:
+              - ac002
+              - t002
+            recommendation: Consider a short supporting caption or a simplified subset of
+              the diagram for the homepage context; not a blocker, keep the full
+              diagram in the docs section where audience context is established.
+        usage: null
+      - role: architect
+        recorded_at: 2026-08-24T08:07:13Z
+        findings:
+          - severity: blocker
+            finding: "T003's write_scope lists four directory-only entries
+              (website/content/getting-started/, .../concepts/, .../workflow/,
+              .../agents/) instead of exact file paths. PitWay's actual
+              write_scope enforcement (src/git/commit-or-resume.ts, backed by
+              src/git/safety.ts, which runs `git status --untracked-files=all`
+              so a new directory is listed file-by-file, never collapsed) does
+              exact Set membership between declared write_scope strings and
+              individual dirty file paths. A directory-prefix entry never
+              matches the real per-file path of anything T003 creates inside it,
+              so completion will throw \"cannot safely proceed: unrelated dirty
+              changes present\" for every markdown file T003 writes -- T003
+              cannot complete as scoped. src/git/baseline.ts documents
+              exact-path-only as deliberate (\"Never a directory prefix or glob
+              here\"). No other task in this milestone uses a directory-style
+              entry."
+            targets:
+              - t003
+              - ac007
+            recommendation: Enumerate T003's write_scope as exact file paths (one per doc
+              page actually being authored), matching every other task in this
+              milestone. Re-verify AC007's "verified path-by-path" claim once
+              corrected.
+          - severity: major
+            finding: "check-seo.mjs (T004) only generates sitemap.xml/robots.txt when `npm
+              run check:seo` is invoked, a separate script from `npm run build`.
+              T006's own verification (CT007: \"cd website && npm run build\")
+              and its objective/AC text never invoke check:seo or check:a11y as
+              part of the deploy build step. As written, the artifact T006
+              builds and is prepared to deploy to S3/CloudFront would omit the
+              sitemap/robots files AC004 tasks T004 with generating -- the
+              deployed site's SEO story silently regresses from what AC004
+              promises unless check:seo also runs before deploy."
+            targets:
+              - t004
+              - t006
+              - ac004
+              - ac006
+            recommendation: Either fold sitemap/robots generation into T001's build.mjs
+              (always run), or have website-deploy.yml explicitly run npm run
+              check:seo (and check:a11y as a pre-deploy gate) before packaging
+              output, updating CT007 to match.
+          - severity: minor
+            finding: "T005 (styling) depends only on T001, making it parallel-eligible
+              alongside T002/T003 -- and this repo's own .pitway/config.yaml
+              currently sets execution.strategy: parallel_worktrees, a live, not
+              hypothetical, dispatch mode. write_scope disjointness (T005 owns
+              styles/*.css, T002/T003 own templates/content) guarantees no
+              commit conflict but not that CSS selectors line up with the real
+              markup, if dispatched to separate worktrees concurrently T005
+              would only see T001's baseline fixture markup, not T002/T003's
+              real HTML."
+            targets:
+              - t005
+              - t002
+              - t003
+            recommendation: Either make T005 depend on T002 and T003 (matching T004's
+              pattern), or explicitly direct sequential dispatch of T002/T003
+              before T005 regardless of parallel eligibility.
+        usage: null
+    decision:
+      outcome: revision_requested
+      note: Accepted architect blocker (T003 write_scope) + major (T004->T006 SEO
+        wiring), plus ui-ux 4 majors (terminology x2, nav friction, cross-task
+        design coherence). Applying full reconciliation via milestone-add
+        --replace.
+      decided_at: 2026-08-24T08:46:40Z

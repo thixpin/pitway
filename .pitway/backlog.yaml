@@ -477,3 +477,94 @@ items:
       docs/archive/IMPLEMENTATION_PLAN-v1.0.md with all references updated;
       follow-up qc-eb95b199 (020f98b) made distributed protocol docs fully
       self-contained"
+  - id: B026
+    title: milestone-review usage shows N/A; ms-status total doesn't include review
+      usage
+    reason: "pitway milestone-review record's --usage flag was never passed during
+      M032's review session (developer/architect roles both show Usage: N/A in
+      the report) -- either the driver must remember to always capture and pass
+      reviewer subagent usage, or the CLI should surface this gap more clearly.
+      Separately, milestone-status --report's token total/breakdown currently
+      aggregates only task usage (task/planning/qa categories) -- it should also
+      fold in recorded review usage so the milestone's real total token cost is
+      visible in one place."
+    status: pending
+    source:
+      milestone: M032
+      task: null
+    created_at: 2026-08-24T09:59:01.351Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B027
+    title: "ms-status --report: Execution column always shows '\\''—'\\''"
+    reason: "Compared 'pitway milestone-status M032' against 'pitway
+      milestone-status M032 --report' on the current M032 state: the plain
+      table's Execution column correctly shows inline/worktree per task, but
+      --report's Execution column renders '\\''—'\\'' for every single task
+      regardless of how it actually ran -- looks unpopulated/wrong in the report
+      path. Developer also flagged the footer as differently formatted between
+      the two commands; re-running both just now the racing-footer line was
+      byte-identical in both outputs, so that half isn't independently
+      reproduced as of this check -- flagging both as reported. Worth checking
+      src/cli/commands/milestone-status.ts's --report rendering for the
+      Execution-column root cause and re-checking the footer claim against a
+      different milestone state."
+    status: archived
+    source:
+      milestone: M032
+      task: null
+    created_at: 2026-08-24T10:39:25.712Z
+    resolved_at: 2026-08-24T10:40:13.913Z
+    promoted_to: null
+    archived_reason: Recorded with garbled text due to a shell quoting mistake on my
+      part (literal backslash-quote sequences leaked into the title/reason
+      instead of a real quote character) -- re-filed cleanly as B028.
+  - id: B028
+    title: "ms-status --report: Execution column always shows an em dash"
+    reason: "Compared \"pitway milestone-status M032\" against \"pitway
+      milestone-status M032 --report\" on the current M032 state: the plain
+      table's Execution column correctly shows inline/worktree per task, but
+      --report's Execution column renders an em dash for every single task
+      regardless of how it actually ran -- looks unpopulated/wrong in the report
+      path. Developer also flagged the footer as differently formatted between
+      the two commands; re-running both just now the racing-footer line was
+      byte-identical in both outputs, so that half isn't independently
+      reproduced as of this check -- flagging both as reported. Worth checking
+      src/cli/commands/milestone-status.ts's --report rendering for the
+      Execution-column root cause and re-checking the footer claim against a
+      different milestone state."
+    status: pending
+    source:
+      milestone: M032
+      task: null
+    created_at: 2026-08-24T10:40:23.253Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B029
+    title: verify recording strands any new task-add mid-milestone
+    reason: "Repro: run 'pitway verify <id>' (even just the command checks) after
+      all tasks are completed but before milestone-complete -- it writes to
+      verification-results.yaml. resolveTargetPath
+      (src/core/journal/operations.ts) has no case mapping a verification-result
+      journal entry type to verification-results.yaml, and only
+      src/core/milestones/complete.ts's completionPaths ever expects that file
+      dirty. Result: 'task-update <id> in_progress' on ANY task (including a
+      brand-new task-add'd one) then refuses with 'unrelated dirty changes
+      present: verification-results.yaml', and verification-repair's window
+      (every non-cancelled task completed) doesn't cover the case where the new
+      task is still ready/uncancelled. Hit this for real in M032: had to cancel
+      a just-added task (T013) purely to get out of the stranding, not because
+      the task itself was wrong. Needs either a resolveTargetPath case for
+      verification results, or task-update tolerating pending
+      verification-results dirt the same way it tolerates other pending journal
+      entries."
+    status: pending
+    source:
+      milestone: M032
+      task: null
+    created_at: 2026-08-24T11:09:43.787Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
