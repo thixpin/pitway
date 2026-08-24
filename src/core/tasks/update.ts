@@ -224,6 +224,15 @@ function buildFingerprint(root: string, declaredPaths: string[]): JournalTaskVer
   });
 }
 
+// M030/T001 (AC001): a record's execution outcome alone, independent of
+// staleness -- shared by validateTaskVerifyEvidence's pass/fail check below
+// and resolveTaskVerifyEvidence's backward search, so the two never define
+// "passing" differently.
+function isExecutionPassing(record: JournalTaskVerifyEvidence): boolean {
+  const typecheckFailed = record.typecheck !== undefined && record.typecheck.exitCode !== 0;
+  return record.terminationReason === 'exited' && record.exitCode === 0 && !typecheckFailed;
+}
+
 // Selection-then-validate (T002/AC001): validates a single already-selected
 // candidate record, naming exactly what differs on any mismatch -- never
 // falling back to search for an older record that happens to match.
@@ -233,8 +242,8 @@ function validateTaskVerifyEvidence(root: string, task: Task, record: JournalTas
       `evidence record ${record.id} is stale: task mismatch (recorded for ${record.taskId}, current task ${task.id})`,
     );
   }
-  const typecheckFailed = record.typecheck !== undefined && record.typecheck.exitCode !== 0;
-  if (record.terminationReason !== 'exited' || record.exitCode !== 0 || typecheckFailed) {
+  if (!isExecutionPassing(record)) {
+    const typecheckFailed = record.typecheck !== undefined && record.typecheck.exitCode !== 0;
     throw new TaskUpdateError(
       `evidence record ${record.id} represents a failing run (terminationReason=${record.terminationReason}, ` +
         `exitCode=${record.exitCode}${typecheckFailed ? `, typecheck.exitCode=${record.typecheck?.exitCode}` : ''})`,
@@ -277,13 +286,21 @@ function validateTaskVerifyEvidence(root: string, task: Task, record: JournalTas
   }
 }
 
-// Implicit: newest record for this milestone+task, by append order --
-// selection never filters by attempt/command/write_scope/fingerprint, only
-// milestone+task identity. Explicit (--evidence <id>): the id alone is the
-// lookup key, never a milestone/task filter -- an unknown id is its own
-// distinct refusal, separate from a found-but-diverged record's mismatch
-// refusal. No record at all (implicit, nothing matches; explicit, never
-// supplied) falls through to the existing --result/--message path unchanged.
+// Implicit (M030/T001, AC001): matches are searched newest-to-oldest by
+// append order for the first record whose *execution* passed
+// (isExecutionPassing) -- so a later execution-failing record never masks
+// an earlier execution-passing one. That single candidate then undergoes
+// the same validateTaskVerifyEvidence staleness check as before; a
+// staleness mismatch on it still refuses immediately, citing that record --
+// the backward search never crosses into staleness, it only skips
+// execution-failing records. When no record's execution passed at all,
+// falls through to the newest record's own failing-run error, matching
+// today's behavior. Explicit (--evidence <id>): the id alone is the lookup
+// key, never a milestone/task filter, and never a backward search -- an
+// unknown id is its own distinct refusal, separate from a found-but-
+// diverged record's mismatch refusal. No record at all (implicit, nothing
+// matches; explicit, never supplied) falls through to the existing
+// --result/--message path unchanged.
 function resolveTaskVerifyEvidence(
   root: string,
   milestoneId: string,
@@ -307,10 +324,12 @@ function resolveTaskVerifyEvidence(
   const matches = records.filter(
     (r) => isEvidence(r) && r.milestone === milestoneId && r.taskId === task.id,
   ) as JournalTaskVerifyEvidence[];
-  const record = matches.length > 0 ? matches[matches.length - 1] : undefined;
-  if (record === undefined) return undefined;
-  validateTaskVerifyEvidence(root, task, record);
-  return record;
+  if (matches.length === 0) return undefined;
+
+  const passing = [...matches].reverse().find(isExecutionPassing);
+  const selected = passing ?? matches[matches.length - 1];
+  validateTaskVerifyEvidence(root, task, selected);
+  return selected;
 }
 
 // AC007 (M013): evidence-honest labeling for a completed task -- there is no

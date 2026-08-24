@@ -858,13 +858,18 @@ describe('pitway task-update start tolerates pending journal entries materialize
   });
 });
 
-// T002/AC001: task-update's evidence integration. Implicit-by-default,
-// selection-then-validate: the newest task_verify_evidence record for this
-// milestone+task is selected (never filtered by attempt/command/
-// write_scope/fingerprint), then validated once; any mismatch refuses
-// completion outright, naming exactly what differs, never searching backward
-// to an older record that happens to match. No record at all falls through
-// to the existing --result/--message path, unchanged.
+// T002/AC001 (M013), extended M030/T001 (AC001): task-update's evidence
+// integration. Implicit-by-default, selection-then-validate: matches are
+// searched newest-to-oldest for the first record whose *execution* passed
+// (terminationReason exited, exitCode 0, no typecheck failure) -- a later
+// execution-failing record never masks an earlier execution-passing one.
+// That single selected candidate then undergoes the existing full staleness
+// validation (task identity, attempt, command, write_scope, fingerprint)
+// exactly as before; a staleness mismatch on it still refuses immediately,
+// naming exactly what differs, never searching further back past a
+// staleness failure. When no record's execution passed at all, selection
+// refuses citing the newest record's own failing-run error. No record at
+// all falls through to the existing --result/--message path, unchanged.
 describe('pitway task-update integrates task-verify evidence (T002/AC001)', () => {
   beforeEach(async () => {
     await inReview();
@@ -973,6 +978,48 @@ describe('pitway task-update integrates task-verify evidence (T002/AC001)', () =
   it('refuses a non-exited/failed evidence run', async () => {
     appendEvidence({ exitCode: 1 });
     const { error } = await completeT001();
+    expect(error?.message).toMatch(/failing run/i);
+    expect(task('T001').status).toBe('review');
+  });
+
+  // M030/T001 (AC001): the masking-bug regression -- a later execution-
+  // failing record must never mask an earlier execution-passing, valid one.
+  it('a single later execution-failing record never masks an earlier passing one', async () => {
+    appendEvidence();
+    appendEvidence({ exitCode: 1 });
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(task('T001').result).toEqual({
+      summary: 'Implemented the thing.',
+      evidence: 'captured evidence from a real verify run',
+    });
+  });
+
+  it('multiple later execution-failing records never mask an earlier passing one', async () => {
+    appendEvidence();
+    appendEvidence({ exitCode: 1 });
+    appendEvidence({ terminationReason: 'timeout' });
+    const { error } = await completeT001();
+    expect(error).toBeUndefined();
+    expect(task('T001').result).toEqual({
+      summary: 'Implemented the thing.',
+      evidence: 'captured evidence from a real verify run',
+    });
+  });
+
+  it('when several records all fail, refuses citing the newest one specifically', async () => {
+    appendEvidence({ exitCode: 1 });
+    const newestId = appendEvidence({ terminationReason: 'timeout' });
+    const { error } = await completeT001();
+    expect(error?.message).toMatch(/failing run/i);
+    expect(error?.message).toContain(newestId);
+    expect(task('T001').status).toBe('review');
+  });
+
+  it('explicit --evidence at a failing id still refuses, unchanged (no backward search)', async () => {
+    const failingId = appendEvidence({ exitCode: 1 });
+    appendEvidence();
+    const { error } = await completeT001(['--evidence', failingId]);
     expect(error?.message).toMatch(/failing run/i);
     expect(task('T001').status).toBe('review');
   });

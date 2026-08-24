@@ -28,7 +28,7 @@ tasks:
       (~lines 227-314); T002 separately touches the target === 'in_progress'
       branch (~lines 621-633) in the same file for its own, unrelated reason --
       the two never edit the same lines."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - a single later execution-failing record never masks an earlier
@@ -47,7 +47,16 @@ tasks:
     verification:
       strategy: tdd
       detail: npx vitest run tests/integration/task-update.test.ts
-    result: null
+    result:
+      summary: "[truncated] g, shared by the validation check and the new selection
+        search. 5 new regression tests (masking by one/multiple failing records,
+        newest-failing-cited-when-none-pass, explicit --evidence still strict);
+        all 61 tests in the file pass, including the untouched diverged-command
+        staleness test."
+      evidence: Tests  61 passed (61) | Start at  11:59:58 | Duration  64.18s
+        (transform 305ms, setup 0ms, import 433ms, tests 63.65s, environment
+        0ms)
+    attempts: 1
     usage: null
   - id: T002
     name: Unified in_progress-recovery dirty-tree fix (TDD)
@@ -91,7 +100,7 @@ tasks:
       untouched. Ownership note: this is a distinct region of update.ts from
       T001's resolveTaskVerifyEvidence/validateTaskVerifyEvidence change (~lines
       227-314) -- confirm the diff touches no lines T001 touched."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
