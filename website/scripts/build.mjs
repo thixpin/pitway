@@ -316,6 +316,20 @@ export async function renderWorkflowDiagram(
   // are already transparent via clusterBkg/-b transparent above and are
   // not touched here.
   svg = overrideCssColor(svg, ".node path", "fill", "transparent");
+
+  // Edge labels (the 🔄 loop-icon retry-arrow text) carry the same
+  // DIAGRAM_NODE_FILL chip via themeVariables.edgeLabelBackground above,
+  // across four CSS rules Mermaid emits for them -- an opaque near-white
+  // patch behind the label on the dark page background. Three are hex
+  // (overrideCssColor handles those); .labelBkg is Mermaid's own rgba() of
+  // the same color, which overrideCssColor's hex-only regex can't match, so
+  // it gets its own plain replace.
+  for (const selector of [".edgeLabel", ".edgeLabel p", ".edgeLabel rect"]) {
+    svg = overrideCssColor(svg, selector, "background-color", "transparent");
+  }
+  svg = overrideCssColor(svg, ".edgeLabel rect", "fill", "transparent");
+  svg = svg.replace(/(\.labelBkg\{background-color:)rgba\([^)]*\)/, "$1transparent");
+
   await fsp.writeFile(outputPath, svg, "utf8");
 
   return outputPath;

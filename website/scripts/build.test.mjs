@@ -173,6 +173,30 @@ test("renders docs/assets/workflow.mmd to a transparent, dual-readable SVG", asy
   }
 });
 
+test("edge-label backgrounds render transparent, not an opaque near-white chip", async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "pitway-website-"));
+  try {
+    const svgPath = await renderWorkflowDiagram(WORKFLOW_MMD, tmpDir);
+    const svg = await fs.readFile(svgPath, "utf8");
+
+    // Mermaid's base theme puts the themeVariables.edgeLabelBackground value
+    // (#E8EEF7, a light color meant for node fills) into four CSS rules on
+    // the 🔄 loop-icon retry-arrow labels. None should still carry it.
+    assert.doesNotMatch(svg, /\.edgeLabel\{background-color:#E8EEF7/);
+    assert.doesNotMatch(svg, /\.edgeLabel p\{background-color:#E8EEF7/);
+    assert.doesNotMatch(svg, /\.edgeLabel rect\{[^}]*background-color:#E8EEF7/);
+    assert.doesNotMatch(svg, /\.edgeLabel rect\{[^}]*fill:#E8EEF7/);
+    assert.doesNotMatch(svg, /\.labelBkg\{background-color:rgba\(232, 238, 247/);
+
+    assert.match(svg, /\.edgeLabel\{background-color:transparent/);
+    assert.match(svg, /\.edgeLabel p\{background-color:transparent/);
+    assert.match(svg, /\.edgeLabel rect\{[^}]*background-color:transparent[^}]*fill:transparent/);
+    assert.match(svg, /\.labelBkg\{background-color:transparent/);
+  } finally {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test("docs/assets/workflow.mmd itself is never copied into the build tree", async () => {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "pitway-website-"));
   try {
