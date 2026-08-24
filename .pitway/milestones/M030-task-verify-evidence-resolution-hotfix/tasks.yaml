@@ -100,7 +100,7 @@ tasks:
       untouched. Ownership note: this is a distinct region of update.ts from
       T001's resolveTaskVerifyEvidence/validateTaskVerifyEvidence change (~lines
       227-314) -- confirm the diff touches no lines T001 touched."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -132,7 +132,16 @@ tasks:
       strategy: tdd
       detail: npx vitest run tests/unit/task-state.test.ts
         tests/integration/task-update.test.ts
-    result: null
+    result:
+      summary: "[truncated] the architect-review-confirmed pre-existing failed/blocked
+        retry dirty-tree gap into the same fix. 7 new/changed tests (1
+        state-machine edge + fresh-attempt-still-refuses + failed-retry-succeeds
+        + blocked-retry-succeeds + full review-recovery cycle); all 138 tests
+        across both files pass."
+      evidence: Tests  138 passed (138) | Start at  12:05:51 | Duration  69.03s
+        (transform 307ms, setup 0ms, import 471ms, tests 68.50s, environment
+        0ms)
+    attempts: 1
     usage: null
   - id: T003
     name: Docs + milestone gate
@@ -157,7 +166,7 @@ tasks:
       PRE_M023_ASSET_MANIFEST to match the new content. Run this milestone's
       full-suite/typecheck gate via 'pitway task-verify T003 --timeout 900000'
       (task-verify's default 120000ms budget is too short for build+test+tsc)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002

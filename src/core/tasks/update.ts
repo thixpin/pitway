@@ -646,9 +646,26 @@ export function updateTask(
     // it has no commit of its own, and no other task could ever start to
     // reach the completion checkpoint that would fold it in. Attempts
     // increments exactly once per (re)start, deterministically.
-    const journalExpected = classifyDirtyPaths(root, { journalMilestone: milestoneId }).expected;
-    assertDirtySubset(root, [tasksRepoPath(root, milestoneId), ...journalExpected]);
-    updated.attempts = (task.attempts ?? 0) + 1;
+    //
+    // M030/T002 (AC002): a RETRY into in_progress -- from review (recovery),
+    // or from ready after failed/blocked -- carries genuinely dirty
+    // write_scope/relevant_files from the task's own prior, uncommitted
+    // attempt (none of review/failed/blocked ever commit). taskAttempts > 0
+    // is true exactly on a retry (attempts is immutable outside this one
+    // increment, per task-amend's AMENDABLE_FIELDS), so it uniformly grants
+    // the task's own declared paths expected-dirty status via
+    // classifyDirtyPaths' purpose-built taskWriteScope/verifiedCleanStart
+    // option, without needing to know which prior status led here. A
+    // genuine first attempt (taskAttempts === 0) keeps verifiedCleanStart
+    // false, leaving this guarantee exactly as strict as before.
+    const taskAttempts = task.attempts ?? 0;
+    const classified = classifyDirtyPaths(root, {
+      journalMilestone: milestoneId,
+      taskWriteScope: task.write_scope ?? task.relevant_files ?? [],
+      verifiedCleanStart: taskAttempts > 0,
+    });
+    assertDirtySubset(root, [tasksRepoPath(root, milestoneId), ...classified.expected]);
+    updated.attempts = taskAttempts + 1;
   }
   // AC017: every non-completion write touches tasks.yaml only and never commits.
   persistTask(root, milestoneId, tasksFile, updated);
