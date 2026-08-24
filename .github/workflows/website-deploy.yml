@@ -1,15 +1,19 @@
 name: Website Deploy
 
-# Deploys website/'s built static output to S3 fronted by CloudFront via AWS
-# OIDC (no long-lived AWS credential stored in this repository). Separate
-# from website-build.yml (validation only, no deploy) -- this is the
-# production deploy path. Deploy-ready, not yet deployed: the `deploy` job
-# below is a no-op until the one-time external prerequisites documented at
-# the bottom of this file are completed by the developer. The `build` job
-# (build, then check:seo/check:a11y as a pre-deploy quality gate) always
-# runs and must always pass in CI regardless of whether AWS is configured.
+# Builds, audits (check:seo/check:a11y), and deploys website/'s static
+# output to S3 fronted by CloudFront via AWS OIDC (no long-lived AWS
+# credential stored in this repository). Subsumes the validation role
+# website-build.yml used to cover separately (deleted as redundant): the
+# `build` job below now runs on every push AND every PR targeting the
+# website branch, so that coverage isn't lost. Deploy-ready, not yet
+# deployed: the `deploy` job is a no-op until the one-time external
+# prerequisites documented at the bottom of this file are completed by the
+# developer. The `build` job always runs and must always pass in CI
+# regardless of whether AWS is configured.
 on:
   push:
+    branches: ["website"]
+  pull_request:
     branches: ["website"]
   workflow_dispatch:
 
@@ -52,11 +56,13 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    # No-op until the developer completes the external setup below -- an
-    # empty AWS_DEPLOY_ROLE_ARN repository variable means there is no AWS
-    # OIDC trust relationship, S3 bucket, or CloudFront distribution to
-    # deploy to yet, so this job is skipped rather than failing CI.
-    if: vars.AWS_DEPLOY_ROLE_ARN != ''
+    # Never on pull_request (a PR only ever gets the build/audit job, never
+    # a deploy attempt), and a no-op until the developer completes the
+    # external setup below -- an empty AWS_DEPLOY_ROLE_ARN repository
+    # variable means there is no AWS OIDC trust relationship, S3 bucket, or
+    # CloudFront distribution to deploy to yet, so this job is skipped
+    # rather than failing CI.
+    if: github.event_name != 'pull_request' && vars.AWS_DEPLOY_ROLE_ARN != ''
     permissions:
       contents: read
       id-token: write # AWS OIDC -- no long-lived AWS credential stored here

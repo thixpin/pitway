@@ -1,10 +1,10 @@
 ---
 description: "PitWay is an npm-distributed CLI that controls the engineering process around AI coding agents -- contracts, mechanically enforced task boundaries, verification, and durable Git traceability. It is not itself an agent."
-canonical: "https://pitway.thixpin.me/pages/index.html"
+canonical: "https://pitway.thixpin.me/"
 ogType: "website"
 ogTitle: "PitWay — The Pit Crew for Agentic Coding"
 ogDescription: "PitWay is an npm-distributed CLI that controls the engineering process around AI coding agents -- contracts, mechanically enforced task boundaries, verification, and durable Git traceability."
-ogUrl: "https://pitway.thixpin.me/pages/index.html"
+ogUrl: "https://pitway.thixpin.me/"
 ---
 
 <!--
@@ -20,13 +20,8 @@ ogUrl: "https://pitway.thixpin.me/pages/index.html"
 
 <nav aria-label="Primary">
 
-- [Problem](#problem)
-- [How It Works](#how-it-works)
-- [Contract Scope](#contract-scope)
-- [Task Execution](#task-execution)
-- [Human + Agent](#human-agent)
-- [Resume](#resume-across-agents)
-- [Traceability](#durable-traceability)
+- [PitWay](/)
+- [Docs](/docs/index.html)
 - [GitHub](https://github.com/thixpin/pitway)
 - [npm](https://www.npmjs.com/package/pitway)
 
@@ -44,7 +39,7 @@ A controlled workflow for agentic software development.
 
 PitWay is an npm-distributed CLI that controls the engineering process around AI coding agents. It is not itself an agent: agents drive the interaction, PitWay controls workflow state, engineering boundaries, verification, and traceability.
 
-[Get Started](https://github.com/thixpin/pitway#quickstart) [View on GitHub](https://github.com/thixpin/pitway)
+[Get Started](/getting-started/index.html) [View on GitHub](https://github.com/thixpin/pitway)
 
 </section>
 

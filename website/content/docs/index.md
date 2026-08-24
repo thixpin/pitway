@@ -1,43 +1,53 @@
 ---
 description: "The full PitWay documentation: Getting Started, Concepts, Workflow, and Agents -- everything needed to run PitWay's controlled workflow around AI coding agents."
-canonical: "https://pitway.thixpin.me/docs-index.html"
+canonical: "https://pitway.thixpin.me/docs/index.html"
 ogType: "article"
 ogTitle: "PitWay Documentation · PitWay Docs"
 ogDescription: "The full PitWay documentation: Getting Started, Concepts, Workflow, and Agents -- everything needed to run PitWay's controlled workflow around AI coding agents."
-ogUrl: "https://pitway.thixpin.me/docs-index.html"
+ogUrl: "https://pitway.thixpin.me/docs/index.html"
 ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
+<header>
+<nav aria-label="Primary">
+<ul>
+<li><a href="/">PitWay</a></li>
+<li><a href="/docs/index.html">Docs</a></li>
+<li><a href="https://github.com/thixpin/pitway">GitHub</a></li>
+<li><a href="https://www.npmjs.com/package/pitway">npm</a></li>
+</ul>
+</nav>
+</header>
 <div class="docs-layout">
 <nav class="docs-sidebar" aria-label="Documentation sections">
-<p class="docs-sidebar-title"><a href="docs-index.html">PitWay Docs</a></p>
+<p class="docs-sidebar-title"><a href="index.html">PitWay Docs</a></p>
 <p class="docs-sidebar-section">Getting Started</p>
 <ul>
-<li><a href="getting-started/index.html">Getting Started</a></li>
+<li><a href="../getting-started/index.html">Getting Started</a></li>
 </ul>
 <p class="docs-sidebar-section">Concepts</p>
 <ul>
-<li><a href="concepts/milestones.html">Milestones</a></li>
-<li><a href="concepts/contracts.html">Contracts</a></li>
-<li><a href="concepts/tasks.html">Tasks</a></li>
-<li><a href="concepts/evidence.html">Evidence</a></li>
-<li><a href="concepts/backlog.html">Backlog</a></li>
-<li><a href="concepts/worktrees.html">Worktrees</a></li>
+<li><a href="../concepts/milestones.html">Milestones</a></li>
+<li><a href="../concepts/contracts.html">Contracts</a></li>
+<li><a href="../concepts/tasks.html">Tasks</a></li>
+<li><a href="../concepts/evidence.html">Evidence</a></li>
+<li><a href="../concepts/backlog.html">Backlog</a></li>
+<li><a href="../concepts/worktrees.html">Worktrees</a></li>
 </ul>
 <p class="docs-sidebar-section">Workflow</p>
 <ul>
-<li><a href="workflow/review.html">Review</a></li>
-<li><a href="workflow/auto-run.html">Auto Run</a></li>
-<li><a href="workflow/verification.html">Verification</a></li>
-<li><a href="workflow/completion.html">Completion</a></li>
-<li><a href="workflow/merge.html">Merge</a></li>
+<li><a href="../workflow/review.html">Review</a></li>
+<li><a href="../workflow/auto-run.html">Auto Run</a></li>
+<li><a href="../workflow/verification.html">Verification</a></li>
+<li><a href="../workflow/completion.html">Completion</a></li>
+<li><a href="../workflow/merge.html">Merge</a></li>
 </ul>
 <p class="docs-sidebar-section">Agents</p>
 <ul>
-<li><a href="agents/claude-code.html">Claude Code</a></li>
-<li><a href="agents/opencode.html">OpenCode</a></li>
-<li><a href="agents/codex.html">Codex</a></li>
-<li><a href="agents/resume.html">Resume</a></li>
+<li><a href="../agents/claude-code.html">Claude Code</a></li>
+<li><a href="../agents/opencode.html">OpenCode</a></li>
+<li><a href="../agents/codex.html">Codex</a></li>
+<li><a href="../agents/resume.html">Resume</a></li>
 </ul>
 </nav>
 <div class="docs-main">
@@ -82,3 +92,7 @@ if this is your first time running PitWay.
 </main>
 </div>
 </div>
+<footer>
+<p>Built with PitWay by thixpin. 🏎️</p>
+<p><a href="https://github.com/thixpin/pitway">View on GitHub</a> · MIT License</p>
+</footer>

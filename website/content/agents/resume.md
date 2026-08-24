@@ -8,9 +8,19 @@ ogUrl: "https://pitway.thixpin.me/agents/resume.html"
 ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
+<header>
+<nav aria-label="Primary">
+<ul>
+<li><a href="/">PitWay</a></li>
+<li><a href="/docs/index.html">Docs</a></li>
+<li><a href="https://github.com/thixpin/pitway">GitHub</a></li>
+<li><a href="https://www.npmjs.com/package/pitway">npm</a></li>
+</ul>
+</nav>
+</header>
 <div class="docs-layout">
 <nav class="docs-sidebar" aria-label="Documentation sections">
-<p class="docs-sidebar-title"><a href="../docs-index.html">PitWay Docs</a></p>
+<p class="docs-sidebar-title"><a href="../docs/index.html">PitWay Docs</a></p>
 <p class="docs-sidebar-section">Getting Started</p>
 <ul>
 <li><a href="../getting-started/index.html">Getting Started</a></li>
@@ -42,7 +52,7 @@ ogSiteName: "PitWay Docs"
 </nav>
 <div class="docs-main">
 <nav class="docs-breadcrumbs" aria-label="Breadcrumb">
-<a href="../docs-index.html">Docs</a> <span aria-hidden="true">›</span> <span>Agents</span> <span aria-hidden="true">›</span> <span aria-current="page">Resume</span>
+<a href="../docs/index.html">Docs</a> <span aria-hidden="true">›</span> <span>Agents</span> <span aria-hidden="true">›</span> <span aria-current="page">Resume</span>
 </nav>
 <main id="main-content" tabindex="-1">
 
@@ -83,3 +93,7 @@ resuming the work.
 </main>
 </div>
 </div>
+<footer>
+<p>Built with PitWay by thixpin. 🏎️</p>
+<p><a href="https://github.com/thixpin/pitway">View on GitHub</a> · MIT License</p>
+</footer>

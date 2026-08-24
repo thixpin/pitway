@@ -7,6 +7,19 @@ ogDescription: "Accessibility checks that automated tooling cannot verify, to be
 ogUrl: "https://pitway.thixpin.me/manual-checks.html"
 ogSiteName: "PitWay Docs"
 ---
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header>
+<nav aria-label="Primary">
+<ul>
+<li><a href="/">PitWay</a></li>
+<li><a href="/docs/index.html">Docs</a></li>
+<li><a href="https://github.com/thixpin/pitway">GitHub</a></li>
+<li><a href="https://www.npmjs.com/package/pitway">npm</a></li>
+</ul>
+</nav>
+</header>
+
+<main id="main-content" tabindex="-1">
 
 # Manual Accessibility Checks
 
@@ -40,3 +53,10 @@ checks below require a human running the site in a real browser.
 - The site currently ships no video content. If a future page adds one,
   confirm it has accurate captions (or a transcript) before it ships, and
   add a page-specific check to this list.
+
+</main>
+
+<footer>
+<p>Built with PitWay by thixpin. 🏎️</p>
+<p><a href="https://github.com/thixpin/pitway">View on GitHub</a> · MIT License</p>
+</footer>
