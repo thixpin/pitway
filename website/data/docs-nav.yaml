@@ -1,0 +1,104 @@
+# Structured source of truth for the documentation section navigation.
+#
+# website/scripts/build.mjs does not parse this file (it has no templating
+# engine -- it converts Markdown to HTML verbatim and wraps a minimal generic
+# <head>). This file instead documents the real nav tree that every page
+# under website/content/{getting-started,concepts,workflow,agents}/*.md and
+# website/content/docs-index.md implements by hand as an embedded raw-HTML
+# chrome block (sidebar + breadcrumbs + prev/next), so all 17 pages stay
+# structurally consistent with a single declared source. If a page is added,
+# removed, or reordered, update this file first and propagate the change to
+# every embedded nav block it affects.
+schema_version: 1
+
+site:
+  title: PitWay Docs
+  base_url: https://pitway.thixpin.me
+  index_page: /docs-index.html
+
+# Each section's pages are listed in the exact order used for:
+#   - the persistent sidebar (grouped by section, in this order)
+#   - breadcrumbs (Docs > <section label> > <page title>)
+#   - the single linear prev/next chain across all 16 pages, section by
+#     section, page by page, in the order listed here (Getting Started/index
+#     has no prev; Agents/resume has no next)
+sections:
+  - id: getting-started
+    label: Getting Started
+    pages:
+      - id: index
+        title: Getting Started
+        path: /getting-started/index.html
+        source: [README.md "Quickstart", USAGE.md "Installation" / "Getting Started"]
+
+  - id: concepts
+    label: Concepts
+    pages:
+      - id: milestones
+        title: Milestones
+        path: /concepts/milestones.html
+        source: [CLAUDE.md "Task states" / milestone states, USAGE.md "Walkthrough"]
+      - id: contracts
+        title: Contracts
+        path: /concepts/contracts.html
+        source: [CLAUDE.md "State" / "Key Operational Rules", USAGE.md contract example]
+      - id: tasks
+        title: Tasks
+        path: /concepts/tasks.html
+        source: [CLAUDE.md "Task states", USAGE.md "Work a task"]
+      - id: evidence
+        title: Evidence
+        path: /concepts/evidence.html
+        source: [CLAUDE.md "Verification", USAGE.md task-verify / verify]
+      - id: backlog
+        title: Backlog
+        path: /concepts/backlog.html
+        source: [USAGE.md "Deferring Out-of-Scope Work"]
+      - id: worktrees
+        title: Worktrees
+        path: /concepts/worktrees.html
+        source: [README.md "Workflow Policies" execution.strategy, USAGE.md Command Reference]
+
+  - id: workflow
+    label: Workflow
+    pages:
+      - id: review
+        title: Review
+        path: /workflow/review.html
+        source: [README.md "Engineering Boundaries", milestone-review command]
+      - id: auto-run
+        title: Auto Run
+        path: /workflow/auto-run.html
+        source: [auto-run command, USAGE.md Command Reference "Housekeeping"]
+      - id: verification
+        title: Verification
+        path: /workflow/verification.html
+        source: [CLAUDE.md "Verification", USAGE.md "Verify and complete the milestone"]
+      - id: completion
+        title: Completion
+        path: /workflow/completion.html
+        source: [USAGE.md "Verify and complete the milestone", README.md "How It Works"]
+      - id: merge
+        title: Merge
+        path: /workflow/merge.html
+        source: [USAGE.md "Merge the milestone branch", README.md "Workflow Policies"]
+
+  - id: agents
+    label: Agents
+    pages:
+      - id: claude-code
+        title: Claude Code
+        path: /agents/claude-code.html
+        source: [README.md "Commands & Integration", USAGE.md "Driver Integrations"]
+      - id: opencode
+        title: OpenCode
+        path: /agents/opencode.html
+        source: [README.md "Commands & Integration", USAGE.md "Driver Integrations"]
+      - id: codex
+        title: Codex
+        path: /agents/codex.html
+        source: [README.md "Commands & Integration", USAGE.md "Driver Integrations"]
+      - id: resume
+        title: Resume
+        path: /agents/resume.html
+        source: [USAGE.md "Inspecting State", live-verified "pitway resume" behavior]

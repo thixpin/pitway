@@ -176,7 +176,7 @@ tasks:
       Agents > Codex) never requires returning to a single index page first. All
       navigation elements are real, keyboard-focusable elements -- this task
       owns its own implementation-level accessibility, not a later retrofit."
-    status: in_progress
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -219,9 +219,20 @@ tasks:
         live `pitway init` + `pitway resume` run on a fresh repo, confirming the
         persistent section navigation, breadcrumbs, prev/next, internal links,
         and semantic/keyboard- accessible structure.
-    result: null
+    result:
+      summary: "[truncated] es have valid heading hierarchy (single h1, no skipped
+        levels), no stray .mmd file exists anywhere under website/. Same known
+        limitation as T002: meta/ canonical/OG tags land in <body>, not <head>,
+        since build.mjs is outside this task's write_scope -- flagged separately
+        to the developer."
+      evidence: driver-review (verification.strategy is review; no
+        task_verify_evidence record applies -- content, links, and heading
+        hierarchy independently checked by the driver)
     attempts: 1
-    usage: null
+    driver: claude-code
+    model: claude-sonnet-5
+    usage:
+      total_tokens: 136793
   - id: T005
     name: Visual design & responsive styling
     objective: "Implement the dark-first visual identity: deep navy (~#111629)
@@ -239,7 +250,7 @@ tasks:
       PitWay icon/brand assets (none exist beyond docs/assets/workflow.svg,
       confirmed by inspection) rather than introducing an unrelated icon system
       without cause."
-    status: waiting
+    status: ready
     depends_on:
       - T002
       - T003
