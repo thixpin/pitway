@@ -1,0 +1,194 @@
+# Homepage content: structured source of truth.
+#
+# Status: documented reference only. website/scripts/build.mjs (T001) does not
+# parse this file today -- its Markdown->HTML pipeline reads only
+# website/content/**/*.md and applies a fixed <head> (charset, viewport,
+# title derived from the first ATX h1). This file exists so the homepage's
+# nav/hero/workflow-step/footer values have one authoritative, structured
+# home, and so a future template-aware build step (wiring
+# website/templates/homepage.html into build.mjs) has a ready data source
+# instead of re-deriving these values from prose. Until then, the values
+# below are hand-mirrored into website/content/pages/index.md (the file
+# build.mjs actually renders) and website/templates/homepage.html (the
+# standalone reference template) -- all three must stay in sync.
+#
+# Every value here traces to README.md / USAGE.md / CLAUDE.md; see the
+# comments below for the source of each group.
+
+schema_version: 1
+
+site:
+  name: PitWay
+  url: https://pitway.thixpin.me
+  # Path build.mjs's own mirroring produces for this page: content lives at
+  # website/content/pages/index.md, so the build output is dist/pages/index.html
+  # (see scripts/sitemap.mjs's toUrlPath -- only a literal top-level
+  # `index.html` maps to "/", so this page's real URL is /pages/index.html).
+  page_path: /pages/index.html
+
+seo:
+  title: "PitWay — The Pit Crew for Agentic Coding"
+  description: >-
+    PitWay is an npm-distributed CLI that controls the engineering process
+    around AI coding agents -- contracts, mechanically enforced task
+    boundaries, verification, and durable Git traceability. It is not
+    itself an agent. (Source: README.md "Why PitWay?" and top-of-file tagline.)
+  og_type: website
+
+nav:
+  # In-page section anchors, in document order, plus the two external links
+  # (GitHub repo, npm package) that also back the Hero CTAs. Source: README.md
+  # badges/links and AGENTS.md's repo link.
+  - label: Problem
+    href: "#problem"
+  - label: How It Works
+    href: "#how-it-works"
+  - label: Contract Scope
+    href: "#contract-scope"
+  - label: Task Execution
+    href: "#task-execution"
+  - label: Human + Agent
+    href: "#human-agent"
+  - label: Resume
+    href: "#resume-across-agents"
+  - label: Traceability
+    href: "#durable-traceability"
+  - label: GitHub
+    href: https://github.com/thixpin/pitway
+  - label: npm
+    href: https://www.npmjs.com/package/pitway
+
+hero:
+  name: PitWay
+  tagline: "The pit crew for agentic coding."
+  # Source: README.md lines 1-13 (tagline + "controls the engineering
+  # process ... it is not itself an agent" + Agents-drive/PitWay-controls bullets).
+  explanation: >-
+    PitWay is an npm-distributed CLI that controls the engineering process
+    around AI coding agents. It is not itself an agent: agents drive the
+    interaction, PitWay controls workflow state, engineering boundaries,
+    verification, and traceability.
+  primary_cta:
+    label: Get Started
+    href: https://github.com/thixpin/pitway#quickstart
+  github_cta:
+    label: View on GitHub
+    href: https://github.com/thixpin/pitway
+
+# Source: README.md "Why PitWay?" section, verbatim claims paraphrased.
+problem:
+  heading: The Problem
+  body: >-
+    AI coding agents move fast -- and that's exactly the problem. Left
+    unstructured, an agent can drift from what was asked, skip verification,
+    or quietly touch files outside its intended scope, with no durable
+    record of what actually happened or why.
+
+# Source: docs/assets/workflow.mmd (canonical stage names/labels) and
+# README.md's "Workflow Lifecycle" one-line summary. Lightweight step
+# summary only -- the full dense diagram (workflow.svg, rendered from
+# workflow.mmd at build time) is not reproduced here; see the Workflow docs
+# section for that.
+how_it_works:
+  heading: How PitWay Works
+  steps:
+    - name: Backlog
+      detail: A requirement or backlog item starts the cycle.
+    - name: "Contract ⇄ Milestone Review"
+      detail: >-
+        A milestone contract (objective, acceptance criteria, verification
+        checks) is drafted and reviewed.
+    - name: Human Approval
+      detail: >-
+        The developer explicitly confirms the contract before any
+        implementation begins -- the one mandatory approval gate.
+    - name: Task Graph
+      detail: The contract is broken into a right-sized set of tasks.
+    - name: "TDD ⇄ Task Verification → Task Commit"
+      detail: >-
+        Each task is built RED→GREEN, verified against its own declared
+        check, and committed atomically with PitWay-Milestone/PitWay-Task
+        trailers. Repeats per task.
+    - name: Final Full Test
+      detail: >-
+        A mandatory full test suite gates milestone completion; failure
+        loops back through a milestone revision.
+    - name: Milestone Complete
+      detail: Every task and check has passed.
+    - name: Milestone Merge
+      detail: The milestone's branch lands into its base branch.
+  quick_change_note: >-
+    A separate Quick Change lane (TDD → Verify → Commit) handles small
+    bounded fixes against an already-completed milestone, outside full
+    milestone planning.
+
+# Source: README.md "Why PitWay?" bullets + Engineering Boundaries table
+# (write_scope row) + CLAUDE.md "Contract is the execution boundary".
+contract_scope:
+  heading: Contract-Based Scope Control
+  body: >-
+    Every milestone starts as a contract -- objective, acceptance criteria,
+    verification checks -- reviewed and approved by a human before any
+    implementation begins. write_scope mechanically limits what a task may
+    touch; a discovered conflict stops work and proposes a contract change
+    rather than silently expanding scope.
+
+# Source: README.md "Two-Tier Verification" bullet + CLAUDE.md task-level
+# TDD/verification/atomic-commit rules.
+task_execution:
+  heading: Task Execution
+  body: >-
+    Every task is built test-first (RED→GREEN→REFACTOR) and checked against
+    its own declared verification command before it's considered done, with
+    a mandatory full test suite gating milestone completion. One atomic
+    commit per verified task, carrying PitWay-Milestone/PitWay-Task trailers.
+
+# Source: README.md "Agents drive the interaction / PitWay controls..."
+# bullets + the "What PitWay enforces vs what relies on driver discipline" callout.
+human_agent:
+  heading: Human + Agent
+  body: >-
+    Agents drive the interaction; PitWay controls workflow state,
+    engineering boundaries, verification, and traceability. State machines,
+    write_scope boundaries, verification gates, commit trailers, and
+    git-safety checks are mechanically enforced -- no driver can bypass
+    them through the CLI. Stopping for human approval gates and bounded
+    worker reports are mandated by the installed protocol documents every
+    driver loads.
+
+# Source: USAGE.md "pitway resume" + README.md Driver Support callout and
+# "Commands & Integration" section (Claude Code / OpenCode / Codex share one
+# command surface and protocol layer). Grounded wording only: PitWay is not
+# a multi-agent framework; this describes resuming the same persisted
+# workflow state across a different supported coding agent, never
+# simultaneous/orchestrated multi-agent operation, and never AI context or
+# token retention beyond what .pitway/ and git actually persist.
+resume_across_agents:
+  heading: Resume Across Coding Agents
+  body: >-
+    Claude Code, OpenCode, and Codex driver integrations all answer to the
+    same CLI, the same state in .pitway/, and the same human approval
+    gates. Run `pitway resume` at any time to reconstruct exactly what's
+    going on in the repo and what's next -- from the same driver or a
+    different supported one. PitWay is not a multi-agent framework; only
+    one driver acts at a time, and what carries over is the persisted
+    workflow state on disk, not an AI session's memory.
+
+# Source: README.md "A record that survives the conversation" bullet +
+# "Durable State" bullet + Commit Traceability callout in USAGE.md.
+# Grounded wording only: this is commit-trailer traceability and .pitway/
+# state persistence, never a claim that PitWay auto-generates arbitrary
+# project documentation.
+durable_traceability:
+  heading: Durable Traceability
+  body: >-
+    Git commits carry traceable PitWay-Milestone/PitWay-Task trailers, and
+    workflow state lives in .pitway/ -- both survive after the AI session
+    that produced them is gone. PitWay creates traceable Git checkpoints
+    without relying on transient AI conversation memory; it does not
+    auto-generate project documentation.
+
+footer:
+  brand_line: "Built with PitWay by thixpin. 🏎️"
+  github_href: https://github.com/thixpin/pitway
+  license: MIT

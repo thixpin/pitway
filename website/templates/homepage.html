@@ -1,0 +1,120 @@
+<!--
+  Reference template for the PitWay homepage.
+
+  Status: NOT wired into website/scripts/build.mjs yet. build.mjs's current
+  pipeline (T001) only converts website/content/**/*.md to HTML through a
+  fixed wrapper (charset, viewport, title derived from the first ATX h1) --
+  it does not read this file or apply any template. This document is the
+  target contract: what the homepage should be once a template-aware build
+  step exists that renders website/content/pages/index.md's content into
+  this shell. Until then, the actual built homepage ships through
+  index.md's own raw-HTML-embedded <head> tags (a documented limitation --
+  see the comment at the top of index.md).
+
+  Every value below (title, meta description, canonical, Open Graph, and
+  section content) mirrors website/content/pages/index.md and
+  website/data/homepage.yaml exactly -- all three files must stay in sync.
+  All claims trace to README.md / USAGE.md / CLAUDE.md; see
+  website/data/homepage.yaml's per-section comments for exact sourcing.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PitWay — The Pit Crew for Agentic Coding</title>
+<meta name="description" content="PitWay is an npm-distributed CLI that controls the engineering process around AI coding agents -- contracts, mechanically enforced task boundaries, verification, and durable Git traceability. It is not itself an agent.">
+<link rel="canonical" href="https://pitway.thixpin.me/pages/index.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="PitWay — The Pit Crew for Agentic Coding">
+<meta property="og:description" content="PitWay is an npm-distributed CLI that controls the engineering process around AI coding agents -- contracts, mechanically enforced task boundaries, verification, and durable Git traceability.">
+<meta property="og:url" content="https://pitway.thixpin.me/pages/index.html">
+</head>
+<body>
+
+<a href="#main-content">Skip to main content</a>
+
+<header>
+<nav aria-label="Primary">
+<ul>
+<li><a href="#problem">Problem</a></li>
+<li><a href="#how-it-works">How It Works</a></li>
+<li><a href="#contract-scope">Contract Scope</a></li>
+<li><a href="#task-execution">Task Execution</a></li>
+<li><a href="#human-agent">Human + Agent</a></li>
+<li><a href="#resume-across-agents">Resume</a></li>
+<li><a href="#durable-traceability">Traceability</a></li>
+<li><a href="https://github.com/thixpin/pitway">GitHub</a></li>
+<li><a href="https://www.npmjs.com/package/pitway">npm</a></li>
+</ul>
+</nav>
+</header>
+
+<main id="main-content">
+
+<section id="hero">
+<h1>PitWay — The Pit Crew for Agentic Coding</h1>
+<p>A controlled workflow for agentic software development.</p>
+<p>PitWay is an npm-distributed CLI that controls the engineering process around AI coding agents. It is not itself an agent: agents drive the interaction, PitWay controls workflow state, engineering boundaries, verification, and traceability.</p>
+<p>
+<a href="https://github.com/thixpin/pitway#quickstart">Get Started</a>
+<a href="https://github.com/thixpin/pitway">View on GitHub</a>
+</p>
+</section>
+
+<section id="problem">
+<h2>The Problem</h2>
+<p>AI coding agents move fast -- and that's exactly the problem. Left unstructured, an agent can drift from what was asked, skip verification, or quietly touch files outside its intended scope, with no durable record of what actually happened or why.</p>
+</section>
+
+<section id="how-it-works">
+<h2>How PitWay Works</h2>
+<p>A lightweight summary of the real workflow stages (see <code>docs/assets/workflow.mmd</code> for the full canonical diagram):</p>
+<ol>
+<li><strong>Backlog</strong> -- a requirement or backlog item starts the cycle.</li>
+<li><strong>Contract ⇄ Milestone Review</strong> -- a milestone contract (objective, acceptance criteria, verification checks) is drafted and reviewed.</li>
+<li><strong>Human Approval</strong> -- the developer explicitly confirms the contract before any implementation begins. The one mandatory approval gate.</li>
+<li><strong>Task Graph</strong> -- the contract is broken into a right-sized set of tasks.</li>
+<li><strong>TDD ⇄ Task Verification → Task Commit</strong> -- each task is built RED→GREEN, verified against its own declared check, and committed atomically with <code>PitWay-Milestone</code>/<code>PitWay-Task</code> trailers. Repeats per task.</li>
+<li><strong>Final Full Test</strong> -- a mandatory full test suite gates milestone completion; failure loops back through a milestone revision.</li>
+<li><strong>Milestone Complete</strong> -- every task and check has passed.</li>
+<li><strong>Milestone Merge</strong> -- the milestone's branch lands into its base branch.</li>
+</ol>
+<p>A separate Quick Change lane (TDD → Verify → Commit) handles small bounded fixes against an already-completed milestone, outside full milestone planning.</p>
+</section>
+
+<section id="contract-scope">
+<h2>Contract-Based Scope Control</h2>
+<p>Every milestone starts as a contract -- objective, acceptance criteria, verification checks -- reviewed and approved by a human before any implementation begins. <code>write_scope</code> mechanically limits what a task may touch. A discovered conflict stops work and proposes a contract change rather than silently expanding scope.</p>
+</section>
+
+<section id="task-execution">
+<h2>Task Execution</h2>
+<p>Every task is built test-first (RED→GREEN→REFACTOR) and checked against its own declared verification command before it's considered done, with a mandatory full test suite gating milestone completion. One atomic commit per verified task, carrying <code>PitWay-Milestone</code>/<code>PitWay-Task</code> trailers.</p>
+</section>
+
+<section id="human-agent">
+<h2>Human + Agent</h2>
+<p>Agents drive the interaction; PitWay controls workflow state, engineering boundaries, verification, and traceability. State machines, <code>write_scope</code> boundaries, verification gates, commit trailers, and git-safety checks are mechanically enforced -- no driver can bypass them through the CLI. Stopping for human approval gates and bounded worker reports are mandated by the installed protocol documents every driver loads.</p>
+</section>
+
+<section id="resume-across-agents">
+<h2>Resume Across Coding Agents</h2>
+<p>Claude Code, OpenCode, and Codex driver integrations all answer to the same CLI, the same state in <code>.pitway/</code>, and the same human approval gates. Run <code>pitway resume</code> at any time to reconstruct exactly what's going on in the repo and what's next -- from the same driver or a different supported one.</p>
+<p>PitWay is not a multi-agent framework; only one driver acts at a time, and what carries over is the persisted workflow state on disk, not an AI session's memory.</p>
+</section>
+
+<section id="durable-traceability">
+<h2>Durable Traceability</h2>
+<p>Git commits carry traceable <code>PitWay-Milestone</code>/<code>PitWay-Task</code> trailers, and workflow state lives in <code>.pitway/</code> -- both survive after the AI session that produced them is gone. PitWay creates traceable Git checkpoints without relying on transient AI conversation memory; it does not auto-generate project documentation.</p>
+</section>
+
+</main>
+
+<footer>
+<p>Built with PitWay by thixpin. 🏎️</p>
+<p><a href="https://github.com/thixpin/pitway">View on GitHub</a> · MIT License</p>
+</footer>
+
+</body>
+</html>

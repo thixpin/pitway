@@ -301,3 +301,15 @@ blocker and five other findings:
   parallel-safe pair.
 
 ## Change Log
+
+- **2026-08-24**: Developer visually inspected the actual rendered
+  `website/dist/assets/workflow.svg` after T001 completed and requested
+  node shapes render with a fully transparent fill (text directly on the
+  page background) instead of T001's original opaque `#E8EEF7` chip
+  design. `website/scripts/build.mjs` (where this must change) is owned
+  solely by T001, already `completed` -- confirmed no remaining task
+  (T002-T006) has write_scope over it, so this cannot be contained in any
+  planned task. Adding T007, a narrowly-scoped follow-on task
+  (`website/scripts/build.mjs`, `website/scripts/build.test.mjs` only)
+  via `task-add`, depending on T001. Node stroke/text colors and the
+  already-correct subgraph/root-canvas transparency are unchanged.

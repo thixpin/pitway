@@ -107,7 +107,7 @@ tasks:
       retrofit. Ground every claim in README.md/USAGE.md content and verified
       CLI behavior -- no invented terminology, no unsupported claims about AI
       context/token retention. Build via T001's pipeline into valid HTML."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -140,8 +140,20 @@ tasks:
         accuracy, terminology accuracy (in particular the 'Resume Across Coding
         Agents' and 'Durable Traceability' wording), and
         semantic/keyboard-accessible structure.
-    result: null
-    usage: null
+    result:
+      summary: "[truncated] ion: meta/canonical/OG tags land in <body> rather than
+        <head>, since build.mjs's fixed wrapper only emits charset/
+        viewport/title into <head> and this task's write_scope excludes
+        build.mjs -- flagged separately to the developer as a follow-up
+        decision, not fixed within this task's scope."
+      evidence: driver-review (verification.strategy is review; no
+        task_verify_evidence record applies -- content and build independently
+        checked by the driver)
+    attempts: 1
+    driver: claude-code
+    model: claude-sonnet-5
+    usage:
+      total_tokens: 108444
   - id: T003
     name: Documentation section
     objective: "Author Getting Started (verified real first-run flow: npm install -g
@@ -164,7 +176,7 @@ tasks:
       Agents > Codex) never requires returning to a single index page first. All
       navigation elements are real, keyboard-focusable elements -- this task
       owns its own implementation-level accessibility, not a later retrofit."
-    status: ready
+    status: in_progress
     depends_on:
       - T001
     acceptance_criteria:
@@ -208,6 +220,7 @@ tasks:
         persistent section navigation, breadcrumbs, prev/next, internal links,
         and semantic/keyboard- accessible structure.
     result: null
+    attempts: 1
     usage: null
   - id: T005
     name: Visual design & responsive styling
@@ -341,5 +354,42 @@ tasks:
     verification:
       strategy: command
       detail: cd website && npm run build && npm run check:seo && npm run check:a11y
+    result: null
+    usage: null
+  - id: T007
+    name: Transparent Mermaid node fills
+    objective: "Change website/scripts/build.mjs's Mermaid theme so node shapes
+      (rect/circle/ellipse/polygon/path) render with a transparent fill instead
+      of the current opaque #E8EEF7 chip -- text sits directly on the page
+      background, matching the developer's visual preference after inspecting
+      the actual rendered website/dist/assets/workflow.svg. Keep node stroke
+      (#3D8BD9) and text (#111629) colors as-is -- they already read correctly
+      directly on both #111629 and #FFFFFF per the original AC001 requirement;
+      only the chip fill goes away. Subgraph containers and the root canvas are
+      already transparent (unaffected, already correct) -- do not touch that
+      logic. Update website/scripts/build.test.mjs's existing assertions to
+      match the new fill value (TDD: update the test first, confirm it fails
+      against the old fill, then change build.mjs to make it pass)."
+    status: ready
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - "website/dist/assets/workflow.svg's node
+        rect/circle/ellipse/polygon/path elements have a transparent (not
+        #E8EEF7) fill after rebuild"
+      - node stroke (#3D8BD9) and text (#111629) colors are unchanged
+      - subgraph transparency and root-canvas transparency are unchanged (still
+        verified correct)
+      - website/scripts/build.test.mjs is updated to assert the new transparent
+        node fill, RED before the build.mjs change, GREEN after
+      - root npm test, npm run build, and npx tsc --noEmit remain green and
+        unaffected
+    write_scope:
+      - website/scripts/build.mjs
+      - website/scripts/build.test.mjs
+    verification:
+      strategy: command
+      detail: cd website && npm ci && npm run build && cd .. && npm run build && npm
+        test && npx tsc --noEmit
     result: null
     usage: null
