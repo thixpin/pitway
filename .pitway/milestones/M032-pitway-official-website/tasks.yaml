@@ -360,7 +360,7 @@ tasks:
       developer completes those external, one-time prerequisites, documented
       plainly in the workflow's own comments. No backend, database,
       authentication, or CMS."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -385,7 +385,16 @@ tasks:
     verification:
       strategy: command
       detail: cd website && npm run build && npm run check:seo && npm run check:a11y
-    result: null
+    result:
+      summary: "[truncated] he developer completes the one-time external AWS setup
+        documented in the workflow's own trailing comment. No AWS OIDC trust, S3
+        bucket, CloudFront distribution, or DNS exists yet anywhere for this
+        repository, confirmed by inspection; this task does not claim or attempt
+        a real deployment."
+      evidence: "> pitway-website@0.0.0 check:a11y | > node scripts/check-a11y.mjs |
+        check-a11y: 19 page(s) OK -- image alt text present, :focus-visible and
+        prefers-reduced-motion CSS shipped."
+    attempts: 1
     usage: null
   - id: T007
     name: Transparent Mermaid node fills
