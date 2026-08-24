@@ -336,3 +336,18 @@ blocker and five other findings:
   error. Adding T009, depending on T001 (the file's original owner,
   already completed): a single-line trigger change, no other content
   affected.
+- **2026-08-24**: Developer, inspecting the live website, found two more
+  visual bugs in the rendered diagram: (1) node text color is invisible
+  on the website's own #111629 dark background -- the diagram's dual-
+  readability requirement was never actually satisfied for node text,
+  only lines/subgraph labels; (2) the 🔄 loop-icon edge labels on the
+  three dotted retry arrows have an opaque near-white background chip.
+  Developer authorized editing docs/assets/workflow.mmd directly this
+  time. Empirically verified before drafting: Mermaid's `classDef`/
+  `class` directives DO reach node text color from the .mmd source, but
+  `linkStyle` does NOT reach edge-label backgrounds (theme-only). Adding
+  T010 for the text-color fix (write_scope: docs/assets/workflow.mmd
+  only, no build.mjs conflict). The edge-label-background fix needs a
+  build.mjs theme change and will be a separate follow-on task,
+  deliberately sequenced after T008 (currently mid-flight, also editing
+  build.mjs) to avoid a concurrent-edit conflict on that file.

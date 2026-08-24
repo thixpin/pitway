@@ -477,3 +477,22 @@ items:
       docs/archive/IMPLEMENTATION_PLAN-v1.0.md with all references updated;
       follow-up qc-eb95b199 (020f98b) made distributed protocol docs fully
       self-contained"
+  - id: B026
+    title: milestone-review usage shows N/A; ms-status total doesn't include review
+      usage
+    reason: "pitway milestone-review record's --usage flag was never passed during
+      M032's review session (developer/architect roles both show Usage: N/A in
+      the report) -- either the driver must remember to always capture and pass
+      reviewer subagent usage, or the CLI should surface this gap more clearly.
+      Separately, milestone-status --report's token total/breakdown currently
+      aggregates only task usage (task/planning/qa categories) -- it should also
+      fold in recorded review usage so the milestone's real total token cost is
+      visible in one place."
+    status: pending
+    source:
+      milestone: M032
+      task: null
+    created_at: 2026-08-24T09:59:01.351Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null

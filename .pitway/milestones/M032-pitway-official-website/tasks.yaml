@@ -517,3 +517,54 @@ tasks:
     model: claude-sonnet-5
     usage:
       total_tokens: 3000
+  - id: T010
+    name: Dual-readable node text color in the canonical diagram
+    objective: "Fix a real visual bug found by the developer inspecting the website:
+      docs/assets/workflow.mmd's node text currently renders in the default
+      Mermaid text color, which is dark and effectively invisible when the
+      diagram sits on the website's own #111629 dark-navy background -- the
+      diagram's dual-readability requirement (readable on both #111629 and
+      #FFFFFF) was never actually satisfied for node text, only for
+      lines/strokes (already #3D8BD9) and subgraph labels/arrowheads (fixed by
+      build.mjs's postprocess in an earlier task). Add a Mermaid classDef in
+      workflow.mmd itself (developer- authorized direct edit, confirmed
+      empirically: linkStyle does not reach edge-label backgrounds, but
+      classDef/class DOES reach node text color, verified via a local mmdc
+      render before drafting this task) and apply it via `class` to every node
+      id, setting text color to the same #3D8BD9 already proven dual-readable
+      elsewhere in this diagram. Do not touch subgraph fill/stroke styling
+      (already correct) or attempt the separate edge-label-background bug
+      (loop-icon white chip on dotted retry arrows) here -- that one needs a
+      build.mjs theme change and is a separate follow-on task, sequenced after
+      T008 to avoid a concurrent edit conflict on build.mjs."
+    status: completed
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - "every node in docs/assets/workflow.mmd has its text color set via a
+        classDef/class pair to #3D8BD9 (or an equivalently dual-readable color),
+        not left at Mermaid's default"
+      - subgraph fill/stroke styling (style PLAN/QUICK/EXECUTE lines) is
+        unchanged
+      - the website's build (which reads this file directly, never copies it)
+        picks up the change automatically on next `npm run build`
+      - root npm test, npm run build, and npx tsc --noEmit remain green and
+        unaffected
+    write_scope:
+      - docs/assets/workflow.mmd
+    verification:
+      strategy: command
+      detail: cd website && npm ci && npm run build && cd .. && npm run build && npm
+        test && npx tsc --noEmit
+    result:
+      summary: "[truncated] sDef (dualReadable, color:#3D8BD9) applied via class to
+        every node id in docs/assets/workflow.mmd, so node text is now readable
+        on both the website's #111629 dark background and #FFFFFF, closing the
+        gap left by the earlier lines/subgraph-label fix. Subgraph fill/stroke
+        styling untouched."
+      evidence: "puppeteer@25.8.0 (postinstall: node install.mjs) | npm warn
+        allow-scripts | npm warn allow-scripts Run `npm approve-scripts
+        --allow-scripts-pending` to review, or `npm approve-scripts <pkg>` to
+        allow."
+    attempts: 1
+    usage: null
