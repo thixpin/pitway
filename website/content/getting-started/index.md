@@ -44,7 +44,7 @@ ogSiteName: "PitWay Docs"
 <nav class="docs-breadcrumbs" aria-label="Breadcrumb">
 <a href="../docs-index.html">Docs</a> <span aria-hidden="true">›</span> <span aria-current="page">Getting Started</span>
 </nav>
-<main id="main-content">
+<main id="main-content" tabindex="-1">
 
 # Getting Started
 

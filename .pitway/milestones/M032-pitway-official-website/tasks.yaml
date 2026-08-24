@@ -718,3 +718,99 @@ tasks:
         allow."
     attempts: 1
     usage: null
+  - id: T013
+    name: Link the homepage into the docs section
+    objective: "Fix a real navigation gap the developer found doing manual QA
+      (confirmed by inspection: every docs page already links to every other one
+      via the persistent sidebar/breadcrumbs/prev-next T003 built, but the
+      homepage is a disconnected island -- its primary nav has zero links into
+      the docs section, and its \"Get Started\" CTA points at the external
+      GitHub README (https://github.com/thixpin/pitway#quickstart) instead of
+      the site's own /getting-started/index.html or /docs-index.html). Add a
+      real internal \"Docs\" link to the homepage's primary nav
+      (website/content/pages/index.md) pointing at /docs-index.html, and
+      retarget the \"Get Started\" CTA to the site's own
+      /getting-started/index.html so a visitor can reach the full documentation
+      without leaving the site. Do not touch the external GitHub link itself
+      (still a legitimate secondary link) or any docs-section file -- this
+      task's fix is entirely within the homepage's own content file."
+    status: cancelled
+    depends_on: []
+    acceptance_criteria:
+      - the built homepage's primary nav contains a real <a> link to
+        /docs-index.html
+      - the built homepage's "Get Started" CTA links to
+        /getting-started/index.html, not an external URL
+      - the external GitHub link remains present as a separate nav item
+      - check:seo and check:a11y both still pass against the rebuilt site
+        (heading hierarchy, focus-visible links unaffected)
+    write_scope:
+      - website/content/pages/index.md
+    verification:
+      strategy: command
+      detail: cd website && npm run build && npm run check:seo && npm run check:a11y
+        && cd .. && npm run build && npm test && npx tsc --noEmit
+    result: null
+    usage: null
+  - id: T014
+    name: Skip-link focus target fix
+    objective: 'Add tabindex="-1" to <main id="main-content"> in both
+      website/templates/homepage.html and website/templates/docs.html so
+      activating the "Skip to main content" / "Skip to content" link actually
+      moves keyboard focus to #main-content (fixes the CT005 manual-verification
+      finding: without tabindex="-1" the anchor scrolls but focus falls back to
+      <body>, so the header nav is never actually skipped for keyboard users).
+      No other markup, styling, or behavior changes.'
+    status: completed
+    depends_on:
+      - T002
+      - T003
+    acceptance_criteria:
+      - "website/templates/homepage.html's <main id=\"main-content\"> carries
+        tabindex=\"-1\"; activating \"Skip to main content\" moves keyboard
+        focus to #main-content (confirmed via document.activeElement), skipping
+        the header nav, with no keyboard trap afterward."
+      - "website/templates/docs.html's <main id=\"main-content\"> carries
+        tabindex=\"-1\"; activating \"Skip to content\" moves keyboard focus to
+        #main-content, skipping the header nav and docs sidebar."
+      - No other template markup, CSS, or content changes; root npm test, npm
+        run build, npx tsc --noEmit, and website's own
+        build/check:seo/check:a11y remain green.
+    write_scope:
+      - website/content/pages/index.md
+      - website/content/docs-index.md
+      - website/content/getting-started/index.md
+      - website/content/concepts/milestones.md
+      - website/content/concepts/contracts.md
+      - website/content/concepts/tasks.md
+      - website/content/concepts/evidence.md
+      - website/content/concepts/backlog.md
+      - website/content/concepts/worktrees.md
+      - website/content/workflow/review.md
+      - website/content/workflow/auto-run.md
+      - website/content/workflow/verification.md
+      - website/content/workflow/completion.md
+      - website/content/workflow/merge.md
+      - website/content/agents/claude-code.md
+      - website/content/agents/opencode.md
+      - website/content/agents/codex.md
+      - website/content/agents/resume.md
+    verification:
+      strategy: command
+      detail: cd website && npm run build && grep -q 'id="main-content" tabindex="-1"'
+        dist/pages/index.html && grep -q 'id="main-content" tabindex="-1"'
+        dist/docs-index.html && npm run check:seo && npm run check:a11y && cd ..
+        && npm run build && npm test && npx tsc --noEmit
+    result:
+      summary: "[truncated] , then dropping manual-checks.md, which has no HTML chrome
+        at HEAD). Confirmed live in Chrome on the built HEAD site (homepage,
+        docs-index, and a deep docs page): activating the skip link now sets
+        document.activeElement to the <main> element. No other markup, styling,
+        or content changed."
+      evidence: Tests  2013 passed (2013) | Start at  19:08:53 | Duration  137.98s
+        (transform 3.70s, setup 0ms, import 16.01s, tests 935.66s, environment
+        10ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-sonnet-5
+    usage: null

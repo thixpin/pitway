@@ -44,7 +44,7 @@ ogSiteName: "PitWay Docs"
 <nav class="docs-breadcrumbs" aria-label="Breadcrumb">
 <span aria-current="page">Docs</span>
 </nav>
-<main id="main-content">
+<main id="main-content" tabindex="-1">
 
 # PitWay Documentation
 

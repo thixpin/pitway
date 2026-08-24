@@ -351,3 +351,19 @@ blocker and five other findings:
   build.mjs theme change and will be a separate follow-on task,
   deliberately sequenced after T008 (currently mid-flight, also editing
   build.mjs) to avoid a concurrent-edit conflict on that file.
+- **2026-08-24**: Manual re-verification of CT005 (keyboard navigation)
+  against the built HEAD site found a real defect on both templates:
+  `website/templates/homepage.html` and `website/templates/docs.html`'s
+  `<main id="main-content">` lack `tabindex="-1"`, so activating either
+  page's "Skip to main content"/"Skip to content" link scrolls but never
+  moves keyboard focus there (confirmed via `document.activeElement`
+  landing on `<body>`, then the next Tab press returning to the skip link
+  itself rather than continuing past the header nav) -- failing
+  manual-checks.md's and CT005's explicit "skipping the header nav"
+  requirement. Developer approved fixing this now. Adding T014, depending
+  on T002 and T003 (the tasks that own these two template files
+  respectively, both already completed, matching T005's earlier
+  precedent for depending on both rather than only T001): add
+  `tabindex="-1"` to both templates' `#main-content`, no other markup/
+  styling/behavior change. CT005 will be re-run against the fix before
+  milestone completion.

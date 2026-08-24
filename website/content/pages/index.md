@@ -34,7 +34,7 @@ ogUrl: "https://pitway.thixpin.me/pages/index.html"
 
 </header>
 
-<main id="main-content">
+<main id="main-content" tabindex="-1">
 
 <section id="hero">
 

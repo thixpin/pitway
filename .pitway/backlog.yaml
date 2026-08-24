@@ -542,3 +542,29 @@ items:
     resolved_at: null
     promoted_to: null
     archived_reason: null
+  - id: B029
+    title: verify recording strands any new task-add mid-milestone
+    reason: "Repro: run 'pitway verify <id>' (even just the command checks) after
+      all tasks are completed but before milestone-complete -- it writes to
+      verification-results.yaml. resolveTargetPath
+      (src/core/journal/operations.ts) has no case mapping a verification-result
+      journal entry type to verification-results.yaml, and only
+      src/core/milestones/complete.ts's completionPaths ever expects that file
+      dirty. Result: 'task-update <id> in_progress' on ANY task (including a
+      brand-new task-add'd one) then refuses with 'unrelated dirty changes
+      present: verification-results.yaml', and verification-repair's window
+      (every non-cancelled task completed) doesn't cover the case where the new
+      task is still ready/uncancelled. Hit this for real in M032: had to cancel
+      a just-added task (T013) purely to get out of the stranding, not because
+      the task itself was wrong. Needs either a resolveTargetPath case for
+      verification results, or task-update tolerating pending
+      verification-results dirt the same way it tolerates other pending journal
+      entries."
+    status: pending
+    source:
+      milestone: M032
+      task: null
+    created_at: 2026-08-24T11:09:43.787Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
