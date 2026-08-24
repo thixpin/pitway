@@ -1,0 +1,98 @@
+schema_version: 1
+sessions:
+  - id: rev-9494eacedb2e
+    status: decided
+    created_at: 2026-08-24T05:53:32Z
+    roles:
+      - developer
+      - architect
+    content_hash: sha256:bc66e7bd2cc7361ecc7ed16fb02bfac8d0e6b6c81b1b36a498675928a621196f
+    findings:
+      - role: developer
+        recorded_at: 2026-08-24T05:56:08Z
+        findings:
+          - severity: minor
+            finding: "AC001(c) says protocol-driver.md's new pointer should mirror \"the
+              existing 'Parallel dispatch' cross-reference already there,\" but
+              no such cross-reference currently exists inside the 'Dispatch
+              discipline' section itself (verified: protocol-driver.md lines
+              129-158 contain no pointer to the 'Parallel dispatch' section).
+              The only existing precedent is the reverse-direction pointer at
+              the end of dispatch.md's own 'Parallel dispatch (worktree mode)'
+              section (\"Full sequence, recovery, and task-discard:
+              protocol-driver.md 'Parallel dispatch'\"). The wording could
+              mislead an implementer into searching for text that isn't there."
+            targets:
+              - ac001
+              - t001
+            recommendation: Clarify in the task objective that "mirroring" means matching
+              the existing terse one-line cross-file pointer style used
+              elsewhere in these docs, not literally locating a pre-existing
+              pointer inside Dispatch discipline.
+          - severity: minor
+            finding: T001's objective gives illustrative (non-binding) assertion examples
+              for the new RED test ("e.g. asserts 'resume' and 'fresh' -- or
+              equivalent -- appear near each other"; "e.g. asserts 'per
+              dispatch' or 'per resume' or similar"). This looseness matches the
+              precedent already in tests/unit/claude-assets.test.ts (the M019
+              'driver usage-propagation MUST instruction is documented' block
+              uses similarly narrow, non-verbatim contains-checks), so it's
+              consistent with house style, but it does leave exact phrasing
+              choice to the implementer with no single canonical assertion to
+              verify against.
+            targets:
+              - ac002
+              - t001
+            recommendation: No action required; matches established test-writing convention
+              in this file. Flagging only so the implementer knows some latitude
+              is intentional, not a spec gap.
+        usage: null
+      - role: architect
+        recorded_at: 2026-08-24T05:58:09Z
+        findings:
+          - severity: major
+            finding: "AC001(c)/(g) and protocol-worker.md's addendum say a resumed subagent
+              treats each new bundle as standalone, carrying forward none of a
+              prior task's write scope or context -- but harness \"resume with
+              retained context\" by definition keeps the prior task's full turn
+              in the model's context window. That's the mechanism being
+              exploited to save re-briefing cost. This is in real tension with
+              CLAUDE.md's Context isolation rule (\"task subagents receive only
+              the generated task-context bundle... never full milestone
+              history\"), which AC003 asserts stays unchanged. The (g) honesty
+              disclosure frames the risk as \"cannot verify resume retained
+              context\" -- the opposite of the actual risk: resume *does* retain
+              cross-task context by design, weakening isolation for tasks 2+ in
+              a chain. The write-scope check guards writes only, not cross-task
+              context/judgment bleed."
+            targets:
+              - ac001
+              - ac003
+            recommendation: "Add a Change Log entry (and dispatch.md line) naming this
+              trade-off directly: resumed-chain tasks get weaker context
+              isolation than a fresh dispatch, bounded only by write-scope. Get
+              explicit sign-off."
+          - severity: minor
+            finding: "AC001 says protocol-driver.md's \"Dispatch discipline\" section gains
+              a pointer \"mirroring the existing 'Parallel dispatch'
+              cross-reference already there.\" Checked the live file: Dispatch
+              discipline (line 129) and Parallel dispatch (line 160) are sibling
+              sections with no pointer between them today -- nothing to mirror
+              inside Dispatch discipline. The only related pointer runs the
+              other way: dispatch.md's own Parallel dispatch subsection links to
+              protocol-driver.md's section."
+            targets:
+              - ac001
+              - t001
+            recommendation: "Correct the AC/task text before T001 starts: describe the
+              actual pattern (dispatch.md-to-protocol-driver.md style pointer)
+              so the implementer isn't sent looking for a cross-reference that
+              doesn't exist."
+        usage: null
+    decision:
+      outcome: revision_requested
+      note: "Accepted architect major finding: revised AC001(g)/AC003, added AC005
+        disclosing the context-isolation trade-off explicitly. Fixed
+        developer+architect minor finding on the protocol-driver.md pointer
+        wording. Applying via milestone-add --replace."
+      decided_at: 2026-08-24T06:03:53Z

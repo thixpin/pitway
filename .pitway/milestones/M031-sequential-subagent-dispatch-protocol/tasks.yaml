@@ -1,0 +1,79 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Sequential subagent dispatch protocol (TDD)
+    objective: "RED: add a test to tests/unit/claude-assets.test.ts (new describe
+      block, mirroring the existing 'M019 driver usage-propagation MUST
+      instruction is documented' pattern) asserting dispatch.md's content
+      contains: a marker for the new section (e.g. a phrase like 'sequential
+      subagent' or the section heading text); the driver-agnostic fallback
+      language (e.g. asserts both 'resume' and 'fresh' -- or equivalent --
+      appear near each other, proving the fallback is stated, not just the happy
+      path); the per-task usage-attribution rule (e.g. asserts 'per dispatch' or
+      'per resume' or similar appears alongside '--usage'); and AC005's
+      context-isolation trade-off disclosure as its own distinct point (e.g.
+      asserts both an enforcement-related phrase, such as 'write_scope' or
+      'enforced', and a distinct relaxation/ cannot-prevent phrase, such as
+      'cannot enforce' or 'cannot prevent', both appear -- proving the
+      disclosure states both halves of the trade-off, not just one). Confirm all
+      new assertions fail first (the section doesn't exist yet). GREEN: add the
+      new 'Sequential subagent dispatch' section to
+      src/integrations/common/dispatch.md covering all seven points in AC001
+      (scope/never-serializes-parallel-work, what it saves vs. doesn't,
+      driver-agnostic resume-or-fresh-dispatch behavior, per-task usage
+      attribution restating the existing MUST rule, stop-the-chain-on-failure,
+      visibility via normal task-status/milestone-status, and a pointer to the
+      AC005 disclosure) plus AC005's own dedicated context-isolation trade-off
+      disclosure (stated plainly as its own point: task authorization/isolation
+      stays fully enforced per task; ambient context isolation is intentionally
+      relaxed for a resumed subagent as the feature's intended benefit; PitWay
+      cannot enforce or verify how much cross-task context influence actually
+      occurred) -- written entirely in driver-agnostic language, naming no
+      specific tool or mechanism, matching the existing convention throughout
+      dispatch.md/protocol-driver.md/ protocol-worker.md. Add the short
+      resumed-worker addendum to src/integrations/common/protocol-worker.md
+      (Hard Rules unchanged, task authorization stays task-specific; ambient
+      context is a separate matter governed by AC005). Add a new one-line
+      pointer to src/integrations/common/protocol-driver.md's 'Dispatch
+      discipline' section to the new dispatch.md subsection, in the same terse
+      cross-file pointer style already used elsewhere in these docs -- described
+      accurately as a new pointer, not as mirroring an existing one (none exists
+      inside Dispatch discipline today). Then regenerate the sha256 entries for
+      dispatch.md, protocol-worker.md, and protocol-driver.md in
+      tests/unit/claude-assets.test.ts's PRE_M023_ASSET_MANIFEST to match the
+      new content."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - dispatch.md's new section covers scope, savings, driver-agnostic
+        fallback, per-task usage attribution, stop-on-failure, visibility, and a
+        pointer to AC005 -- all in driver-agnostic language
+      - dispatch.md and protocol-worker.md together state AC005's
+        context-isolation trade-off disclosure as a standalone point (task
+        authorization enforced; ambient context relaxation intentional and the
+        feature's own benefit; PitWay cannot enforce/verify it) -- distinct
+        from, not folded into, the general unverifiability caveat style
+      - protocol-worker.md's addendum confirms every Hard Rule is unchanged for
+        a resumed worker, in particular never calling pitway, and that task
+        authorization (write_scope, acceptance criteria) stays task-specific
+      - protocol-driver.md points to the new dispatch.md subsection via a newly
+        added pointer, described accurately (not as mirroring an existing one)
+      - the new claude-assets regression test fails before the content exists
+        (RED) and passes after (GREEN), covering both the driver-agnostic
+        fallback and the AC005 disclosure
+      - claude-assets hash manifest entries match the new content; the
+        driver-then-common resolution-equivalence suite stays green
+      - no Core/CLI/schema files are touched anywhere in the diff
+      - full suite and tsc --noEmit are green; working tree clean at completion
+    write_scope:
+      - src/integrations/common/dispatch.md
+      - src/integrations/common/protocol-worker.md
+      - src/integrations/common/protocol-driver.md
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/unit/opencode-assets.test.ts tests/unit/codex-assets.test.ts &&
+        npm run build && npm test && npx tsc --noEmit
+    result: null
+    usage: null
