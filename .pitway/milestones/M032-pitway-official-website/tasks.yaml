@@ -250,7 +250,7 @@ tasks:
       PitWay icon/brand assets (none exist beyond docs/assets/workflow.svg,
       confirmed by inspection) rather than introducing an unrelated icon system
       without cause."
-    status: ready
+    status: in_progress
     depends_on:
       - T002
       - T003
@@ -277,6 +277,7 @@ tasks:
         (including docs section nav), keyboard-focus visibility, reduced-motion
         behavior, and Mermaid SVG readability in context.
     result: null
+    attempts: 1
     usage: null
   - id: T004
     name: SEO & accessibility audit tooling
@@ -438,7 +439,7 @@ tasks:
       (sidebar/breadcrumbs/prev-next) and section content are otherwise
       unchanged in substance -- this is a metadata-placement fix, not a content
       rewrite."
-    status: ready
+    status: in_progress
     depends_on:
       - T002
       - T003
@@ -480,4 +481,39 @@ tasks:
       detail: cd website && npm ci && npm run build && cd .. && npm run build && npm
         test && npx tsc --noEmit
     result: null
+    attempts: 1
     usage: null
+  - id: T009
+    name: Scope website-build.yml to the website branch
+    objective: "Change .github/workflows/website-build.yml's push/pull_request
+      triggers from branches: [\"main\"] to branches: [\"website\"] -- developer
+      intends a dedicated, permanent branch named exactly \"website\" for
+      ongoing site development, separate from main and from transient milestone
+      branches. No other change to the workflow file."
+    status: completed
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - "both website-build.yml's push and pull_request triggers read branches:
+        [website]"
+      - no other line in the workflow file changes
+    write_scope:
+      - .github/workflows/website-build.yml
+    verification:
+      strategy: command
+      detail: cd website && npm ci && npm run build && cd .. && npm run build && npm
+        test && npx tsc --noEmit
+    result:
+      summary: "website-build.yml's push/pull_request triggers changed from branches:
+        [main] to branches: [website], scoping CI validation to the developer's
+        dedicated permanent website branch. No other line changed (confirmed via
+        diff). Root/website build, test, and typecheck all pass."
+      evidence: "puppeteer@25.8.0 (postinstall: node install.mjs) | npm warn
+        allow-scripts | npm warn allow-scripts Run `npm approve-scripts
+        --allow-scripts-pending` to review, or `npm approve-scripts <pkg>` to
+        allow."
+    attempts: 1
+    driver: claude-code
+    model: claude-sonnet-5
+    usage:
+      total_tokens: 3000

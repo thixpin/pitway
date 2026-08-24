@@ -1,13 +1,14 @@
 name: Website Build
 
 # Validates that website/ (an independent npm project, not a workspace
-# member of the root package) installs and builds on every push to main and
-# every PR. Validation only -- no deploy here, that's a separate workflow.
+# member of the root package) installs and builds on every push to the
+# dedicated website branch and every PR targeting it. Validation only --
+# no deploy here, that's a separate workflow.
 on:
   push:
-    branches: ["main"]
+    branches: ["website"]
   pull_request:
-    branches: ["main"]
+    branches: ["website"]
 
 permissions:
   contents: read

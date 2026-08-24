@@ -328,3 +328,11 @@ blocker and five other findings:
   is not amendable after creation, and both tasks target the same file
   regardless of declared dependencies, so this is enforced by the driver's
   own dispatch order, not a graph edge).
+- **2026-08-24**: Developer wants `.github/workflows/website-build.yml`'s
+  push/pull_request triggers scoped to a dedicated, permanent `website`
+  branch rather than `main` (a literal branch name, not a pattern) --
+  clarified explicitly after an earlier back-and-forth where the driver
+  had reverted an external edit to this same trigger, mistaking it for an
+  error. Adding T009, depending on T001 (the file's original owner,
+  already completed): a single-line trigger change, no other content
+  affected.
