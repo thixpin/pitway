@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { formatIssues } from '../../state/contract-file.js';
 import { appendJournalEntry } from '../../state/journal.js';
-import { type Task, type Usage, type UsageFile } from '../../state/schemas.js';
+import { type ReviewsFile, type Task, type Usage, type UsageFile } from '../../state/schemas.js';
 import { loadUsage, saveUsage } from '../../state/store.js';
+import { computeReviewUsageTotal } from '../reviews/roles.js';
 
 export class UsageAddError extends Error {}
 
@@ -117,7 +118,12 @@ export interface UsageAggregate {
 
 // AC009: honest aggregation — tasks without measured usage contribute nothing
 // and are counted instead; nothing is estimated or double-counted.
-export function aggregateUsage(tasks: Task[], usage: UsageFile): UsageAggregate {
+// B026: `reviews` folds recorded milestone-review usage into totalTokens (the
+// milestone's real total token cost) -- unmeasuredTasks stays task-only by
+// name/meaning (existing "N tasks missing usage" wording depends on it); an
+// unmeasured review-role recording contributes nothing to the total, same as
+// an unmeasured task, but is never counted as a "task".
+export function aggregateUsage(tasks: Task[], usage: UsageFile, reviews: ReviewsFile): UsageAggregate {
   let total = 0;
   let measured = false;
   let unmeasuredTasks = 0;
@@ -134,6 +140,11 @@ export function aggregateUsage(tasks: Task[], usage: UsageFile): UsageAggregate 
       total += category.total_tokens;
       measured = true;
     }
+  }
+  const reviewUsage = computeReviewUsageTotal(reviews);
+  if (reviewUsage.total !== null) {
+    total += reviewUsage.total;
+    measured = true;
   }
   return { totalTokens: measured ? total : null, unmeasuredTasks };
 }
