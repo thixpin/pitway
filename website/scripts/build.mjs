@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 // Website build pipeline. Three unconditional steps on every `npm run build`:
 //   1. Markdown (website/content/**/*.md) -> HTML, at build time only.
-//   2. docs/assets/workflow.mmd -> transparent-background SVG, read directly
-//      from its existing repo location (never copied into website/).
+//   2. docs/assets/workflow.svg -- already committed, hand-regenerated from
+//      workflow.mmd via mmdc on a developer machine when the diagram itself
+//      changes -- is copied as-is into the output directory. `main()` never
+//      invokes mmdc/Puppeteer itself, so the build (including CI's) never
+//      needs a working Chromium sandbox. renderWorkflowDiagram below still
+//      exists for that manual regeneration step and for its own tests.
 //   3. sitemap.xml + robots.txt, generated from whatever *.html pages exist
 //      in the output directory once steps 1-2 have run.
 // Output goes to website/dist/ (gitignored, never committed).
@@ -29,6 +33,12 @@ export const WORKFLOW_MMD = path.join(
   "docs",
   "assets",
   "workflow.mmd",
+);
+export const WORKFLOW_SVG = path.join(
+  REPO_ROOT,
+  "docs",
+  "assets",
+  "workflow.svg",
 );
 
 // Diagram colors chosen to stay legible whether the SVG lands on a
@@ -356,6 +366,19 @@ export async function renderWorkflowDiagram(
   return outputPath;
 }
 
+/**
+ * Copy the already-committed, already-rendered workflow SVG into `outDir` as
+ * `fileName` -- no mmdc/Puppeteer invocation. This is what `main()` uses;
+ * renderWorkflowDiagram above is for a developer regenerating svgPath itself
+ * after editing workflow.mmd, never for the ordinary build.
+ */
+export async function copyWorkflowDiagram(svgPath, outDir, fileName = "workflow.svg") {
+  await fsp.mkdir(outDir, { recursive: true });
+  const outputPath = path.join(outDir, fileName);
+  await fsp.copyFile(svgPath, outputPath);
+  return outputPath;
+}
+
 async function main() {
   await fsp.rm(OUT_DIR, { recursive: true, force: true });
   await fsp.mkdir(OUT_DIR, { recursive: true });
@@ -363,8 +386,8 @@ async function main() {
   await copyStylesheets(OUT_DIR);
   await buildContentPages(CONTENT_DIR, OUT_DIR);
 
-  if (fs.existsSync(WORKFLOW_MMD)) {
-    await renderWorkflowDiagram(WORKFLOW_MMD, path.join(OUT_DIR, "assets"));
+  if (fs.existsSync(WORKFLOW_SVG)) {
+    await copyWorkflowDiagram(WORKFLOW_SVG, path.join(OUT_DIR, "assets"));
   }
 
   // Unconditional: sitemap.xml/robots.txt are always part of `npm run build`,

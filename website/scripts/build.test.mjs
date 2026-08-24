@@ -19,10 +19,13 @@ import {
   renderMarkdownToHtml,
   titleFromMarkdown,
   renderWorkflowDiagram,
+  copyWorkflowDiagram,
   parseFrontMatter,
   buildContentPages,
   copyStylesheets,
   WORKFLOW_MMD,
+  WORKFLOW_SVG,
+  WEBSITE_ROOT,
   STYLESHEET_FILES,
 } from "./build.mjs";
 import { generateSitemapAndRobots, findHtmlFiles } from "./sitemap.mjs";
@@ -228,6 +231,31 @@ test("docs/assets/workflow.mmd itself is never copied into the build tree", asyn
     const entries = await fs.readdir(tmpDir);
     assert.ok(!entries.includes("workflow.mmd"));
   } finally {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test("copies the committed workflow SVG into the build output without invoking mmdc", async () => {
+  // Rename the mmdc binary away so any accidental invocation throws
+  // immediately (ENOENT) instead of silently succeeding -- proves the build
+  // step genuinely never launches Puppeteer/Chromium, not just that it
+  // happens not to right now.
+  const mmdcBin = path.join(
+    WEBSITE_ROOT,
+    "node_modules",
+    ".bin",
+    process.platform === "win32" ? "mmdc.cmd" : "mmdc",
+  );
+  const disabledBin = `${mmdcBin}.disabled-for-test`;
+  await fs.rename(mmdcBin, disabledBin);
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "pitway-website-"));
+  try {
+    const outputPath = await copyWorkflowDiagram(WORKFLOW_SVG, tmpDir);
+    const copied = await fs.readFile(outputPath, "utf8");
+    const committed = await fs.readFile(WORKFLOW_SVG, "utf8");
+    assert.equal(copied, committed);
+  } finally {
+    await fs.rename(disabledBin, mmdcBin);
     await fs.rm(tmpDir, { recursive: true, force: true });
   }
 });
