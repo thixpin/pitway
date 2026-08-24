@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.3] — 2026-08-24
+
+### Highlights
+
+- PitWay now has an official website (pitway.thixpin.me): 
+- `milestone-status --report` now shows each task's real execution mode
+  (inline/worktree) instead of always an em dash
+- `milestone-status`'s token total/breakdown now folds in recorded
+  milestone-review usage, not just task/planning/qa usage
+- `task-update` to `in_progress`/`completed` no longer refuses on a dirty
+  `verification-results.yaml`/`verification-repairs.yaml` left behind by
+  an earlier `pitway verify` run
+  
+
 ## [1.0.2] — 2026-08-24
 
 ### Highlights

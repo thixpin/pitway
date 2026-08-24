@@ -1,6 +1,6 @@
 {
   "name": "pitway",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A controlled workflow for agentic software development.",
   "type": "module",
   "license": "MIT",
