@@ -1,2 +1,64 @@
 schema_version: 1
-results: []
+results:
+  - check: CT002
+    status: pass
+    at: 2026-08-24T06:23:43Z
+    evidence: Tests  292 passed (292) | Start at  13:23:43 | Duration  291ms
+      (transform 119ms, setup 0ms, import 207ms, tests 330ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 940
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-24T06:27:56Z
+    evidence: Tests  2013 passed (2013) | Start at  13:23:44 | Duration  250.61s
+      (transform 5.21s, setup 0ms, import 28.37s, tests 1700.23s, environment
+      17ms)
+    recorded_by: command
+    duration_ms: 252633
+    termination_reason: exited
+  - check: CT001
+    status: pass
+    at: 2026-08-24T06:29:52Z
+    evidence: "Reviewed dispatch.md's new Sequential subagent dispatch section (git
+      diff), protocol-worker.md's resumed-worker addendum, and
+      protocol-driver.md's new pointer against the diff. All seven AC001 points
+      a-g present: scope/never-serializes-parallel-work, savings framing
+      (subagent re-briefing only, not driver epilogue), driver-agnostic
+      resume-or-fresh fallback, per-task usage attribution restating dispatch.md
+      step 8, stop-on-failure, visibility via task-status/milestone-status, and
+      (g) a pointer only to AC005 (not a restatement). protocol-worker.md
+      addendum confirms Hard Rules unchanged incl. never calling pitway, task
+      authorization stays task-specific. protocol-driver.md pointer placed in
+      Dispatch discipline, accurately described as new (no false mirroring
+      claim). Consistent with existing dispatch sequence/hard rules."
+    recorded_by: developer
+  - check: CT005
+    status: pass
+    at: 2026-08-24T06:30:00Z
+    evidence: "Confirmed dispatch.md's dedicated Context-isolation trade-off
+      subsection states all four AC005 points as its own standalone disclosure,
+      distinct from the general required_skills/reviewer-independence
+      unverifiability-caveat style used elsewhere: (1) task
+      authorization/isolation fully enforced per task (write_scope, PitWay state
+      access, lifecycle, verification, usage); (2) ambient context isolation
+      intentionally relaxed for a resumed subagent; (3) that retention is the
+      intended mechanism/benefit, not a side effect; (4) PitWay cannot enforce
+      or verify cross-task context influence -- only write_scope bounds writes,
+      not reasoning. protocol-worker.md's addendum reinforces point (1) and
+      explicitly defers ambient-context matters to this disclosure rather than
+      restating or diluting it."
+    recorded_by: developer
+  - check: CT004
+    status: pass
+    at: 2026-08-24T06:30:06Z
+    evidence: "One amendment applied to this contract: the milestone-review
+      (rev-9494eacedb2e, roles developer+architect) surfaced a major finding on
+      the original AC001(g)/AC003 context-isolation framing plus a minor
+      pointer-wording error. The amended contract (AC001/AC003 revised, AC005
+      added, pointer wording corrected) was presented in full to the developer
+      for review before any change was applied; the developer replied 'approved'
+      before milestone-add --replace M031 was run. Review session decided
+      --outcome revision_requested recording this before the amendment was
+      applied."
+    recorded_by: developer
