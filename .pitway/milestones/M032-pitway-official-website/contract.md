@@ -2,7 +2,7 @@
 schema_version: 1
 id: M032
 title: PitWay Official Website
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-24T08:47:32Z
 verification_approved_hash: sha256:bb67aa93208bc9bb065c123baf2a15e02e2de5bdc223e6da12ddac48c876829e

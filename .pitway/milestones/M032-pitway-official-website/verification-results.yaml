@@ -1,2 +1,157 @@
 schema_version: 1
-results: []
+results:
+  - check: CT002
+    status: pass
+    at: 2026-08-24T11:47:32Z
+    evidence: "Reviewed built homepage (website/content/pages/index.md ->
+      dist/pages/index.html) at HEAD (b67aa9...): 'Resume Across Coding Agents'
+      section states PitWay is not a multi-agent framework, only one driver acts
+      at a time, describes resuming via pitway resume across a different
+      supported driver -- matches real capability, no orchestrated multi-agent
+      claim. 'Durable Traceability' section describes git-trailer traceability
+      and .pitway/ state persistence, explicitly states PitWay does not
+      auto-generate arbitrary project documentation. 'Multi-Agent' term not
+      used. Single h1, header/nav/main/footer landmarks, skip link present, all
+      nav links and CTAs (Get Started, View on GitHub) are real focusable <a>
+      elements -- confirmed via live keyboard Tab traversal in Chrome, each
+      receives a visible focus outline in page order."
+    recorded_by: developer
+  - check: CT003
+    status: pass
+    at: 2026-08-24T11:47:33Z
+    evidence: "Reviewed built docs section (website/content/docs-index.md ->
+      dist/docs-index.html) at HEAD: persistent sidebar nav lists all 4
+      sections/16 pages (Getting Started; Concepts x6; Workflow x5; Agents x4),
+      visible without leaving the page. Breadcrumbs present (Docs > Workflow >
+      Review). Internal links verified resolving (200 responses via local static
+      server on the HEAD build). Getting Started documents npm install -g pitway
+      then pitway init as the first-run flow and does not present pitway resume
+      as a standalone first command, matching the milestone's own live-verified
+      investigation. All nav/sidebar/breadcrumb links are real focusable <a>
+      elements."
+    recorded_by: developer
+  - check: CT006
+    status: pass
+    at: 2026-08-24T11:47:45Z
+    evidence: "Manually reviewed built site (HEAD, b67aa9...) in Chrome at mobile
+      (390px), tablet (834px), and desktop (1440px) widths. Dark-first identity
+      confirmed: ~#111629 navy background, cyan/electric-blue accent (Get
+      Started CTA, links), off-white heading text, muted blue-gray body text. No
+      horizontal overflow at any breakpoint
+      (document.documentElement.scrollWidth - clientWidth == 0 at all three).
+      Docs section nav collapses from side-by-side grid to a single stacked
+      column between the 600px/900px breakpoints (flex-direction: column, no
+      overlap/clipping). Every focusable element (nav links, CTAs, sidebar
+      links) shows a visible focus outline on Tab. prefers-reduced-motion media
+      query confirmed present and correctly neutralizes all
+      transitions/animations (transition-duration/animation-duration forced to
+      0.001ms). Mermaid workflow SVG (dist/workflow/review.html) renders with
+      fully transparent node fills and legible cyan/light text and borders
+      directly against the dark page background -- confirmed via screenshot."
+    recorded_by: developer
+  - check: CT008
+    status: pass
+    at: 2026-08-24T11:47:46Z
+    evidence: Write_scope disjointness across the six original tasks (T001-T006) was
+      independently re-verified path-by-path during the milestone's own
+      reconciliation pass (documented in contract.md Background) after an
+      architect/ui-ux milestone-review; PitWay's own assertDirtySubset (exact
+      Set membership, no directory/glob matching) mechanically enforced this at
+      every one of the 12 required tasks' commits with zero violations across
+      the milestone's execution. Every subsequent contract amendment (T007
+      Mermaid fill, T008 head-injection, T009 workflow trigger scope, T010 node
+      text color) is recorded in the contract's Change Log with explicit
+      developer approval/authorization language predating the corresponding
+      task-add, consistent with AC007's amendment-approval requirement.
+    recorded_by: developer
+  - check: CT005
+    status: fail
+    at: 2026-08-24T11:47:55Z
+    evidence: "Manually tested keyboard navigation on the built HEAD site (homepage
+      dist/pages/index.html and docs dist/docs-index.html) in Chrome. FAIL: the
+      skip link ('Skip to main content' / 'Skip to content') does NOT move
+      keyboard focus to #main-content on activation on either template --
+      confirmed both <main id=\"main-content\"> elements lack tabindex=\"-1\",
+      so pressing Enter on the skip link scrolls but leaves
+      document.activeElement on <body>; the very next Tab press returns to the
+      skip link itself rather than proceeding past the header nav. The header
+      nav is therefore never actually skipped for keyboard users, failing
+      manual-checks.md's explicit requirement ('Activating it moves focus to
+      #main-content, skipping the header nav'). All other keyboard-nav items
+      pass: every nav link/CTA receives a visible focus outline in page order,
+      no keyboard trap. prefers-reduced-motion CSS confirmed correct (0.001ms
+      transition/animation override). No video content ships (captions N/A).
+      Root cause: website/templates/homepage.html and docs.html's #main-content
+      lacks tabindex=\"-1\"."
+    recorded_by: developer
+  - check: CT001
+    status: pass
+    at: 2026-08-24T11:50:53Z
+    evidence: "puppeteer@25.8.0 (postinstall: node install.mjs) | npm warn
+      allow-scripts | npm warn allow-scripts Run `npm approve-scripts
+      --allow-scripts-pending` to review, or `npm approve-scripts <pkg>` to
+      allow."
+    recorded_by: command
+    duration_ms: 163778
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-24T11:50:58Z
+    evidence: "> pitway-website@0.0.0 check:a11y | > node scripts/check-a11y.mjs |
+      check-a11y: 19 page(s) OK -- image alt text present, :focus-visible and
+      prefers-reduced-motion CSS shipped."
+    recorded_by: command
+    duration_ms: 5303
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-24T11:51:08Z
+    evidence: "> pitway-website@0.0.0 check:a11y | > node scripts/check-a11y.mjs |
+      check-a11y: 19 page(s) OK -- image alt text present, :focus-visible and
+      prefers-reduced-motion CSS shipped."
+    recorded_by: command
+    duration_ms: 10133
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-24T12:12:17Z
+    evidence: 'Re-verified after T014 (commit b960f02c) fixed the skip-link
+      focus-target defect. Confirmed live against the built HEAD site in Chrome:
+      activating the skip link (real anchor activation, the same mechanism a
+      keyboard Enter/click triggers) now sets document.activeElement to <main
+      id="main-content" tabindex="-1">, skipping the header nav, on the
+      homepage, docs-index, and a deep docs page (agents/resume.html). All other
+      keyboard-nav items previously confirmed still hold and are unaffected by
+      this fix: every nav link/CTA receives a visible focus outline in page
+      order, no keyboard trap. prefers-reduced-motion CSS confirmed correct
+      (0.001ms transition/animation override, applies globally via *, ::before,
+      ::after). No video content ships (captions N/A).'
+    recorded_by: developer
+  - check: CT001
+    status: pass
+    at: 2026-08-24T12:15:20Z
+    evidence: "puppeteer@25.8.0 (postinstall: node install.mjs) | npm warn
+      allow-scripts | npm warn allow-scripts Run `npm approve-scripts
+      --allow-scripts-pending` to review, or `npm approve-scripts <pkg>` to
+      allow."
+    recorded_by: command
+    duration_ms: 175041
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-24T12:15:22Z
+    evidence: "> pitway-website@0.0.0 check:a11y | > node scripts/check-a11y.mjs |
+      check-a11y: 19 page(s) OK -- image alt text present, :focus-visible and
+      prefers-reduced-motion CSS shipped."
+    recorded_by: command
+    duration_ms: 1309
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-24T12:15:23Z
+    evidence: "> pitway-website@0.0.0 check:a11y | > node scripts/check-a11y.mjs |
+      check-a11y: 19 page(s) OK -- image alt text present, :focus-visible and
+      prefers-reduced-motion CSS shipped."
+    recorded_by: command
+    duration_ms: 1035
+    termination_reason: exited

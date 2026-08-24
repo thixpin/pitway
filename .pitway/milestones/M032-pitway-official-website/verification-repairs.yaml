@@ -1,2 +1,40 @@
 schema_version: 1
-records: []
+records:
+  - id: VR001
+    files:
+      - website/content/pages/index.md
+      - website/content/docs-index.md
+      - website/content/manual-checks.md
+      - website/content/getting-started/index.md
+      - website/content/concepts/milestones.md
+      - website/content/concepts/contracts.md
+      - website/content/concepts/tasks.md
+      - website/content/concepts/evidence.md
+      - website/content/concepts/backlog.md
+      - website/content/concepts/worktrees.md
+      - website/content/workflow/review.md
+      - website/content/workflow/auto-run.md
+      - website/content/workflow/verification.md
+      - website/content/workflow/completion.md
+      - website/content/workflow/merge.md
+      - website/content/agents/claude-code.md
+      - website/content/agents/opencode.md
+      - website/content/agents/codex.md
+      - website/content/agents/resume.md
+    checks:
+      - CT001
+      - CT004
+      - CT007
+    change_log: "Developer's own manual QA (serving the built site locally) found
+      real navigation defects: the homepage's top bar has too many in-page
+      anchor links and no link into the docs section at all (Get Started CTA
+      points at external GitHub instead of the site's own getting-started page);
+      the docs section has its own sidebar/breadcrumbs but none of the
+      homepage's top bar or footer, so the two halves of the site don't present
+      as one cohesive domain. Correcting within already-completed T002/T003
+      presentation, not new scope: trim the homepage nav to Docs/GitHub/npm,
+      retarget the CTA, and add the homepage's shared header/footer chrome to
+      every docs content page (including manual-checks.md) so all pages present
+      consistently site-wide."
+    approved_at: 2026-08-24T11:10:14Z
+    status: cancelled
