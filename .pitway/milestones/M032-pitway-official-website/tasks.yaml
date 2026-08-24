@@ -449,7 +449,7 @@ tasks:
       (sidebar/breadcrumbs/prev-next) and section content are otherwise
       unchanged in substance -- this is a metadata-placement fix, not a content
       rewrite."
-    status: in_progress
+    status: completed
     depends_on:
       - T002
       - T003
@@ -490,7 +490,16 @@ tasks:
       strategy: command
       detail: cd website && npm ci && npm run build && cd .. && npm run build && npm
         test && npx tsc --noEmit
-    result: null
+    result:
+      summary: "[truncated] G values and injects them into a genuine <head>, replacing
+        the raw-HTML-in-body workaround T002/T003 both had to use. All 18 pages
+        migrated to real front matter; redundant raw meta/canonical/OG lines
+        removed from each body. No front matter falls back to the original
+        bare-<head> behavior."
+      evidence: "puppeteer@25.8.0 (postinstall: node install.mjs) | npm warn
+        allow-scripts | npm warn allow-scripts Run `npm approve-scripts
+        --allow-scripts-pending` to review, or `npm approve-scripts <pkg>` to
+        allow."
     attempts: 1
     usage: null
   - id: T009
@@ -601,7 +610,7 @@ tasks:
       styling, or workflow.mmd itself -- this is a build.mjs-only SVG
       post-process addition, sequenced after T008 specifically to avoid a
       concurrent edit on that same file."
-    status: waiting
+    status: ready
     depends_on:
       - T008
     acceptance_criteria:

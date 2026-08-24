@@ -1,23 +1,18 @@
-<!--
-  Homepage source. Rendered by website/scripts/build.mjs's fixed pipeline:
-  the wrapper emits <meta charset>, <meta viewport>, and a <title> derived
-  from the FIRST ATX h1 below -- it does not otherwise read <head> content
-  from Markdown. build.mjs cannot be modified by this task, so the meta
-  description / canonical / Open Graph tags below are raw HTML embedded at
-  the top of this file's body content (marked passes raw HTML blocks
-  through unchanged). They land inside the rendered <body>, not the
-  wrapper's real <head> -- a known limitation of the current pipeline,
-  documented in full in website/templates/homepage.html and
-  website/data/homepage.yaml, both of which hold the same values as the
-  target contract for whenever a template-aware build step is wired in.
--->
+---
+description: "PitWay is an npm-distributed CLI that controls the engineering process around AI coding agents -- contracts, mechanically enforced task boundaries, verification, and durable Git traceability. It is not itself an agent."
+canonical: "https://pitway.thixpin.me/pages/index.html"
+ogType: "website"
+ogTitle: "PitWay — The Pit Crew for Agentic Coding"
+ogDescription: "PitWay is an npm-distributed CLI that controls the engineering process around AI coding agents -- contracts, mechanically enforced task boundaries, verification, and durable Git traceability."
+ogUrl: "https://pitway.thixpin.me/pages/index.html"
+---
 
-<meta name="description" content="PitWay is an npm-distributed CLI that controls the engineering process around AI coding agents -- contracts, mechanically enforced task boundaries, verification, and durable Git traceability. It is not itself an agent.">
-<link rel="canonical" href="https://pitway.thixpin.me/pages/index.html">
-<meta property="og:type" content="website">
-<meta property="og:title" content="PitWay — The Pit Crew for Agentic Coding">
-<meta property="og:description" content="PitWay is an npm-distributed CLI that controls the engineering process around AI coding agents -- contracts, mechanically enforced task boundaries, verification, and durable Git traceability.">
-<meta property="og:url" content="https://pitway.thixpin.me/pages/index.html">
+<!--
+  Homepage source. Rendered by website/scripts/build.mjs: the front-matter
+  block above supplies meta description / canonical / Open Graph values,
+  parsed and injected into the page's real <head> at build time. <title>
+  is still derived from the FIRST ATX h1 below.
+-->
 
 [Skip to main content](#main-content)
 

@@ -1,10 +1,12 @@
-<meta name="description" content="milestone-complete is the final mandatory approval gate -- it refuses until every task is done and every verification check is passing.">
-<link rel="canonical" href="https://pitway.thixpin.me/workflow/completion.html">
-<meta property="og:type" content="article">
-<meta property="og:title" content="Completion · PitWay Docs">
-<meta property="og:description" content="milestone-complete is the final mandatory approval gate -- it refuses until every task is done and every verification check is passing.">
-<meta property="og:url" content="https://pitway.thixpin.me/workflow/completion.html">
-<meta property="og:site_name" content="PitWay Docs">
+---
+description: "milestone-complete is the final mandatory approval gate -- it refuses until every task is done and every verification check is passing."
+canonical: "https://pitway.thixpin.me/workflow/completion.html"
+ogType: "article"
+ogTitle: "Completion · PitWay Docs"
+ogDescription: "milestone-complete is the final mandatory approval gate -- it refuses until every task is done and every verification check is passing."
+ogUrl: "https://pitway.thixpin.me/workflow/completion.html"
+ogSiteName: "PitWay Docs"
+---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <div class="docs-layout">
 <nav class="docs-sidebar" aria-label="Documentation sections">

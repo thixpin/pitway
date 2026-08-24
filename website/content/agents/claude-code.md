@@ -1,10 +1,12 @@
-<meta name="description" content="pitway init installs Claude Code slash commands and driver protocol documents by default -- the primary way Claude Code drives PitWay's workflow.">
-<link rel="canonical" href="https://pitway.thixpin.me/agents/claude-code.html">
-<meta property="og:type" content="article">
-<meta property="og:title" content="Claude Code · PitWay Docs">
-<meta property="og:description" content="pitway init installs Claude Code slash commands and driver protocol documents by default -- the primary way Claude Code drives PitWay's workflow.">
-<meta property="og:url" content="https://pitway.thixpin.me/agents/claude-code.html">
-<meta property="og:site_name" content="PitWay Docs">
+---
+description: "pitway init installs Claude Code slash commands and driver protocol documents by default -- the primary way Claude Code drives PitWay's workflow."
+canonical: "https://pitway.thixpin.me/agents/claude-code.html"
+ogType: "article"
+ogTitle: "Claude Code · PitWay Docs"
+ogDescription: "pitway init installs Claude Code slash commands and driver protocol documents by default -- the primary way Claude Code drives PitWay's workflow."
+ogUrl: "https://pitway.thixpin.me/agents/claude-code.html"
+ogSiteName: "PitWay Docs"
+---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <div class="docs-layout">
 <nav class="docs-sidebar" aria-label="Documentation sections">

@@ -1,10 +1,12 @@
-<meta name="description" content="milestone-merge lands a completed milestone's dedicated branch into its base branch, idempotently, with full git-safety checks.">
-<link rel="canonical" href="https://pitway.thixpin.me/workflow/merge.html">
-<meta property="og:type" content="article">
-<meta property="og:title" content="Merge · PitWay Docs">
-<meta property="og:description" content="milestone-merge lands a completed milestone's dedicated branch into its base branch, idempotently, with full git-safety checks.">
-<meta property="og:url" content="https://pitway.thixpin.me/workflow/merge.html">
-<meta property="og:site_name" content="PitWay Docs">
+---
+description: "milestone-merge lands a completed milestone's dedicated branch into its base branch, idempotently, with full git-safety checks."
+canonical: "https://pitway.thixpin.me/workflow/merge.html"
+ogType: "article"
+ogTitle: "Merge · PitWay Docs"
+ogDescription: "milestone-merge lands a completed milestone's dedicated branch into its base branch, idempotently, with full git-safety checks."
+ogUrl: "https://pitway.thixpin.me/workflow/merge.html"
+ogSiteName: "PitWay Docs"
+---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <div class="docs-layout">
 <nav class="docs-sidebar" aria-label="Documentation sections">

@@ -1,10 +1,12 @@
-<meta name="description" content="Two-tier verification: each task is checked against its own approved command, and a mandatory full test suite gates milestone completion.">
-<link rel="canonical" href="https://pitway.thixpin.me/workflow/verification.html">
-<meta property="og:type" content="article">
-<meta property="og:title" content="Verification · PitWay Docs">
-<meta property="og:description" content="Two-tier verification: each task is checked against its own approved command, and a mandatory full test suite gates milestone completion.">
-<meta property="og:url" content="https://pitway.thixpin.me/workflow/verification.html">
-<meta property="og:site_name" content="PitWay Docs">
+---
+description: "Two-tier verification: each task is checked against its own approved command, and a mandatory full test suite gates milestone completion."
+canonical: "https://pitway.thixpin.me/workflow/verification.html"
+ogType: "article"
+ogTitle: "Verification · PitWay Docs"
+ogDescription: "Two-tier verification: each task is checked against its own approved command, and a mandatory full test suite gates milestone completion."
+ogUrl: "https://pitway.thixpin.me/workflow/verification.html"
+ogSiteName: "PitWay Docs"
+---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <div class="docs-layout">
 <nav class="docs-sidebar" aria-label="Documentation sections">

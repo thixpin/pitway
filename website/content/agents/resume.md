@@ -1,10 +1,12 @@
-<meta name="description" content="pitway resume reconstructs workflow state from .pitway/ and recommends the next action -- the authoritative way to pick a session back up.">
-<link rel="canonical" href="https://pitway.thixpin.me/agents/resume.html">
-<meta property="og:type" content="article">
-<meta property="og:title" content="Resume · PitWay Docs">
-<meta property="og:description" content="pitway resume reconstructs workflow state from .pitway/ and recommends the next action -- the authoritative way to pick a session back up.">
-<meta property="og:url" content="https://pitway.thixpin.me/agents/resume.html">
-<meta property="og:site_name" content="PitWay Docs">
+---
+description: "pitway resume reconstructs workflow state from .pitway/ and recommends the next action -- the authoritative way to pick a session back up."
+canonical: "https://pitway.thixpin.me/agents/resume.html"
+ogType: "article"
+ogTitle: "Resume · PitWay Docs"
+ogDescription: "pitway resume reconstructs workflow state from .pitway/ and recommends the next action -- the authoritative way to pick a session back up."
+ogUrl: "https://pitway.thixpin.me/agents/resume.html"
+ogSiteName: "PitWay Docs"
+---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <div class="docs-layout">
 <nav class="docs-sidebar" aria-label="Documentation sections">

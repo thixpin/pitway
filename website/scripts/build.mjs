@@ -70,15 +70,104 @@ export function titleFromMarkdown(markdownSource, fallback) {
   return match ? match[1].trim() : fallback;
 }
 
-/** Render one Markdown document to a standalone HTML page. Markdown -> HTML only, no client-side rendering. */
-export function renderMarkdownToHtml(markdownSource, { title }) {
+/**
+ * Parse a leading `---\n...\n---\n` front-matter block off a Markdown
+ * source, returning `{ data, content }` (content has the block stripped).
+ * A file with no such block returns `{ data: {}, content: markdownSource }`
+ * unchanged -- the backward-compatible fallback path.
+ *
+ * Hand-rolled rather than pulling in a YAML parser: every front-matter file
+ * in this project is a flat set of known string keys (see
+ * FRONT_MATTER_HEAD_KEYS below), one `key: "value"` pair per line. Each
+ * line is split on its FIRST colon only, so a colon inside the value itself
+ * (e.g. "Two-tier verification: each task...") is preserved verbatim rather
+ * than needing full YAML flow-scalar escaping. Values may optionally be
+ * wrapped in matching quotes, which are stripped. This intentionally does
+ * not support multi-line values, lists, or nested structures -- none of
+ * which this project's front matter uses.
+ */
+export function parseFrontMatter(markdownSource) {
+  const match = markdownSource.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+  if (!match) {
+    return { data: {}, content: markdownSource };
+  }
+
+  const data = {};
+  for (const line of match[1].split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    const sep = line.indexOf(":");
+    if (sep === -1) continue;
+    const key = line.slice(0, sep).trim();
+    let value = line.slice(sep + 1).trim();
+    if (
+      value.length >= 2 &&
+      ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'")))
+    ) {
+      value = value.slice(1, -1);
+    }
+    data[key] = value;
+  }
+
+  return { data, content: markdownSource.slice(match[0].length) };
+}
+
+/** Escape a string for safe use as HTML text/attribute content. */
+function escapeHtml(value) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// Front-matter key -> Open Graph `property` value. description/canonical
+// use their own tag shapes (<meta name>/<link rel>) and are handled
+// separately in buildMetaTags below.
+const FRONT_MATTER_OG_TAGS = [
+  ["ogType", "og:type"],
+  ["ogTitle", "og:title"],
+  ["ogDescription", "og:description"],
+  ["ogUrl", "og:url"],
+  ["ogSiteName", "og:site_name"],
+];
+
+/** Build the optional <head> metadata tags for whichever front-matter keys are present. Only emits tags for keys actually given. */
+function buildMetaTags({ description, canonical, ...og }) {
+  const lines = [];
+  if (description) {
+    lines.push(`<meta name="description" content="${escapeHtml(description)}">`);
+  }
+  if (canonical) {
+    lines.push(`<link rel="canonical" href="${escapeHtml(canonical)}">`);
+  }
+  for (const [key, property] of FRONT_MATTER_OG_TAGS) {
+    if (og[key]) {
+      lines.push(`<meta property="${property}" content="${escapeHtml(og[key])}">`);
+    }
+  }
+  return lines;
+}
+
+/**
+ * Render one Markdown document to a standalone HTML page. Markdown -> HTML
+ * only, no client-side rendering. `meta.title` is required; `description`,
+ * `canonical`, `ogType`, `ogTitle`, `ogDescription`, `ogUrl`, and
+ * `ogSiteName` are optional and, when given, are injected as real <head>
+ * tags (never left in <body>). Omitting all of them reproduces the
+ * original bare charset/viewport/title-only <head>.
+ */
+export function renderMarkdownToHtml(markdownSource, meta) {
+  const { title, ...rest } = meta;
   const body = marked.parse(markdownSource);
+  const metaTags = buildMetaTags(rest);
+  const headExtra = metaTags.length ? `\n${metaTags.join("\n")}` : "";
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${title}</title>
+<title>${escapeHtml(title)}</title>${headExtra}
 </head>
 <body>
 ${body}</body>
@@ -86,7 +175,7 @@ ${body}</body>
 `;
 }
 
-/** Convert every *.md file under contentDir to an *.html file under outDir, mirroring its relative path. */
+/** Convert every *.md file under contentDir to an *.html file under outDir, mirroring its relative path. Parses each file's optional front matter into the built page's real <head>. */
 export async function buildContentPages(contentDir, outDir) {
   const markdownFiles = await findMarkdownFiles(contentDir);
   const written = [];
@@ -97,8 +186,9 @@ export async function buildContentPages(contentDir, outDir) {
     const outPath = path.join(outDir, htmlRelPath);
 
     const source = await fsp.readFile(mdPath, "utf8");
-    const title = titleFromMarkdown(source, path.basename(htmlRelPath, ".html"));
-    const html = renderMarkdownToHtml(source, { title });
+    const { data, content } = parseFrontMatter(source);
+    const title = titleFromMarkdown(content, path.basename(htmlRelPath, ".html"));
+    const html = renderMarkdownToHtml(content, { title, ...data });
 
     await fsp.mkdir(path.dirname(outPath), { recursive: true });
     await fsp.writeFile(outPath, html, "utf8");

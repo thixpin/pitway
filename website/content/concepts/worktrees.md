@@ -1,10 +1,12 @@
-<meta name="description" content="Independent, dependency-free tasks with disjoint write_scope can dispatch concurrently into temporary Git worktrees under parallel_worktrees.">
-<link rel="canonical" href="https://pitway.thixpin.me/concepts/worktrees.html">
-<meta property="og:type" content="article">
-<meta property="og:title" content="Worktrees · PitWay Docs">
-<meta property="og:description" content="Independent, dependency-free tasks with disjoint write_scope can dispatch concurrently into temporary Git worktrees under parallel_worktrees.">
-<meta property="og:url" content="https://pitway.thixpin.me/concepts/worktrees.html">
-<meta property="og:site_name" content="PitWay Docs">
+---
+description: "Independent, dependency-free tasks with disjoint write_scope can dispatch concurrently into temporary Git worktrees under parallel_worktrees."
+canonical: "https://pitway.thixpin.me/concepts/worktrees.html"
+ogType: "article"
+ogTitle: "Worktrees · PitWay Docs"
+ogDescription: "Independent, dependency-free tasks with disjoint write_scope can dispatch concurrently into temporary Git worktrees under parallel_worktrees."
+ogUrl: "https://pitway.thixpin.me/concepts/worktrees.html"
+ogSiteName: "PitWay Docs"
+---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <div class="docs-layout">
 <nav class="docs-sidebar" aria-label="Documentation sections">

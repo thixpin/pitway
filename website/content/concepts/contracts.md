@@ -1,10 +1,12 @@
-<meta name="description" content="A milestone's contract is a Markdown file with machine-authoritative YAML frontmatter -- the execution boundary a milestone never silently expands beyond.">
-<link rel="canonical" href="https://pitway.thixpin.me/concepts/contracts.html">
-<meta property="og:type" content="article">
-<meta property="og:title" content="Contracts · PitWay Docs">
-<meta property="og:description" content="A milestone's contract is a Markdown file with machine-authoritative YAML frontmatter -- the execution boundary a milestone never silently expands beyond.">
-<meta property="og:url" content="https://pitway.thixpin.me/concepts/contracts.html">
-<meta property="og:site_name" content="PitWay Docs">
+---
+description: "A milestone's contract is a Markdown file with machine-authoritative YAML frontmatter -- the execution boundary a milestone never silently expands beyond."
+canonical: "https://pitway.thixpin.me/concepts/contracts.html"
+ogType: "article"
+ogTitle: "Contracts · PitWay Docs"
+ogDescription: "A milestone's contract is a Markdown file with machine-authoritative YAML frontmatter -- the execution boundary a milestone never silently expands beyond."
+ogUrl: "https://pitway.thixpin.me/concepts/contracts.html"
+ogSiteName: "PitWay Docs"
+---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <div class="docs-layout">
 <nav class="docs-sidebar" aria-label="Documentation sections">

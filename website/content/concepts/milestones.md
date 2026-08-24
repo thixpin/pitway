@@ -1,10 +1,12 @@
-<meta name="description" content="A milestone is one unit of planned work -- a contract plus a task graph -- moving through PitWay's draft-to-completed state machine.">
-<link rel="canonical" href="https://pitway.thixpin.me/concepts/milestones.html">
-<meta property="og:type" content="article">
-<meta property="og:title" content="Milestones · PitWay Docs">
-<meta property="og:description" content="A milestone is one unit of planned work -- a contract plus a task graph -- moving through PitWay's draft-to-completed state machine.">
-<meta property="og:url" content="https://pitway.thixpin.me/concepts/milestones.html">
-<meta property="og:site_name" content="PitWay Docs">
+---
+description: "A milestone is one unit of planned work -- a contract plus a task graph -- moving through PitWay's draft-to-completed state machine."
+canonical: "https://pitway.thixpin.me/concepts/milestones.html"
+ogType: "article"
+ogTitle: "Milestones · PitWay Docs"
+ogDescription: "A milestone is one unit of planned work -- a contract plus a task graph -- moving through PitWay's draft-to-completed state machine."
+ogUrl: "https://pitway.thixpin.me/concepts/milestones.html"
+ogSiteName: "PitWay Docs"
+---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <div class="docs-layout">
 <nav class="docs-sidebar" aria-label="Documentation sections">

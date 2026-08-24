@@ -1,10 +1,12 @@
-<meta name="description" content="pitway init --opencode installs the same PitWay command surface for OpenCode, in its own file convention, from the shared common layer.">
-<link rel="canonical" href="https://pitway.thixpin.me/agents/opencode.html">
-<meta property="og:type" content="article">
-<meta property="og:title" content="OpenCode · PitWay Docs">
-<meta property="og:description" content="pitway init --opencode installs the same PitWay command surface for OpenCode, in its own file convention, from the shared common layer.">
-<meta property="og:url" content="https://pitway.thixpin.me/agents/opencode.html">
-<meta property="og:site_name" content="PitWay Docs">
+---
+description: "pitway init --opencode installs the same PitWay command surface for OpenCode, in its own file convention, from the shared common layer."
+canonical: "https://pitway.thixpin.me/agents/opencode.html"
+ogType: "article"
+ogTitle: "OpenCode · PitWay Docs"
+ogDescription: "pitway init --opencode installs the same PitWay command surface for OpenCode, in its own file convention, from the shared common layer."
+ogUrl: "https://pitway.thixpin.me/agents/opencode.html"
+ogSiteName: "PitWay Docs"
+---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <div class="docs-layout">
 <nav class="docs-sidebar" aria-label="Documentation sections">

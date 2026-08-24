@@ -1,10 +1,12 @@
-<meta name="description" content="The full PitWay documentation: Getting Started, Concepts, Workflow, and Agents -- everything needed to run PitWay's controlled workflow around AI coding agents.">
-<link rel="canonical" href="https://pitway.thixpin.me/docs-index.html">
-<meta property="og:type" content="article">
-<meta property="og:title" content="PitWay Documentation · PitWay Docs">
-<meta property="og:description" content="The full PitWay documentation: Getting Started, Concepts, Workflow, and Agents -- everything needed to run PitWay's controlled workflow around AI coding agents.">
-<meta property="og:url" content="https://pitway.thixpin.me/docs-index.html">
-<meta property="og:site_name" content="PitWay Docs">
+---
+description: "The full PitWay documentation: Getting Started, Concepts, Workflow, and Agents -- everything needed to run PitWay's controlled workflow around AI coding agents."
+canonical: "https://pitway.thixpin.me/docs-index.html"
+ogType: "article"
+ogTitle: "PitWay Documentation · PitWay Docs"
+ogDescription: "The full PitWay documentation: Getting Started, Concepts, Workflow, and Agents -- everything needed to run PitWay's controlled workflow around AI coding agents."
+ogUrl: "https://pitway.thixpin.me/docs-index.html"
+ogSiteName: "PitWay Docs"
+---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <div class="docs-layout">
 <nav class="docs-sidebar" aria-label="Documentation sections">
