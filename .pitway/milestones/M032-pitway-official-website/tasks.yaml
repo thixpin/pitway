@@ -381,7 +381,7 @@ tasks:
       logic. Update website/scripts/build.test.mjs's existing assertions to
       match the new fill value (TDD: update the test first, confirm it fails
       against the old fill, then change build.mjs to make it pass)."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -398,6 +398,83 @@ tasks:
     write_scope:
       - website/scripts/build.mjs
       - website/scripts/build.test.mjs
+    verification:
+      strategy: command
+      detail: cd website && npm ci && npm run build && cd .. && npm run build && npm
+        test && npx tsc --noEmit
+    result:
+      summary: "[truncated] nst the generated SVG. TDD: build.test.mjs extended with a
+        RED-before-GREEN assertion. docs/assets/workflow.mmd itself was not
+        touched -- kept the fix in the build/rendering layer per the
+        requirement's own guidance that presentation-only changes belong there,
+        not in the canonical source."
+      evidence: "puppeteer@25.8.0 (postinstall: node install.mjs) | npm warn
+        allow-scripts | npm warn allow-scripts Run `npm approve-scripts
+        --allow-scripts-pending` to review, or `npm approve-scripts <pkg>` to
+        allow."
+    attempts: 1
+    driver: claude-code
+    model: claude-sonnet-5
+    usage:
+      total_tokens: 80700
+  - id: T008
+    name: Real <head> meta injection (title/description/canonical/OG)
+    objective: "Extend website/scripts/build.mjs to parse YAML front-matter (a ---
+      ... --- block at the top of each Markdown source) for title, description,
+      canonical, ogType, ogTitle, ogDescription, ogUrl, and ogSiteName, and
+      inject it into a genuine <head> element -- replacing the current bare
+      charset/viewport/title-only wrapper. This is the fix for the real defect
+      T002 and T003 both independently hit and documented: since build.mjs was
+      outside their write_scope, meta description/canonical/OG tags had to be
+      embedded as raw HTML inside <body> instead of <head>, which real search
+      engines/social crawlers largely ignore -- AC002/AC003's SEO requirement
+      was met textually but not functionally. Update
+      website/scripts/build.test.mjs first (TDD: RED before GREEN) to test
+      front-matter parsing and head injection. Then migrate T002's homepage and
+      all 17 of T003's documentation pages (16 content pages + the docs index)
+      from the raw-HTML-in-body workaround to real front-matter, removing the
+      now-redundant embedded <meta>/<link rel=canonical>/OG lines from each
+      page's body. Each page's actual navigation chrome
+      (sidebar/breadcrumbs/prev-next) and section content are otherwise
+      unchanged in substance -- this is a metadata-placement fix, not a content
+      rewrite."
+    status: ready
+    depends_on:
+      - T002
+      - T003
+    acceptance_criteria:
+      - build.mjs parses YAML front-matter and injects title/description/
+        canonical/OG metadata into a real <head> element for every page
+      - build.test.mjs tests front-matter parsing and head injection, RED before
+        the build.mjs change, GREEN after
+      - every one of the 18 built pages (homepage + 17 docs pages) has its meta
+        description/canonical/OG tags inside <head>, not <body>
+      - no page's body contains a redundant raw-HTML meta/canonical block anymore
+      - each page's navigation chrome and section content are otherwise
+        unchanged in substance from what T002/T003 authored
+      - root npm test, npm run build, and npx tsc --noEmit remain green and
+        unaffected
+    write_scope:
+      - website/scripts/build.mjs
+      - website/scripts/build.test.mjs
+      - website/content/pages/index.md
+      - website/content/getting-started/index.md
+      - website/content/concepts/milestones.md
+      - website/content/concepts/contracts.md
+      - website/content/concepts/tasks.md
+      - website/content/concepts/evidence.md
+      - website/content/concepts/backlog.md
+      - website/content/concepts/worktrees.md
+      - website/content/workflow/review.md
+      - website/content/workflow/auto-run.md
+      - website/content/workflow/verification.md
+      - website/content/workflow/completion.md
+      - website/content/workflow/merge.md
+      - website/content/agents/claude-code.md
+      - website/content/agents/opencode.md
+      - website/content/agents/codex.md
+      - website/content/agents/resume.md
+      - website/content/docs-index.md
     verification:
       strategy: command
       detail: cd website && npm ci && npm run build && cd .. && npm run build && npm

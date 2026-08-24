@@ -29,10 +29,14 @@ export const WORKFLOW_MMD = path.join(
 
 // Diagram colors chosen to stay legible whether the SVG lands on a
 // #111629 (dark navy) or #FFFFFF (white) page background:
-//   - node fills are an opaque light chip (own contrast backdrop, so they
-//     read the same regardless of page background) with dark navy text.
+//   - node shapes (rect/circle/ellipse/polygon/path) render with a fully
+//     transparent fill -- no opaque backing chip -- so text sits directly
+//     on the page background; stroke and text colors below already read
+//     correctly against both #111629 and #FFFFFF on their own.
 //   - lines/borders use a mid-tone cyan accent, which keeps enough contrast
 //     against both a near-black and a near-white surface.
+//   - DIAGRAM_NODE_FILL still backs unrelated elements (edge labels,
+//     icon/image shapes) that aren't node shapes and are unaffected here.
 const DIAGRAM_NODE_FILL = "#E8EEF7";
 const DIAGRAM_TEXT_COLOR = "#111629";
 const DIAGRAM_LINE_COLOR = "#3D8BD9";
@@ -212,6 +216,16 @@ export async function renderWorkflowDiagram(
     svg = overrideCssColor(svg, selector, "color", DIAGRAM_LINE_COLOR);
   }
   svg = overrideCssColor(svg, ".arrowheadPath", "fill", DIAGRAM_LINE_COLOR);
+
+  // Node shapes (rect/circle/ellipse/polygon/path) get a transparent fill
+  // instead of the DIAGRAM_NODE_FILL chip -- Mermaid's base theme groups
+  // all five shapes into one comma-separated CSS rule ending in
+  // ".node path{fill:...}", so overriding that one selector's fill covers
+  // all of them. Stroke (DIAGRAM_BORDER_COLOR) and text (DIAGRAM_TEXT_COLOR)
+  // are untouched. Subgraph/cluster fill and the root canvas background
+  // are already transparent via clusterBkg/-b transparent above and are
+  // not touched here.
+  svg = overrideCssColor(svg, ".node path", "fill", "transparent");
   await fsp.writeFile(outputPath, svg, "utf8");
 
   return outputPath;

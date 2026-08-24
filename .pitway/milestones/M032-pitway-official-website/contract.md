@@ -313,3 +313,18 @@ blocker and five other findings:
   (`website/scripts/build.mjs`, `website/scripts/build.test.mjs` only)
   via `task-add`, depending on T001. Node stroke/text colors and the
   already-correct subgraph/root-canvas transparency are unchanged.
+- **2026-08-24**: T002 and T003 both independently hit and documented the
+  same real defect: `build.mjs`'s HTML wrapper only emits charset/
+  viewport/title into `<head>`, so meta description/canonical/OG tags had
+  to be embedded as raw HTML in `<body>` instead -- functionally inert for
+  real search engines/social crawlers, so AC002/AC003's SEO requirement
+  was met textually but not functionally. Developer approved fixing this
+  now rather than deferring. Adding T008, depending on T002 and T003:
+  extends `build.mjs` with real front-matter -> `<head>` injection (TDD),
+  then migrates the homepage and all 17 documentation pages off the
+  raw-HTML-in-body workaround. Since T007 also touches `build.mjs`, the
+  driver sequences T007 before T008 rather than running them concurrently
+  (PitWay's own dependency graph doesn't need to express this: `depends_on`
+  is not amendable after creation, and both tasks target the same file
+  regardless of declared dependencies, so this is enforced by the driver's
+  own dispatch order, not a graph edge).

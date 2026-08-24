@@ -49,6 +49,16 @@ test("renders docs/assets/workflow.mmd to a transparent, dual-readable SVG", asy
     // navy page) must have been re-pointed to the dual-readable accent.
     assert.doesNotMatch(svg, /stroke:#333/);
     assert.match(svg, /#3D8BD9/);
+
+    // Node shapes (rect/circle/ellipse/polygon/path) render with a fully
+    // transparent fill -- no opaque backing chip -- while stroke and text
+    // colors stay exactly as before. Mermaid groups all five node shapes
+    // into one comma-separated CSS rule ending in ".node path{fill:...}".
+    const nodeRuleMatch = svg.match(/\.node path\{fill:([^;]+);stroke:([^;]+);/);
+    assert.ok(nodeRuleMatch, "expected a .node path CSS rule in the SVG style block");
+    assert.equal(nodeRuleMatch[1], "transparent");
+    assert.equal(nodeRuleMatch[2], "#3D8BD9");
+    assert.doesNotMatch(svg, /\.node (rect|circle|ellipse|polygon|path)\{fill:#E8EEF7/);
   } finally {
     await fs.rm(tmpDir, { recursive: true, force: true });
   }
