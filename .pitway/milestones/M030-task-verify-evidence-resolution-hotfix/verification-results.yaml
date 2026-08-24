@@ -1,2 +1,53 @@
 schema_version: 1
-results: []
+results:
+  - check: CT004
+    status: pass
+    at: 2026-08-24T05:20:49Z
+    evidence: Diff across baseline..HEAD touches no schema (src/state/schemas.ts),
+      no journal writer (src/state/journal.ts), no task-amend fingerprint code
+      (src/core/tasks/amend.ts) -- confirmed empty diffstat for all three. No
+      contract/task field shapes changed; only prose/write_scope array
+      amendments.
+    recorded_by: developer
+  - check: CT006
+    status: pass
+    at: 2026-08-24T05:20:55Z
+    evidence: Both mid-milestone amendments (drop 5 git-ignored .claude/.opencode
+      paths from T003 write_scope; widen T003 write_scope to include
+      src/core/tasks/update.ts for the tsc-caught type fix) were presented to
+      the developer and explicitly approved via AskUserQuestion before
+      milestone-confirm --amend ran in either case.
+    recorded_by: developer
+  - check: CT001
+    status: pass
+    at: 2026-08-24T05:21:43Z
+    evidence: Tests  65 passed (65) | Start at  12:20:35 | Duration  67.98s
+      (transform 321ms, setup 0ms, import 462ms, tests 67.42s, environment 0ms)
+    recorded_by: command
+    duration_ms: 68810
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-24T05:22:54Z
+    evidence: Tests  138 passed (138) | Start at  12:21:43 | Duration  70.19s
+      (transform 326ms, setup 0ms, import 461ms, tests 69.69s, environment 0ms)
+    recorded_by: command
+    duration_ms: 70805
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-24T05:22:54Z
+    evidence: Tests  286 passed (286) | Start at  12:22:54 | Duration  274ms
+      (transform 113ms, setup 0ms, import 200ms, tests 284ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 838
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-24T05:25:41Z
+    evidence: Tests  2007 passed (2007) | Start at  12:22:55 | Duration  165.27s
+      (transform 5.18s, setup 0ms, import 20.07s, tests 1119.96s, environment
+      10ms)
+    recorded_by: command
+    duration_ms: 166816
+    termination_reason: exited

@@ -2,7 +2,7 @@
 schema_version: 1
 id: M030
 title: Task-Verify Evidence Resolution Hotfix
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-24T04:56:07Z
 verification_approved_hash: sha256:7ce939f9637f867ebf5208838ccda6d474bef32a25459d9649460083cc92699e
