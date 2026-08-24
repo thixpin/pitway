@@ -20,6 +20,10 @@ export const WEBSITE_ROOT = path.resolve(__dirname, "..");
 export const REPO_ROOT = path.resolve(WEBSITE_ROOT, "..");
 export const CONTENT_DIR = path.join(WEBSITE_ROOT, "content");
 export const OUT_DIR = path.join(WEBSITE_ROOT, "dist");
+export const STYLES_DIR = path.join(WEBSITE_ROOT, "styles");
+// Cascade order matters: layout.css and typography.css both consume
+// tokens.css's custom properties.
+export const STYLESHEET_FILES = ["tokens.css", "layout.css", "typography.css"];
 export const WORKFLOW_MMD = path.join(
   REPO_ROOT,
   "docs",
@@ -162,17 +166,34 @@ export function renderMarkdownToHtml(markdownSource, meta) {
   const body = marked.parse(markdownSource);
   const metaTags = buildMetaTags(rest);
   const headExtra = metaTags.length ? `\n${metaTags.join("\n")}` : "";
+  // Root-relative hrefs: every page (root-level docs-index.html, one level
+  // deep under pages/getting-started/concepts/workflow/agents) is served
+  // from the site's domain root (see sitemap.mjs's DEFAULT_SITE_URL), so
+  // "/styles/x.css" resolves correctly regardless of the page's own depth.
+  const stylesheetLinks = STYLESHEET_FILES.map(
+    (file) => `<link rel="stylesheet" href="/styles/${file}">`,
+  ).join("\n");
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+${stylesheetLinks}
 <title>${escapeHtml(title)}</title>${headExtra}
 </head>
 <body>
 ${body}</body>
 </html>
 `;
+}
+
+/** Copy the three CSS files from website/styles/ into <outDir>/styles/, unmodified. */
+export async function copyStylesheets(outDir) {
+  const targetDir = path.join(outDir, "styles");
+  await fsp.mkdir(targetDir, { recursive: true });
+  for (const file of STYLESHEET_FILES) {
+    await fsp.copyFile(path.join(STYLES_DIR, file), path.join(targetDir, file));
+  }
 }
 
 /** Convert every *.md file under contentDir to an *.html file under outDir, mirroring its relative path. Parses each file's optional front matter into the built page's real <head>. */
@@ -339,6 +360,7 @@ async function main() {
   await fsp.rm(OUT_DIR, { recursive: true, force: true });
   await fsp.mkdir(OUT_DIR, { recursive: true });
 
+  await copyStylesheets(OUT_DIR);
   await buildContentPages(CONTENT_DIR, OUT_DIR);
 
   if (fs.existsSync(WORKFLOW_MMD)) {

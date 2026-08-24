@@ -666,7 +666,7 @@ tasks:
       CSS bundler/ build step beyond a plain file copy. Sequenced after both
       T008 and T011 (both edit build.mjs) to avoid a concurrent edit on that
       file."
-    status: ready
+    status: completed
     depends_on:
       - T008
       - T011
@@ -688,5 +688,15 @@ tasks:
       strategy: command
       detail: cd website && npm ci && npm run build && cd .. && npm run build && npm
         test && npx tsc --noEmit
-    result: null
+    result:
+      summary: "[truncated] the site is served from its domain root). Closes the gap
+        T005's manual verification found: the CSS was correct but never loaded.
+        TDD RED->GREEN, then live-verified in-browser (homepage and a docs page
+        both now render the dark-first identity, accent colors, and persistent
+        styled sidebar)."
+      evidence: "puppeteer@25.8.0 (postinstall: node install.mjs) | npm warn
+        allow-scripts | npm warn allow-scripts Run `npm approve-scripts
+        --allow-scripts-pending` to review, or `npm approve-scripts <pkg>` to
+        allow."
+    attempts: 1
     usage: null

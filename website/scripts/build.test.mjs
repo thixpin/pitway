@@ -21,7 +21,9 @@ import {
   renderWorkflowDiagram,
   parseFrontMatter,
   buildContentPages,
+  copyStylesheets,
   WORKFLOW_MMD,
+  STYLESHEET_FILES,
 } from "./build.mjs";
 import { generateSitemapAndRobots, findHtmlFiles } from "./sitemap.mjs";
 
@@ -121,6 +123,28 @@ test("front-matter metadata is injected into a real <head>, not left in <body>",
   assert.doesNotMatch(body, /link rel="canonical"/);
   assert.doesNotMatch(body, /property="og:/);
   assert.match(body, /<h1>Fixture Page<\/h1>/);
+});
+
+test("renderMarkdownToHtml emits a stylesheet <link> for every STYLESHEET_FILES entry, in cascade order", () => {
+  const html = renderMarkdownToHtml("# Page", { title: "Page" });
+  const head = html.match(/<head>([\s\S]*?)<\/head>/)[1];
+
+  const hrefs = [...head.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map((m) => m[1]);
+  assert.deepEqual(hrefs, STYLESHEET_FILES.map((file) => `/styles/${file}`));
+});
+
+test("copyStylesheets copies the three CSS files into <outDir>/styles unmodified", async () => {
+  const tmpOutDir = await fs.mkdtemp(path.join(os.tmpdir(), "pitway-website-out-"));
+  try {
+    await copyStylesheets(tmpOutDir);
+    for (const file of STYLESHEET_FILES) {
+      const copied = await fs.readFile(path.join(tmpOutDir, "styles", file), "utf8");
+      const source = await fs.readFile(path.join(__dirname, "..", "styles", file), "utf8");
+      assert.equal(copied, source);
+    }
+  } finally {
+    await fs.rm(tmpOutDir, { recursive: true, force: true });
+  }
 });
 
 test("buildContentPages parses front matter end-to-end and writes it into the built page's <head>", async () => {
