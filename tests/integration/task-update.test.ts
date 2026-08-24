@@ -343,6 +343,24 @@ describe('pitway task-update to in_progress (AC014)', () => {
     expect(task('T001').status).toBe('in_progress');
     expect(task('T001').attempts).toBe(2);
   });
+
+  // B029: `pitway verify` writes verification-results.yaml (and, when a
+  // repair is mid-flight, verification-repairs.yaml) with no journal entry
+  // of its own -- deliberately, per src/state/journal.ts's own comment, since
+  // it isn't a pending-until-checkpoint amendment. Without these two paths
+  // classified expected here, ANY task-update to in_progress after a verify
+  // run (even for a brand-new task-add'd task) refused as "unrelated dirty
+  // changes present", stranding the milestone. Reproduced for real completing
+  // M032/T014: had to git-stash verification-results.yaml aside just to
+  // start the task.
+  it('tolerates a dirty verification-results.yaml/verification-repairs.yaml left by an earlier verify run', async () => {
+    writeFileSync(join(root, milestoneRelFile('verification-results.yaml')), 'schema_version: 1\nresults: []\n');
+    writeFileSync(join(root, milestoneRelFile('verification-repairs.yaml')), 'schema_version: 1\nrepairs: []\n');
+    const { error } = await update(['T001', 'in_progress']);
+    expect(error).toBeUndefined();
+    expect(task('T001').status).toBe('in_progress');
+    expect(task('T001').attempts).toBe(1);
+  });
 });
 
 describe('pitway task-update non-committing transitions (AC017)', () => {
