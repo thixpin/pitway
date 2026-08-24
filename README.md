@@ -150,6 +150,12 @@ See [SECURITY.md](./SECURITY.md) for how to report a vulnerability.
 
 ---
 
+### Release History
+
+For changes and improvements introduced in each published version, see [CHANGELOG.md](./CHANGELOG.md).
+
+---
+
 > **There is a way to build with agents. This is PitWay.**
 
 ## License

@@ -55,6 +55,16 @@ Be concise by default.
 - When presenting a contract for approval, provide the complete contract.
 - Expand only when ambiguity, risk, or a design decision requires explanation.
 
+## Release Versioning
+
+- Do not bump the package version during normal development or milestone execution.
+- Bump the version only during release preparation, immediately before publishing a new release.
+- When preparing a release, update `package.json` and any version-locked package metadata (such as `package-lock.json`) together.
+- Add a new entry to `CHANGELOG.md` only when preparing that release. Changelog entries must be ordered newest to oldest.
+- The release changelog should summarize user-facing changes since the previous published version, based on the completed milestones, commits, and release review.
+- Run the required build and test gates after the version bump and before publishing.
+- Versioning, changelog updates, and publishing are release-management concerns; they are not PitWay Core functionality.
+
 <!-- pitway:managed:start -->
 @AGENTS.md
 
