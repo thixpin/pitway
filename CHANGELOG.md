@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.5] — 2026-08-25
+
+### Highlights
+
+- Actually fixed this time: `milestone-status --report`'s review-usage
+  total and execution-mode column, and `task-update`'s tolerance for a
+  dirty `verification-results.yaml`/`verification-repairs.yaml` — these
+  were reverted right before 1.0.3 shipped despite that changelog entry
+  listing them as included
+
 ## [1.0.4] — 2026-08-25
 
 ### Highlights
