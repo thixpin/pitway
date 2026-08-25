@@ -135,7 +135,7 @@ tasks:
       under Task states, and carries an extra Release Versioning sentence
       CLAUDE.md lacks. Sync AGENTS.md's body (everything outside its
       pitway:managed block) to match CLAUDE.md's body exactly."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - AGENTS.md's body (outside the pitway:managed block) is identical in
@@ -149,5 +149,15 @@ tasks:
       strategy: manual
       detail: Diff AGENTS.md's body (excluding the pitway:managed block) against
         CLAUDE.md's body and confirm they match exactly.
-    result: null
+    result:
+      summary: "[truncated]  evidence-blocked recovery\" clause under Task states,
+        removed the extra Release Versioning sentence CLAUDE.md lacks, and fixed
+        a stray blank line. Diffed both bodies (excluding AGENTS.md's
+        pitway:managed block) and confirmed they now match exactly except for
+        the file's own title heading."
+      evidence: manual diff of AGENTS.md body vs CLAUDE.md body, confirmed identical
+        (title heading excepted)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
     usage: null
