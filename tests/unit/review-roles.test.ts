@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   assertKnownReviewRoles,
   computeReviewContentHash,
+  computeReviewUsageTotal,
   deriveLatestFindingsByRole,
   getReviewRole,
   isKnownReviewRole,
   REVIEW_ROLES,
   ReviewRoleError,
 } from '../../src/core/reviews/roles.js';
-import type { ContractFrontmatter, ReviewFindingsSnapshot, Task } from '../../src/state/schemas.js';
+import type { ContractFrontmatter, ReviewFindingsSnapshot, ReviewsFile, Task } from '../../src/state/schemas.js';
 
 // Snapshot of focus values as they existed before T004 (AC014's own
 // requirement: focus is never edited by this task). This is the diff target
@@ -103,6 +104,58 @@ describe('deriveLatestFindingsByRole', () => {
 
   it('returns an empty map for no findings', () => {
     expect(deriveLatestFindingsByRole([]).size).toBe(0);
+  });
+});
+
+describe('computeReviewUsageTotal (B026)', () => {
+  const session = (
+    id: string,
+    findings: ReviewFindingsSnapshot[],
+  ): ReviewsFile['sessions'][number] => ({
+    id: id as `rev-${string}`,
+    status: 'decided',
+    created_at: '2026-08-24T00:00:00Z',
+    roles: findings.map((f) => f.role),
+    content_hash: `sha256:${'a'.repeat(64)}` as `sha256:${string}`,
+    findings,
+    decision: { outcome: 'accepted', decided_at: '2026-08-24T01:00:00Z' },
+  });
+
+  it('returns null/0 for a milestone with no review sessions at all', () => {
+    expect(computeReviewUsageTotal({ schema_version: 1, sessions: [] })).toEqual({
+      total: null,
+      missing: 0,
+    });
+  });
+
+  it('sums measured usage and counts an un-recorded role as missing, never estimating', () => {
+    const reviews: ReviewsFile = {
+      schema_version: 1,
+      sessions: [
+        session('rev-a', [
+          { role: 'developer', recorded_at: '2026-08-24T00:00:00Z', findings: [], usage: { total_tokens: 300 } },
+          { role: 'architect', recorded_at: '2026-08-24T00:00:00Z', findings: [], usage: null },
+        ]),
+      ],
+    };
+    expect(computeReviewUsageTotal(reviews)).toEqual({ total: 300, missing: 1 });
+  });
+
+  it('sums across multiple sessions and dedupes a superseded snapshot within one session', () => {
+    const reviews: ReviewsFile = {
+      schema_version: 1,
+      sessions: [
+        session('rev-a', [
+          { role: 'developer', recorded_at: '2026-08-24T00:00:00Z', findings: [], usage: { total_tokens: 100 } },
+          // Superseded within this same session -- only the later one counts.
+          { role: 'developer', recorded_at: '2026-08-24T01:00:00Z', findings: [], usage: { total_tokens: 250 } },
+        ]),
+        session('rev-b', [
+          { role: 'qa', recorded_at: '2026-08-24T02:00:00Z', findings: [], usage: { total_tokens: 50 } },
+        ]),
+      ],
+    };
+    expect(computeReviewUsageTotal(reviews)).toEqual({ total: 300, missing: 0 });
   });
 });
 

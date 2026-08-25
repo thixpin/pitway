@@ -73,7 +73,7 @@ tasks:
       task/planning/qa usage, via a computeReviewUsageTotal-style helper wired
       into aggregateUsage and computeTokenBreakdown. Restore the regression
       tests removed by 7c34ea6.
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -90,7 +90,17 @@ tasks:
       strategy: command
       detail: npx vitest run tests/unit/review-roles.test.ts
         tests/integration/milestone-status.test.ts
-    result: null
+    result:
+      summary: "[truncated] fix reverted by 7c34ea6: added computeReviewUsageTotal
+        (src/core/reviews/roles.ts) and wired it into aggregateUsage and
+        computeTokenBreakdown so milestone-status --report's token
+        total/breakdown now folds in recorded review usage alongside
+        task/planning/qa. Restored the regression tests."
+      evidence: Tests  46 passed (46) | Start at  18:41:20 | Duration  4.99s
+        (transform 297ms, setup 0ms, import 426ms, tests 4.52s, environment 0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
     usage: null
   - id: T004
     name: Fix B030 — broken README anchor in USAGE.md

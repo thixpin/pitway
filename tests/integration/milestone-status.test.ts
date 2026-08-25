@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { saveContract, saveTasks, saveUsage, saveVerificationResults } from '../../src/state/store.js';
+import { saveContract, saveReviews, saveTasks, saveUsage, saveVerificationResults } from '../../src/state/store.js';
 import { appendTaskVerifyEvidenceRecord } from '../../src/state/journal.js';
 import { buildCli } from '../../src/cli/index.js';
 import { registerMilestoneStatusCommand } from '../../src/cli/commands/milestone-status.js';
@@ -340,7 +340,7 @@ describe('pitway milestone-status --report (M013/T006)', () => {
     });
     expect(view.tasks.find((t) => t.id === 'T002')).toMatchObject({ statusLabel: '✓ Completed' });
     expect(view.criticalPath).toEqual(['T003']);
-    expect(view.tokenBreakdown).toEqual({ task: 100, planning: 200, qa: null, total: 300, missing: 3 });
+    expect(view.tokenBreakdown).toEqual({ task: 100, planning: 200, qa: null, review: null, total: 300, missing: 3 });
     expect('driver_overhead' in view.tokenBreakdown).toBe(false);
 
     const output = await runStatus(['--report']);
@@ -556,6 +556,56 @@ describe('pitway milestone-status --report token breakdown', () => {
     expect(output).toContain('Active: (none)');
     expect(output).toContain('Next: (no ready task)');
     expect(output).not.toMatch(/\d+% · ✅/);
+  });
+
+  // B026: recorded milestone-review usage never folded into the token
+  // total/breakdown at all -- only task/planning/qa. One role's usage
+  // recorded (developer, 500 tokens), one role's own review --usage never
+  // passed (architect, null) -- the exact live scenario this milestone hit.
+  it('folds recorded review usage into the total/breakdown, honestly counting an un-recorded role as missing', async () => {
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [task({ id: 'T001', status: 'completed', usage: { total_tokens: 500 } })],
+    });
+    saveUsage(root, 'M001', { schema_version: 1, planning: null, qa: null });
+    saveReviews(root, 'M001', {
+      schema_version: 1,
+      sessions: [
+        {
+          id: 'rev-abc123',
+          status: 'decided',
+          created_at: '2026-08-24T00:00:00Z',
+          roles: ['developer', 'architect'],
+          content_hash: `sha256:${'b'.repeat(64)}`,
+          findings: [
+            {
+              role: 'developer',
+              recorded_at: '2026-08-24T01:00:00Z',
+              findings: [],
+              usage: { total_tokens: 300 },
+            },
+            { role: 'architect', recorded_at: '2026-08-24T01:00:00Z', findings: [], usage: null },
+          ],
+          decision: { outcome: 'accepted', decided_at: '2026-08-24T02:00:00Z' },
+        },
+      ],
+    });
+
+    const view = JSON.parse(await runStatus(['--report', '--json'])) as {
+      tokenTotal: number;
+      tokenBreakdown: { review: number; total: number; missing: number };
+    };
+    expect(view.tokenBreakdown.review).toBe(300);
+    expect(view.tokenBreakdown.total).toBe(800);
+    // architect's un-recorded review usage counts as missing, alongside the
+    // already-missing planning/qa categories -- never a "task".
+    expect(view.tokenBreakdown.missing).toBe(3);
+    // The plain view's own total (aggregateUsage) folds review usage in too.
+    expect(view.tokenTotal).toBe(800);
+
+    const output = await runStatus(['--report']);
+    expect(output).toContain('  review: 300');
+    expect(output).toContain('  total: 800');
   });
 });
 
