@@ -12,10 +12,6 @@ PitWay is an npm-distributed CLI that controls the engineering process around AI
 - **Agents** drive the interaction
 - **PitWay** controls workflow state, engineering boundaries, verification, and traceability
 
-> 💡 **Driver Support:** Claude Code (installed by default), OpenCode (opt-in), and Codex (opt-in) driver integrations ship as text assets from a shared common layer — skills and protocol documents are defined once and resolved per driver. PitWay's Core remains provider-agnostic.
-
-> ⚠️ **What PitWay enforces vs what relies on driver discipline.** Mechanically enforced: the state machines, `write_scope` boundaries, verification gates, commit trailers, and git-safety checks — no driver can bypass these through the CLI. Installed-instruction-only: stopping for human approval gates, driver-presented progress footers, and bounded worker reports are mandated by the installed protocol documents every driver loads, but PitWay cannot observe a live session's obedience — violations surface in review/audit, never at runtime.
-
 ---
 
 ## Why PitWay?
@@ -89,6 +85,10 @@ pitway --help
 
 For a hands-on walkthrough of the whole workflow — drafting a contract, confirming a milestone, working a task through to completion — see [USAGE.md](./USAGE.md).
 
+> 💡 **Driver Support:** Claude Code (installed by default), OpenCode (opt-in), and Codex (opt-in) driver integrations ship as text assets from a shared common layer — skills and protocol documents are defined once and resolved per driver. PitWay's Core remains provider-agnostic.
+
+> ⚠️ **What PitWay enforces vs what relies on driver discipline.** Mechanically enforced: the state machines, `write_scope` boundaries, verification gates, commit trailers, and git-safety checks — no driver can bypass these through the CLI. Installed-instruction-only: stopping for human approval gates, driver-presented progress footers, and bounded worker reports are mandated by the installed protocol documents every driver loads, but PitWay cannot observe a live session's obedience — violations surface in review/audit, never at runtime.
+
 ---
 
 ## Commands & Integration
@@ -98,6 +98,17 @@ For a hands-on walkthrough of the whole workflow — drafting a contract, confir
 - **Claude Code:** `pitway init` installs PitWay's commands as real Claude Code slash commands (`.claude/commands/*.md`, each carrying `description`/`argument-hint` metadata for the `/` picker), alongside the driver protocol documents that explain how and when to use them.
 - **OpenCode:** `pitway init --opencode` installs the same command surface in OpenCode's own convention (`.opencode/commands/*.md`) plus the shared skills and protocol documents. Skills and protocol content come from the common layer — defined once, never forked per driver.
 - **Codex:** `pitway init --codex` installs the same command surface in Codex's convention (`.codex/commands/*.md`) plus the shared skills and protocol documents. Skills and protocol content come from the common layer — defined once, never forked per driver.
+
+---
+
+## Engineering Boundaries
+
+| Boundary Property | Behavior & Scope |
+| --- | --- |
+| `write_scope` | **Mechanically enforced** task boundary to prevent unintended file modifications. |
+| `context_files` | Limits task-context bundles supplied by PitWay *(not an OS-level read sandbox)*. |
+| **Agent Runtime** | PitWay does **not** claim control over external agent runtimes, shells, or OS tool permissions. |
+| **Milestone Review** | Reviewers produce **findings only**. PitWay does **not** run reviews or verify reviewer independence. |
 
 ---
 
@@ -114,17 +125,6 @@ execution:
 
 - **`git.branch_strategy: main | milestone`** — `milestone` (the generated default) gives each milestone its own dedicated branch, checked out for the milestone's full lifecycle; once completed, `pitway milestone-merge <id>` lands the branch into its base branch with full git-safety checks and idempotent re-runs. Set `main` to commit milestones directly to the current branch instead.
 - **`execution.strategy: sequential | parallel_worktrees`** — `parallel_worktrees` (the generated default) lets independent, dependency-free, disjoint-`write_scope` tasks dispatch concurrently, each into its own temporary Git worktree; PitWay validates eligibility and integrates each result as a diff-apply — never a merge — so the resulting mainline history stays indistinguishable from sequential execution. Set `sequential` to run one task at a time, inline.
-
----
-
-## Engineering Boundaries
-
-| Boundary Property | Behavior & Scope |
-| --- | --- |
-| `write_scope` | **Mechanically enforced** task boundary to prevent unintended file modifications. |
-| `context_files` | Limits task-context bundles supplied by PitWay *(not an OS-level read sandbox)*. |
-| **Agent Runtime** | PitWay does **not** claim control over external agent runtimes, shells, or OS tool permissions. |
-| **Milestone Review** | Reviewers produce **findings only**. PitWay does **not** run reviews or verify reviewer independence. |
 
 ---
 

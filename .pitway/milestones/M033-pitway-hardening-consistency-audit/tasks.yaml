@@ -97,7 +97,7 @@ tasks:
       of deep reference material, without deleting any technical content --
       reorder/condense only (the stacked caveat callouts under the H1, and the
       Workflow Policies YAML deep-dive's position relative to Quickstart).
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - The value proposition and Quickstart are reachable before deep reference
@@ -114,9 +114,20 @@ tasks:
       detail: >
         Diff README.md against the prior version; confirm structural reordering
         only, no information loss.
-    result: null
+    result:
+      summary: "[truncated] ition and Quickstart are reachable before reference-tier
+        material -- moved the two stacked caveat callouts (Driver Support, What
+        PitWay enforces) from under the H1 to just after Quickstart, and moved
+        the Engineering Boundaries table earlier, ahead of the Workflow Policies
+        YAML deep-dive."
+      evidence: git diff shows only block relocation (15 insertions/15 deletions, pure
+        move, no line-content changes); README.md line count unchanged; heading
+        order now Why PitWay -> How It Works -> Quickstart -> callouts ->
+        Commands & Integration -> Engineering Boundaries -> Workflow Policies ->
+        Dogfooding -> Maintenance -> Release History -> License.
     attempts: 1
-    usage: null
+    usage:
+      total_tokens: 63462
   - id: T004
     name: Cover codex in required_skills tests
     objective: >
