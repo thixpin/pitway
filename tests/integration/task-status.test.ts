@@ -402,6 +402,105 @@ describe('pitway task-status', () => {
     });
   });
 
+  // M033/T004: extend the multi-driver gate to a .codex-driven project --
+  // resolution is already driver-symmetric, this pins the missing coverage.
+  describe('required_skills gate against a codex-driven project (M033/T004)', () => {
+    function installCodexSkill(name: string): void {
+      mkdirSync(join(root, '.codex', 'skills', name), { recursive: true });
+      writeFileSync(join(root, '.codex', 'skills', name, 'SKILL.md'), `---\nname: ${name}\n---\n`);
+    }
+
+    it('succeeds when a required skill is installed under .codex/skills/', async () => {
+      installCodexSkill('debugging');
+      saveTasks(root, 'M001', {
+        schema_version: 1,
+        tasks: [
+          task({
+            id: 'T002',
+            status: 'in_progress',
+            objective: 'Target task',
+            relevant_files: ['src/target.ts'],
+            required_skills: ['debugging'],
+          }),
+        ],
+      });
+      const program = buildCli();
+      const lines: string[] = [];
+      registerTaskStatusCommand(program, { root, write: (s) => lines.push(s) });
+      await program.parseAsync(['node', 'pitway', 'task-status', 'T002', '--context', '--json']);
+      const bundle = JSON.parse(lines.join('\n'));
+      expect(bundle.requiredSkills).toEqual(['debugging']);
+    });
+
+    it('succeeds when skills are split across .claude and .codex driver directories', async () => {
+      mkdirSync(join(root, '.claude', 'skills', 'debugging'), { recursive: true });
+      writeFileSync(join(root, '.claude', 'skills', 'debugging', 'SKILL.md'), 'x');
+      installCodexSkill('testing');
+      saveTasks(root, 'M001', {
+        schema_version: 1,
+        tasks: [
+          task({
+            id: 'T002',
+            status: 'in_progress',
+            objective: 'Target task',
+            relevant_files: ['src/target.ts'],
+            required_skills: ['debugging', 'testing'],
+          }),
+        ],
+      });
+      const program = buildCli();
+      const lines: string[] = [];
+      registerTaskStatusCommand(program, { root, write: (s) => lines.push(s) });
+      await program.parseAsync(['node', 'pitway', 'task-status', 'T002', '--context', '--json']);
+      const bundle = JSON.parse(lines.join('\n'));
+      expect(bundle.requiredSkills).toEqual(['debugging', 'testing']);
+    });
+
+    it('refuses by name when a required skill is missing from a codex-only project', async () => {
+      installCodexSkill('debugging');
+      saveTasks(root, 'M001', {
+        schema_version: 1,
+        tasks: [
+          task({
+            id: 'T002',
+            status: 'in_progress',
+            objective: 'Target task',
+            relevant_files: ['src/target.ts'],
+            required_skills: ['debugging', 'testing'],
+          }),
+        ],
+      });
+      const program = buildCli();
+      const lines: string[] = [];
+      registerTaskStatusCommand(program, { root, write: (s) => lines.push(s) });
+      await expect(
+        program.parseAsync(['node', 'pitway', 'task-status', 'T002', '--context', '--json']),
+      ).rejects.toThrow(/testing/);
+    });
+
+    it('does not count a .codex directory without SKILL.md as installed', async () => {
+      mkdirSync(join(root, '.codex', 'skills', 'debugging'), { recursive: true });
+      // no SKILL.md
+      saveTasks(root, 'M001', {
+        schema_version: 1,
+        tasks: [
+          task({
+            id: 'T002',
+            status: 'in_progress',
+            objective: 'Target task',
+            relevant_files: ['src/target.ts'],
+            required_skills: ['debugging'],
+          }),
+        ],
+      });
+      const program = buildCli();
+      registerTaskStatusCommand(program, { root, write: () => {} });
+      await expect(
+        program.parseAsync(['node', 'pitway', 'task-status', 'T002', '--context', '--json']),
+      ).rejects.toThrow(/debugging/);
+    });
+  });
+
   // AC002 (M013/T002): task name id-fallback, both human and --json.
   describe('task name rendering (M013/T002)', () => {
     it('renders a task with name set, in both human and --json output', async () => {
