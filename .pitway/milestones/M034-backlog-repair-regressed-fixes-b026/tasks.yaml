@@ -1,0 +1,116 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Restore B029 fix — verification-results dirty-tree tolerance
+    objective: Reapply the fix reverted by 7c34ea6 (originally landed in 521decd) so
+      task-update tolerates pending verification-results.yaml and
+      verification-repairs.yaml changes both when transitioning a task to
+      in_progress and when completing a task, and re-export the
+      verificationResultsRepoPath/verificationRepairsRepoPath helpers. Restore
+      the regression test removed by 7c34ea6.
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - "Running pitway verify then task-update <newTaskId> in_progress on a
+        freshly task-add'd task no longer refuses with 'unrelated dirty changes
+        present: verification-results.yaml'."
+      - The regression test covering this case passes.
+    relevant_files:
+      - src/core/tasks/update.ts
+      - src/core/verification/repair.ts
+      - tests/integration/task-update.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/task-update.test.ts
+    result: null
+    usage: null
+  - id: T002
+    name: Restore B028 fix — Execution column in --report
+    objective: Reapply the fix reverted by 7c34ea6 (originally landed in 91d6b3b) so
+      milestone-status --report's buildProgressReportView resolves each task's
+      real execution mode (inline/worktree) via resolveExecutionMode instead of
+      hardcoding null, matching the plain-table path. Restore the regression
+      test removed by 7c34ea6.
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - milestone-status <id> --report's Execution column shows inline/worktree
+        per task instead of an em dash for every row.
+      - The regression test covering this case passes.
+    relevant_files:
+      - src/cli/commands/milestone-status.ts
+      - tests/integration/milestone-status.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/milestone-status.test.ts
+    result: null
+    usage: null
+  - id: T003
+    name: Restore B026 fix — fold review usage into token totals
+    objective: Reapply the fix reverted by 7c34ea6 (originally landed in f71dd04) so
+      recorded milestone-review usage (developer/architect roles) is folded into
+      milestone-status --report's token total/breakdown alongside
+      task/planning/qa usage, via a computeReviewUsageTotal-style helper wired
+      into aggregateUsage and computeTokenBreakdown. Restore the regression
+      tests removed by 7c34ea6.
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - milestone-status <id> --report's token total includes recorded review
+        usage, not just task/planning/qa usage.
+      - The regression tests covering this case pass.
+    relevant_files:
+      - src/core/metrics/aggregate.ts
+      - src/core/reviews/roles.ts
+      - src/cli/commands/milestone-status.ts
+      - tests/unit/review-roles.test.ts
+      - tests/integration/milestone-status.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/review-roles.test.ts
+        tests/integration/milestone-status.test.ts
+    result: null
+    usage: null
+  - id: T004
+    name: Fix B030 — broken README anchor in USAGE.md
+    objective: "USAGE.md links to README.md#opt-in-policies but README's section is
+      titled \"Workflow Policies\" (anchor #workflow-policies). Update the link
+      in USAGE.md to point at the correct anchor."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - USAGE.md's link to README.md's policies section resolves to the correct
+    context_files:
+      - README.md
+      - USAGE.md
+    write_scope:
+      - USAGE.md
+    verification:
+      strategy: command
+      detail: grep -q '#workflow-policies' USAGE.md
+    result: null
+    usage: null
+  - id: T005
+    name: Fix B031 — sync AGENTS.md body to CLAUDE.md
+    objective: "AGENTS.md's hand-copied body has drifted from CLAUDE.md's: it is
+      missing the \"review → in_progress on evidence-blocked recovery\" clause
+      under Task states, and carries an extra Release Versioning sentence
+      CLAUDE.md lacks. Sync AGENTS.md's body (everything outside its
+      pitway:managed block) to match CLAUDE.md's body exactly."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - AGENTS.md's body (outside the pitway:managed block) is identical in
+        substance to CLAUDE.md's body.
+    context_files:
+      - CLAUDE.md
+      - AGENTS.md
+    write_scope:
+      - AGENTS.md
+    verification:
+      strategy: manual
+      detail: Diff AGENTS.md's body (excluding the pitway:managed block) against
+        CLAUDE.md's body and confirm they match exactly.
+    result: null
+    usage: null
