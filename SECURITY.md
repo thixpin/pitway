@@ -2,13 +2,12 @@
 
 ## Supported Versions
 
-PitWay is pre-1.0 software. Security fixes target the latest published
-version only.
+Security fixes target the latest published version only.
 
 | Version | Supported |
 | --- | --- |
-| latest 0.x | :white_check_mark: |
-| older 0.x releases | :x: |
+| latest 1.x | :white_check_mark: |
+| older releases | :x: |
 
 ## Reporting a Vulnerability
 
@@ -28,8 +27,9 @@ in the issue.
 In scope:
 
 - The `pitway` CLI and its Core workflow-state logic (`src/`)
-- The Claude Code integration assets `pitway init` installs
-  (`src/integrations/claude/`)
+- The driver integration assets `pitway init` installs
+  (`src/integrations/` — Claude Code, OpenCode, Codex, and their shared
+  common assets)
 
 Out of scope:
 
