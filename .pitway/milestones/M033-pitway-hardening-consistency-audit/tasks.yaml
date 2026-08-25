@@ -11,7 +11,7 @@ tasks:
       are intentionally untouched: a torn write there is already recoverable via
       the standard dirty-tree `git checkout` path. No change to the journal's
       file path, format, or existing checkpoint/reconciliation semantics.
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - saveJournalFile writes via temp-file-then-rename.
@@ -30,9 +30,16 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/unit/journal.test.ts
-    result: null
+    result:
+      summary: Added a local writeFileAtomic helper (temp file in the same dir, then
+        renameSync) used only by saveJournalFile in src/state/journal.ts, so
+        journal.yaml writes cannot tear on interruption; no other write site,
+        path, schema, or reconcilePending behavior touched.
+      evidence: Tests  59 passed (59) | Start at  14:01:41 | Duration  10.71s
+        (transform 73ms, setup 0ms, import 150ms, tests 10.47s, environment 0ms)
     attempts: 1
-    usage: null
+    usage:
+      total_tokens: 102391
   - id: T002
     name: Fix stale docs and branch/worktree contradiction
     objective: >

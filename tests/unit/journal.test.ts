@@ -1,7 +1,7 @@
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   appendBacklogArchiveRecord,
@@ -712,6 +712,56 @@ describe('backlog_recording journal entries (M018/T001)', () => {
     expect(created).toHaveLength(1);
     expect(created[0]).toMatchObject({ entryOperationId: 'br-3', commitSha: sha });
     expect(derivePending(readJournal(repo))).toHaveLength(0);
+  });
+});
+
+describe('saveJournalFile atomic write (temp-file-then-rename)', () => {
+  it('leaves previously-committed journal content readable and unchanged, and readJournal ignores a stray leftover temp file', () => {
+    appendJournalEntry(repo, {
+      milestone: 'M005',
+      type: 'usage_recording',
+      operationId: 'op-committed',
+      payload: { total_tokens: 7 },
+    });
+
+    const path = resolvePitwayJournalPath(repo);
+    const committedContent = readFileSync(path, 'utf8');
+
+    // Simulate a crash between the temp-file write and the rename: a stray
+    // temp file matching saveJournalFile's naming pattern, holding
+    // arbitrary/partial garbage, sitting alongside the real journal file.
+    const strayTmpPath = `${path}.tmp-simulated-crash`;
+    writeFileSync(strayTmpPath, 'not: [valid, yaml,');
+
+    // The real journal file is untouched -- the rename never happened for
+    // the stray write, so the previously-committed content is exactly what
+    // is still readable.
+    expect(readFileSync(path, 'utf8')).toBe(committedContent);
+    const all = readJournal(repo);
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({ kind: 'entry', operationId: 'op-committed' });
+
+    // A subsequent real write replaces the target via rename, not an
+    // in-place write: rename swaps in a new inode, so the file's inode
+    // number must change. A plain writeFileSync to the existing path would
+    // keep the same inode -- this is what actually discriminates
+    // temp-file-then-rename from an in-place write at runtime.
+    const inoBefore = statSync(path).ino;
+    appendJournalEntry(repo, {
+      milestone: 'M005',
+      type: 'usage_recording',
+      operationId: 'op-after-stray',
+      payload: {},
+    });
+    expect(statSync(path).ino).not.toBe(inoBefore);
+    expect(readJournal(repo)).toHaveLength(2);
+    const dirEntries = readdirSync(dirname(path));
+    const realTmpLeftovers = dirEntries.filter(
+      (name) => name.startsWith('journal.yaml.tmp-') && name !== 'journal.yaml.tmp-simulated-crash',
+    );
+    expect(realTmpLeftovers).toEqual([]);
+
+    rmSync(strayTmpPath);
   });
 });
 
