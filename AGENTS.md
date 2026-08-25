@@ -70,6 +70,6 @@ Be concise by default.
 - Bump the version only during release preparation, immediately before publishing a new release.
 - When preparing a release, update `package.json` and any version-locked package metadata (such as `package-lock.json`) together.
 - Add a new entry to `CHANGELOG.md` only when preparing that release. Changelog entries must be ordered newest to oldest.
-- The release changelog should summarize user-facing changes since the previous published version, based on the completed milestones, commits, and release review.
+- The release changelog should summarize user-facing changes since the previous published version, based on the completed milestones, commits, and release review. Should not include website or documentation changes that are not part of the published package.
 - Run the required build and test gates after the version bump and before publishing.
 - Versioning, changelog updates, and publishing are release-management concerns; they are not PitWay Core functionality.
