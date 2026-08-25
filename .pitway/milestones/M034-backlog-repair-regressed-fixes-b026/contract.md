@@ -2,7 +2,7 @@
 schema_version: 1
 id: M034
 title: Backlog Repair — Regressed Fixes (B026/B028/B029) and Doc Drift (B030/B031)
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-25T11:36:14Z
 verification_approved_hash: sha256:d07190f9e3b6ab662a4857b8c864c9a33175d3631c1a72427381e64424d43361

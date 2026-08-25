@@ -1,2 +1,80 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-25T11:43:22Z
+    evidence: Tests  46 passed (46) | Start at  18:43:17 | Duration  5.08s
+      (transform 323ms, setup 0ms, import 461ms, tests 4.58s, environment 0ms)
+    recorded_by: command
+    duration_ms: 5710
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-25T11:43:27Z
+    evidence: Tests  27 passed (27) | Start at  18:43:22 | Duration  5.02s
+      (transform 268ms, setup 0ms, import 388ms, tests 4.55s, environment 0ms)
+    recorded_by: command
+    duration_ms: 5517
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-25T11:44:32Z
+    evidence: Tests  66 passed (66) | Start at  18:43:28 | Duration  64.08s
+      (transform 268ms, setup 0ms, import 373ms, tests 63.62s, environment 0ms)
+    recorded_by: command
+    duration_ms: 64497
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-25T11:44:32Z
+    evidence: (no output; exit 0)
+    recorded_by: command
+    duration_ms: 9
+    termination_reason: exited
+  - check: CT001
+    status: pass
+    at: 2026-08-25T11:52:24Z
+    evidence: Tests  46 passed (46) | Start at  18:52:20 | Duration  4.92s
+      (transform 318ms, setup 0ms, import 457ms, tests 4.42s, environment 0ms)
+    recorded_by: command
+    duration_ms: 5541
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-25T11:52:30Z
+    evidence: Tests  27 passed (27) | Start at  18:52:25 | Duration  4.80s
+      (transform 249ms, setup 0ms, import 350ms, tests 4.38s, environment 0ms)
+    recorded_by: command
+    duration_ms: 5200
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-25T11:53:35Z
+    evidence: Tests  66 passed (66) | Start at  18:52:30 | Duration  65.26s
+      (transform 261ms, setup 0ms, import 362ms, tests 64.82s, environment 0ms)
+    recorded_by: command
+    duration_ms: 65644
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-25T11:53:35Z
+    evidence: (no output; exit 0)
+    recorded_by: command
+    duration_ms: 9
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-25T11:53:41Z
+    evidence: "Diffed AGENTS.md's body (excluding the pitway:managed block) against
+      CLAUDE.md's original body: identical except the file's own title heading.
+      Confirmed via 'diff <(sed -n ...) <(sed -n ...)' with only the '#
+      CLAUDE.md' title line differing."
+    recorded_by: developer
+  - check: CT006
+    status: pass
+    at: 2026-08-25T11:53:47Z
+    evidence: "CLAUDE.md reduced from 69 to 9 lines: title + one-line pointer to
+      AGENTS.md + the pitway-managed block, byte-identical to before (still
+      contains the original @AGENTS.md import and protocol-driver.md note). No
+      hand-authored body remains outside the managed block."
+    recorded_by: developer
