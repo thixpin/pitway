@@ -1,2 +1,84 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-25T07:02:38Z
+    evidence: Tests  59 passed (59) | Start at  14:02:27 | Duration  10.39s
+      (transform 66ms, setup 0ms, import 136ms, tests 10.17s, environment 0ms)
+    recorded_by: command
+    duration_ms: 10971
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-25T07:02:39Z
+    evidence: Tests  158 passed (158) | Start at  14:02:38 | Duration  562ms
+      (transform 325ms, setup 0ms, import 450ms, tests 198ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 928
+    termination_reason: exited
+  - check: CT006
+    status: fail
+    at: 2026-08-25T07:04:39Z
+    evidence: "> pitway@1.0.3 test | > vitest run | RUN  v4.1.11
+      /Users/thixpin/project/thixpin/pitway"
+    recorded_by: command
+    duration_ms: 119998
+    termination_reason: timeout
+  - check: CT001
+    status: pass
+    at: 2026-08-25T07:09:02Z
+    evidence: Tests  59 passed (59) | Start at  14:08:51 | Duration  10.52s
+      (transform 73ms, setup 0ms, import 172ms, tests 10.26s, environment 0ms)
+    recorded_by: command
+    duration_ms: 11197
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-25T07:09:04Z
+    evidence: Tests  158 passed (158) | Start at  14:09:02 | Duration  1.21s
+      (transform 590ms, setup 0ms, import 963ms, tests 415ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 1694
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-25T07:11:31Z
+    evidence: Tests  2021 passed (2021) | Start at  14:09:04 | Duration  146.78s
+      (transform 3.72s, setup 0ms, import 16.62s, tests 995.43s, environment
+      10ms)
+    recorded_by: command
+    duration_ms: 147597
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-25T07:11:40Z
+    evidence: "CLAUDE.md/AGENTS.md diff confirmed: Bootstrap Phase/M001-M004
+      narrative and no-build-tooling sentence removed, replaced with
+      current-state statement, identical in both files; branch/worktree line now
+      accurately states sequential-default plus parallel_worktrees (scaffolding
+      branches, diff-apply integration) and branch_strategy:milestone. Website
+      pages (getting-started, docs/index, concepts/worktrees) already accurate,
+      left untouched. Historical evidence (docs/archive/, docs/evidence/,
+      .pitway/milestones/**) untouched."
+    recorded_by: developer
+  - check: CT003
+    status: pass
+    at: 2026-08-25T07:11:45Z
+    evidence: "README.md diff confirmed pure reorder: 15 insertions/15 deletions,
+      line count unchanged. Driver Support and What-PitWay-enforces callouts
+      moved from under the H1 to after Quickstart; Engineering Boundaries table
+      moved earlier, ahead of the Workflow Policies YAML deep-dive. Value
+      proposition and Quickstart now reachable before deep reference material;
+      no technical content removed."
+    recorded_by: developer
+  - check: CT005
+    status: pass
+    at: 2026-08-25T07:11:51Z
+    evidence: Original research sampled 647 milestone/task-ID-citing comments across
+      src/ and tests/ via targeted grep patterns; none were pure historical
+      narrative without a genuine WHY. T001's own new comment (writeFileAtomic)
+      explains rename(2) atomicity as WHY, not history. No task in this
+      milestone removed or added a historical-noise comment; the codebase's
+      existing convention (milestone-tag + WHY) is intentional and compliant,
+      confirmed unchanged.
+    recorded_by: developer

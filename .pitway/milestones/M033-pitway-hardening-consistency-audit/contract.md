@@ -2,12 +2,10 @@
 schema_version: 1
 id: M033
 title: PitWay Hardening & Consistency Audit
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-25T06:52:04Z
-verification_approved_hash: sha256:b6f3e66b751cd2707afac7d2bb9e07b62d0f157a901c52513bf22b6a882380b1
-base_branch: main
-base_revision: 6a9d1d40d0b2a5408c263f726ebcbbbeab26e3db
+verification_approved_hash: sha256:e84c6e8229fc8fe8a1db158ad76509392a56412b379c8ed841717f501826e0a5
 acceptance_criteria:
   - id: AC001
     text: The journal write (src/state/journal.ts's saveJournalFile, the sole
@@ -72,6 +70,7 @@ verification:
     criterion: AC006
     type: command
     command: npm run typecheck && npm test
+    timeout_ms: 300000
 ---
 
 # Contract
@@ -115,3 +114,8 @@ boundaries.
   T001's scope (journal-only) never does that consolidation. Dropped the
   consolidation clause from AC005/CT005 -- research already confirmed no
   pure-historical-noise comments exist, so AC005 needs no code change.
+- 2026-08-25: All 4 tasks completed. CT006 (full suite) failed on its
+  first run at milestone-level verify -- not a regression, the drafted
+  contract omitted an explicit timeout_ms and the real suite (96 files,
+  2021 tests) takes ~150s against the default ~120s. Added
+  timeout_ms: 300000 to CT006 (developer-approved).
