@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.4] — 2026-08-25
+
+### Highlights
+
+- The workflow journal (`.git/pitway/journal.yaml`) now writes atomically
+  (temp-file-then-rename), so a process killed mid-write can no longer
+  leave it corrupted
+- Fixed `milestone-confirm --amend` silently nulling out a milestone's
+  recorded `base_branch`/`base_revision` when the submitted amendment
+  omitted them, which could break `milestone-merge` for a
+  `branch_strategy: milestone` milestone
+
 ## [1.0.3] — 2026-08-24
 
 ### Highlights
