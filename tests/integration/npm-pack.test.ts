@@ -164,7 +164,7 @@ describe('npm pack produces a real, installable tarball (M008/T002/AC002)', () =
       url: 'git+https://github.com/thixpin/pitway.git',
     });
     expect(packedPackageJson.bugs).toEqual({ url: 'https://github.com/thixpin/pitway/issues' });
-    expect(packedPackageJson.homepage).toBe('https://github.com/thixpin/pitway#readme');
+    expect(packedPackageJson.homepage).toBe('https://pitway.thixpin.me');
     expect(packedPackageJson).not.toHaveProperty('main');
     expect(packedPackageJson).not.toHaveProperty('exports');
   });

@@ -15,7 +15,7 @@
   "bugs": {
     "url": "https://github.com/thixpin/pitway/issues"
   },
-  "homepage": "https://github.com/thixpin/pitway#readme",
+  "homepage": "https://pitway.thixpin.me",
   "bin": {
     "pitway": "dist/cli/index.js"
   },
