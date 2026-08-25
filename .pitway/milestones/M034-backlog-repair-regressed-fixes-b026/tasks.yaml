@@ -161,3 +161,43 @@ tasks:
     driver: Claude Code
     model: claude-sonnet-5
     usage: null
+  - id: T006
+    name: Strip CLAUDE.md's duplicate body to a thin AGENTS.md pointer
+    objective: CLAUDE.md's pitway-managed block already @AGENTS.md-imports
+      AGENTS.md's full content, but CLAUDE.md also carries its own hand-authored
+      copy of the same body outside that block -- pure duplication. Delete
+      CLAUDE.md's hand-authored body (everything outside the pitway-managed
+      block) and replace it with a short pointer note, so AGENTS.md is the
+      single canonical source and the existing @AGENTS.md import is what
+      actually surfaces the content.
+    status: completed
+    depends_on:
+      - T005
+    acceptance_criteria:
+      - CLAUDE.md's content outside its pitway-managed block no longer
+        duplicates AGENTS.md's body; it only points readers to AGENTS.md.
+      - The pitway-managed block (with its existing @AGENTS.md import) is left
+        untouched.
+    context_files:
+      - AGENTS.md
+      - src/state/root-instructions.ts
+      - CLAUDE.md
+    write_scope:
+      - CLAUDE.md
+    verification:
+      strategy: manual
+      detail: Confirm CLAUDE.md's body outside the pitway-managed block is gone and
+        replaced by a thin pointer, and that the managed block's @AGENTS.md
+        import is unchanged.
+    result:
+      summary: "[truncated] d is now 9 lines: a title, the pointer note, and its
+        unchanged pitway-managed block, whose existing @AGENTS.md import is what
+        surfaces AGENTS.md's full content (managed bullets + body) to Claude
+        Code. AGENTS.md remains the single canonical source; the two files can
+        no longer drift apart."
+      evidence: manual review of CLAUDE.md diff -- body outside the managed block
+        reduced to a one-line pointer, managed block byte-identical to before
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
+    usage: null
