@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { ContractFrontmatter, ReviewFindingsSnapshot, Task } from '../../state/schemas.js';
+import type { ContractFrontmatter, ReviewFindingsSnapshot, ReviewsFile, Task } from '../../state/schemas.js';
 
 export class ReviewRoleError extends Error {}
 
@@ -108,6 +108,39 @@ export function deriveLatestFindingsByRole(
     latest.set(snapshot.role, snapshot);
   }
   return latest;
+}
+
+export interface ReviewUsageTotal {
+  // Sum of every session's latest-per-role recorded usage; null when
+  // nothing at all was measured across the whole milestone.
+  total: number | null;
+  // Count of latest-per-role recordings (across every session) whose
+  // usage is null -- honest aggregation, mirroring aggregateUsage's own
+  // shape (src/core/metrics/aggregate.ts): unmeasured contributes nothing
+  // and is counted instead, never estimated.
+  missing: number;
+}
+
+// B026: milestone-status's token total/breakdown previously never folded in
+// recorded review usage at all -- only task/planning/qa. Each session's
+// latest-per-role snapshot (deriveLatestFindingsByRole, same dedup this
+// module's other consumers already use) is summed once; earlier
+// superseded snapshots within a session never double-count.
+export function computeReviewUsageTotal(reviews: ReviewsFile): ReviewUsageTotal {
+  let total = 0;
+  let measured = false;
+  let missing = 0;
+  for (const session of reviews.sessions) {
+    for (const snapshot of deriveLatestFindingsByRole(session.findings).values()) {
+      if (snapshot.usage === null || snapshot.usage === undefined) {
+        missing += 1;
+      } else {
+        total += snapshot.usage.total_tokens;
+        measured = true;
+      }
+    }
+  }
+  return { total: measured ? total : null, missing };
 }
 
 // Task-definition projection (AC001): exactly the fields that define a

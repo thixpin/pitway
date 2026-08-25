@@ -1,0 +1,203 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Restore B029 fix — verification-results dirty-tree tolerance
+    objective: Reapply the fix reverted by 7c34ea6 (originally landed in 521decd) so
+      task-update tolerates pending verification-results.yaml and
+      verification-repairs.yaml changes both when transitioning a task to
+      in_progress and when completing a task, and re-export the
+      verificationResultsRepoPath/verificationRepairsRepoPath helpers. Restore
+      the regression test removed by 7c34ea6.
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - "Running pitway verify then task-update <newTaskId> in_progress on a
+        freshly task-add'd task no longer refuses with 'unrelated dirty changes
+        present: verification-results.yaml'."
+      - The regression test covering this case passes.
+    relevant_files:
+      - src/core/tasks/update.ts
+      - src/core/verification/repair.ts
+      - tests/integration/task-update.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/task-update.test.ts
+    result:
+      summary: "Reapplied the B029 fix reverted by 7c34ea6: task-update now tolerates
+        pending verification-results.yaml/verification-repairs.yaml dirt on both
+        the in_progress transition and completion, via pendingTransitionPaths,
+        and re-exports the two path helpers. Restored the regression test."
+      evidence: Tests  66 passed (66) | Start at  18:38:11 | Duration  62.85s
+        (transform 338ms, setup 0ms, import 519ms, tests 62.18s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
+    usage: null
+  - id: T002
+    name: Restore B028 fix — Execution column in --report
+    objective: Reapply the fix reverted by 7c34ea6 (originally landed in 91d6b3b) so
+      milestone-status --report's buildProgressReportView resolves each task's
+      real execution mode (inline/worktree) via resolveExecutionMode instead of
+      hardcoding null, matching the plain-table path. Restore the regression
+      test removed by 7c34ea6.
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - milestone-status <id> --report's Execution column shows inline/worktree
+        per task instead of an em dash for every row.
+      - The regression test covering this case passes.
+    relevant_files:
+      - src/cli/commands/milestone-status.ts
+      - tests/integration/milestone-status.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/milestone-status.test.ts
+    result:
+      summary: "Reapplied the B028 fix reverted by 7c34ea6: milestone-status
+        --report's buildProgressReportView now calls resolveExecutionMode per
+        task instead of hardcoding executionMode: null, so the Execution column
+        shows inline/ worktree instead of an em dash. Restored the regression
+        test."
+      evidence: Tests  26 passed (26) | Start at  18:40:36 | Duration  4.72s
+        (transform 266ms, setup 0ms, import 384ms, tests 4.25s, environment 0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
+    usage: null
+  - id: T003
+    name: Restore B026 fix — fold review usage into token totals
+    objective: Reapply the fix reverted by 7c34ea6 (originally landed in f71dd04) so
+      recorded milestone-review usage (developer/architect roles) is folded into
+      milestone-status --report's token total/breakdown alongside
+      task/planning/qa usage, via a computeReviewUsageTotal-style helper wired
+      into aggregateUsage and computeTokenBreakdown. Restore the regression
+      tests removed by 7c34ea6.
+    status: completed
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - milestone-status <id> --report's token total includes recorded review
+        usage, not just task/planning/qa usage.
+      - The regression tests covering this case pass.
+    relevant_files:
+      - src/core/metrics/aggregate.ts
+      - src/core/reviews/roles.ts
+      - src/cli/commands/milestone-status.ts
+      - tests/unit/review-roles.test.ts
+      - tests/integration/milestone-status.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/review-roles.test.ts
+        tests/integration/milestone-status.test.ts
+    result:
+      summary: "[truncated] fix reverted by 7c34ea6: added computeReviewUsageTotal
+        (src/core/reviews/roles.ts) and wired it into aggregateUsage and
+        computeTokenBreakdown so milestone-status --report's token
+        total/breakdown now folds in recorded review usage alongside
+        task/planning/qa. Restored the regression tests."
+      evidence: Tests  46 passed (46) | Start at  18:41:20 | Duration  4.99s
+        (transform 297ms, setup 0ms, import 426ms, tests 4.52s, environment 0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
+    usage: null
+  - id: T004
+    name: Fix B030 — broken README anchor in USAGE.md
+    objective: "USAGE.md links to README.md#opt-in-policies but README's section is
+      titled \"Workflow Policies\" (anchor #workflow-policies). Update the link
+      in USAGE.md to point at the correct anchor."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - USAGE.md's link to README.md's policies section resolves to the correct
+    context_files:
+      - README.md
+      - USAGE.md
+    write_scope:
+      - USAGE.md
+    verification:
+      strategy: command
+      detail: grep -q '#workflow-policies' USAGE.md
+    result:
+      summary: "Fixed B030: USAGE.md's link to README.md's policies section now points
+        at the correct #workflow-policies anchor (README's heading is \"Workflow
+        Policies\", not \"Opt-in Policies\")."
+      evidence: (no output)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
+    usage: null
+  - id: T005
+    name: Fix B031 — sync AGENTS.md body to CLAUDE.md
+    objective: "AGENTS.md's hand-copied body has drifted from CLAUDE.md's: it is
+      missing the \"review → in_progress on evidence-blocked recovery\" clause
+      under Task states, and carries an extra Release Versioning sentence
+      CLAUDE.md lacks. Sync AGENTS.md's body (everything outside its
+      pitway:managed block) to match CLAUDE.md's body exactly."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - AGENTS.md's body (outside the pitway:managed block) is identical in
+        substance to CLAUDE.md's body.
+    context_files:
+      - CLAUDE.md
+      - AGENTS.md
+    write_scope:
+      - AGENTS.md
+    verification:
+      strategy: manual
+      detail: Diff AGENTS.md's body (excluding the pitway:managed block) against
+        CLAUDE.md's body and confirm they match exactly.
+    result:
+      summary: "[truncated]  evidence-blocked recovery\" clause under Task states,
+        removed the extra Release Versioning sentence CLAUDE.md lacks, and fixed
+        a stray blank line. Diffed both bodies (excluding AGENTS.md's
+        pitway:managed block) and confirmed they now match exactly except for
+        the file's own title heading."
+      evidence: manual diff of AGENTS.md body vs CLAUDE.md body, confirmed identical
+        (title heading excepted)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
+    usage: null
+  - id: T006
+    name: Strip CLAUDE.md's duplicate body to a thin AGENTS.md pointer
+    objective: CLAUDE.md's pitway-managed block already @AGENTS.md-imports
+      AGENTS.md's full content, but CLAUDE.md also carries its own hand-authored
+      copy of the same body outside that block -- pure duplication. Delete
+      CLAUDE.md's hand-authored body (everything outside the pitway-managed
+      block) and replace it with a short pointer note, so AGENTS.md is the
+      single canonical source and the existing @AGENTS.md import is what
+      actually surfaces the content.
+    status: completed
+    depends_on:
+      - T005
+    acceptance_criteria:
+      - CLAUDE.md's content outside its pitway-managed block no longer
+        duplicates AGENTS.md's body; it only points readers to AGENTS.md.
+      - The pitway-managed block (with its existing @AGENTS.md import) is left
+        untouched.
+    context_files:
+      - AGENTS.md
+      - src/state/root-instructions.ts
+      - CLAUDE.md
+    write_scope:
+      - CLAUDE.md
+    verification:
+      strategy: manual
+      detail: Confirm CLAUDE.md's body outside the pitway-managed block is gone and
+        replaced by a thin pointer, and that the managed block's @AGENTS.md
+        import is unchanged.
+    result:
+      summary: "[truncated] d is now 9 lines: a title, the pointer note, and its
+        unchanged pitway-managed block, whose existing @AGENTS.md import is what
+        surfaces AGENTS.md's full content (managed bullets + body) to Claude
+        Code. AGENTS.md remains the single canonical source; the two files can
+        no longer drift apart."
+      evidence: manual review of CLAUDE.md diff -- body outside the managed block
+        reduced to a one-line pointer, managed block byte-identical to before
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
+    usage: null

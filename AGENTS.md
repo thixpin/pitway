@@ -31,7 +31,7 @@ Non-goals: not a multi-agent framework, coding agent, PM SaaS, CI/CD platform, d
 - **Core must never import AI-provider code.** Claude-specific material is text assets only (`src/integrations/claude/`), installed by `pitway init` (default on, `--no-claude` opt-out). Additional drivers may ship as text-asset integrations only, under src/integrations/<driver>/, sharing common assets from src/integrations/common/ via a static, hardcoded common-to-override lookup — never a runtime-loaded plugin system, never dynamic driver registration, never a Core code change, never AI-provider code inside Core.
 - **State**: plain files in repo-local `.pitway/` (committed to git), schema v1 with `schema_version: 1` in every file. `contract.md` frontmatter is machine-authoritative (ACs, verification checks, status); the markdown body holds prose and the append-only Change Log. Verification *results* live separately in `verification-results.yaml`. One authoritative source per fact; no derived git data (SHAs) persisted — resolve from commit trailers.
 - **Naming**: the racing metaphor (🏁 📜 🛠 🏎 🧪 🔧) is presentation-only, allowed in CLI output. All identifiers, schemas, files, and state values use engineering vocabulary — `status: in_progress`, never `status: racing`.
-- **Task states**: `planned → waiting → ready → in_progress → review → completed`, plus `in_progress → blocked → ready`, `in_progress → failed → ready`, `planned|waiting|ready → cancelled`. Milestone states: `draft → confirmed → in_progress → review → completed`, `review → in_progress` on failed verification, `draft|confirmed → cancelled`. No micro-states.
+- **Task states**: `planned → waiting → ready → in_progress → review → completed`, plus `in_progress → blocked → ready`, `in_progress → failed → ready`, `review → in_progress` on evidence-blocked recovery (mirrors the milestone-level pattern below), `planned|waiting|ready → cancelled`. Milestone states: `draft → confirmed → in_progress → review → completed`, `review → in_progress` on failed verification, `draft|confirmed → cancelled`. No micro-states.
 
 ## Key Operational Rules
 
@@ -60,13 +60,12 @@ Be concise by default.
 - When presenting a contract for approval, provide the complete contract.
 - Expand only when ambiguity, risk, or a design decision requires explanation.
 
-
 ## Release Versioning
 
 - Do not bump the package version during normal development or milestone execution.
 - Bump the version only during release preparation, immediately before publishing a new release.
 - When preparing a release, update `package.json` and any version-locked package metadata (such as `package-lock.json`) together.
 - Add a new entry to `CHANGELOG.md` only when preparing that release. Changelog entries must be ordered newest to oldest.
-- The release changelog should summarize user-facing changes since the previous published version, based on the completed milestones, commits, and release review. Should not include website or documentation changes that are not part of the published package.
+- The release changelog should summarize user-facing changes since the previous published version, based on the completed milestones, commits, and release review.
 - Run the required build and test gates after the version bump and before publishing.
 - Versioning, changelog updates, and publishing are release-management concerns; they are not PitWay Core functionality.

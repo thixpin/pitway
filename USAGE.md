@@ -291,7 +291,7 @@ execution:
   strategy: parallel_worktrees   # independent, disjoint-scope tasks can dispatch concurrently
 ```
 
-See [README.md's Opt-in Policies section](./README.md#opt-in-policies) for
+See [README.md's Workflow Policies section](./README.md#workflow-policies) for
 what each does when enabled.
 
 ## Driver Integrations
