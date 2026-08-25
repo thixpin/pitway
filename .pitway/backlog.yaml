@@ -488,13 +488,15 @@ items:
       aggregates only task usage (task/planning/qa categories) -- it should also
       fold in recorded review usage so the milestone's real total token cost is
       visible in one place."
-    status: pending
+    status: promoted
     source:
       milestone: M032
       task: null
     created_at: 2026-08-24T09:59:01.351Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-25T11:36:25.094Z
+    promoted_to:
+      milestone: M034
+      task: T003
     archived_reason: null
   - id: B027
     title: "ms-status --report: Execution column always shows '\\''—'\\''"
@@ -534,13 +536,15 @@ items:
       src/cli/commands/milestone-status.ts's --report rendering for the
       Execution-column root cause and re-checking the footer claim against a
       different milestone state."
-    status: pending
+    status: promoted
     source:
       milestone: M032
       task: null
     created_at: 2026-08-24T10:40:23.253Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-25T11:36:24.682Z
+    promoted_to:
+      milestone: M034
+      task: T002
     archived_reason: null
   - id: B029
     title: verify recording strands any new task-add mid-milestone
@@ -560,13 +564,15 @@ items:
       verification results, or task-update tolerating pending
       verification-results dirt the same way it tolerates other pending journal
       entries."
-    status: pending
+    status: promoted
     source:
       milestone: M032
       task: null
     created_at: 2026-08-24T11:09:43.787Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-25T11:36:24.232Z
+    promoted_to:
+      milestone: M034
+      task: T001
     archived_reason: null
   - id: B030
     title: Broken README anchor link in USAGE.md
@@ -574,13 +580,15 @@ items:
       titled Workflow Policies (anchor #workflow-policies); pre-existing broken
       anchor, discovered by T003 while reordering README, out of T003's
       write_scope (README.md only) to fix."
-    status: pending
+    status: promoted
     source:
       milestone: M033
       task: T003
     created_at: 2026-08-25T07:00:42.751Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-25T11:36:25.515Z
+    promoted_to:
+      milestone: M034
+      task: T004
     archived_reason: null
   - id: B031
     title: CLAUDE.md/AGENTS.md content drift (single-sourcing gap)
@@ -592,11 +600,13 @@ items:
       evidence-blocked-recovery clause under Task states, and has an extra
       Release Versioning sentence CLAUDE.md lacks. Consider extending the
       @-include to cover the full shared body."
-    status: pending
+    status: promoted
     source:
       milestone: M033
       task: T002
     created_at: 2026-08-25T07:00:50.341Z
-    resolved_at: null
-    promoted_to: null
+    resolved_at: 2026-08-25T11:36:25.933Z
+    promoted_to:
+      milestone: M034
+      task: T005
     archived_reason: null

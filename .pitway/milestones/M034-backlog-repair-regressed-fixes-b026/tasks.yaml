@@ -8,7 +8,7 @@ tasks:
       in_progress and when completing a task, and re-export the
       verificationResultsRepoPath/verificationRepairsRepoPath helpers. Restore
       the regression test removed by 7c34ea6.
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - "Running pitway verify then task-update <newTaskId> in_progress on a
@@ -22,7 +22,17 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/integration/task-update.test.ts
-    result: null
+    result:
+      summary: "Reapplied the B029 fix reverted by 7c34ea6: task-update now tolerates
+        pending verification-results.yaml/verification-repairs.yaml dirt on both
+        the in_progress transition and completion, via pendingTransitionPaths,
+        and re-exports the two path helpers. Restored the regression test."
+      evidence: Tests  66 passed (66) | Start at  18:38:11 | Duration  62.85s
+        (transform 338ms, setup 0ms, import 519ms, tests 62.18s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
     usage: null
   - id: T002
     name: Restore B028 fix — Execution column in --report
