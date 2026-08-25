@@ -42,7 +42,7 @@ tasks:
       MVP" line so it accurately reflects the shipped parallel_worktrees
       execution strategy and branch_strategy: milestone. Check the website pages
       most likely to mirror the same claims and correct any found stale.
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - CLAUDE.md/AGENTS.md no longer describe M001-M003 as a still-relevant
@@ -73,9 +73,23 @@ tasks:
         Diff CLAUDE.md/AGENTS.md against the prior version; confirm no
         bootstrap-phase/M001-M004 narrative remains and the branch/worktree line
         matches shipped behavior; confirm website pages (if touched) match.
-    result: null
+    result:
+      summary: "[truncated] LAUDE.md and AGENTS.md, replacing it with a brief
+        current-state statement; replaced the stale
+        no-branches-worktrees-sequential-MVP line with an accurate description
+        of sequential-default plus parallel_worktrees (scaffolding branches,
+        diff-apply integration) and branch_strategy:milestone."
+      evidence: "git diff shows identical edits applied to both files: Bootstrap Phase
+        heading/M001-M004 bullet/no-build-tooling sentence removed and replaced
+        with a 2-bullet current-state summary; Git-safety bullet's closing
+        sentence rewritten to state sequential-by-default plus
+        parallel_worktrees and branch_strategy: milestone accurately. Website
+        pages (getting-started, docs/index, concepts/worktrees) already
+        described this correctly and were left untouched. Historical evidence
+        (docs/archive/, docs/evidence/, .pitway/milestones/**) untouched."
     attempts: 1
-    usage: null
+    usage:
+      total_tokens: 70240
   - id: T003
     name: Tighten README scanability
     objective: >
