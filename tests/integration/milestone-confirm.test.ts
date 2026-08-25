@@ -757,6 +757,34 @@ describe('pitway milestone-confirm with branch_strategy: milestone (M012/T002)',
       git(['show-ref', '--verify', '--quiet', 'refs/heads/pitway/M001-confirmable-milestone'], root),
     ).toThrow();
   });
+
+  it('preserves base_branch/base_revision across --amend even when the submitted draft omits them (M033 hotfix)', async () => {
+    setBranchStrategy('milestone');
+    await confirmed();
+    const before = loadContract(root, 'M001').frontmatter;
+    expect(before.base_branch).not.toBeNull();
+    expect(before.base_revision).not.toBeNull();
+
+    // Simulates an amendment authored from draft-formats.md's minimal
+    // template, which never mentions base_branch/base_revision at all --
+    // these are execution-lifecycle fields only a fresh confirm's branch
+    // creation should ever set, never something an amendment author is
+    // expected to know about or echo back.
+    const draft = draftFromCurrent((text) =>
+      text
+        .replace(/^base_branch: .*\n/m, '')
+        .replace(/^base_revision: .*\n/m, '')
+        .replace(/command: .*/, 'command: npm run verify')
+        .replace('## Change Log', '## Change Log\n\n- Tightened verification command.'),
+    );
+
+    const { error } = await run(['milestone-confirm', 'M001', '--amend', '--file', draft], root);
+    expect(error).toBeUndefined();
+
+    const after = loadContract(root, 'M001').frontmatter;
+    expect(after.base_branch).toBe(before.base_branch);
+    expect(after.base_revision).toBe(before.base_revision);
+  });
 });
 
 // M017/T001 (AC001): the baseline commit is a checkpoint -- a journal-pending

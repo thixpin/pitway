@@ -301,7 +301,15 @@ function runAmend(root: string, milestoneId: string, draft: ContractFile): Miles
       `cannot amend ${milestoneId} while it is draft; confirm the milestone first`,
     );
   }
-  if (findBaselineCommit(root, milestoneId, draft.frontmatter.base_revision ?? undefined) === undefined) {
+  // base_branch/base_revision are execution-lifecycle fields only a fresh
+  // confirm's branch-creation logic (runConfirm, Case 1 above) ever sets --
+  // an amendment has no legitimate reason to change them, and an amendment
+  // draft authored from draft-formats.md's minimal template never mentions
+  // them at all. Read from what is actually persisted, never trust the
+  // submitted draft for these two, so omitting them can't silently null out
+  // real branch tracking (M033 hotfix: this previously broke milestone-merge).
+  const persisted = loadContract(root, milestoneId);
+  if (findBaselineCommit(root, milestoneId, persisted.frontmatter.base_revision ?? undefined) === undefined) {
     throw new MilestoneConfirmError(
       `cannot amend ${milestoneId}: no baseline commit found — a confirm is mid-resume; ` +
         `complete the pending baseline first`,
@@ -312,7 +320,12 @@ function runAmend(root: string, milestoneId: string, draft: ContractFile): Miles
   const hash = computeVerificationHash(serializeContractFile(draft));
   const confirmedAt = draft.frontmatter.confirmed_at;
   const desired: ContractFile = {
-    frontmatter: { ...draft.frontmatter, verification_approved_hash: hash },
+    frontmatter: {
+      ...draft.frontmatter,
+      base_branch: persisted.frontmatter.base_branch,
+      base_revision: persisted.frontmatter.base_revision,
+      verification_approved_hash: hash,
+    },
     body: draft.body,
   };
   // The verification hash covers only the frontmatter's verification: block
@@ -353,7 +366,7 @@ function runAmend(root: string, milestoneId: string, draft: ContractFile): Miles
   // prior invocation of this exact amendment — compared as full content,
   // not just the hash, so a body-only (or AC-text-only) change is never
   // silently skipped just because the verification block didn't move.
-  const persisted = loadContract(root, milestoneId);
+  // (`persisted` was already loaded above, before any write in this call.)
   if (serializeContractFile(persisted) === desiredText) {
     return { id: milestoneId, operation: 'amend', hash, confirmedAt };
   }
