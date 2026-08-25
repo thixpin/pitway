@@ -41,7 +41,7 @@ tasks:
       real execution mode (inline/worktree) via resolveExecutionMode instead of
       hardcoding null, matching the plain-table path. Restore the regression
       test removed by 7c34ea6.
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - milestone-status <id> --report's Execution column shows inline/worktree
@@ -53,7 +53,17 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/integration/milestone-status.test.ts
-    result: null
+    result:
+      summary: "Reapplied the B028 fix reverted by 7c34ea6: milestone-status
+        --report's buildProgressReportView now calls resolveExecutionMode per
+        task instead of hardcoding executionMode: null, so the Execution column
+        shows inline/ worktree instead of an em dash. Restored the regression
+        test."
+      evidence: Tests  26 passed (26) | Start at  18:40:36 | Duration  4.72s
+        (transform 266ms, setup 0ms, import 384ms, tests 4.25s, environment 0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
     usage: null
   - id: T003
     name: Restore B026 fix — fold review usage into token totals
@@ -63,7 +73,7 @@ tasks:
       task/planning/qa usage, via a computeReviewUsageTotal-style helper wired
       into aggregateUsage and computeTokenBreakdown. Restore the regression
       tests removed by 7c34ea6.
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:

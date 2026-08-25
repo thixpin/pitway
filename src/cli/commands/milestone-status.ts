@@ -181,7 +181,11 @@ export function buildProgressReportView(root: string, milestoneId: string): Prog
     tasks: tasksFile.tasks.map((t) => ({
       id: t.id,
       label: taskLabel(t),
-      executionMode: null,
+      // B028: this hardcoded null regardless of how a task actually ran,
+      // rendering the report's Execution column as an em dash for every
+      // task -- unlike buildMilestoneStatusView above, which correctly
+      // calls resolveExecutionMode.
+      executionMode: resolveExecutionMode(root, milestoneId, t),
       statusLabel: taskStatusLabelForReport(root, milestoneId, t),
       tokens: t.usage !== null ? t.usage.total_tokens : null,
     })),
