@@ -1,0 +1,60 @@
+schema_version: 1
+sessions:
+  - id: rev-2c08c762a6f2
+    status: decided
+    created_at: 2026-08-25T06:42:31Z
+    roles:
+      - architect
+    content_hash: sha256:3bc458e6ac4ed83632de3473ac60ec1f42bd99214bcab74be74f1c212afbfc35
+    findings:
+      - role: architect
+        recorded_at: 2026-08-25T06:48:35Z
+        findings:
+          - severity: major
+            finding: >
+              AC005 claims "the mechanical write-helper duplication is
+              consolidated under AC001," and CT005's review instruction says to
+              confirm "the write-helper duplication addressed by T001," but
+              neither T001's objective nor its 3 acceptance criteria commit to
+              any consolidation -- only an atomic temp-file+rename write on
+              saveJournalFile. Real duplication exists on both plausible
+              referents: store.ts has 3 separate mkdirSync+writeFileSync sites
+              (saveYaml, saveContract, saveRequirement) that T001's objective
+              explicitly excludes ("Git-tracked state files ... are
+              intentionally untouched"); journal.ts itself has 10 near-identical
+              append* wrapper functions (load/construct/safeParse/
+              throw/save/return) that T001's objective never mentions. CT005 as
+              worded is unverifiable against T001's actual scope.
+            targets:
+              - ac005
+              - t001
+            recommendation: >
+              Before confirmation, either drop the consolidation clause from
+              AC005/CT005, or add an explicit T001 acceptance criterion naming
+              which duplication (store.ts sites or journal.ts append* wrappers)
+              it covers.
+          - severity: minor
+            finding: >
+              CLAUDE.md and AGENTS.md are not single-sourced: AGENTS.md's own
+              pitway:managed block is only its first 5 bullets, but the
+              remainder of AGENTS.md (Bootstrap Phase narrative through Release
+              Versioning) is a full verbatim copy-paste of CLAUDE.md's body, not
+              an @-include. T002's write_scope lists both files so the immediate
+              fix is covered, but the underlying duplication means every future
+              edit to this narrative must be applied identically in two places,
+              risking drift.
+            targets:
+              - t002
+              - ac002
+            recommendation: >
+              Have CT002 explicitly confirm the shared narrative was edited
+              identically in both files; consider a backlog note for
+              single-sourcing (e.g. extend the @-include) as a separate,
+              non-blocking follow-up.
+        usage: null
+    decision:
+      outcome: rejected
+      note: Content revised via milestone-add --replace to apply the architect's
+        AC005/CT005 fix; session closed as stale, not as a rejection of the
+        milestone itself.
+      decided_at: 2026-08-25T06:51:18Z
