@@ -107,7 +107,7 @@ tasks:
     objective: "USAGE.md links to README.md#opt-in-policies but README's section is
       titled \"Workflow Policies\" (anchor #workflow-policies). Update the link
       in USAGE.md to point at the correct anchor."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - USAGE.md's link to README.md's policies section resolves to the correct
@@ -119,7 +119,14 @@ tasks:
     verification:
       strategy: command
       detail: grep -q '#workflow-policies' USAGE.md
-    result: null
+    result:
+      summary: "Fixed B030: USAGE.md's link to README.md's policies section now points
+        at the correct #workflow-policies anchor (README's heading is \"Workflow
+        Policies\", not \"Opt-in Policies\")."
+      evidence: (no output)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
     usage: null
   - id: T005
     name: Fix B031 — sync AGENTS.md body to CLAUDE.md
