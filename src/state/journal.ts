@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { parse, stringify } from 'yaml';
 import { z } from 'zod';
@@ -350,10 +351,23 @@ function loadJournalFile(cwd: string): JournalFile {
   return result.data;
 }
 
+// Writes to a temp file in the same directory as `path`, then renames it
+// into place. rename(2) within one directory is atomic, so a crash or kill
+// mid-write can only ever leave a stray, distinctly-named temp file behind
+// -- the target path itself either still holds its prior content or the
+// full new content, never a torn write. The temp name embeds a random
+// suffix so concurrent writers (there are none today, but nothing here
+// assumes otherwise) can't collide.
+function writeFileAtomic(path: string, data: string): void {
+  const tmpPath = `${path}.tmp-${randomUUID()}`;
+  writeFileSync(tmpPath, data);
+  renameSync(tmpPath, path);
+}
+
 function saveJournalFile(cwd: string, file: JournalFile): void {
   const path = resolvePitwayJournalPath(cwd);
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, stringify(file));
+  writeFileAtomic(path, stringify(file));
 }
 
 // Returns every raw journal record (entries and checkpoint markers), oldest

@@ -568,3 +568,35 @@ items:
     resolved_at: null
     promoted_to: null
     archived_reason: null
+  - id: B030
+    title: Broken README anchor link in USAGE.md
+    reason: "USAGE.md:287 links to README.md#opt-in-policies but README's section is
+      titled Workflow Policies (anchor #workflow-policies); pre-existing broken
+      anchor, discovered by T003 while reordering README, out of T003's
+      write_scope (README.md only) to fix."
+    status: pending
+    source:
+      milestone: M033
+      task: T003
+    created_at: 2026-08-25T07:00:42.751Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B031
+    title: CLAUDE.md/AGENTS.md content drift (single-sourcing gap)
+    reason: "AGENTS.md is not fully single-sourced from CLAUDE.md -- only its first
+      5 bullets come from the @AGENTS.md include; the rest is a hand-copied
+      duplicate of CLAUDE.md's body. Confirmed drifting twice: (1) architect
+      review flagged this as a minor finding during M033 drafting, (2) T002
+      discovered AGENTS.md is now missing CLAUDE.md's review-to-in_progress
+      evidence-blocked-recovery clause under Task states, and has an extra
+      Release Versioning sentence CLAUDE.md lacks. Consider extending the
+      @-include to cover the full shared body."
+    status: pending
+    source:
+      milestone: M033
+      task: T002
+    created_at: 2026-08-25T07:00:50.341Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null

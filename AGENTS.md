@@ -10,15 +10,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Status: Bootstrap Phase
+## Project Status
 
-PitWay is being built here, and **PitWay is developed using its own workflow** (dogfooding). The authoritative sources are the workflow state in `.pitway/` (milestones, contracts, backlog) — the original design record is archived at `docs/archive/IMPLEMENTATION_PLAN-v1.0.md` (frozen; never updated).
+**PitWay is developed using its own workflow** (dogfooding): every change lands through a confirmed milestone/contract/task, following the pipeline below. The authoritative sources are the workflow state in `.pitway/` (milestones, contracts, backlog) — the original design record is archived at `docs/archive/IMPLEMENTATION_PLAN-v1.0.md` (frozen; never updated).
 
-- Milestones M001–M003 follow the **manual PitWay protocol**: milestone/contract/task artifacts are hand-authored in `.pitway/` following schema v1, commits carry `PitWay-Milestone:` / `PitWay-Task:` trailers, and TDD + atomic-commit rules apply from the first commit. From M004 onward, PitWay manages its own development.
 - **Never write implementation code outside a confirmed milestone task.** A milestone's contract must be presented to the developer and explicitly approved in conversation before its baseline commit or any task work.
 - Check `.pitway/state.yaml` and the active milestone's `contract.md` / `tasks.yaml` to find current state and next work before doing anything.
-
-There is no build tooling until M001's scaffold task lands. Once `package.json` exists: TypeScript strict / Node ≥ 20 / ESM, `vitest` for tests, runtime deps limited to `commander` + `yaml` + `zod`, MIT license. Add the real commands here at that point.
 
 ## What PitWay Is
 
@@ -39,7 +36,7 @@ Non-goals: not a multi-agent framework, coding agent, PM SaaS, CI/CD platform, d
 ## Key Operational Rules
 
 - **Contract is the execution boundary**: never silently expand scope. A discovered conflict stops work, proposes a contract change (append-only Change Log entry), and waits for developer approval (`milestone-confirm --amend` re-approves).
-- **Git safety**: clean working tree required at task *start* (stop and ask on dirty — never auto-stash/reset/absorb). One atomic commit per verified task containing code + same-task state update, with `PitWay-Milestone:` / `PitWay-Task:` trailers; message follows repo convention. Commit messages carry **only** PitWay traceability trailers — never agent/provider session metadata (`Claude-Session:`, `Co-Authored-By: Claude`, `Codex-Session:`, etc.); git history stays provider-agnostic, and workflow state or resume behavior must never depend on an AI conversation or session identifier. Baseline commit at milestone confirmation. Never commit RED states, retries, or intermediate edits. No branches/worktrees/stashes/merges; sequential execution in MVP.
+- **Git safety**: clean working tree required at task *start* (stop and ask on dirty — never auto-stash/reset/absorb). One atomic commit per verified task containing code + same-task state update, with `PitWay-Milestone:` / `PitWay-Task:` trailers; message follows repo convention. Commit messages carry **only** PitWay traceability trailers — never agent/provider session metadata (`Claude-Session:`, `Co-Authored-By: Claude`, `Codex-Session:`, etc.); git history stays provider-agnostic, and workflow state or resume behavior must never depend on an AI conversation or session identifier. Baseline commit at milestone confirmation. Never commit RED states, retries, or intermediate edits. Execution is sequential by default; under `execution.strategy: parallel_worktrees`, eligible tasks dispatch into temporary worktrees on scaffolding branches (`pitway/task/<mId>-<tId>`) that are diff-applied to the main tree and removed at integration, never merged into history. Branches are a first-class shipped feature beyond that: `branch_strategy: milestone` gives each milestone its own branch, landed via a developer-invoked `milestone-merge` after completion — never auto-merged.
 - **Human gate**: `milestone-confirm` runs only after explicit developer approval in the conversation.
 - **Verification**: three check types — `command`, `manual`, `review` — defined in contract frontmatter, each mapped to an acceptance criterion. Commands are approved at confirmation via `verification_approved_hash`; `verify` refuses on hash mismatch. Never execute unapproved agent-authored commands.
 - **Context isolation**: task subagents receive only the generated task-context bundle (task definition, acceptance criteria, contract excerpt, dependency results, relevant files, verification instructions) — never full milestone history. Results persisted as concise structured summaries, never transcripts.

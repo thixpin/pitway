@@ -1,0 +1,172 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Harden journal write crash safety
+    objective: >
+      Add an atomic-write helper (write to a temp file in the same directory,
+      then rename) used only by src/state/journal.ts's saveJournalFile -- the
+      sole PitWay-managed file deliberately kept outside git tracking (resolves
+      to .git/pitway/journal.yaml) and therefore without git's own
+      crash-recovery backstop. Git-tracked state files (routed through store.ts)
+      are intentionally untouched: a torn write there is already recoverable via
+      the standard dirty-tree `git checkout` path. No change to the journal's
+      file path, format, or existing checkpoint/reconciliation semantics.
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - saveJournalFile writes via temp-file-then-rename.
+      - A simulated interrupted write leaves the previously-committed journal
+        content readable and unchanged; loadJournalFile ignores a stray leftover
+        temp file.
+      - No change to the journal's file path, schema, or reconcilePending's
+        checkpoint-marker healing behavior.
+    context_files:
+      - src/state/journal.ts
+      - src/git/paths.ts
+      - tests/unit/journal.test.ts
+    write_scope:
+      - src/state/journal.ts
+      - tests/unit/journal.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/journal.test.ts
+    result:
+      summary: Added a local writeFileAtomic helper (temp file in the same dir, then
+        renameSync) used only by saveJournalFile in src/state/journal.ts, so
+        journal.yaml writes cannot tear on interruption; no other write site,
+        path, schema, or reconcilePending behavior touched.
+      evidence: Tests  59 passed (59) | Start at  14:01:41 | Duration  10.71s
+        (transform 73ms, setup 0ms, import 150ms, tests 10.47s, environment 0ms)
+    attempts: 1
+    usage:
+      total_tokens: 102391
+  - id: T002
+    name: Fix stale docs and branch/worktree contradiction
+    objective: >
+      Remove the obsolete "Project Status: Bootstrap Phase" / M001-M004 scaffold
+      narrative from CLAUDE.md and AGENTS.md, replacing it with current status;
+      fix the "No branches/worktrees/stashes/merges; sequential execution in
+      MVP" line so it accurately reflects the shipped parallel_worktrees
+      execution strategy and branch_strategy: milestone. Check the website pages
+      most likely to mirror the same claims and correct any found stale.
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - CLAUDE.md/AGENTS.md no longer describe M001-M003 as a still-relevant
+        manual-protocol distinction or reference "no build tooling until M001's
+        scaffold task lands".
+      - CLAUDE.md/AGENTS.md's Git-safety guidance accurately states both
+        sequential (default) and parallel_worktrees execution, and that branches
+        are a first-class shipped feature.
+      - No contradicting branch/worktree instruction remains in either file.
+      - Historical milestone evidence is untouched.
+    context_files:
+      - CLAUDE.md
+      - AGENTS.md
+      - .claude/protocol-driver.md
+      - README.md
+      - website/content/getting-started/index.md
+      - website/content/docs/index.md
+      - website/content/concepts/worktrees.md
+    write_scope:
+      - CLAUDE.md
+      - AGENTS.md
+      - website/content/getting-started/index.md
+      - website/content/docs/index.md
+      - website/content/concepts/worktrees.md
+    verification:
+      strategy: manual
+      detail: >
+        Diff CLAUDE.md/AGENTS.md against the prior version; confirm no
+        bootstrap-phase/M001-M004 narrative remains and the branch/worktree line
+        matches shipped behavior; confirm website pages (if touched) match.
+    result:
+      summary: "[truncated] LAUDE.md and AGENTS.md, replacing it with a brief
+        current-state statement; replaced the stale
+        no-branches-worktrees-sequential-MVP line with an accurate description
+        of sequential-default plus parallel_worktrees (scaffolding branches,
+        diff-apply integration) and branch_strategy:milestone."
+      evidence: "git diff shows identical edits applied to both files: Bootstrap Phase
+        heading/M001-M004 bullet/no-build-tooling sentence removed and replaced
+        with a 2-bullet current-state summary; Git-safety bullet's closing
+        sentence rewritten to state sequential-by-default plus
+        parallel_worktrees and branch_strategy: milestone accurately. Website
+        pages (getting-started, docs/index, concepts/worktrees) already
+        described this correctly and were left untouched. Historical evidence
+        (docs/archive/, docs/evidence/, .pitway/milestones/**) untouched."
+    attempts: 1
+    usage:
+      total_tokens: 70240
+  - id: T003
+    name: Tighten README scanability
+    objective: >
+      Improve README.md's first-screen scanability for a first-time user ahead
+      of deep reference material, without deleting any technical content --
+      reorder/condense only (the stacked caveat callouts under the H1, and the
+      Workflow Policies YAML deep-dive's position relative to Quickstart).
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - The value proposition and Quickstart are reachable before deep reference
+        material.
+      - A line-level diff shows no technical content removed, only
+        moved/tightened wording.
+    context_files:
+      - README.md
+      - USAGE.md
+    write_scope:
+      - README.md
+    verification:
+      strategy: manual
+      detail: >
+        Diff README.md against the prior version; confirm structural reordering
+        only, no information loss.
+    result:
+      summary: "[truncated] ition and Quickstart are reachable before reference-tier
+        material -- moved the two stacked caveat callouts (Driver Support, What
+        PitWay enforces) from under the H1 to just after Quickstart, and moved
+        the Engineering Boundaries table earlier, ahead of the Workflow Policies
+        YAML deep-dive."
+      evidence: git diff shows only block relocation (15 insertions/15 deletions, pure
+        move, no line-content changes); README.md line count unchanged; heading
+        order now Why PitWay -> How It Works -> Quickstart -> callouts ->
+        Commands & Integration -> Engineering Boundaries -> Workflow Policies ->
+        Dogfooding -> Maintenance -> Release History -> License.
+    attempts: 1
+    usage:
+      total_tokens: 63462
+  - id: T004
+    name: Cover codex in required_skills tests
+    objective: >
+      Extend the existing multi-driver (M025/T006) test coverage in
+      tests/unit/claude-assets.test.ts and tests/integration/task-status.test.ts
+      to include .codex/skills alongside the existing .claude/.opencode cases.
+      No Core logic change -- resolution is already driver-symmetric.
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - listInstalledSkillNames is tested with a codex-only skills directory and
+        a mixed-driver case including codex.
+      - task-status --context's required_skills gate is tested against a
+        codex-driven project.
+    context_files:
+      - src/state/claude-assets.ts
+      - tests/unit/claude-assets.test.ts
+      - tests/integration/task-status.test.ts
+    write_scope:
+      - tests/unit/claude-assets.test.ts
+      - tests/integration/task-status.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/integration/task-status.test.ts
+    result:
+      summary: "[truncated] ex-only + three-way mixed union + missing-SKILL.md cases)
+        and to task-status --context's required_skills gate (codex-only,
+        claude+codex mixed, refusal, and missing-SKILL.md cases), mirroring the
+        existing .opencode patterns. No src changes -- resolution logic was
+        already driver-symmetric."
+      evidence: Tests  158 passed (158) | Start at  13:57:56 | Duration  738ms
+        (transform 401ms, setup 0ms, import 617ms, tests 232ms, environment 0ms)
+    attempts: 1
+    usage: null

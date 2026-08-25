@@ -194,6 +194,35 @@ describe('listInstalledSkillNames multi-driver (M025/T006)', () => {
     writeFileSync(join(root, '.claude', 'skills', 'testing', 'SKILL.md'), 'x');
     expect(listInstalledSkillNames(root)).toEqual(['testing']);
   });
+
+  // M033/T004: extend the multi-driver gate to .codex/skills -- resolution
+  // is already driver-symmetric (claude-assets.ts unions all three driver
+  // skills directories); these cases pin the .codex coverage that was
+  // missing.
+  it('lists a skill installed under .codex/skills/ when .claude/skills/ is absent', () => {
+    mkdirSync(join(root, '.codex', 'skills', 'debugging'), { recursive: true });
+    writeFileSync(join(root, '.codex', 'skills', 'debugging', 'SKILL.md'), '---\nname: debugging\n---\n');
+    expect(listInstalledSkillNames(root)).toEqual(['debugging']);
+  });
+
+  it('unions skills across all three drivers, including .codex, deduplicated and sorted', () => {
+    mkdirSync(join(root, '.claude', 'skills', 'testing'), { recursive: true });
+    writeFileSync(join(root, '.claude', 'skills', 'testing', 'SKILL.md'), 'x');
+    mkdirSync(join(root, '.opencode', 'skills', 'debugging'), { recursive: true });
+    writeFileSync(join(root, '.opencode', 'skills', 'debugging', 'SKILL.md'), 'x');
+    mkdirSync(join(root, '.codex', 'skills', 'debugging'), { recursive: true });
+    writeFileSync(join(root, '.codex', 'skills', 'debugging', 'SKILL.md'), 'x');
+    mkdirSync(join(root, '.codex', 'skills', 'bug-fix'), { recursive: true });
+    writeFileSync(join(root, '.codex', 'skills', 'bug-fix', 'SKILL.md'), 'x');
+    expect(listInstalledSkillNames(root)).toEqual(['bug-fix', 'debugging', 'testing']);
+  });
+
+  it('never lists a .codex directory present without its own SKILL.md', () => {
+    mkdirSync(join(root, '.codex', 'skills', 'incomplete'), { recursive: true });
+    mkdirSync(join(root, '.codex', 'skills', 'debugging'), { recursive: true });
+    writeFileSync(join(root, '.codex', 'skills', 'debugging', 'SKILL.md'), 'x');
+    expect(listInstalledSkillNames(root)).toEqual(['debugging']);
+  });
 });
 
 // AC010/T010 (M014): asset discovery is dynamic (listClaudeAssets readdirs
