@@ -36,6 +36,13 @@ protocol documents, resolved from one shared common layer. It's
 safe to re-run: byte-identical files are left alone, and a genuine conflict
 with something you've hand-edited refuses loudly rather than overwriting it.
 
+**Upgraded `pitway`? Run `pitway init --reconfigure`.** A plain re-run only
+fills in files that don't exist yet — it never updates ones already
+present, so installed commands/skills/protocol docs silently go stale
+after an upgrade. `--reconfigure` refreshes every managed integration
+asset to the newly installed version; `.pitway/` state is always
+preserved.
+
 Every command below also accepts `--json` for machine-readable output.
 
 ## The Workflow at a Glance

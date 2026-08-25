@@ -61,6 +61,7 @@ pitway init
 - Use `pitway init --no-claude` to opt out of the Claude Code integration.
 - Use `pitway init --opencode` to also install the OpenCode integration (`.opencode/` — commands, skills, and driver protocol documents).
 - Use `pitway init --codex` to also install the Codex integration (`.codex/` — commands, skills, and driver protocol documents).
+- **Upgraded `pitway`? Run `pitway init --reconfigure`.** A plain re-run of `pitway init` only fills in files that don't exist yet — it never updates ones you already have, so installed commands/skills/protocol docs silently go stale after an upgrade. `--reconfigure` refreshes every managed integration asset to the newly installed version; `.pitway/` state (milestones, contracts, tasks) is always preserved.
 - `init` also creates root `AGENTS.md`/`CLAUDE.md` instruction files. PitWay's content lives inside an explicit `<!-- pitway:managed:start/end -->` block — if you already have your own `AGENTS.md` or `CLAUDE.md`, the block is appended and your content is left intact; PitWay only ever owns the marked block.
 
 ### 2. Resume Workflow

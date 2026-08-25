@@ -95,6 +95,20 @@ pitway init
   conflict with something you've hand-edited refuses loudly rather than
   overwriting it.
 
+## Upgrading pitway
+
+After `npm install -g pitway` pulls a newer version, run:
+
+```bash
+pitway init --reconfigure
+```
+
+A plain `pitway init` re-run only fills in files that don't exist yet -- it
+never updates ones you already have, so installed commands, skills, and
+protocol docs silently go stale after an upgrade. `--reconfigure` refreshes
+every managed integration asset to the newly installed version;
+`.pitway/` state (milestones, contracts, tasks) is always preserved.
+
 ## Explore the command surface
 
 ```bash
