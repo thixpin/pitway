@@ -40,7 +40,12 @@ Five steps, always in this order:
   <id> --role <role> --file <yaml>` accepts the brief's own findings YAML
   shape. Normalizing a reviewer's raw output into that shape is fine;
   inventing or embellishing a finding the reviewer didn't actually report
-  is not.
+  is not. **MUST**: when the dispatched reviewer subagent's own tool
+  result reports runtime usage, extract it and pass it as `--usage
+  '{"total_tokens": N, ...}'` on this same call — the same propagation
+  rule as a task dispatch's own completion (`dispatch.md`); never
+  estimated or derived, and omitting `--usage` when none was reported
+  correctly leaves that role's recorded usage `null`.
 - **Present the report to the developer.** `milestone-review report <id>`
   renders every recorded role's findings (severity-ordered), pending
   roles, and mechanically grouped conflicts/overlaps — read this to the
