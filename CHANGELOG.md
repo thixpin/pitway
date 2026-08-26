@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.6] — 2026-08-26
+
+### Highlights
+
+- `milestone-review`'s Record step now spells out the reviewer-usage
+  capture rule directly, instead of relying on a cross-referenced doc, so
+  recorded review usage stops silently coming back `null`
+
 ## [1.0.5] — 2026-08-25
 
 ### Highlights

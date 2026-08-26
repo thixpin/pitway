@@ -4,6 +4,7 @@
 > A controlled workflow for agentic software development.
 
 [![npm version](https://img.shields.io/npm/v/pitway.svg)](https://www.npmjs.com/package/pitway)
+[![npm downloads](https://img.shields.io/npm/dm/pitway.svg)](https://www.npmjs.com/package/pitway)
 [![codecov](https://codecov.io/github/thixpin/pitway/branch/main/badge.svg)](https://app.codecov.io/github/thixpin/pitway)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
