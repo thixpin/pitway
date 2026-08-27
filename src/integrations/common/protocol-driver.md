@@ -135,8 +135,10 @@ that replace the table or footer. This verbatim relay is a rule, not a
 habit. Once a milestone is confirmed, end routine progress updates with the footer line taken from the rendered `footer` field above — the footer habit for every routine update.
 
 Read-only surfaces: `pitway verify <id> --status` (latest recorded result
-per check, executes nothing); `pitway milestone-status <id> --report`
-(the full structured Progress Report, when the developer asks for one).
+per check, executes nothing); `pitway milestone-status [id]` (the full
+status detail — workload, task table, critical path, token breakdown —
+for the active milestone by default, or an explicit id for any milestone;
+there is no separate `--report` mode, this is the only shape).
 
 PitWay cannot verify that a driver session actually appends the footer or
 keeps updates terse — only that the data and rendering are correct when

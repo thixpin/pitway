@@ -325,29 +325,23 @@ describe('M025 T004 common protocol-driver verbatim relay + footer habit (AC004/
   });
 });
 
-// M025/T005 (AC005/B013,B015): codex milestone-status/ms-status --report passthrough + footer relay (B014 usage blocks owned here as well)
-describe('M025 T005 codex milestone-status --report + footer relay (AC005/B013,B015)', () => {
-  it('codex milestone-status.md carries the relay rule and a usage block with --report passthrough', () => {
+// M025/T005 (AC005/B013,B015): codex milestone-status/ms-status full-detail passthrough + footer relay (B014 usage blocks owned here as well)
+describe('M025 T005 codex milestone-status full-detail + footer relay (AC005/B013,B015)', () => {
+  it('codex milestone-status.md carries the relay rule and a usage block', () => {
     const text = shippedContent('commands/milestone-status.md').toString('utf8');
-    expect(text).toContain('reproduce the rendered table and racing footer as-is');
-    expect(text).toContain('annotations may surround');
-    expect(text).toContain('never prose summaries');
-    expect(text).toContain('end routine progress updates with the footer');
+    expect(text).toContain('Read-only');
+    expect(text).toContain('preserve the rendered table and racing footer as-is');
     expect(text).toMatch(/```sh/);
-    expect(text).toMatch(/pitway milestone-status <id> \[--report\] \[--json\]/);
-    expect(text).toMatch(/--report/);
+    expect(text).toMatch(/pitway milestone-status \[id\] \[--json\]/);
     expect(text).toMatch(/--json/);
   });
 
-  it('codex ms-status.md carries the relay rule and a usage block with --report and stays byte-identical to milestone-status.md', () => {
+  it('codex ms-status.md carries the relay rule and a usage block and stays byte-identical to milestone-status.md', () => {
     const text = shippedContent('commands/ms-status.md').toString('utf8');
-    expect(text).toContain('reproduce the rendered table and racing footer as-is');
-    expect(text).toContain('annotations may surround');
-    expect(text).toContain('never prose summaries');
-    expect(text).toContain('end routine progress updates with the footer');
+    expect(text).toContain('Read-only');
+    expect(text).toContain('preserve the rendered table and racing footer as-is');
     expect(text).toMatch(/```sh/);
-    expect(text).toMatch(/pitway milestone-status <id> \[--report\] \[--json\]/);
-    expect(text).toMatch(/--report/);
+    expect(text).toMatch(/pitway milestone-status \[id\] \[--json\]/);
     expect(text).toMatch(/--json/);
     expect(shippedContent('commands/ms-status.md')).toEqual(shippedContent('commands/milestone-status.md'));
   });

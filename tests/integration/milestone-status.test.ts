@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { saveContract, saveReviews, saveTasks, saveUsage, saveVerificationResults } from '../../src/state/store.js';
+import { saveContract, saveReviews, saveState, saveTasks, saveUsage, saveVerificationResults } from '../../src/state/store.js';
 import { appendTaskVerifyEvidenceRecord } from '../../src/state/journal.js';
 import { buildCli } from '../../src/cli/index.js';
 import { registerMilestoneStatusCommand } from '../../src/cli/commands/milestone-status.js';
@@ -63,6 +63,7 @@ beforeEach(() => {
     ],
   });
   saveUsage(root, 'M001', { schema_version: 1, planning: null, qa: null });
+  saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
 
   writeFileSync(join(root, 'seed.txt'), 'x\n');
   git(['add', 'seed.txt'], root);
@@ -73,14 +74,17 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-describe('pitway milestone-status', () => {
-  it('reports json with deterministic progress excluding cancelled tasks, and the baseline SHA', async () => {
-    const program = buildCli();
-    const lines: string[] = [];
-    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
-    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001', '--json']);
+async function runStatus(args: string[] = []): Promise<string> {
+  const program = buildCli();
+  const lines: string[] = [];
+  registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
+  await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001', ...args]);
+  return lines.join('\n');
+}
 
-    const view = JSON.parse(lines.join('\n'));
+describe('pitway milestone-status', () => {
+  it('reports json with the id, status, baseline SHA, and deterministic progress excluding cancelled tasks', async () => {
+    const view = JSON.parse(await runStatus(['--json']));
     expect(view.id).toBe('M001');
     expect(view.title).toBe('Test Milestone');
     expect(view.status).toBe('in_progress');
@@ -88,49 +92,80 @@ describe('pitway milestone-status', () => {
     expect(view.progress).toEqual({ completed: 1, total: 3 });
     expect(view.baselineSha).toBe(git(['rev-parse', 'HEAD'], root).trim());
     expect(view.tasks).toHaveLength(4);
+    expect(view.mode).toBeUndefined();
   });
 
-  it('renders human output with per-task status labels, a task table, and a progress-bar footer', async () => {
-    const program = buildCli();
-    const lines: string[] = [];
-    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
-    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001']);
-
-    const output = lines.join('\n');
-    expect(output).toContain('Test Milestone');
+  it('renders human output with the id, status, baseline, a task table, and a progress-bar footer', async () => {
+    const output = await runStatus();
+    expect(output).toContain('🏁 Milestone M001 — Test Milestone');
+    expect(output).toContain('Status: in_progress');
+    expect(output).toContain(`Baseline: ${git(['rev-parse', 'HEAD'], root).trim()}`);
     expect(output).toContain('T001');
     expect(output).toContain('Completed');
-    // UX quick-change: the summary header (Status/Progress/Baseline/Tokens)
-    // stays free of any percentage -- only the task table's own Progress
-    // column and the racing footer (now carrying a progress bar) are the
-    // sanctioned exceptions.
-    const header = output.split('\n\n')[0]!;
-    expect(header).not.toContain('%');
-    expect(output).toMatch(/^\| Task\s+\| Status\s+\| Progress\s+\| Execution\s+\|$/m);
+    expect(output).toMatch(/^\| Task\s+\| Label\s+\| Execution\s+\| Status\s+\| Tokens\s+\|$/m);
     expect(output).toMatch(/🏎️ \[[█░]{20}\] \d+% · ✅/);
   });
 
-  it("renders every task in the table, in the milestone's own order, with correct status/progress/execution", async () => {
+  it('resolves the active milestone when no id is given, identically to passing it explicitly', async () => {
+    const withId = JSON.parse(await runStatus(['--json']));
     const program = buildCli();
     const lines: string[] = [];
     registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
-    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001']);
+    await program.parseAsync(['node', 'pitway', 'milestone-status', '--json']);
+    expect(JSON.parse(lines.join('\n'))).toEqual(withId);
+  });
 
-    const rows = lines
-      .join('\n')
+  it('reports "No active milestone." (exit cleanly, no id) when active_milestone is null', async () => {
+    saveState(root, { schema_version: 1, active_milestone: null, milestones: ['M001'] });
+    const program = buildCli();
+    const lines: string[] = [];
+    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'milestone-status']);
+    expect(lines.join('\n')).toBe('No active milestone.');
+  });
+
+  it('reports { active: false } for --json when no id given and none is active', async () => {
+    saveState(root, { schema_version: 1, active_milestone: null, milestones: ['M001'] });
+    const program = buildCli();
+    const lines: string[] = [];
+    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'milestone-status', '--json']);
+    expect(JSON.parse(lines.join('\n'))).toEqual({ active: false });
+  });
+
+  it('an explicit id still works for a milestone that is not the active one', async () => {
+    mkdirSync(join(root, '.pitway', 'milestones', 'M002'), { recursive: true });
+    saveVerificationResults(root, 'M002', { schema_version: 1, results: [] });
+    saveContract(root, 'M002', {
+      frontmatter: { ...frontmatter, id: 'M002', title: 'Other', status: 'completed' },
+      body: '\n',
+    });
+    saveTasks(root, 'M002', { schema_version: 1, tasks: [task({ id: 'T001', status: 'completed' })] });
+    saveUsage(root, 'M002', { schema_version: 1, planning: null, qa: null });
+    // M001 stays the active milestone throughout.
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M002', '--json']);
+    expect(JSON.parse(lines.join('\n')).id).toBe('M002');
+  });
+
+  it("renders every task in the table, in the milestone's own order, with correct label/execution/status/tokens", async () => {
+    const output = await runStatus();
+    const rows = output
       .split('\n')
-      .filter((l) => /^\| T\d{3} \|/.test(l));
-    // T001 completed, T002 in_progress (never dispatched -> inline), T003
-    // waiting (not started -> no execution mode), T004 cancelled (likewise)
-    // -- the beforeEach fixture's own tasks, in their declared order.
-    // Whitespace-collapsed comparison: content per column is asserted here;
-    // the padded fixed-width SHAPE is asserted structurally in the B022
-    // tests below.
-    expect(rows.map((r) => r.replace(/\s+\|/g, ' |'))).toEqual([
-      '| T001 | ✓ Completed | 100% | inline |',
-      '| T002 | ● In Progress | — | inline |',
-      '| T003 | ◌ Waiting | — | — |',
-      '| T004 | ✗ Cancelled | — | — |',
+      .filter((l) => /^\| T\d{3} \|/.test(l))
+      .map((l) => l.replace(/\s+\|/g, ' |').replace(/\|\s+/g, '| '));
+    // T001 completed (never dispatched -> inline), T002 in_progress
+    // (inline), T003 waiting (not started -> no execution mode), T004
+    // cancelled (likewise) -- fixture tasks, in declared order, label
+    // falling back to the truncated objective since none has a name.
+    expect(rows).toEqual([
+      '| T001 | x | inline | ✓ Completed | N/A |',
+      '| T002 | x | inline | ● In Progress | N/A |',
+      '| T003 | x | — | ◌ Waiting | N/A |',
+      '| T004 | x | — | ✗ Cancelled | N/A |',
     ]);
   });
 
@@ -145,13 +180,10 @@ describe('pitway milestone-status', () => {
       at: new Date().toISOString(),
     });
 
-    const program = buildCli();
-    const lines: string[] = [];
-    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
-    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001']);
-
-    // B022: cells are padded -- compare whitespace-collapsed.
-    expect(lines.join('\n').replace(/\s+\|/g, ' |')).toContain('| T002 | ● In Progress | — | worktree |');
+    const view = JSON.parse(await runStatus(['--json'])) as {
+      tasks: Array<{ id: string; executionMode: string | null }>;
+    };
+    expect(view.tasks.find((t) => t.id === 'T002')).toMatchObject({ executionMode: 'worktree' });
   });
 
   it('shows "inline" execution for a dispatch that was later discarded and completed inline instead', async () => {
@@ -169,12 +201,10 @@ describe('pitway milestone-status', () => {
       at: new Date().toISOString(),
     });
 
-    const program = buildCli();
-    const lines: string[] = [];
-    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
-    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001']);
-
-    expect(lines.join('\n').replace(/\s+\|/g, ' |')).toContain('| T002 | ● In Progress | — | inline |');
+    const view = JSON.parse(await runStatus(['--json'])) as {
+      tasks: Array<{ id: string; executionMode: string | null }>;
+    };
+    expect(view.tasks.find((t) => t.id === 'T002')).toMatchObject({ executionMode: 'inline' });
   });
 
   it('renders the progress bar at the minimum band (10%, freshly confirmed) and clamps within 0-100%', async () => {
@@ -183,35 +213,34 @@ describe('pitway milestone-status', () => {
       tasks: [task({ id: 'T001', status: 'ready' }), task({ id: 'T002', status: 'waiting' })],
     });
 
-    const program = buildCli();
-    const lines: string[] = [];
-    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
-    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001']);
-
-    const last = lines.join('\n').split('\n').at(-1)!;
+    const output = await runStatus();
+    const last = output.split('\n').at(-1)!;
     // 10% of a 20-char bar rounds to 2 filled chars.
     expect(last).toBe('🏎️ [██░░░░░░░░░░░░░░░░░░] 10% · ✅ 0/2 · Next: T001');
   });
+
+  it('refuses an unrecognized id (unknown milestone), same as today', async () => {
+    const program = buildCli();
+    const lines: string[] = [];
+    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
+    await expect(
+      program.parseAsync(['node', 'pitway', 'milestone-status', 'M404']),
+    ).rejects.toThrow();
+  });
 });
 
-async function runStatus(args: string[] = []): Promise<string> {
-  const program = buildCli();
-  const lines: string[] = [];
-  registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
-  await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001', ...args]);
-  return lines.join('\n');
-}
-
-describe('pitway milestone-status usage aggregation', () => {
-  it('reports a null aggregate with every task unmeasured when nothing is measured', async () => {
+describe('pitway milestone-status usage total (merged from --report)', () => {
+  it('reports a null total with every task unmeasured when nothing is measured', async () => {
     const view = JSON.parse(await runStatus(['--json'])) as {
-      aggregate: { totalTokens: number | null; unmeasuredTasks: number };
+      tokenTotal: number | null;
+      missingUsageCount: number;
     };
-    expect(view.aggregate).toEqual({ totalTokens: null, unmeasuredTasks: 4 });
-    expect(await runStatus()).toContain('Tokens: N/A');
+    expect(view.tokenTotal).toBeNull();
+    expect(view.missingUsageCount).toBe(4);
+    expect(await runStatus()).toContain('Tokens: N/A (4 tasks missing usage)');
   });
 
-  it('sums measured task usage plus planning plus qa, surfacing unmeasured tasks as N/A', async () => {
+  it('sums measured task usage plus planning plus qa, surfacing unmeasured tasks in the missing count', async () => {
     saveTasks(root, 'M001', {
       schema_version: 1,
       tasks: [
@@ -227,13 +256,15 @@ describe('pitway milestone-status usage aggregation', () => {
     });
 
     const view = JSON.parse(await runStatus(['--json'])) as {
-      aggregate: { totalTokens: number | null; unmeasuredTasks: number };
+      tokenTotal: number | null;
+      missingUsageCount: number;
     };
-    expect(view.aggregate).toEqual({ totalTokens: 84200, unmeasuredTasks: 2 });
-    expect(await runStatus()).toContain('Tokens: 84.2k (2 tasks N/A)');
+    expect(view.tokenTotal).toBe(84200);
+    expect(view.missingUsageCount).toBe(2);
+    expect(await runStatus()).toContain('Tokens: 84.2k (2 tasks missing usage)');
   });
 
-  it('renders small totals unabbreviated with a singular N/A count', async () => {
+  it('renders small totals unabbreviated with a singular missing-usage count', async () => {
     saveTasks(root, 'M001', {
       schema_version: 1,
       tasks: [
@@ -242,17 +273,7 @@ describe('pitway milestone-status usage aggregation', () => {
         task({ id: 'T003', status: 'waiting' }),
       ],
     });
-    expect(await runStatus()).toContain('Tokens: 950 (1 task N/A)');
-  });
-
-  it('omits the N/A suffix when every task is measured', async () => {
-    saveTasks(root, 'M001', {
-      schema_version: 1,
-      tasks: [task({ id: 'T001', status: 'completed', usage: { total_tokens: 84200 } })],
-    });
-    const output = await runStatus();
-    expect(output).toContain('Tokens: 84.2k');
-    expect(output).not.toMatch(/tasks? N\/A/);
+    expect(await runStatus()).toContain('Tokens: 950 (1 task missing usage)');
   });
 });
 
@@ -265,7 +286,8 @@ describe('pitway milestone-status racing footer (M013/T005)', () => {
     const view = JSON.parse(await runStatus(['--json'])) as { footer: string | null };
     expect(view.footer).toBeNull();
     // The footer's own shape (a workload % followed by the count segment) is
-    // unique -- unlike a bare 🏁, which also appears in the header line.
+    // unique -- unlike a bare 🏁, which also appears in the header line, or
+    // the always-present "Workload: ~N%" line, which never carries ✅.
     expect(await runStatus()).not.toMatch(/\d+% · ✅/);
   });
 
@@ -289,9 +311,8 @@ describe('pitway milestone-status racing footer (M013/T005)', () => {
   });
 });
 
-// AC005/AC007 (M013/T006): the on-demand Progress Report.
-describe('pitway milestone-status --report (M013/T006)', () => {
-  it('renders the full report shape with evidence-honest task labeling and no driver_overhead line', async () => {
+describe('pitway milestone-status full shape (merged from --report, M013/T006)', () => {
+  it('renders the full shape with evidence-honest task labeling and no driver_overhead line', async () => {
     appendTaskVerifyEvidenceRecord(root, {
       id: 'tve-test001',
       milestone: 'M001',
@@ -326,13 +347,11 @@ describe('pitway milestone-status --report (M013/T006)', () => {
     });
     saveUsage(root, 'M001', { schema_version: 1, planning: { attempts: 1, total_tokens: 200 }, qa: null });
 
-    const view = JSON.parse(await runStatus(['--report', '--json'])) as {
-      mode: string;
+    const view = JSON.parse(await runStatus(['--json'])) as {
       tasks: Array<{ id: string; label: string; statusLabel: string; tokens: number | null }>;
       criticalPath: string[];
       tokenBreakdown: Record<string, unknown>;
     };
-    expect(view.mode).toBe('report');
     expect(view.tasks.find((t) => t.id === 'T001')).toMatchObject({
       label: 'Config schema',
       statusLabel: '✓ Completed · verified',
@@ -343,24 +362,27 @@ describe('pitway milestone-status --report (M013/T006)', () => {
     expect(view.tokenBreakdown).toEqual({ task: 100, planning: 200, qa: null, review: null, total: 300, missing: 3 });
     expect('driver_overhead' in view.tokenBreakdown).toBe(false);
 
-    const output = await runStatus(['--report']);
+    const output = await runStatus();
     expect(output).not.toContain('driver_overhead');
     expect(output).toContain('Config schema');
     expect(output).toContain('✓ Completed · verified');
-    // B005 (qc-404ee3e9): the report's task list is a table with a Tokens
-    // column, aligned with plain milestone-status's own table format.
+    // B005 (qc-404ee3e9): the task list is a table with a Tokens column.
     const tableLines = output.split('\n').filter((l) => l.startsWith('|'));
     const collapsed = tableLines.map((l) => l.replace(/\s+\|/g, ' |'));
     const hasHeader = collapsed.some((l) => /^\| Task \| Label \| Execution \| Status \| Tokens \|$/.test(l));
     // B028: T001 is completed with no worktree_integrate record, so its real
-    // execution mode is "inline" -- not the em-dash placeholder the report
-    // view previously hardcoded for every task regardless of actual mode.
+    // execution mode is "inline" -- not the em-dash placeholder the old
+    // --report view previously hardcoded for every task regardless of
+    // actual mode.
     const hasT001 = collapsed.some((l) => /\| T001 \| Config schema \| inline \| ✓ Completed · verified \|\s+100 \|$/.test(l));
     const hasT002 = collapsed.some((l) => l.startsWith('| T002 | '));
     const hasNA = collapsed.some((l) => /\|\s+N\/A \|$/.test(l));
     expect(hasHeader && hasT001 && hasT002 && hasNA).toBe(true);
     const lines = output.split('\n');
-    expect(lines[lines.length - 1]).toMatch(/^🏎️ \d+% · ✅/);
+    // The merged renderer splices a progress bar in for every human-mode
+    // footer now (previously only the plain view did this; the old
+    // --report footer was bare) -- semantic content unchanged.
+    expect(lines[lines.length - 1]).toMatch(/^🏎️ \[[█░]{20}\] \d+% · ✅/);
   });
 
   it('falls back to the truncated objective, not a bare id, when name is absent', async () => {
@@ -369,18 +391,16 @@ describe('pitway milestone-status --report (M013/T006)', () => {
       schema_version: 1,
       tasks: [task({ id: 'T001', status: 'ready', objective: longObjective })],
     });
-    const view = JSON.parse(await runStatus(['--report', '--json'])) as {
+    const view = JSON.parse(await runStatus(['--json'])) as {
       tasks: Array<{ id: string; label: string }>;
     };
     expect(view.tasks[0]!.label).toBe(`${'x'.repeat(60)}…`);
   });
 
-  // B028: buildProgressReportView hardcoded executionMode: null for every
-  // task, so --report's Execution column always rendered an em dash
-  // regardless of how a task actually ran -- unlike plain milestone-status,
-  // which correctly calls resolveExecutionMode. Same fixture/assertion shape
-  // as the plain-view "worktree"/"inline" tests above, run through --report.
-  it('shows the real per-task execution mode in --report, not always an em dash', async () => {
+  // B028: the old --report view hardcoded executionMode: null for every
+  // task -- Execution always rendered an em dash regardless of how a task
+  // actually ran. Fixed once, kept correct now that this is the only view.
+  it('shows the real per-task execution mode, not always an em dash', async () => {
     const { appendWorktreeIntegrateRecord } = await import('../../src/state/journal.js');
     appendWorktreeIntegrateRecord(root, {
       id: 'wti-report-test',
@@ -391,14 +411,14 @@ describe('pitway milestone-status --report (M013/T006)', () => {
       at: new Date().toISOString(),
     });
 
-    const view = JSON.parse(await runStatus(['--report', '--json'])) as {
+    const view = JSON.parse(await runStatus(['--json'])) as {
       tasks: Array<{ id: string; executionMode: string | null }>;
     };
     expect(view.tasks.find((t) => t.id === 'T001')).toMatchObject({ executionMode: 'inline' });
     expect(view.tasks.find((t) => t.id === 'T002')).toMatchObject({ executionMode: 'worktree' });
     expect(view.tasks.find((t) => t.id === 'T003')).toMatchObject({ executionMode: null });
 
-    const output = await runStatus(['--report']);
+    const output = await runStatus();
     const collapsed = output
       .split('\n')
       .filter((l) => l.startsWith('|'))
@@ -485,7 +505,7 @@ describe('pitway milestone-status baseline resolution edges', () => {
   });
 });
 
-describe('pitway milestone-status --report token breakdown', () => {
+describe('pitway milestone-status token breakdown (merged from --report)', () => {
   it('reports measured planning and qa alongside task usage with a singular missing-usage count', async () => {
     saveTasks(root, 'M001', {
       schema_version: 1,
@@ -500,7 +520,7 @@ describe('pitway milestone-status --report token breakdown', () => {
       qa: { attempts: 1, total_tokens: 100 },
     });
 
-    const output = await runStatus(['--report']);
+    const output = await runStatus();
     expect(output).toContain('(1 task missing usage)');
     expect(output).toContain('  task: 1.0k');
     expect(output).toContain('  planning: 200');
@@ -520,7 +540,7 @@ describe('pitway milestone-status --report token breakdown', () => {
       qa: null,
     });
 
-    const output = await runStatus(['--report']);
+    const output = await runStatus();
     expect(output).toContain('  task: 500');
     expect(output).toContain('  planning: 200');
     expect(output).toContain('  qa: N/A');
@@ -540,18 +560,18 @@ describe('pitway milestone-status --report token breakdown', () => {
       qa: { attempts: 1, total_tokens: 300 },
     });
 
-    const output = await runStatus(['--report']);
+    const output = await runStatus();
     expect(output).toContain('  task: 500');
     expect(output).toContain('  planning: N/A');
     expect(output).toContain('  qa: 300');
     expect(output).toContain('  total: 800');
   });
 
-  it('renders an empty draft report with (none) critical path, no ready task, and no footer', async () => {
+  it('renders an empty draft milestone with (none) critical path, no ready task, and no footer', async () => {
     saveContract(root, 'M001', { frontmatter: { ...frontmatter, status: 'draft' }, body: '\n' });
     saveTasks(root, 'M001', { schema_version: 1, tasks: [] });
 
-    const output = await runStatus(['--report']);
+    const output = await runStatus();
     expect(output).toContain('Critical path: (none)');
     expect(output).toContain('Active: (none)');
     expect(output).toContain('Next: (no ready task)');
@@ -591,7 +611,7 @@ describe('pitway milestone-status --report token breakdown', () => {
       ],
     });
 
-    const view = JSON.parse(await runStatus(['--report', '--json'])) as {
+    const view = JSON.parse(await runStatus(['--json'])) as {
       tokenTotal: number;
       tokenBreakdown: { review: number; total: number; missing: number };
     };
@@ -600,10 +620,9 @@ describe('pitway milestone-status --report token breakdown', () => {
     // architect's un-recorded review usage counts as missing, alongside the
     // already-missing planning/qa categories -- never a "task".
     expect(view.tokenBreakdown.missing).toBe(3);
-    // The plain view's own total (aggregateUsage) folds review usage in too.
     expect(view.tokenTotal).toBe(800);
 
-    const output = await runStatus(['--report']);
+    const output = await runStatus();
     expect(output).toContain('  review: 300');
     expect(output).toContain('  total: 800');
   });
@@ -638,11 +657,11 @@ describe('pitway milestone-status default CommandDeps fallbacks', () => {
   });
 });
 
-// B022 (M027/T001): both milestone-status views render their task tables as
-// content-aware fixed-width padded columns -- every line of a table has the
-// same per-column display width (header, dashed separator, and data cells
-// alike), instead of compact raw markdown pipes.
-describe('pitway milestone-status padded fixed-width tables (B022)', () => {
+// B022 (M027/T001): the task table renders as content-aware fixed-width
+// padded columns -- every line has the same per-column display width
+// (header, dashed separator, and data cells alike), instead of compact raw
+// markdown pipes.
+describe('pitway milestone-status padded fixed-width table (B022)', () => {
   function tableLines(output: string): string[] {
     return output.split('\n').filter((l) => l.startsWith('|'));
   }
@@ -660,18 +679,7 @@ describe('pitway milestone-status padded fixed-width tables (B022)', () => {
     }
   }
 
-  it('plain milestone-status renders a fixed-width padded task table', async () => {
-    const program = buildCli();
-    const lines: string[] = [];
-    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
-    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001']);
-    assertFixedWidth(tableLines(lines.join('\n')));
-    // Padding actually happens: the header row pads the narrow Task column to
-    // the widest cell (the 4-char ids equal it here), while Status stretches.
-    expect(lines.join('\n')).toMatch(/^\| Task \| Status\s{2,}\|/m);
-  });
-
-  it('--report renders its five-column table fixed-width as well', async () => {
+  it('renders its five-column task table fixed-width', async () => {
     saveTasks(root, 'M001', {
       schema_version: 1,
       tasks: [
@@ -679,10 +687,6 @@ describe('pitway milestone-status padded fixed-width tables (B022)', () => {
         task({ id: 'T002', status: 'ready', depends_on: ['T001'] }),
       ],
     });
-    const program = buildCli();
-    const lines: string[] = [];
-    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
-    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001', '--report']);
-    assertFixedWidth(tableLines(lines.join('\n')));
+    assertFixedWidth(tableLines(await runStatus()));
   });
 });

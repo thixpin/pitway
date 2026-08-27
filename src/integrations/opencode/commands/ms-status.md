@@ -5,19 +5,15 @@ description: "PitWay: Show a milestone's status, contract, progress, and tasks"
 # milestone-status
 
 ```sh
-pitway milestone-status <id> [--report] [--json]
+pitway milestone-status [id] [--json]
 ```
 
-Use this to orient on one milestone: its contract, progress, and the
-status of every task in it. Reach for it when the developer asks "where
-are we on M00X" or before deciding what to dispatch next within a
-milestone you already know the id of — `resume` is the broader "what's
-going on in this repo at all" equivalent when you don't.
-
-When relaying `pitway milestone-status` or `pitway resume` output to the
-developer, reproduce the rendered table and racing footer as-is —
-annotations may surround the verbatim block, but never prose summaries
-that replace the table or footer. Once a milestone is confirmed, end routine progress updates with the footer line (see `../protocol-driver.md` Progress reporting).
+Show a milestone's status, contract, progress, and tasks.
+Without [id], show the active milestone or No active milestone.
+With [id], show that milestone regardless of status.
+The full status report is the default output. And show as human-readable and nice UI.
+Read-only; never mutate state, dispatch tasks, or perform recovery.
+When relaying the output, preserve the rendered table and racing footer as-is.
 
 See `../protocol-driver.md`. Run `pitway milestone-status --help` for
 flags.

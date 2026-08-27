@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { loadContract, loadReviews, loadTasks, loadUsage } from '../../state/store.js';
+import { loadContract, loadReviews, loadState, loadTasks, loadUsage } from '../../state/store.js';
 import { computeReviewUsageTotal } from '../../core/reviews/roles.js';
 import { readJournal } from '../../state/journal.js';
 import { computeMilestoneProgress, type MilestoneProgress } from '../../core/milestones/progress.js';
@@ -8,7 +8,7 @@ import { computeWorkloadPercentage } from '../../core/milestones/workload.js';
 import { computeCriticalPath } from '../../core/tasks/critical-path.js';
 import { hasVerifiedEvidence } from '../../core/tasks/update.js';
 import { allChecksPassed, computeLatestCheckResults } from '../../core/verification/status.js';
-import { aggregateUsage, type UsageAggregate } from '../../core/metrics/aggregate.js';
+import { aggregateUsage } from '../../core/metrics/aggregate.js';
 import { resolveCommitSha } from '../../git/trailers.js';
 import { renderOutput } from '../output.js';
 import { taskStatusLabel } from '../format.js';
@@ -39,54 +39,16 @@ function resolveExecutionMode(
   return integrated ? 'worktree' : 'inline';
 }
 
-export interface MilestoneStatusView {
-  id: string;
-  title: string;
-  status: MilestoneStatus;
-  progress: MilestoneProgress;
-  baselineSha: string | null;
-  aggregate: UsageAggregate;
-  tasks: Array<{ id: string; status: TaskStatus; executionMode: 'inline' | 'worktree' | null }>;
-  // AC004 (M013): null before milestone-confirm has run.
-  footer: string | null;
-  // UX-only additive field: the same percentage computeRacingFooter already
-  // embeds in `footer`, exposed separately so the human renderer can draw a
-  // progress bar without re-deriving it a second way.
-  workloadPercent: number;
-}
-
-export function buildMilestoneStatusView(root: string, milestoneId: string): MilestoneStatusView {
-  const contract = loadContract(root, milestoneId);
-  const tasksFile = loadTasks(root, milestoneId);
-  // AC005/T005 (M012): bounds the search when this milestone tracks a
-  // branch (base_revision non-null); unbounded (today's behavior) otherwise.
-  const since = contract.frontmatter.base_revision ?? undefined;
-  const progress = computeMilestoneProgress(tasksFile.tasks);
-  const verificationPassed = allChecksPassed(contract, computeLatestCheckResults(root, milestoneId));
-  return {
-    id: contract.frontmatter.id,
-    title: contract.frontmatter.title,
-    status: contract.frontmatter.status,
-    progress,
-    baselineSha: resolveCommitSha(root, { milestone: milestoneId, ...(since !== undefined ? { since } : {}) }) ?? null,
-    aggregate: aggregateUsage(tasksFile.tasks, loadUsage(root, milestoneId), loadReviews(root, milestoneId)),
-    tasks: tasksFile.tasks.map((t) => ({
-      id: t.id,
-      status: t.status,
-      executionMode: resolveExecutionMode(root, milestoneId, t),
-    })),
-    footer: computeRacingFooter(contract.frontmatter.status, progress, verificationPassed, tasksFile.tasks),
-    workloadPercent: computeWorkloadPercentage(contract.frontmatter.status, progress, verificationPassed),
-  };
-}
-
-// AC005/AC007 (M013): on-demand structured Progress Report, reused entirely
-// from data this milestone's other tasks already compute -- no new
-// authoritative data source.
-export interface ProgressReportTaskRow {
+// Milestone-current-command quick-change: milestone-status's own separate
+// --report flag/view is retired -- this is now the ONE view, carrying
+// everything --report used to (workload/critical-path/token-breakdown/
+// per-task label+tokens) plus the identity/state fields (id, status,
+// baselineSha) the old plain view alone carried. No `mode` discriminant
+// left: there is only one shape now.
+export interface MilestoneStatusTaskRow {
   id: string;
   label: string;
-  executionMode: string | null;
+  executionMode: 'inline' | 'worktree' | null;
   statusLabel: string;
   tokens: number | null;
 }
@@ -107,19 +69,32 @@ export interface TokenBreakdown {
   missing: number;
 }
 
-export interface ProgressReportView {
-  mode: 'report';
+export interface MilestoneStatusView {
+  id: string;
   title: string;
+  status: MilestoneStatus;
+  baselineSha: string | null;
   workloadPercent: number;
   progress: MilestoneProgress;
   tokenTotal: number | null;
   missingUsageCount: number;
-  tasks: ProgressReportTaskRow[];
+  tasks: MilestoneStatusTaskRow[];
   criticalPath: string[];
   activeTask: string | null;
   nextTask: string | null;
   tokenBreakdown: TokenBreakdown;
+  // AC004 (M013): null before milestone-confirm has run.
   footer: string | null;
+}
+
+// Read-only marker for the id-omitted, no-active-milestone case: an answer,
+// never a refusal -- exit 0, same convention as `pitway milestone-current`
+// and `pitway resume`'s own "No active milestone" section (unlike
+// verify/task-dispatch/task-amend's "no active milestone; pass an id
+// explicitly" throw, which fits an action that genuinely cannot proceed
+// without a target -- milestone-status only ever displays).
+export interface MilestoneStatusInactiveView {
+  active: false;
 }
 
 const LABEL_TRUNCATE_LENGTH = 60;
@@ -168,21 +143,27 @@ function computeTokenBreakdown(tasks: Task[], usage: UsageFile, reviews: Reviews
   return { task: taskMeasured ? taskTotal : null, planning, qa, review: reviewUsage.total, total, missing };
 }
 
-export function buildProgressReportView(root: string, milestoneId: string): ProgressReportView {
+export function buildMilestoneStatusView(root: string, milestoneId: string): MilestoneStatusView {
   const contract = loadContract(root, milestoneId);
   const tasksFile = loadTasks(root, milestoneId);
   const usage = loadUsage(root, milestoneId);
+  const reviews = loadReviews(root, milestoneId);
+  // AC005/T005 (M012): bounds the search when this milestone tracks a
+  // branch (base_revision non-null); unbounded (today's behavior) otherwise.
+  const since = contract.frontmatter.base_revision ?? undefined;
   const progress = computeMilestoneProgress(tasksFile.tasks);
   const verificationPassed = allChecksPassed(contract, computeLatestCheckResults(root, milestoneId));
   const workloadPercent = computeWorkloadPercentage(contract.frontmatter.status, progress, verificationPassed);
-  const reviews = loadReviews(root, milestoneId);
   const aggregate = aggregateUsage(tasksFile.tasks, usage, reviews);
   const breakdown = computeTokenBreakdown(tasksFile.tasks, usage, reviews);
   const activeTask = tasksFile.tasks.find((t) => t.status === 'in_progress')?.id ?? null;
 
   return {
-    mode: 'report',
+    id: contract.frontmatter.id,
     title: contract.frontmatter.title,
+    status: contract.frontmatter.status,
+    baselineSha:
+      resolveCommitSha(root, { milestone: milestoneId, ...(since !== undefined ? { since } : {}) }) ?? null,
     workloadPercent,
     progress,
     tokenTotal: aggregate.totalTokens,
@@ -190,10 +171,6 @@ export function buildProgressReportView(root: string, milestoneId: string): Prog
     tasks: tasksFile.tasks.map((t) => ({
       id: t.id,
       label: taskLabel(t),
-      // B028: this hardcoded null regardless of how a task actually ran,
-      // rendering the report's Execution column as an em dash for every
-      // task -- unlike buildMilestoneStatusView above, which correctly
-      // calls resolveExecutionMode.
       executionMode: resolveExecutionMode(root, milestoneId, t),
       statusLabel: taskStatusLabelForReport(root, milestoneId, t),
       tokens: t.usage !== null ? t.usage.total_tokens : null,
@@ -206,12 +183,7 @@ export function buildProgressReportView(root: string, milestoneId: string): Prog
   };
 }
 
-// B005 (post-M019 quick-change qc-404ee3e9): the report's task list is a
-// table, matching renderTaskTable's own format below, with a Tokens column
-// added -- aligning the two task-list renderers on one shared table+usage
-// convention rather than leaving one as a table with no usage and the other
-// as usage-per-row with no table.
-function renderProgressReportTaskTable(tasks: ProgressReportView['tasks']): string[] {
+function renderTaskTable(tasks: MilestoneStatusView['tasks']): string[] {
   const headers = ['Task', 'Label', 'Execution', 'Status', 'Tokens'];
   const rows = tasks.map((t) => [
     t.id,
@@ -220,53 +192,12 @@ function renderProgressReportTaskTable(tasks: ProgressReportView['tasks']): stri
     t.statusLabel,
     formatTokenValue(t.tokens),
   ]);
-  // B022: both milestone-status views render fixed-width padded columns --
-  // width per column = max display width across header+cells (Unicode-safe
-  // in the renderer), tokens right-aligned. The only two padded call sites;
-  // every other renderTable caller stays compact/byte-identical.
+  // B022: fixed-width padded columns, tokens right-aligned.
   return renderTable(headers, rows, { pad: true, align: ['left', 'left', 'left', 'left', 'right'] });
-}
-
-export function renderProgressReportHuman(view: ProgressReportView): string {
-  const lines = [
-    `📊 Progress Report — ${view.title}`,
-    '',
-    `Workload: ~${view.workloadPercent}% · ${view.progress.completed}/${view.progress.total} required tasks completed`,
-    `Tokens: ${formatTokenValue(view.tokenTotal)} (${view.missingUsageCount} task${view.missingUsageCount === 1 ? '' : 's'} missing usage)`,
-    '',
-    '🛠 Tasks',
-    '',
-    ...renderProgressReportTaskTable(view.tasks),
-  ];
-  lines.push('');
-  lines.push(`Critical path: ${view.criticalPath.length > 0 ? view.criticalPath.join(' → ') : '(none)'}`);
-  lines.push(`Active: ${view.activeTask ?? '(none)'}`);
-  lines.push(`Next: ${view.nextTask ?? '(no ready task)'}`);
-  lines.push('');
-  lines.push('Token breakdown:');
-  lines.push(`  task: ${formatTokenValue(view.tokenBreakdown.task)}`);
-  lines.push(`  planning: ${formatTokenValue(view.tokenBreakdown.planning)}`);
-  lines.push(`  qa: ${formatTokenValue(view.tokenBreakdown.qa)}`);
-  lines.push(`  review: ${formatTokenValue(view.tokenBreakdown.review)}`);
-  lines.push(`  total: ${formatTokenValue(view.tokenBreakdown.total)}`);
-  lines.push(`  missing: ${view.tokenBreakdown.missing}`);
-  if (view.footer !== null) lines.push('', view.footer);
-  return lines.join('\n');
 }
 
 const formatTokens = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
 const formatTokenValue = (n: number | null): string => (n === null ? 'N/A' : formatTokens(n));
-
-// AC009: measured and unavailable values are never blended — unmeasured tasks
-// are surfaced as an explicit count, and "N/A" means nothing was measured.
-function renderAggregate(aggregate: UsageAggregate): string {
-  if (aggregate.totalTokens === null) return 'N/A';
-  const suffix =
-    aggregate.unmeasuredTasks > 0
-      ? ` (${aggregate.unmeasuredTasks} task${aggregate.unmeasuredTasks === 1 ? '' : 's'} N/A)`
-      : '';
-  return `${formatTokens(aggregate.totalTokens)}${suffix}`;
-}
 
 // UX-only: a fixed-width, no-color bar purely representing the same
 // percentage `footer`/`workloadPercent` already carry — never a second
@@ -287,31 +218,36 @@ function withProgressBar(footer: string, percent: number): string {
   return footer.replace(/^(\S+) /, `$1 ${renderProgressBar(percent)} `);
 }
 
-function renderTaskTable(tasks: MilestoneStatusView['tasks']): string[] {
-  const headers = ['Task', 'Status', 'Progress', 'Execution'];
-  const rows = tasks.map((t) => [
-    t.id,
-    taskStatusLabel(t.status),
-    t.status === 'completed' ? '100%' : '—',
-    t.executionMode ?? '—',
-  ]);
-  // B022: fixed-width padded columns; see renderProgressReportTaskTable.
-  return renderTable(headers, rows, { pad: true });
-}
-
 export function renderMilestoneStatusHuman(view: MilestoneStatusView): string {
   const lines = [
     `🏁 Milestone ${view.id} — ${view.title}`,
     '',
     `Status: ${view.status}`,
-    `Progress: ${view.progress.completed}/${view.progress.total} required tasks completed`,
     `Baseline: ${view.baselineSha ?? 'N/A'}`,
-    `Tokens: ${renderAggregate(view.aggregate)}`,
+    `Workload: ~${view.workloadPercent}% · ${view.progress.completed}/${view.progress.total} required tasks completed`,
+    `Tokens: ${formatTokenValue(view.tokenTotal)} (${view.missingUsageCount} task${view.missingUsageCount === 1 ? '' : 's'} missing usage)`,
     '',
     ...renderTaskTable(view.tasks),
   ];
+  lines.push('');
+  lines.push(`Critical path: ${view.criticalPath.length > 0 ? view.criticalPath.join(' → ') : '(none)'}`);
+  lines.push(`Active: ${view.activeTask ?? '(none)'}`);
+  lines.push(`Next: ${view.nextTask ?? '(no ready task)'}`);
+  lines.push('');
+  lines.push('Token breakdown:');
+  lines.push(`  task: ${formatTokenValue(view.tokenBreakdown.task)}`);
+  lines.push(`  planning: ${formatTokenValue(view.tokenBreakdown.planning)}`);
+  lines.push(`  qa: ${formatTokenValue(view.tokenBreakdown.qa)}`);
+  lines.push(`  review: ${formatTokenValue(view.tokenBreakdown.review)}`);
+  lines.push(`  total: ${formatTokenValue(view.tokenBreakdown.total)}`);
+  lines.push(`  missing: ${view.tokenBreakdown.missing}`);
   if (view.footer !== null) lines.push('', withProgressBar(view.footer, view.workloadPercent));
   return lines.join('\n');
+}
+
+function renderMilestoneStatusOrInactiveHuman(view: MilestoneStatusView | MilestoneStatusInactiveView): string {
+  if ('active' in view && view.active === false) return 'No active milestone.';
+  return renderMilestoneStatusHuman(view as MilestoneStatusView);
 }
 
 export interface CommandDeps {
@@ -322,19 +258,21 @@ export interface CommandDeps {
 export function registerMilestoneStatusCommand(program: Command, deps: CommandDeps = {}): void {
   const write = deps.write ?? ((line: string) => console.log(line));
   program
-    .command('milestone-status <id>')
+    .command('milestone-status [id]')
     .alias('ms-status')
-    .description('Show a milestone\'s status, contract, progress, and tasks.')
-    .option('--report', 'render the full structured Progress Report instead of the default summary')
+    .description(
+      'Show the active milestone\'s status, contract, progress, and tasks -- or a named milestone\'s, ' +
+        'active or not, when an id is given.',
+    )
     .option('--json', 'output machine-readable JSON')
-    .action((id: string, options: { report?: boolean; json?: boolean }) => {
+    .action((id: string | undefined, options: { json?: boolean }) => {
       const root = deps.root ?? process.cwd();
-      if (options.report) {
-        const view = buildProgressReportView(root, id);
-        write(renderOutput(view, { json: options.json }, renderProgressReportHuman));
+      const resolvedId = id ?? loadState(root).active_milestone;
+      if (resolvedId === null) {
+        write(renderOutput({ active: false }, { json: options.json }, renderMilestoneStatusOrInactiveHuman));
         return;
       }
-      const view = buildMilestoneStatusView(root, id);
-      write(renderOutput(view, { json: options.json }, renderMilestoneStatusHuman));
+      const view = buildMilestoneStatusView(root, resolvedId);
+      write(renderOutput(view, { json: options.json }, renderMilestoneStatusOrInactiveHuman));
     });
 }

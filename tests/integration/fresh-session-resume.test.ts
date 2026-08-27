@@ -223,14 +223,20 @@ describe('fresh-session resume (M007/T001/AC001)', () => {
       id: string;
       status: string;
       progress: { completed: number; total: number };
-      tasks: Array<{ id: string; status: string; executionMode: 'inline' | 'worktree' | null }>;
+      tasks: Array<{
+        id: string;
+        label: string;
+        executionMode: 'inline' | 'worktree' | null;
+        statusLabel: string;
+        tokens: number | null;
+      }>;
     };
     expect(msView.id).toBe('M001');
     expect(msView.status).toBe('in_progress');
     expect(msView.progress).toEqual({ completed: 1, total: 2 });
     expect(msView.tasks).toEqual([
-      { id: 'T001', status: 'completed', executionMode: 'inline' },
-      { id: 'T002', status: 'ready', executionMode: null },
+      { id: 'T001', label: 'First task.', executionMode: 'inline', statusLabel: '✓ Completed', tokens: null },
+      { id: 'T002', label: 'Second task.', executionMode: null, statusLabel: '◌ Ready', tokens: null },
     ]);
 
     const taskStatusT001 = await run(['task-status', 'T001', '--json'], root);
