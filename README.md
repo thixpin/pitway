@@ -4,7 +4,7 @@
 > A controlled workflow for agentic software development.
 
 [![npm version](https://img.shields.io/npm/v/pitway.svg)](https://www.npmjs.com/package/pitway)
-[![npm downloads](https://img.shields.io/npm/dm/pitway.svg)](https://www.npmjs.com/package/pitway)
+[![npm downloads](https://img.shields.io/npm/dw/pitway.svg)](https://www.npmjs.com/package/pitway)
 [![codecov](https://codecov.io/github/thixpin/pitway/branch/main/badge.svg)](https://app.codecov.io/github/thixpin/pitway)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
@@ -46,6 +46,17 @@ The result: agents move fast, and the engineering process stays in control of wh
 
 ---
 
+## Which Workflow Should I Use?
+
+- **A new capability, not started yet** → a **Milestone** (contract, task graph, human approval).
+- **Work discovered while a milestone is active** → a **Task** if it belongs in the graph, or the **Backlog** if it doesn't.
+- **A small, independent fix, no milestone active** → a **Quick Change** — bounded, single-commit.
+- **Running work in parallel** → an **execution mode** (`execution.strategy: parallel_worktrees`), not a separate lane — it applies within whichever of the above you're already using.
+
+See [USAGE.md](./USAGE.md) for the full walkthrough of each.
+
+---
+
 ## Quickstart
 
 ### 1. Install & Initialize
@@ -75,7 +86,7 @@ pitway resume
 
 > 📌 **Commit Traceability:** Before implementation begins, the developer reviews and confirms the milestone contract. Task commits carry `PitWay-Milestone` and `PitWay-Task` Git trailers; milestone baseline and completion commits carry the milestone trailer.
 
-> 📊 **Progress at a Glance:** Once a milestone is confirmed, routine driver updates end with a one-line progress footer (e.g. `🏎️ 54% · ✅ 7/12 · Next: T008`). `pitway milestone-status <id>` renders a per-task table with an inline progress bar; add `--report` for the full structured progress report on demand.
+> 📊 **Progress at a Glance:** Once a milestone is confirmed, routine driver updates end with a one-line progress footer (e.g. `🏎️ 54% · ✅ 7/12 · Next: T008`). `pitway milestone-status [id]` renders the full status report — workload, task table, critical path, token breakdown, and a racing footer with progress bar — for the active milestone by default, or an explicit id for any milestone.
 
 ### 3. Explore Commands
 

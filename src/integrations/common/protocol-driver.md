@@ -32,15 +32,24 @@ Pick the smallest that fits:
 - **`backlog`** — discovered work that does **not** belong inside the
   current milestone's own task graph at all (out of scope, not just
   out of sequence) — capture it and keep going, promote it into planned
-  work later (`commands/backlog.md`). Requires an active milestone exactly
-  like `task-add` does; unlike `task-add`, it never mutates `tasks.yaml`
-  or `contract.md`, so it carries no scope-growth risk to review.
+  work later (`commands/backlog.md`). `backlog add` works with no active
+  milestone too, unlike `task-add`; `backlog promote` still requires an
+  active/resolvable milestone, since it targets an existing task. Never
+  mutates `tasks.yaml` or `contract.md`, so it carries no scope-growth
+  risk to review.
 - **One-task corrective milestone** — anything bigger than a single bounded
   fix, once the original milestone is already `completed`.
 - **Full milestone** — new capability, not a correction.
 
 A bug inside an *active* milestone's own scope uses none of these — it is
 a task or the ripple-fix policy.
+
+These four are work lanes — what kind of change this is. Whether
+independent tasks *within* a milestone dispatch one at a time or
+concurrently is a separate axis: `execution.strategy: sequential |
+parallel_worktrees` (`task-dispatch.md`, "Parallel dispatch" below) is an
+execution mode, not a fifth lane — it changes how a milestone's own tasks
+run, never which of the lanes above applies.
 
 ## Quick-change TDD discipline (B020)
 

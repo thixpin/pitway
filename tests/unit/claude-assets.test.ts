@@ -557,7 +557,7 @@ const PRE_M023_ASSET_MANIFEST: ReadonlyArray<readonly [string, string]> = [
 ['draft-formats.md', '6acdab2c76b7f7dfddfd715fd61d51a126d1f9945b8b11023ef0a50b0856df21'],
   ['interactive-ux.md', 'e8cc6c74b807247ff2f9b35abb5d85622f904b462b5ac4c2a0b20be4f2587aa1'],
   ['lsp-guidance.md', 'e2fc2650c5f53b1ff569db8a340a96d9e6975bc4e2eea5c0a36a745a1fe18b78'],
-  ['protocol-driver.md', '10736abbf971c94a69826b6048312abc85bff47c6ad0fd3c930e6be059efc94c'],
+  ['protocol-driver.md', '1e8a10aea93c4092a2c10c5cb9df0dedb0ccda5613f282763319db3af3d0a8ac'],
   ['protocol-worker.md', '8aa76eac4952afc447cd090356680aa372eed15edcbe16e6728a64ff330b3393'],
   ['report-format.md', '1f78522fe1c9cfad3ff9afa1b3d915e00dd640d2433a52ce63544dde1d6e8dbf'],
   ['skills/NOTICE.md', '8d5dd0d6fb2753abf21aef4e98a3a2969dfac37dea91f059d117424da0dc5976'],

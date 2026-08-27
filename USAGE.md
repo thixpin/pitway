@@ -57,6 +57,16 @@ acceptance criteria, verification checks) and a **task graph** (the concrete
 steps). Nothing gets implemented until a human confirms the contract — that
 confirmation is the one mandatory approval gate in the whole lifecycle.
 
+## Which Workflow Should I Use?
+
+| Situation | Use | Details |
+| --- | --- | --- |
+| A new capability, not started yet | **Milestone** | [Walkthrough: Your First Milestone](#walkthrough-your-first-milestone) |
+| Work discovered while a milestone is active, that belongs in its task graph | **Task** | [Mid-Milestone Corrections](#mid-milestone-corrections) |
+| Work discovered while a milestone is active, that doesn't belong in its task graph | **Backlog** | [Deferring Out-of-Scope Work](#deferring-out-of-scope-work) |
+| A small, independent fix, no milestone active | **Quick Change** | [Fixing an Already-Completed Milestone](#fixing-an-already-completed-milestone) |
+| Running independent tasks concurrently | An **execution mode** (`execution.strategy`), not a separate lane — applies inside whichever of the above you're already using | [Workflow Policies](#workflow-policies) |
+
 ## Walkthrough: Your First Milestone
 
 ### 1. Draft a contract and task graph
@@ -189,26 +199,40 @@ ready to integrate the branch.
 
 ```bash
 pitway resume                    # what's going on in this repo, and what's next
-pitway milestone-status <id>     # one milestone's contract, progress, task table, and racing footer
-pitway milestone-status <id> --report   # the full structured Progress Report
+pitway milestone-status          # the active milestone's full status report (or "No active milestone.")
+pitway milestone-status <id>     # an explicit milestone's status, active or not
 pitway task-status <id>          # one task's status
 pitway task-status <id> --context       # the minimal execution bundle a worker needs
 ```
 
-`milestone-status`'s default output includes a progress bar and a per-task
-table (id, status, progress, execution mode — inline or worktree):
+`milestone-status`'s output is always the full status report: workload,
+a per-task table (id, label, execution mode, status, tokens), critical
+path, active/next task, a token breakdown, and a racing footer with an
+inline progress bar:
 
 ```
 🏁 Milestone M001 — Greeter module
 
 Status: completed
-Progress: 1/1 required tasks completed
 Baseline: 2e339e5...
-Tokens: N/A
+Workload: ~100% · 1/1 required tasks completed
+Tokens: N/A (1 task missing usage)
 
-| Task | Status      | Progress | Execution |
-|------|-------------|----------|-----------|
-| T001 | ✓ Completed | 100%     | inline    |
+| Task | Label             | Execution | Status      | Tokens |
+|------|-------------------|-----------|-------------|--------|
+| T001 | Implement greeter | inline    | ✓ Completed |    N/A |
+
+Critical path: (none)
+Active: (none)
+Next: (no ready task)
+
+Token breakdown:
+  task: N/A
+  planning: N/A
+  qa: N/A
+  review: N/A
+  total: N/A
+  missing: 1
 
 🏁 [████████████████████] 100% · ✅ 1/1 · Complete
 ```
@@ -236,11 +260,13 @@ with whatever's actually done.
 
 Discovered something unrelated to what you're currently working on?
 `backlog` captures it without expanding the current task or milestone's
-scope — requires an active milestone, no global backlog:
+scope — `backlog add` works with no active milestone too; `backlog
+promote` still requires an active/resolvable milestone, since it targets
+an existing task:
 
 ```bash
 # Capture it and keep going -- --milestone/--task here are source
-# annotation only (defaults to the active milestone, no task):
+# annotation only (defaults to the active milestone, or null if none, no task):
 pitway backlog add --title "Short label" --reason "Why this was deferred."
 
 pitway backlog list                 # or --status pending|promoted|archived
