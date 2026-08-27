@@ -728,3 +728,46 @@ items:
     promoted_to: null
     archived_reason: Spot-check artifact from live-verifying T002 after
       rebuilding/reinstalling pitway; not real work, no promotion needed.
+  - id: B037
+    title: Hoist buildResumeView / buildMilestoneStatusView into Core
+    reason: "Post-v1.1.1 architecture review finding 3: domain view assembly lives
+      in src/cli/commands/resume.ts and milestone-status.ts, bypassing Core
+      (resolveNextTask was already extracted once for this reason, footer.ts
+      M013/AC004); move to Core so they are unit-testable, CLI keeps
+      registration + rendering"
+    status: pending
+    source:
+      milestone: M038
+      task: null
+    created_at: 2026-08-27T15:41:44.541Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B038
+    title: Single CLI helper for the racing footer; icon rendering out of Core
+    reason: "Post-v1.1.1 architecture review finding 4: 16 command files hand-repeat
+      getFooterForActiveMilestone + human-mode write; emoji string-building
+      lives in core/milestones/footer.ts though the racing metaphor is
+      presentation-only"
+    status: pending
+    source:
+      milestone: M038
+      task: null
+    created_at: 2026-08-27T15:41:45.021Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B039
+    title: Split core/tasks/update.ts (706 lines) by responsibility
+    reason: "Post-v1.1.1 architecture review finding 5: completeTask mixes evidence
+      validation/fingerprinting, usage parsing/accumulation, completion-commit
+      lookup, and persistence; extract tasks/evidence.ts and tasks/usage.ts as a
+      pure file split"
+    status: pending
+    source:
+      milestone: M038
+      task: null
+    created_at: 2026-08-27T15:41:45.475Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
