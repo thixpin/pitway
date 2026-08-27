@@ -221,7 +221,7 @@ tasks:
       --json output -- add new field(s) alongside them, never replace them.
       Human-mode output gains the same detail, rendered similarly to the
       existing worktree-residue block."
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - resume --json still has blocked/waiting as plain id-string arrays,
@@ -240,6 +240,16 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/integration/resume.test.ts
-    result: null
+    result:
+      summary: "[truncated] te.md), never a fabricated cause. Present only when
+        non-empty, keeping --json byte-identical to before when nothing is
+        waiting/blocked. Human mode renders both as new blocks matching the
+        worktree-residue style. Independently reviewed the diff before
+        verifying. 4 new tests, 38/38 passing."
+      evidence: Tests  38 passed (38) | Start at  13:43:08 | Duration  11.69s
+        (transform 270ms, setup 0ms, import 387ms, tests 11.21s, environment
+        0ms)
     attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
     usage: null

@@ -61,6 +61,22 @@ export interface ParallelView {
   residues: DispatchResidue[];
 }
 
+// M036/T005: a waiting task's specific incomplete dependency, derived from
+// the task graph's depends_on alone -- never a fabricated cause.
+export interface WaitingTaskDetail {
+  id: string;
+  detail: string;
+}
+
+// M036/T005: the verified recovery command for a blocked task, per
+// task-update.md's own documented failed/blocked -> ready -> in_progress
+// path. No schema field records WHY a task is blocked, so this is the only
+// honest detail available.
+export interface BlockedTaskDetail {
+  id: string;
+  detail: string;
+}
+
 export interface ResumeView {
   activeMilestone: string | null;
   contractStatus: MilestoneStatus | null;
@@ -70,6 +86,12 @@ export interface ResumeView {
   waiting: string[];
   blocked: string[];
   inProgress: string[];
+  // M036/T005: additive detail alongside `waiting`/`blocked` above, which
+  // keep their exact current shape and content. Present only when non-empty
+  // -- absent (never an empty array) keeps --json byte-identical to before
+  // this milestone whenever nothing is waiting/blocked.
+  waitingDetails?: WaitingTaskDetail[];
+  blockedDetails?: BlockedTaskDetail[];
   nextTask: string | null;
   pendingQuickChanges: PendingQuickChange[];
   pendingBacklogItems: PendingBacklogItem[];
@@ -114,6 +136,38 @@ export interface DriverDriftView {
 
 function idsWithStatus(tasks: Task[], status: TaskStatus): string[] {
   return tasks.filter((t) => t.status === status).map((t) => t.id);
+}
+
+// M036/T005: names the specific dependency each waiting task is still
+// waiting on, derived from depends_on alone (mirrors resolveReadyTasks'
+// own satisfaction check, plus cancelled as also-resolved). A dependency id
+// with no matching task is treated as unresolved too -- never silently
+// dropped. A waiting task with nothing incomplete left (shouldn't happen
+// under the normal ready-promotion invariant, but nothing here should
+// fabricate a reason) is simply omitted.
+function buildWaitingDetails(tasks: Task[]): WaitingTaskDetail[] {
+  const byId = new Map(tasks.map((t) => [t.id, t]));
+  const details: WaitingTaskDetail[] = [];
+  for (const t of tasks) {
+    if (t.status !== 'waiting') continue;
+    const incomplete = t.depends_on.filter((depId) => {
+      const dep = byId.get(depId);
+      return dep === undefined || (dep.status !== 'completed' && dep.status !== 'cancelled');
+    });
+    if (incomplete.length === 0) continue;
+    details.push({ id: t.id, detail: `waiting on ${incomplete.join(', ')}` });
+  }
+  return details;
+}
+
+// M036/T005: the only honest detail for a blocked task -- no schema field
+// records a cause, so this states the verified recovery command
+// (task-update.md: failed/blocked -> ready -> in_progress) rather than
+// guessing why.
+function buildBlockedDetails(tasks: Task[]): BlockedTaskDetail[] {
+  return tasks
+    .filter((t) => t.status === 'blocked')
+    .map((t) => ({ id: t.id, detail: `task-update ${t.id} ready` }));
 }
 
 // AC003: `pitway resume` is the authoritative recovery view for a pending
@@ -323,6 +377,9 @@ export function buildResumeView(root: string): ResumeView {
           };
         })();
 
+  const waitingDetails = buildWaitingDetails(tasksFile.tasks);
+  const blockedDetails = buildBlockedDetails(tasksFile.tasks);
+
   return {
     activeMilestone: state.active_milestone,
     contractStatus: contract.frontmatter.status,
@@ -332,6 +389,8 @@ export function buildResumeView(root: string): ResumeView {
     waiting: idsWithStatus(tasksFile.tasks, 'waiting'),
     blocked: idsWithStatus(tasksFile.tasks, 'blocked'),
     inProgress,
+    ...(waitingDetails.length > 0 ? { waitingDetails } : {}),
+    ...(blockedDetails.length > 0 ? { blockedDetails } : {}),
     nextTask: resolveNextTask(tasksFile.tasks),
     pendingQuickChanges,
     pendingBacklogItems,
@@ -357,6 +416,26 @@ function renderPendingBacklogItemsHuman(pending: PendingBacklogItem[]): string[]
   const lines = [`🔧 Pending backlog items (${pending.length})`];
   for (const item of pending) {
     lines.push(`  ${item.id}  ${item.title}`);
+  }
+  return lines;
+}
+
+// M036/T005: same block-with-indented-lines convention as the worktree
+// residues block below.
+function renderWaitingDetailsHuman(details: WaitingTaskDetail[] | undefined): string[] {
+  if (details === undefined || details.length === 0) return [];
+  const lines = ['⏳ Waiting task details'];
+  for (const d of details) {
+    lines.push(`  ${d.id}  ${d.detail}`);
+  }
+  return lines;
+}
+
+function renderBlockedDetailsHuman(details: BlockedTaskDetail[] | undefined): string[] {
+  if (details === undefined || details.length === 0) return [];
+  const lines = ['🔧 Blocked task details'];
+  for (const d of details) {
+    lines.push(`  ${d.id}  ${d.detail}`);
   }
   return lines;
 }
@@ -427,6 +506,10 @@ export function renderResumeHuman(view: ResumeView): string {
       }
     }
   }
+  const waitingDetailLines = renderWaitingDetailsHuman(view.waitingDetails);
+  const blockedDetailLines = renderBlockedDetailsHuman(view.blockedDetails);
+  if (waitingDetailLines.length > 0) lines.push('', ...waitingDetailLines);
+  if (blockedDetailLines.length > 0) lines.push('', ...blockedDetailLines);
   if (quickChangeLines.length > 0) lines.push('', ...quickChangeLines);
   if (backlogLines.length > 0) lines.push('', ...backlogLines);
   if (driftLines.length > 0) lines.push('', ...driftLines);

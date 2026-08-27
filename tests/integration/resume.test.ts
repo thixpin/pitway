@@ -179,6 +179,108 @@ describe('pitway resume', () => {
     expect(view.nextTask).toBe('T002');
   });
 
+  it('omits waitingDetails/blockedDetails from --json entirely when nothing is waiting or blocked (M036/T005)', async () => {
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    saveContract(root, 'M001', { frontmatter: frontmatter('in_progress'), body: '\n' });
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [task({ id: 'T001', status: 'ready' }), task({ id: 'T002', status: 'completed' })],
+    });
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+
+    const view = JSON.parse(lines.join('\n'));
+    expect(view.waiting).toEqual([]);
+    expect(view.blocked).toEqual([]);
+    expect('waitingDetails' in view).toBe(false);
+    expect('blockedDetails' in view).toBe(false);
+  });
+
+  it('names a waiting task\'s specific incomplete dependency, additively, in --json and human output (M036/T005)', async () => {
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    saveContract(root, 'M001', { frontmatter: frontmatter('in_progress'), body: '\n' });
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [
+        task({ id: 'T001', status: 'ready' }),
+        task({ id: 'T003', status: 'ready' }),
+        task({ id: 'T002', status: 'waiting', depends_on: ['T001', 'T003'] }),
+      ],
+    });
+
+    const jsonProgram = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(jsonProgram, { root, write: (s) => lines.push(s) });
+    await jsonProgram.parseAsync(['node', 'pitway', 'resume', '--json']);
+
+    const view = JSON.parse(lines.join('\n'));
+    // The existing bare array keeps its exact current shape and content.
+    expect(view.waiting).toEqual(['T002']);
+    expect(view.waitingDetails).toEqual([{ id: 'T002', detail: 'waiting on T001, T003' }]);
+    expect(view.blockedDetails).toBeUndefined();
+
+    const humanProgram = buildCli();
+    const humanLines: string[] = [];
+    registerResumeCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
+    await humanProgram.parseAsync(['node', 'pitway', 'resume']);
+    const human = humanLines.join('\n');
+    expect(human).toContain('⏳ Waiting task details');
+    expect(human).toContain('  T002  waiting on T001, T003');
+  });
+
+  it("names only the still-incomplete dependency, treating completed/cancelled deps as resolved (M036/T005)", async () => {
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    saveContract(root, 'M001', { frontmatter: frontmatter('in_progress'), body: '\n' });
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [
+        task({ id: 'T001', status: 'completed' }),
+        task({ id: 'T003', status: 'cancelled' }),
+        task({ id: 'T004', status: 'ready' }),
+        task({ id: 'T002', status: 'waiting', depends_on: ['T001', 'T003', 'T004'] }),
+      ],
+    });
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+
+    const view = JSON.parse(lines.join('\n'));
+    expect(view.waitingDetails).toEqual([{ id: 'T002', detail: 'waiting on T004' }]);
+  });
+
+  it('states the verified task-update recovery command for a blocked task, additively, in --json and human output (M036/T005)', async () => {
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    saveContract(root, 'M001', { frontmatter: frontmatter('in_progress'), body: '\n' });
+    saveTasks(root, 'M001', {
+      schema_version: 1,
+      tasks: [task({ id: 'T001', status: 'blocked' })],
+    });
+
+    const jsonProgram = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(jsonProgram, { root, write: (s) => lines.push(s) });
+    await jsonProgram.parseAsync(['node', 'pitway', 'resume', '--json']);
+
+    const view = JSON.parse(lines.join('\n'));
+    // The existing bare array keeps its exact current shape and content.
+    expect(view.blocked).toEqual(['T001']);
+    expect(view.blockedDetails).toEqual([{ id: 'T001', detail: 'task-update T001 ready' }]);
+    expect(view.waitingDetails).toBeUndefined();
+
+    const humanProgram = buildCli();
+    const humanLines: string[] = [];
+    registerResumeCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
+    await humanProgram.parseAsync(['node', 'pitway', 'resume']);
+    const human = humanLines.join('\n');
+    expect(human).toContain('🔧 Blocked task details');
+    expect(human).toContain('  T001  task-update T001 ready');
+  });
+
   it('omits the branch section entirely for a main-strategy (base_branch absent) milestone', async () => {
     saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
     saveContract(root, 'M001', { frontmatter: frontmatter('in_progress'), body: '\n' });
