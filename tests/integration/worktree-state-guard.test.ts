@@ -147,6 +147,11 @@ describe('worktree state guard (M014/T005)', () => {
     expect(resume.error).toBeUndefined();
   });
 
+  it('permits milestone-current inside the worktree (stale, read-only convenience)', async () => {
+    const current = await runAt(worktree, ['milestone-current']);
+    expect(current.error).toBeUndefined();
+  });
+
   it('refuses milestone-review report inside the worktree but works at the main root (AC009/M015)', async () => {
     const inside = await runAt(worktree, ['milestone-review', 'report', 'M001']);
     expect(inside.error).toBeInstanceOf(WorktreeGuardError);

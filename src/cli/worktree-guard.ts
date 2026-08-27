@@ -16,7 +16,13 @@ export class WorktreeGuardError extends Error {}
 
 // `verify` is flag-aware: bare verify executes commands (mutating), only
 // --status is read-only. Everything else here is unconditionally read-only.
-const READ_ONLY_COMMANDS = new Set(['resume', 'task-status', 'milestone-status', 'milestone-list']);
+const READ_ONLY_COMMANDS = new Set([
+  'resume',
+  'task-status',
+  'milestone-status',
+  'milestone-list',
+  'milestone-current',
+]);
 
 export interface WorktreeGuardDeps {
   root?: string;
