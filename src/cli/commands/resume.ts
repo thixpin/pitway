@@ -16,6 +16,7 @@ import { existsSync, realpathSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { resolveExecutionStrategy, type MilestoneStatus, type Task, type TaskStatus } from '../../state/schemas.js';
 import { readJournal, type JournalQuickChange, type JournalQuickChangeStatus } from '../../state/journal.js';
+import { DRIVERS, classifyDriverAssets, driverDestinationDir } from '../../state/driver-assets.js';
 
 export interface PendingQuickChange {
   id: string;
@@ -84,6 +85,10 @@ export interface ResumeView {
   // pendingQuickChanges. Additive --json key; absent (never null) keeps the
   // no-session JSON output byte-identical to before this milestone.
   openReview?: OpenReviewView;
+  // M035/T001: additive --json key, same discipline as openReview -- absent
+  // (never null) when no installed driver has drifted, keeping that JSON
+  // output byte-identical to before this milestone.
+  driverDrift?: DriverDriftView;
 }
 
 export interface OpenReviewView {
@@ -92,6 +97,19 @@ export interface OpenReviewView {
   roles: string[];
   recordedCount: number;
   pendingCount: number;
+}
+
+// M035/T001: advisory-only configuration-drift notice. Present only when at
+// least one INSTALLED driver (its destination directory exists) has a
+// managed asset that is not 'identical' to the currently-shipped version --
+// 'absent' or 'conflict' both count, since classifyDriverAssets cannot tell
+// a deliberate local edit apart from a stale shipped version (init.ts's own
+// classification comment says so directly) and both are remedied the same
+// way. A driver that was never installed at all is never "drift" -- that's
+// opting out, not staleness.
+export interface DriverDriftView {
+  drivers: string[];
+  suggestedCommand: string;
 }
 
 function idsWithStatus(tasks: Task[], status: TaskStatus): string[] {
@@ -134,6 +152,33 @@ function derivePendingQuickChanges(root: string): PendingQuickChange[] {
 
 function derivePendingBacklogItems(root: string): PendingBacklogItem[] {
   return listBacklogItems(root, 'pending').map((item) => ({ id: item.id, title: item.title }));
+}
+
+// M035/T001: reuses classifyDriverAssets (the one place driver-asset bytes
+// are ever compared) -- never a new detection mechanism. "Installed" mirrors
+// init.ts's own precedent (a plain destination-directory existence check),
+// not a new heuristic.
+function isDriverInstalled(root: string, driver: (typeof DRIVERS)[number]): boolean {
+  return existsSync(join(root, driverDestinationDir(driver)));
+}
+
+function buildDriverDriftView(root: string): DriverDriftView | undefined {
+  const drifted = DRIVERS.filter(
+    (driver) =>
+      isDriverInstalled(root, driver) &&
+      classifyDriverAssets(root, driver).some((c) => c.status !== 'identical'),
+  );
+  if (drifted.length === 0) return undefined;
+
+  // The real gap `--reconfigure` has today: installClaude defaults true
+  // regardless of .claude/'s absence, so a bare reconfigure would silently
+  // install Claude into a project that opted out with --no-claude. codex/
+  // opencode never need an explicit flag -- --reconfigure already
+  // auto-detects them from directory presence.
+  const suggestedCommand = isDriverInstalled(root, 'claude')
+    ? 'pitway init --reconfigure'
+    : 'pitway init --reconfigure --no-claude';
+  return { drivers: [...drifted], suggestedCommand };
 }
 
 // Journal records carry the path as the dispatcher wrote it while git's
@@ -213,6 +258,7 @@ function buildParallelView(root: string, milestoneId: string, tasks: Task[]): Pa
 export function buildResumeView(root: string): ResumeView {
   const pendingQuickChanges = derivePendingQuickChanges(root);
   const pendingBacklogItems = derivePendingBacklogItems(root);
+  const driverDrift = buildDriverDriftView(root);
   const state = loadState(root);
   if (!state.active_milestone) {
     return {
@@ -229,6 +275,7 @@ export function buildResumeView(root: string): ResumeView {
       pendingBacklogItems,
       parallel: null,
       footer: null,
+      ...(driverDrift ? { driverDrift } : {}),
     };
   }
 
@@ -292,6 +339,7 @@ export function buildResumeView(root: string): ResumeView {
     parallel,
     footer,
     ...(openReview ? { openReview } : {}),
+    ...(driverDrift ? { driverDrift } : {}),
   };
 }
 
@@ -313,17 +361,27 @@ function renderPendingBacklogItemsHuman(pending: PendingBacklogItem[]): string[]
   return lines;
 }
 
+function renderDriverDriftHuman(drift: DriverDriftView | undefined): string[] {
+  if (drift === undefined) return [];
+  return [
+    `⚙️  Configuration drift detected (${drift.drivers.join(', ')})`,
+    `  Run: ${drift.suggestedCommand}`,
+  ];
+}
+
 // The human-readable text output alone, with zero extra commands, must show
 // a pending quick-change exists (AC003) -- so the pending-quick-change block
 // is appended in both branches below, not gated behind an active milestone.
 export function renderResumeHuman(view: ResumeView): string {
   const quickChangeLines = renderPendingQuickChangesHuman(view.pendingQuickChanges);
   const backlogLines = renderPendingBacklogItemsHuman(view.pendingBacklogItems);
+  const driftLines = renderDriverDriftHuman(view.driverDrift);
 
   if (!view.activeMilestone) {
     const lines = ['No active milestone. Run milestone-add to start one.'];
     if (quickChangeLines.length > 0) lines.push('', ...quickChangeLines);
     if (backlogLines.length > 0) lines.push('', ...backlogLines);
+    if (driftLines.length > 0) lines.push('', ...driftLines);
     return lines.join('\n');
   }
 
@@ -371,6 +429,7 @@ export function renderResumeHuman(view: ResumeView): string {
   }
   if (quickChangeLines.length > 0) lines.push('', ...quickChangeLines);
   if (backlogLines.length > 0) lines.push('', ...backlogLines);
+  if (driftLines.length > 0) lines.push('', ...driftLines);
   if (view.openReview !== undefined) {
     lines.push(
       '',

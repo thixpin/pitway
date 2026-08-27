@@ -1,0 +1,102 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Detect and surface driver configuration drift in resume
+    objective: 'Add driver configuration-drift detection to pitway resume: for each
+      driver whose destination directory exists, use the existing
+      classifyDriverAssets(root, driver) primitive to check whether any managed
+      asset differs from the currently-shipped version. Wire the result into
+      buildResumeView (a new optional field, following the existing
+      openReview/pendingBacklogItems pattern -- computed before the
+      no-active-milestone early return, present only when drift exists) and into
+      renderResumeHuman for the human-mode notice. The notice names the affected
+      driver(s) and exactly one suggested command: "pitway init --reconfigure",
+      with "--no-claude" appended if and only if .claude/ does not exist. No
+      drift anywhere -> no new field, no new output line, existing behavior
+      unchanged.'
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - resume detects drift only for an installed driver (its destination
+        directory exists) with at least one non-identical asset.
+      - resume's human and --json output show exactly one correct command when
+        drift exists, and nothing new when it doesn't.
+      - resume never runs init itself and never refuses/blocks on drift.
+      - Every existing resume test continues to pass unmodified.
+    context_files:
+      - src/cli/commands/resume.ts
+      - src/state/driver-assets.ts
+      - src/state/managed-init-paths.ts
+      - src/cli/commands/init.ts
+      - src/state/claude-assets.ts
+      - tests/integration/resume.test.ts
+    write_scope:
+      - src/cli/commands/resume.ts
+      - tests/integration/resume.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/resume.test.ts
+    result:
+      summary: "[truncated] s absent. 7 new tests added to
+        tests/integration/resume.test.ts covering: no-driver-installed,
+        up-to-date, single-driver conflict, the --no-claude edge case both ways,
+        multi-driver drift, and non-blocking/non-mutating behavior. Manually
+        smoke-tested against a real built CLI/scratch repo."
+      evidence: Tests  34 passed (34) | Start at  10:32:59 | Duration  11.74s
+        (transform 286ms, setup 0ms, import 393ms, tests 11.26s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
+    usage: null
+  - id: T002
+    name: Document the driver-drift advisory in resume.md
+    objective: "Update all three drivers' resume.md command docs to accurately
+      describe the new configuration-drift advisory: what triggers it, what
+      command it suggests and why (including the --no-claude edge case), that it
+      is advisory-only (never auto-run, never blocking), and that a
+      non-identical asset may be a deliberate local edit or a stale shipped
+      version -- PitWay cannot tell which, matching init.ts's own existing
+      honesty caveat. Also update the pinned commands/resume.md sha256 entry in
+      tests/unit/claude-assets.test.ts's migration manifest, which the doc edit
+      breaks."
+    status: completed
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - All three resume.md files describe the new advisory identically in
+        substance and match the shipped behavior from T001.
+      - The doc states plainly that PitWay cannot distinguish a deliberate local
+        edit from a stale version.
+      - tests/unit/claude-assets.test.ts's pinned resume.md hash matches the new
+        content.
+    context_files:
+      - src/cli/commands/resume.ts
+      - src/integrations/claude/commands/resume.md
+      - src/integrations/codex/commands/resume.md
+      - src/integrations/opencode/commands/resume.md
+      - tests/unit/claude-assets.test.ts
+    write_scope:
+      - src/integrations/claude/commands/resume.md
+      - src/integrations/codex/commands/resume.md
+      - src/integrations/opencode/commands/resume.md
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: manual
+      detail: Read the resume.md diff across all three drivers and confirm it
+        accurately describes the shipped behavior, including the honesty caveat;
+        confirm tests/unit/claude-assets.test.ts passes with the updated hash.
+    result:
+      summary: "[truncated] n all three drivers' resume.md (identical bodies, verified
+        via diff). Amended write_scope mid-task to also cover
+        tests/unit/claude-assets.test.ts's pinned commands/resume.md hash, which
+        the doc edit broke; updated it and re-verified all driver-asset tests
+        plus the full suite (2035/2035)."
+      evidence: manual diff of all three resume.md files (identical bodies confirmed),
+        tests/unit/claude-assets.test.ts + codex-assets.test.ts +
+        opencode-assets.test.ts + init.test.ts all passing (337/337), full suite
+        2035/2035
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
+    usage: null

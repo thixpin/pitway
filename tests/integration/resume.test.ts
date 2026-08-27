@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -23,6 +23,7 @@ import { registerResumeCommand } from '../../src/cli/commands/resume.js';
 import { deterministicBranchName } from '../../src/core/milestones/confirm.js';
 import { dispatchTask } from '../../src/core/tasks/dispatch.js';
 import { createTaskWorktree } from '../../src/git/worktree.js';
+import { installDriverAssets, resolveDriverAssets } from '../../src/state/driver-assets.js';
 import type { ParallelView } from '../../src/cli/commands/resume.js';
 import type { ContractFrontmatter, Task } from '../../src/state/schemas.js';
 
@@ -324,6 +325,123 @@ describe('pitway resume pendingBacklogItems (M018/T004)', () => {
     expect(human).toContain('Pending backlog items (1)');
     expect(human).toContain('B001');
     expect(human).not.toContain('B002');
+  });
+});
+
+// M035/T001: driver configuration-drift detection -- advisory only, never
+// blocking, never mutating. Computed independent of the active milestone,
+// like pendingBacklogItems above.
+describe('pitway resume driver configuration drift (M035/T001)', () => {
+  it('omits the block when no driver is installed, in both --json and human output', async () => {
+    saveState(root, { schema_version: 1, active_milestone: null, milestones: [] });
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(lines.join('\n'));
+    expect(view.driverDrift).toBeUndefined();
+
+    const humanLines: string[] = [];
+    const humanProgram = buildCli();
+    registerResumeCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
+    await humanProgram.parseAsync(['node', 'pitway', 'resume']);
+    expect(humanLines.join('\n')).not.toContain('Configuration drift');
+  });
+
+  it('omits the block when an installed driver is fully up to date', async () => {
+    saveState(root, { schema_version: 1, active_milestone: null, milestones: [] });
+    installDriverAssets(root, 'claude');
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(lines.join('\n'));
+    expect(view.driverDrift).toBeUndefined();
+  });
+
+  it('detects drift when an installed driver has a conflicting asset, and suggests a bare reconfigure', async () => {
+    saveState(root, { schema_version: 1, active_milestone: null, milestones: [] });
+    installDriverAssets(root, 'claude');
+    const assets = resolveDriverAssets('claude');
+    writeFileSync(join(root, '.claude', assets[0]!), 'hand-edited or stale\n');
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(lines.join('\n'));
+    expect(view.driverDrift).toEqual({ drivers: ['claude'], suggestedCommand: 'pitway init --reconfigure' });
+
+    const humanLines: string[] = [];
+    const humanProgram = buildCli();
+    registerResumeCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
+    await humanProgram.parseAsync(['node', 'pitway', 'resume']);
+    const human = humanLines.join('\n');
+    expect(human).toContain('Configuration drift');
+    expect(human).toContain('claude');
+    expect(human).toContain('pitway init --reconfigure');
+  });
+
+  it('appends --no-claude when only a non-claude driver has drift and claude was never installed', async () => {
+    saveState(root, { schema_version: 1, active_milestone: null, milestones: [] });
+    installDriverAssets(root, 'codex');
+    const assets = resolveDriverAssets('codex');
+    writeFileSync(join(root, '.codex', assets[0]!), 'stale\n');
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(lines.join('\n'));
+    expect(view.driverDrift).toEqual({
+      drivers: ['codex'],
+      suggestedCommand: 'pitway init --reconfigure --no-claude',
+    });
+  });
+
+  it('omits --no-claude when claude is installed even if only another driver has drift', async () => {
+    saveState(root, { schema_version: 1, active_milestone: null, milestones: [] });
+    installDriverAssets(root, 'claude');
+    installDriverAssets(root, 'codex');
+    const assets = resolveDriverAssets('codex');
+    writeFileSync(join(root, '.codex', assets[0]!), 'stale\n');
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(lines.join('\n'));
+    expect(view.driverDrift).toEqual({ drivers: ['codex'], suggestedCommand: 'pitway init --reconfigure' });
+  });
+
+  it('lists multiple drifted drivers together in one advisory', async () => {
+    saveState(root, { schema_version: 1, active_milestone: null, milestones: [] });
+    installDriverAssets(root, 'claude');
+    installDriverAssets(root, 'codex');
+    writeFileSync(join(root, '.claude', resolveDriverAssets('claude')[0]!), 'stale\n');
+    writeFileSync(join(root, '.codex', resolveDriverAssets('codex')[0]!), 'stale\n');
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(lines.join('\n'));
+    expect([...view.driverDrift.drivers].sort()).toEqual(['claude', 'codex']);
+  });
+
+  it('does not block resume or touch the stale file itself -- advisory only', async () => {
+    saveState(root, { schema_version: 1, active_milestone: null, milestones: [] });
+    installDriverAssets(root, 'claude');
+    const assets = resolveDriverAssets('claude');
+    writeFileSync(join(root, '.claude', assets[0]!), 'stale\n');
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await expect(program.parseAsync(['node', 'pitway', 'resume', '--json'])).resolves.not.toThrow();
+    expect(readFileSync(join(root, '.claude', assets[0]!), 'utf8')).toBe('stale\n');
   });
 });
 

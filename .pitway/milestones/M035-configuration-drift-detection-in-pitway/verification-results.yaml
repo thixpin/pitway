@@ -1,0 +1,174 @@
+schema_version: 1
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-27T03:38:04Z
+    evidence: Tests  34 passed (34) | Start at  10:37:52 | Duration  11.53s
+      (transform 293ms, setup 0ms, import 432ms, tests 11.01s, environment 0ms)
+    recorded_by: command
+    duration_ms: 12129
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-27T03:38:16Z
+    evidence: Tests  34 passed (34) | Start at  10:38:04 | Duration  11.78s
+      (transform 371ms, setup 0ms, import 519ms, tests 11.17s, environment 0ms)
+    recorded_by: command
+    duration_ms: 12307
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-27T03:38:28Z
+    evidence: Tests  34 passed (34) | Start at  10:38:16 | Duration  11.36s
+      (transform 274ms, setup 0ms, import 395ms, tests 10.88s, environment 0ms)
+    recorded_by: command
+    duration_ms: 11896
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-27T03:38:40Z
+    evidence: Tests  34 passed (34) | Start at  10:38:28 | Duration  11.52s
+      (transform 279ms, setup 0ms, import 402ms, tests 11.03s, environment 0ms)
+    recorded_by: command
+    duration_ms: 12035
+    termination_reason: exited
+  - check: CT006
+    status: fail
+    at: 2026-08-27T03:40:40Z
+    evidence: "> pitway@1.0.6 test | > vitest run | RUN  v4.1.11
+      /Users/thixpin/project/thixpin/pitway"
+    recorded_by: command
+    duration_ms: 120001
+    termination_reason: timeout
+  - check: CT001
+    status: pass
+    at: 2026-08-27T03:45:55Z
+    evidence: Tests  34 passed (34) | Start at  10:45:21 | Duration  33.97s
+      (transform 1.33s, setup 0ms, import 1.64s, tests 32.13s, environment 0ms)
+    recorded_by: command
+    duration_ms: 35146
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-27T03:46:31Z
+    evidence: Tests  34 passed (34) | Start at  10:45:57 | Duration  34.15s
+      (transform 1.53s, setup 0ms, import 1.97s, tests 31.93s, environment 0ms)
+    recorded_by: command
+    duration_ms: 35476
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-27T03:47:17Z
+    evidence: Tests  34 passed (34) | Start at  10:46:33 | Duration  43.88s
+      (transform 2.16s, setup 0ms, import 3.08s, tests 40.38s, environment 0ms)
+    recorded_by: command
+    duration_ms: 46418
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-27T03:47:33Z
+    evidence: Tests  34 passed (34) | Start at  10:47:19 | Duration  14.29s
+      (transform 901ms, setup 0ms, import 1.22s, tests 12.83s, environment 1ms)
+    recorded_by: command
+    duration_ms: 15905
+    termination_reason: exited
+  - check: CT006
+    status: fail
+    at: 2026-08-27T03:49:33Z
+    evidence: "> pitway@1.0.6 test | > vitest run | RUN  v4.1.11
+      /Users/thixpin/project/thixpin/pitway"
+    recorded_by: command
+    duration_ms: 120015
+    termination_reason: timeout
+  - check: CT001
+    status: pass
+    at: 2026-08-27T03:56:18Z
+    evidence: Tests  34 passed (34) | Start at  10:55:58 | Duration  19.46s
+      (transform 446ms, setup 0ms, import 639ms, tests 18.66s, environment 0ms)
+    recorded_by: command
+    duration_ms: 20459
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-27T03:56:34Z
+    evidence: Tests  34 passed (34) | Start at  10:56:18 | Duration  15.65s
+      (transform 511ms, setup 0ms, import 732ms, tests 14.63s, environment 0ms)
+    recorded_by: command
+    duration_ms: 16300
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-27T03:56:55Z
+    evidence: Tests  34 passed (34) | Start at  10:56:35 | Duration  20.45s
+      (transform 395ms, setup 0ms, import 561ms, tests 19.77s, environment 0ms)
+    recorded_by: command
+    duration_ms: 21226
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-27T03:57:12Z
+    evidence: Tests  34 passed (34) | Start at  10:56:56 | Duration  15.90s
+      (transform 366ms, setup 0ms, import 520ms, tests 15.26s, environment 0ms)
+    recorded_by: command
+    duration_ms: 16542
+    termination_reason: exited
+  - check: CT006
+    status: fail
+    at: 2026-08-27T03:59:12Z
+    evidence: "> pitway@1.0.6 test | > vitest run | RUN  v4.1.11
+      /Users/thixpin/project/thixpin/pitway"
+    recorded_by: command
+    duration_ms: 120011
+    termination_reason: timeout
+  - check: CT001
+    status: pass
+    at: 2026-08-27T05:32:00Z
+    evidence: Tests  34 passed (34) | Start at  12:31:48 | Duration  11.90s
+      (transform 299ms, setup 0ms, import 434ms, tests 11.37s, environment 0ms)
+    recorded_by: command
+    duration_ms: 12565
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-27T05:32:13Z
+    evidence: Tests  34 passed (34) | Start at  12:32:01 | Duration  11.99s
+      (transform 321ms, setup 0ms, import 458ms, tests 11.45s, environment 0ms)
+    recorded_by: command
+    duration_ms: 12507
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-27T05:32:25Z
+    evidence: Tests  34 passed (34) | Start at  12:32:13 | Duration  11.81s
+      (transform 286ms, setup 0ms, import 408ms, tests 11.32s, environment 0ms)
+    recorded_by: command
+    duration_ms: 12343
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-27T05:32:37Z
+    evidence: Tests  34 passed (34) | Start at  12:32:26 | Duration  11.63s
+      (transform 291ms, setup 0ms, import 415ms, tests 11.13s, environment 0ms)
+    recorded_by: command
+    duration_ms: 12200
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-27T05:35:25Z
+    evidence: Tests  2035 passed (2035) | Start at  12:32:38 | Duration  167.67s
+      (transform 4.17s, setup 0ms, import 18.06s, tests 1117.16s, environment
+      10ms)
+    recorded_by: command
+    duration_ms: 168030
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-27T05:35:32Z
+    evidence: "Diffed all three resume.md files: bodies byte-identical (frontmatter
+      quoting aside). New section accurately describes the shipped detection
+      logic (installed-driver + non-identical-asset check via
+      classifyDriverAssets), the exact suggested command including the
+      --no-claude edge case, states resume never runs init/never blocks, and
+      states plainly PitWay cannot tell a deliberate edit from a stale version
+      -- matching init.ts's own classification comment."
+    recorded_by: developer
