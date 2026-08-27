@@ -33,7 +33,7 @@ tasks:
       state ends up correctly archived exactly once (no hard failure, AC003's
       state-level guarantee holds); this narrower journal-audit-trail gap is
       pre-existing in archive.ts and explicitly out of scope for this task."
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - quick-change create --closes <id> refuses for an unknown or non-pending
@@ -78,6 +78,7 @@ tasks:
         tests/unit/quick-change-commit.test.ts
         tests/integration/quick-change.test.ts
     result: null
+    attempts: 1
     usage: null
   - id: T002
     name: Decouple backlog add from requiring an active milestone
@@ -146,7 +147,7 @@ tasks:
       protocol-driver.md and unenforced-but-honest by design) -- only makes it
       visible at the point where a driver might otherwise chain straight into
       merge."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - milestone-complete's human-mode output states plainly that
@@ -161,8 +162,21 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/integration/milestone-complete.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "[truncated] ly that milestone-merge requires separate, explicit
+        developer approval and is never run automatically -- one sentence
+        appended to renderMilestoneCompleteHuman, covering both the committed
+        and already-committed outcomes. --json output unchanged (human renderer
+        never invoked in JSON mode)."
+      evidence: "RED: 2 tests failed for the expected reason (sentence absent). GREEN:
+        30/30 tests passed (tests/integration/milestone-complete.test.ts,
+        26.55s). Cross-checked no other test asserts an exact match on this
+        output string outside the touched test file (one partial-prefix regex
+        match in racing-footer-surfaces.test.ts is unaffected). CT005 verified
+        pass via pitway verify."
+    attempts: 1
+    usage:
+      total_tokens: 87964
   - id: T004
     name: Name parallel-dispatch-eligible ready tasks in resume
     objective: "pitway resume never names which ready tasks are actually eligible
@@ -194,7 +208,7 @@ tasks:
       dependency- check redundancy is phrased for the in_progress case and
       should be updated/generalized for this new ready-vs-ready call site rather
       than left to read as stale."
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - resume names 2+ ready tasks that checkParallelEligibility's pairwise
@@ -219,6 +233,7 @@ tasks:
       strategy: command
       detail: npx vitest run tests/integration/resume.test.ts
     result: null
+    attempts: 1
     usage: null
   - id: T005
     name: Update protocol/command/driver docs for M037, fix pinned hashes

@@ -781,7 +781,34 @@ describe('pitway milestone-complete human rendering', () => {
     const { lines, error } = await run(['milestone-complete', 'M001'], root);
     expect(error).toBeUndefined();
     const sha = git(['rev-parse', 'HEAD'], root).trim();
-    expect(lines.join('\n')).toBe(`🏁 Completed milestone M001: already recorded in commit ${sha}.`);
+    expect(lines.join('\n')).toBe(
+      `🏁 Completed milestone M001: already recorded in commit ${sha}. Run 'pitway milestone-merge M001' only with separate, explicit developer approval -- it is never run automatically.`,
+    );
+  });
+
+  // T003 (M037): milestone-complete's own output today never mentions
+  // milestone-merge at all, since getFooterForActiveMilestone is
+  // unreachable here (active_milestone is already cleared to null by the
+  // time it runs). This states the gate plainly, human-mode only.
+  it('states plainly that milestone-merge needs separate developer approval and is never automatic', async () => {
+    await readyToComplete();
+    const { lines, error } = await run(['milestone-complete', 'M001'], root);
+    expect(error).toBeUndefined();
+    expect(lines.join('\n')).toBe(
+      "🏁 Completed milestone M001: recorded in commit " +
+        git(['rev-parse', 'HEAD'], root).trim() +
+        ". Run 'pitway milestone-merge M001' only with separate, explicit developer approval -- it is never run automatically.",
+    );
+  });
+
+  it('leaves --json output byte-for-byte unchanged (no merge-approval guidance)', async () => {
+    await readyToComplete();
+    const { lines, error } = await run(['milestone-complete', 'M001', '--json'], root);
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
+    const view = JSON.parse(lines[0]!) as { id: string; outcome: string; commit: string };
+    expect(Object.keys(view).sort()).toEqual(['commit', 'id', 'outcome']);
+    expect(lines[0]).not.toMatch(/milestone-merge/);
   });
 });
 

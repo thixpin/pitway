@@ -1,2 +1,10 @@
 schema_version: 1
-results: []
+results:
+  - check: CT005
+    status: pass
+    at: 2026-08-27T08:22:12Z
+    evidence: Tests  30 passed (30) | Start at  15:21:44 | Duration  27.06s
+      (transform 289ms, setup 0ms, import 411ms, tests 26.55s, environment 0ms)
+    recorded_by: command
+    duration_ms: 27660
+    termination_reason: exited

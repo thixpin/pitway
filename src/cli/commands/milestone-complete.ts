@@ -3,9 +3,18 @@ import { completeMilestone, type MilestoneCompleteView } from '../../core/milest
 import { renderOutput } from '../output.js';
 import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
 
+// T003 (M037): milestone-merge's own approval gate is already correct and
+// documented in protocol-driver.md, but nothing in milestone-complete's real
+// output ever mentioned it -- its footer call is unreachable here since
+// active_milestone is already cleared to null by the time it runs. State the
+// gate plainly at the point a driver might otherwise chain straight into
+// merge.
 function renderMilestoneCompleteHuman(view: MilestoneCompleteView): string {
   const recorded = view.outcome === 'already-committed' ? 'already recorded in' : 'recorded in';
-  return `🏁 Completed milestone ${view.id}: ${recorded} commit ${view.commit}.`;
+  return (
+    `🏁 Completed milestone ${view.id}: ${recorded} commit ${view.commit}. ` +
+    `Run 'pitway milestone-merge ${view.id}' only with separate, explicit developer approval -- it is never run automatically.`
+  );
 }
 
 export interface CommandDeps {
