@@ -634,14 +634,17 @@ items:
       session with any role's usage still null, so the gap surfaces before the
       session moves on, rather than relying solely on a doc-level MUST read once
       at dispatch time."
-    status: pending
+    status: archived
     source:
       milestone: M036
       task: null
     created_at: 2026-08-27T06:15:53.038Z
-    resolved_at: null
+    resolved_at: 2026-08-27T07:20:48.835Z
     promoted_to: null
-    archived_reason: null
+    archived_reason: "Fixed in 9398b9c (qc-973ac363): milestone-review record now
+      prints a neutral, always-on reminder in human mode when --usage is
+      omitted, since no journal signal exists to detect reviewer-subagent
+      dispatch the way task-update's worktree_dispatch record does."
   - id: B033
     title: task-update's usage warning suggests a usage-add category that doesn't
       exist
