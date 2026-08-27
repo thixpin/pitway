@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.1] — 2026-08-27
+
+### Highlights
+
+- New `pitway milestone-current [--json]` command: a fast, read-only check
+  for whether a milestone is active and, if so, its id/status — no more
+  reaching for the heavier `resume` view just to answer that
+- `pitway milestone-status` no longer has a separate `--report` flag — the
+  full status report (workload, task table, critical path, active/next
+  task, token breakdown, racing footer) is now the only output. `[id]` is
+  now optional: omit it to see the active milestone, or pass one to check
+  any milestone regardless of status
+- README/USAGE now include a concise "Which Workflow Should I Use?" guide
+  (Milestone / Task-or-Backlog / Quick Change, with execution mode called
+  out as an orthogonal setting, not a separate lane) and drop a couple of
+  stale doc claims (backlog no longer requiring an active milestone, the
+  removed `--report` flag)
+
 ## [1.1.0] — 2026-08-27
 
 ### Highlights
