@@ -48,3 +48,20 @@ results:
     recorded_by: command
     duration_ms: 33138
     termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-27T09:01:53Z
+    evidence: Tests  337 passed (337) | Start at  16:01:49 | Duration  3.56s
+      (transform 529ms, setup 0ms, import 786ms, tests 3.26s, environment 0ms)
+    recorded_by: command
+    duration_ms: 4163
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-27T09:04:46Z
+    evidence: Tests  2101 passed (2101) | Start at  16:01:58 | Duration  167.63s
+      (transform 4.57s, setup 0ms, import 18.82s, tests 1138.32s, environment
+      11ms)
+    recorded_by: command
+    duration_ms: 167986
+    termination_reason: exited

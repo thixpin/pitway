@@ -2,7 +2,7 @@
 schema_version: 1
 id: M037
 title: Quick Change & Workflow Lifecycle Hardening
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-27T08:15:59Z
 verification_approved_hash: sha256:7fed774e6c371ab1736f71e283f66f3c9395536ee6c421c4badffdb33cb3278d
