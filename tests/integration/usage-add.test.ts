@@ -5,7 +5,16 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli } from '../../src/cli/index.js';
 import { registerUsageAddCommand } from '../../src/cli/commands/usage-add.js';
-import { loadUsage, saveUsage } from '../../src/state/store.js';
+import {
+  loadState,
+  loadUsage,
+  saveContract,
+  saveState,
+  saveTasks,
+  saveUsage,
+  saveVerificationResults,
+} from '../../src/state/store.js';
+import type { ContractFrontmatter } from '../../src/state/schemas.js';
 import { derivePending } from '../../src/core/journal/operations.js';
 import { readJournal, type JournalEntry } from '../../src/state/journal.js';
 
@@ -258,5 +267,67 @@ describe('pitway usage-add default CommandDeps fallbacks', () => {
     expect(String(calls[0]?.[0])).toMatch(
       /📊 Recorded pending planning usage for M001 \(attempt 1, 1200 total tokens\)/,
     );
+  });
+});
+
+// M036/T002: the racing footer, guarded to the active milestone (usage-add
+// takes an explicit milestone id). This file's shared beforeEach never sets
+// active_milestone (no state.yaml at all) -- every test above relies on
+// that, so a real footer needs a fuller fixture, built locally here only.
+describe('pitway usage-add racing footer (M036/T002)', () => {
+  function completeMilestone(id: string): void {
+    const frontmatter: ContractFrontmatter = {
+      schema_version: 1,
+      id,
+      title: 'Test Milestone',
+      status: 'in_progress',
+      requirement: null,
+      confirmed_at: '2026-08-18T00:00:00Z',
+      verification_approved_hash: 'sha256:' + 'a'.repeat(64),
+      acceptance_criteria: [{ id: 'AC001', text: 'criterion' }],
+      verification: [{ id: 'CT001', criterion: 'AC001', type: 'command', command: 'npm test' }],
+    };
+    mkdirSync(join(root, '.pitway', 'milestones', id), { recursive: true });
+    saveContract(root, id, { frontmatter, body: '\n# Contract\n' });
+    saveTasks(root, id, { schema_version: 1, tasks: [] });
+    saveVerificationResults(root, id, { schema_version: 1, results: [] });
+    saveUsage(root, id, { schema_version: 1, planning: null, qa: null });
+  }
+
+  it('appends the footer when the target is the active milestone', async () => {
+    completeMilestone('M001');
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+
+    const { error, lines } = await run(['usage-add', 'M001', '--category', 'planning', '--usage', '{"total_tokens":100}']);
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(2);
+    expect(lines[1]).toMatch(/🏎️|🏁|🔧/);
+  });
+
+  it('never appends a footer for a milestone other than the active one', async () => {
+    completeMilestone('M001');
+    completeMilestone('M002');
+    saveState(root, { schema_version: 1, active_milestone: 'M002', milestones: ['M001', 'M002'] });
+
+    const { error, lines } = await run(['usage-add', 'M001', '--category', 'planning', '--usage', '{"total_tokens":100}']);
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
+  });
+
+  it('never appends a footer line in --json mode', async () => {
+    completeMilestone('M001');
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+
+    const { error, lines } = await run([
+      'usage-add',
+      'M001',
+      '--category',
+      'planning',
+      '--usage',
+      '{"total_tokens":100}',
+      '--json',
+    ]);
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
   });
 });

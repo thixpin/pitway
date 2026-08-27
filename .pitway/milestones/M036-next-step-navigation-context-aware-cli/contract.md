@@ -4,7 +4,7 @@ id: M036
 title: Next-step Navigation & Context-Aware CLI Guidance
 status: in_progress
 requirement: null
-confirmed_at: 2026-08-27T06:09:57Z
+confirmed_at: 2026-08-27T12:00:00Z
 verification_approved_hash: sha256:1bccb2b0561a1ec73832c882021aed360c676eb57d70a13cee75d12f7538a03a
 base_branch: main
 base_revision: 4abf9e459c24010d155a29e8b848d41471bd3e69
@@ -15,16 +15,18 @@ acceptance_criteria:
       when an active milestone exists -- matching the pattern already used by
       task-update/task-dispatch/task-integrate/task-discard.
   - id: AC002
-    text: "task-amend, usage-add, and auto-run's enable/disable subcommands'
-      human-mode success output append the existing racing footer when an active
-      milestone exists. verify's and verification-repair's approve/commit/cancel
-      subcommands do the same, but ONLY when the command's resolved milestone id
-      equals state.active_milestone (never a footer for a different milestone
-      than the one just acted on). No footer on any read-only status/list
-      display (verify --status, auto-run status), and milestone-add is
-      explicitly excluded (its footer is a provable no-op: a freshly created
-      milestone is always draft, for which computeRacingFooter always returns
-      null)."
+    text: "task-amend's human-mode success output appends the existing racing footer
+      when an active milestone exists, unconditionally (it operates on a task,
+      always implicitly scoped to the active milestone). usage-add, verify's
+      approve/commit/cancel, and verification-repair's approve/commit/cancel all
+      take an explicit milestone id -- each of these appends the footer ONLY
+      when that resolved milestone id equals state.active_milestone (never a
+      footer for a different milestone than the one just acted on). auto-run's
+      enable/disable subcommands append the footer when an active milestone
+      exists. No footer on any read-only status/list display (verify --status,
+      auto-run status), and milestone-add is explicitly excluded (its footer is
+      a provable no-op: a freshly created milestone is always draft, for which
+      computeRacingFooter always returns null)."
   - id: AC003
     text: verify's human-mode run and record paths (not --status), only when
       allChecksPassed(contract, computeLatestCheckResults(...)) is true AND
@@ -118,11 +120,12 @@ guidance it prints.
 
 - **T001**: `task-verify`'s human-mode output suggests `task-update <id>
   review` on a pass, and gains the racing footer.
-- **T002**: wire the existing racing footer into `task-amend`,
-  `usage-add`, `verify` (approve/commit/cancel only), `verification-repair`
-  (approve/commit/cancel only), and `auto-run` (enable/disable only) --
-  never on a read-only status/list display, never when an explicit
-  milestone id argument doesn't match `state.active_milestone`.
+- **T002**: wire the existing racing footer into `task-amend`
+  (unconditional), `usage-add`, `verify` (approve/commit/cancel only),
+  `verification-repair` (approve/commit/cancel only) -- the latter three
+  guarded by an active-milestone-id match, since all three take an
+  explicit milestone id argument -- and `auto-run` (enable/disable only).
+  Never on a read-only status/list display.
 - **T003**: `verify`'s human-mode run/record output adds a
   `milestone-complete <id>` hint, gated on the real completion
   precondition (`allChecksPassed` + full task completion), not on
@@ -177,3 +180,9 @@ guidance it prints.
   (`.claude/commands/task-update.md`, not `protocol-driver.md`) and its
   verified recovery command. Narrowed AC006 to exempt T004's three
   deliberately-changed refusal strings.
+- 2026-08-27: Amended mid-T002 (developer-approved): `usage-add` also
+  takes an explicit milestone id, sharing the identical wrong-milestone
+  footer risk AC002 already guards for `verify`/`verification-repair` --
+  discovered while implementing T002. Extended the same
+  active-milestone-id-match guard to `usage-add` for consistency,
+  instead of leaving it unconditional as originally drafted.

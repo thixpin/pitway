@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { saveContract, saveState } from '../../src/state/store.js';
+import { saveContract, saveState, saveTasks, saveVerificationResults } from '../../src/state/store.js';
 import { appendJournalEntry, readJournal, reconcilePending } from '../../src/state/journal.js';
 import { derivePending, resolveTargetPath } from '../../src/core/journal/operations.js';
 import { buildCli } from '../../src/cli/index.js';
@@ -334,5 +334,61 @@ describe('auto_run records are structurally invisible to entry/checkpoint machin
     const autoRunRecords = readJournal(root).filter((r) => r.kind === 'auto_run');
     expect(autoRunRecords).toHaveLength(2);
     expect(readJournal(root).filter((r) => r.kind === 'checkpoint')).toHaveLength(1);
+  });
+});
+
+// M036/T002: the racing footer, guarded to the active milestone only.
+// setupMilestone alone never produces a non-null footer (no tasks.yaml/
+// verification-results.yaml -- footer.ts's own try/catch returns null on
+// the missing read, exactly like every pre-existing test above relies on),
+// so a real footer needs a fuller fixture, built locally here only.
+describe('pitway auto-run racing footer (M036/T002)', () => {
+  function completeMilestone(id: string): void {
+    setupMilestone(baseFrontmatter({ id }));
+    saveTasks(root, id, { schema_version: 1, tasks: [] });
+    saveVerificationResults(root, id, { schema_version: 1, results: [] });
+  }
+
+  it('appends the footer for enable/disable when the target is the active milestone', async () => {
+    completeMilestone('M005');
+    saveState(root, { schema_version: 1, active_milestone: 'M005', milestones: ['M005'] });
+
+    const enabled = await runAutoRun(['enable', 'M005']);
+    expect(enabled.error).toBeUndefined();
+    expect(enabled.lines).toHaveLength(2);
+    expect(enabled.lines[1]).toMatch(/🏎️|🏁|🔧/);
+
+    const disabled = await runAutoRun(['disable', 'M005']);
+    expect(disabled.error).toBeUndefined();
+    expect(disabled.lines).toHaveLength(2);
+    expect(disabled.lines[1]).toMatch(/🏎️|🏁|🔧/);
+  });
+
+  it('never appends a footer for a milestone other than the active one', async () => {
+    completeMilestone('M005');
+    completeMilestone('M006');
+    saveState(root, { schema_version: 1, active_milestone: 'M006', milestones: ['M005', 'M006'] });
+
+    const { error, lines } = await runAutoRun(['disable', 'M005']);
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
+  });
+
+  it('never appends a footer to the read-only status subcommand', async () => {
+    completeMilestone('M005');
+    saveState(root, { schema_version: 1, active_milestone: 'M005', milestones: ['M005'] });
+
+    const { error, lines } = await runAutoRun(['status', 'M005']);
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
+  });
+
+  it('never appends a footer line in --json mode', async () => {
+    completeMilestone('M005');
+    saveState(root, { schema_version: 1, active_milestone: 'M005', milestones: ['M005'] });
+
+    const { error, lines } = await runAutoRun(['enable', 'M005', '--json']);
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
   });
 });

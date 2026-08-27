@@ -855,3 +855,39 @@ describe('pitway verify default CommandDeps fallbacks', () => {
     expect(String(calls[0]?.[0])).toContain('🔍 Verification status M001');
   });
 });
+
+// M036/T002: the racing footer on verify's mutating paths (run, single-check
+// run, record), guarded to the active milestone; never on --status.
+describe('pitway verify racing footer (M036/T002)', () => {
+  it('appends the footer for a run against the active milestone', async () => {
+    await confirmed();
+    const { error, lines } = await run(['verify', 'M001'], root);
+    expect(error).toBeUndefined();
+    expect(lines[lines.length - 1]).toMatch(/🏎️|🏁|🔧/);
+  });
+
+  it('never appends a footer for a run against a milestone other than the active one', async () => {
+    await confirmed();
+    // Point active_milestone elsewhere -- verify still targets M001
+    // explicitly, so this proves the guard, not milestone-add's own
+    // single-active-milestone constraint.
+    saveState(root, { ...loadState(root), active_milestone: 'M999' });
+    const { error, lines } = await run(['verify', 'M001'], root);
+    expect(error).toBeUndefined();
+    expect(lines[lines.length - 1]).not.toMatch(/🏎️|🏁|🔧/);
+  });
+
+  it('never appends a footer to --status even against the active milestone', async () => {
+    await confirmed();
+    const { error, lines } = await run(['verify', 'M001', '--status'], root);
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
+  });
+
+  it('never appends a footer line in --json mode', async () => {
+    await confirmed();
+    const { error, lines } = await run(['verify', 'M001', '--json'], root);
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
+  });
+});
