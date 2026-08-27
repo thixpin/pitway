@@ -66,7 +66,7 @@ A lightweight summary of the real workflow stages (see `docs/assets/workflow.mmd
 7. **Milestone Complete** -- every task and check has passed.
 8. **Milestone Merge** -- the milestone's branch lands into its base branch.
 
-A separate Quick Change lane (TDD → Verify → Commit) handles small bounded fixes against an already-completed milestone, outside full milestone planning.
+A separate Quick Change lane (TDD → Verify → Human Approval → Commit) handles small bounded fixes whenever no milestone is active, outside full milestone planning.
 
 </section>
 

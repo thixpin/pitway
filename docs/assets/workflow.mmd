@@ -10,11 +10,12 @@ flowchart TD
     end
 
     B["🔧<br/>small bounded fix"]
-    subgraph QUICK["⚡ Quick Change (completed milestone)"]
+    subgraph QUICK["⚡ Quick Change (no active milestone)"]
         direction TD
         TTD["🛠<br/>TDD (RED→GREEN)"]
         TTD --> QC2["🔍<br/>Verify"]
-        QC2 --> QC3["🏎️<br/>Commit"]
+        QC2 --> QCA{{"🚦<br/>Human Approval"}}
+        QCA --> QC3["🏎️<br/>Commit"]
         QC2 -. 🔄 .-> TTD
     end
     B --> QUICK
@@ -47,4 +48,4 @@ flowchart TD
     style EXECUTE fill:none,stroke:#333,stroke-width:2px
 
     classDef dualReadable color:#3D8BD9
-    class A,C,R,B,TTD,QC2,QC3,D,E,F,G,H,I,J,K,MR,BL dualReadable
+    class A,C,R,B,TTD,QC2,QCA,QC3,D,E,F,G,H,I,J,K,MR,BL dualReadable

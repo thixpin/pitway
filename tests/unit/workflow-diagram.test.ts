@@ -13,7 +13,7 @@ const mmd = readFileSync(join(process.cwd(), 'docs/assets/workflow.mmd'), 'utf8'
 const svg = readFileSync(join(process.cwd(), 'docs/assets/workflow.svg'), 'utf8');
 
 const KEY_LABELS = [
-  '⚡ Quick Change (completed milestone)',
+  '⚡ Quick Change (no active milestone)',
   'TDD (RED→GREEN)',
   'Milestone Merge',
   'Milestone revision',

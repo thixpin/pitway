@@ -58,7 +58,7 @@ ogSiteName: "PitWay Docs"
 
 # Review
 
-![PitWay workflow: BRS/Backlog into Milestone (Contract ⇄ Milestone Review) through the Human Approval gate to the Task Graph, TDD → Task Verification → Task Commit repeating with a Backlog exit, then Final Full Test (failure loops through milestone revision), Milestone Complete, and an opt-in Quick Change lane for small bounded fixes against a completed milestone, ending at Milestone Merge](../assets/workflow.svg)
+![PitWay workflow: BRS/Backlog into Milestone (Contract ⇄ Milestone Review) through the Human Approval gate to the Task Graph, TDD → Task Verification → Task Commit repeating with a Backlog exit, then Final Full Test (failure loops through milestone revision), Milestone Complete, and an opt-in Quick Change lane for small bounded fixes when no milestone is active (TDD → Verify → Human Approval → Commit), ending at Milestone Merge](../assets/workflow.svg)
 
 The diagram above is PitWay's full canonical workflow, from requirement
 through milestone merge -- this Workflow section covers the stages after
