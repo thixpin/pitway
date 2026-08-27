@@ -47,6 +47,19 @@ function renderRecordHuman(view: RecordReviewView): string {
   return `📜 Recorded ${view.findingsCount} finding(s) for role "${view.role}" on session ${view.sessionId} (${view.milestone}).`;
 }
 
+// B032: unlike a dispatched task (which leaves a worktree_dispatch journal
+// record computeUsageWarning can key off), a reviewer subagent's dispatch is
+// deliberately unconfined -- no worktree, no journal trail -- so there is no
+// PitWay-observable signal to gate a warning on. This is therefore always-on
+// and neutral, never an accusation: it fires for a genuinely inline
+// recording exactly the same as a forgotten dispatch forward.
+function renderUsageReminder(role: string): string {
+  return (
+    `ℹ️  Usage not recorded for role "${role}". If this finding came from a ` +
+    `dispatched reviewer subagent, forward its reported usage via --usage next time (dispatch.md step 8).`
+  );
+}
+
 // Mirrors src/cli/commands/milestone-status.ts's own formatTokens/
 // formatTokenValue -- kept as a local, module-private duplicate rather
 // than a cross-module import (this codebase's established precedent for
@@ -193,6 +206,9 @@ export function registerMilestoneReviewCommand(program: Command, deps: CommandDe
         usage: options.usage,
       });
       write(renderOutput(view, { json: options.json }, renderRecordHuman));
+      if (!options.json && options.usage === undefined) {
+        write(renderUsageReminder(options.role));
+      }
     });
 
   milestoneReview

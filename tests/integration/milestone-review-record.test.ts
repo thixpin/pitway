@@ -343,3 +343,50 @@ describe('milestone-review record --usage', () => {
     expect(error!.message).toContain('invalid --usage');
   });
 });
+
+// B032: no mechanical signal exists to detect whether a review's findings
+// came from a dispatched subagent (unlike task-update's worktree_dispatch
+// journal record) -- so this is an always-on, neutral reminder, never an
+// accusatory warning, human mode only.
+describe('milestone-review record usage reminder (B032)', () => {
+  it('prints a neutral reminder in human mode when --usage is omitted', async () => {
+    const id = await addDraftMilestone();
+    await run(['milestone-review', 'start', id, '--roles', 'developer', '--json'], root);
+    const file = writeFindingsFile('findings: []\n');
+
+    const { error, lines } = await run(
+      ['milestone-review', 'record', id, '--role', 'developer', '--file', file],
+      root,
+    );
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(2);
+    expect(lines[1]).toContain('developer');
+    expect(lines[1]).toMatch(/usage/i);
+  });
+
+  it('never prints the reminder when --usage is supplied', async () => {
+    const id = await addDraftMilestone();
+    await run(['milestone-review', 'start', id, '--roles', 'developer', '--json'], root);
+    const file = writeFindingsFile('findings: []\n');
+
+    const { error, lines } = await run(
+      ['milestone-review', 'record', id, '--role', 'developer', '--file', file, '--usage', '{"total_tokens": 100}'],
+      root,
+    );
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
+  });
+
+  it('never prints the reminder in --json mode, usage omitted or not', async () => {
+    const id = await addDraftMilestone();
+    await run(['milestone-review', 'start', id, '--roles', 'developer', '--json'], root);
+    const file = writeFindingsFile('findings: []\n');
+
+    const { error, lines } = await run(
+      ['milestone-review', 'record', id, '--role', 'developer', '--file', file, '--json'],
+      root,
+    );
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
+  });
+});
