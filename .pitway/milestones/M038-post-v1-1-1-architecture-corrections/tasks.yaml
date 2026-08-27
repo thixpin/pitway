@@ -526,7 +526,7 @@ tasks:
       run build && npm test from a clean tree. No code changes are expected; if
       anything fails, stop and report -- do not fix here, the fix belongs to the
       owning task via the normal blocked/failed path."
-    status: ready
+    status: completed
     depends_on:
       - T003
     acceptance_criteria:
@@ -540,5 +540,16 @@ tasks:
     verification:
       strategy: command
       detail: npm run typecheck && npm run build && npm test
-    result: null
+    result:
+      summary: "Milestone gate run from a clean dist/: npm run typecheck && npm run
+        build && npm test all pass; no code changes. dist/integrations/ after
+        the clean rebuild contains exactly claude/ and common/ (the stale codex/
+        and opencode/ copies from pre-T001 builds are gone once dist/ is rebuilt
+        from scratch)."
+      evidence: Tests  2164 passed (2164) | Start at  22:59:30 | Duration  165.87s
+        (transform 4.14s, setup 0ms, import 18.70s, tests 1124.71s, environment
+        11ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
