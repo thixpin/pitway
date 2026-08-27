@@ -706,14 +706,14 @@ items:
       M037/T001 by both the architect review (round 2) and the T001 worker. Fix
       direction: write state first, journal after, or make the journal append
       idempotent per archive."
-    status: pending
+    status: archived
     source:
       milestone: M037
       task: T001
     created_at: 2026-08-27T08:31:41.023Z
-    resolved_at: null
+    resolved_at: 2026-08-27T09:22:32.796Z
     promoted_to: null
-    archived_reason: null
+    archived_reason: closed by quick-change qc-66b89093
   - id: B036
     title: "M037 rebuild spot-check: live backlog add with no active milestone"
     reason: T002 live verification after rebuilding+reinstalling pitway from repo

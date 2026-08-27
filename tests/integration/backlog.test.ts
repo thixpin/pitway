@@ -11,7 +11,7 @@ import { archiveBacklogItem } from '../../src/core/backlog/archive.js';
 import { listBacklogItems } from '../../src/core/backlog/list.js';
 import { showBacklogItem } from '../../src/core/backlog/show.js';
 import { derivePending } from '../../src/core/journal/operations.js';
-import { readJournal, type JournalEntry } from '../../src/state/journal.js';
+import { appendBacklogArchiveRecord, readJournal, type JournalEntry } from '../../src/state/journal.js';
 import { loadBacklog } from '../../src/state/store.js';
 import { createTaskWorktree } from '../../src/git/worktree.js';
 import { WorktreeGuardError } from '../../src/cli/worktree-guard.js';
@@ -364,6 +364,27 @@ describe('backlog archive', () => {
     archiveBacklogItem(root, 'B001', 'done');
     expect(showBacklogItem(root, 'B001').status).toBe('archived');
     expect(showBacklogItem(root, 'B002').status).toBe('pending');
+  });
+
+  it('does not double-journal on retry after a crash between the journal write and the state write (B035)', () => {
+    addBacklogItem(root, { title: 'X', reason: 'Y' });
+    // Simulate a prior interrupted archive attempt: the journal write
+    // landed but the state write (saveBacklog) did not, so the item is
+    // still 'pending' in backlog.yaml -- exactly the window a retry (e.g.
+    // a quick-change commit's status-check-then-archive guard, M037/T001)
+    // would re-enter through.
+    appendBacklogArchiveRecord(root, {
+      id: 'ba-simulated-crash',
+      target: 'B001',
+      reason: 'closed by quick-change qc-test',
+      at: new Date(0).toISOString(),
+    });
+    archiveBacklogItem(root, 'B001', 'closed by quick-change qc-test');
+    expect(showBacklogItem(root, 'B001').status).toBe('archived');
+    const records = readJournal(root).filter(
+      (entry) => entry.kind === 'backlog_archive' && entry.target === 'B001',
+    );
+    expect(records).toHaveLength(1);
   });
 });
 

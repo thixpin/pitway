@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { appendBacklogArchiveRecord } from '../../state/journal.js';
+import { appendBacklogArchiveRecord, readJournal } from '../../state/journal.js';
 import { BacklogError } from './add.js';
 import { transitionBacklogItem } from './state-machine.js';
 import { loadBacklog, saveBacklog } from '../../state/store.js';
@@ -43,12 +43,28 @@ export function archiveBacklogItem(root: string, id: string, reason: string): Ba
     archived_reason: trimmedReason,
   };
 
-  appendBacklogArchiveRecord(root, {
-    id: generateArchiveId(),
-    target: id,
-    reason: trimmedReason,
-    at: updated.resolved_at,
-  });
+  // B035: the journal write and the state write below are not atomic -- a
+  // crash between them, followed by a retry (e.g. a quick-change commit's
+  // status-check-then-archive guard, M037/T001, which re-reads backlog.yaml
+  // and still sees the pre-crash status), would otherwise append a second
+  // backlog_archive record for the same one-time logical archive event.
+  // transitionBacklogItem above already refuses archived -> archived, so a
+  // backlog item can only ever pass through this function once while
+  // non-archived; a backlog_archive record already targeting this id at
+  // that point can only mean exactly this retry scenario -- skip
+  // re-journaling it, but still (re-)write state, since that's the half
+  // that didn't land.
+  const alreadyJournaled = readJournal(root).some(
+    (entry) => entry.kind === 'backlog_archive' && entry.target === id,
+  );
+  if (!alreadyJournaled) {
+    appendBacklogArchiveRecord(root, {
+      id: generateArchiveId(),
+      target: id,
+      reason: trimmedReason,
+      at: updated.resolved_at,
+    });
+  }
   saveBacklog(root, {
     schema_version: backlog.schema_version,
     items: backlog.items.map((item) => (item.id === id ? updated : item)),
