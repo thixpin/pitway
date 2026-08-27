@@ -20,8 +20,8 @@ To change anything: the matching `pitway` command.
 
 Pick the smallest that fits:
 
-- **`quick-change`** — a small, bounded fix against an already-completed
-  milestone, one atomic commit, no architecture/schema/API/dependency/
+- **`quick-change`** — a small, bounded fix, whenever `active_milestone`
+  is `null`, one atomic commit, no architecture/schema/API/dependency/
   security/migration/multi-subsystem impact (`commands/quick-change.md`).
 - **`task-add`** — discovered work that belongs inside a `confirmed`/
   `in_progress` milestone's own task graph, mid-flight, without a new
@@ -63,6 +63,23 @@ The reason is required, hashed/locked at `approve` time, and visible
 in `quick-change status --json`. The exemption is the *only* sanctioned
 bypass; do not fabricate a synthetic failing test to satisfy the gate —
 mark the change exempt and justify it.
+
+For a defect fix specifically, `commands/quick-change.md` wraps this same
+RED→GREEN discipline with the `bug-fix` skill's investigate/reproduce
+steps ahead of `create`, and the human-approval gate below ahead of
+`commit` — that command doc has the full ordered sequence.
+
+**Human approval is required before `quick-change commit`, same as
+`milestone-confirm` (B021).** Present the diff (or a summary of it) and
+the run history, and wait for the developer's explicit yes in this
+conversation before invoking `commit` — never on agent judgment, auto-run
+authorization, or because the original bug report already asked for a
+fix (that request authorized the investigation, not the commit). Honest
+limit, same as `milestone-confirm`'s: PitWay installs and pins this
+wording but cannot mechanically verify that a live session obeys it —
+`quick-change commit` itself checks status, run history, and RED→GREEN
+evidence, never whether a human actually approved. A violation is
+detected in review, not prevented at runtime.
 
 ## Verification discipline
 
@@ -340,10 +357,10 @@ Tiers, most relevant during an auto-continue run through a task graph:
   code, scope, architecture, public behavior, or roadmap commitment.
 - **Mandatory developer gate** — never overridden by auto-run
   authorization: milestone confirmation/completion and contract/task
-  amendments, scope or dependency expansion, adopting or scheduling a new
-  mechanism, public API/schema/dependency/security/Git-safety/release
-  changes, destructive or irreversible actions, materially ambiguous
-  trade-offs.
+  amendments, a quick-change's final commit, scope or dependency
+  expansion, adopting or scheduling a new mechanism, public
+  API/schema/dependency/security/Git-safety/release changes, destructive
+  or irreversible actions, materially ambiguous trade-offs.
 
 Every autonomous or batch-reported decision keeps concise evidence and
 rationale for the milestone report — nothing decided without a pause is
@@ -376,6 +393,14 @@ implied by "keep going," never inferred from a subagent's report:
   entry), and wait for approval before `milestone-confirm --amend` or
   resuming task work. Never silently expand scope to route around a
   blocker.
+- **`quick-change commit`**: present the diff (or its summary) and run
+  history, and wait for the developer's explicit yes before invoking it —
+  the same rule as `milestone-confirm`, spelled out in "Quick-change TDD
+  discipline" above. If investigation instead reveals schema/API,
+  dependency, security, migration, multi-subsystem, or architectural
+  impact, stop and run `quick-change promote` to convert the work into a
+  Milestone proposal instead of asking for a commit approval it no longer
+  qualifies for.
 
 ## Reports, tools, and coordination
 
