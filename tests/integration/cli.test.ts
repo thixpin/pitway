@@ -17,6 +17,7 @@ const ALL_COMMAND_NAMES = [
   'milestone-cancel',
   'milestone-complete',
   'milestone-confirm',
+  'milestone-current',
   'milestone-list',
   'milestone-merge',
   'milestone-review',
@@ -131,6 +132,7 @@ describe('registerAllCommands', () => {
     ['milestone-cancel', 'ms-cancel'],
     ['milestone-complete', 'ms-complete'],
     ['milestone-confirm', 'ms-confirm'],
+    ['milestone-current', 'ms-current'],
     ['milestone-list', 'ms-list'],
     ['milestone-merge', 'ms-merge'],
     ['milestone-review', 'ms-review'],
@@ -172,13 +174,13 @@ describe('registerAllCommands', () => {
     },
   );
 
-  // Scope is fixed to exactly the 8 named milestone-* commands (the original
-  // 7 from M019/AC013, plus milestone-merge/ms-merge added by qc-7e6fb2a4)
-  // -- no task-* command gains an alias, and auto-run/quick-change/backlog/
-  // resume/etc. are unchanged. A single assertion over every registered
-  // command's own alias set proves no alias exists outside the 8 declared
-  // above.
-  it('registers no alias anywhere outside the 8 named milestone-* commands', () => {
+  // Scope is fixed to exactly the 9 named milestone-* commands (the original
+  // 7 from M019/AC013, plus milestone-merge/ms-merge added by qc-7e6fb2a4,
+  // plus milestone-current/ms-current added by qc-7a3bf0b4) -- no task-*
+  // command gains an alias, and auto-run/quick-change/backlog/resume/etc.
+  // are unchanged. A single assertion over every registered command's own
+  // alias set proves no alias exists outside the 9 declared above.
+  it('registers no alias anywhere outside the 9 named milestone-* commands', () => {
     const program = buildCli();
     registerAllCommands(program, {});
     const actualAliasPairs = program.commands

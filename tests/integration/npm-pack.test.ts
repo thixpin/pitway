@@ -49,6 +49,7 @@ const ALL_COMMAND_NAMES = [
   'milestone-cancel',
   'milestone-complete',
   'milestone-confirm',
+  'milestone-current',
   'milestone-list',
   'milestone-review',
   'milestone-status',
