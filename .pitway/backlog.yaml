@@ -714,3 +714,17 @@ items:
     resolved_at: null
     promoted_to: null
     archived_reason: null
+  - id: B036
+    title: "M037 rebuild spot-check: live backlog add with no active milestone"
+    reason: T002 live verification after rebuilding+reinstalling pitway from repo
+      source (session discovered the global pitway binary was disconnected from
+      this repo).
+    status: archived
+    source:
+      milestone: null
+      task: null
+    created_at: 2026-08-27T09:08:32.392Z
+    resolved_at: 2026-08-27T09:09:38.483Z
+    promoted_to: null
+    archived_reason: Spot-check artifact from live-verifying T002 after
+      rebuilding/reinstalling pitway; not real work, no promotion needed.
