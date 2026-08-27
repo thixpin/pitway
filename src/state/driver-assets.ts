@@ -3,13 +3,17 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // M023/T001/AC002: driver-then-common asset resolution. Text assets ship in
-// two tiers: src/integrations/common/ holds every genuinely driver-agnostic
-// asset (skills, protocol docs), and src/integrations/<driver>/ holds that
-// driver's own driver-specific assets (its command docs) plus any override
-// of a common asset at the same relative path. Resolution is a flat, static,
-// two-tier lookup over a hardcoded driver list -- no dynamic driver
-// discovery or registration, no manifest file, no template engine, no
-// translation/compile step, no plugin or adapter framework.
+// two tiers: src/integrations/common/ holds the canonical copy of every
+// asset (skills, protocol docs, and -- since M038/T001 -- the command docs
+// under common/commands/), and src/integrations/<driver>/ holds only
+// whole-file overrides of a common asset at the same relative path, for a
+// driver whose content genuinely differs (today only claude/commands/, for
+// Claude Code's argument-hint frontmatter; codex and opencode override
+// nothing and ship no directory at all -- a missing driver directory simply
+// means "no overrides"). Resolution is a flat, static, two-tier lookup over
+// a hardcoded driver list -- no dynamic driver discovery or registration,
+// no manifest file, no template engine, no translation/compile step, no
+// plugin or adapter framework.
 export const DRIVERS = ['claude', 'opencode', 'codex'] as const;
 export type Driver = (typeof DRIVERS)[number];
 

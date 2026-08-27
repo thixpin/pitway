@@ -1,22 +1,25 @@
 #!/usr/bin/env node
-// Copies every file under src/integrations/claude/ to dist/integrations/claude/,
-// preserving relative layout. `tsc` only emits compiled .ts sources -- it does
-// not copy the Markdown assets that ship alongside them -- so this script runs
-// as the second half of the `build` script (see package.json). It discovers
-// files recursively at run time (mirroring src/state/claude-assets.ts's own
-// listMarkdownAssets walk) rather than hard-coding a file count or list, so a
-// later task's new asset under src/integrations/claude/ is copied automatically
-// with no change here.
+// Copies every file under src/integrations/ to dist/integrations/, preserving
+// relative layout. `tsc` only emits compiled .ts sources -- it does not copy
+// the Markdown assets that ship alongside them -- so this script runs as the
+// second half of the `build` script (see package.json). It discovers files
+// recursively at run time (mirroring src/state/driver-assets.ts's own
+// listMarkdownAssets walk) rather than hard-coding a file count, tier list,
+// or driver list, so a new asset -- or a driver directory that appears or
+// disappears (M038/T001: only claude/ and common/ ship today) -- is handled
+// automatically with no change here.
 import { existsSync, mkdirSync, readdirSync, copyFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..');
-// M023/T001: copies the whole integrations tree (claude/, common/, and any
-// future driver directory) -- dist/state/driver-assets.js resolves assets
-// from dist/integrations/<driver>/ and dist/integrations/common/, so both
-// tiers must ship.
+// M023/T001: copies the whole integrations tree (common/, claude/, and any
+// future driver override directory) -- dist/state/driver-assets.js resolves
+// assets from dist/integrations/<driver>/ and dist/integrations/common/, so
+// both tiers must ship. Note: this copy never removes stale files already
+// under dist/integrations/ (dist/ is gitignored and rebuilt from scratch on
+// publish).
 const sourceDir = join(repoRoot, 'src', 'integrations');
 const destDir = join(repoRoot, 'dist', 'integrations');
 

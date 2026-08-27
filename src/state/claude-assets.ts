@@ -8,11 +8,12 @@ import {
   type DriverAssetClassification,
 } from './driver-assets.js';
 
-// M023/T001: the Claude Code asset surface. The shipped sources now live in
-// two tiers -- src/integrations/common/ (driver-agnostic skills and protocol
-// docs) and src/integrations/claude/ (Claude Code's own command docs, plus
-// any override of a common asset) -- resolved by src/state/driver-assets.ts's
-// driver-then-common fallback. Every exported function here keeps its
+// M023/T001: the Claude Code asset surface. The shipped sources live in two
+// tiers -- src/integrations/common/ (the canonical skills, protocol docs,
+// and command docs) and src/integrations/claude/ (whole-file command-doc
+// overrides carrying Claude Code's own argument-hint frontmatter, bodies
+// byte-identical to common/'s; M038/T001) -- resolved by
+// src/state/driver-assets.ts's driver-then-common fallback. Every exported function here keeps its
 // pre-M023 name and signature; the installed .claude/ output stays
 // byte-for-byte identical. Assets install verbatim, never generated or
 // transformed.

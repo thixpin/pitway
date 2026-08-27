@@ -469,7 +469,7 @@ tasks:
       src/integrations/ (a body change would invalidate the pinned-sha256
       manifest and is out of scope); if a doc under src/integrations/ turns out
       to be stale, stop and report rather than editing. No behavior change."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -503,7 +503,22 @@ tasks:
       detail: Read the diff for AGENTS.md, README.md, and each listed comment block;
         confirm CT007's criteria and that git diff --stat shows nothing under
         src/integrations/.
-    result: null
+    result:
+      summary: "[truncated] ory means no overrides, and that the copy step never
+        prunes stale dist/ files). src/git/safety.ts's comment block and
+        src/state/journal-operations.ts were already rewritten in T002 and
+        re-read here: neither claims safety.ts depends on State/Core. Nothing
+        under src/integrations/ modified."
+      evidence: git diff --stat -- src/integrations is empty. npx vitest run
+        tests/unit/claude-assets.test.ts green (pinned sha256 migration manifest
+        unmodified and passing). Stale-claim grep over AGENTS.md, README.md,
+        USAGE.md, src/, scripts/ for per-driver command-doc wording and
+        'safety.ts already depends on the State layer' returns only correct
+        statements (install destination paths; confirm.ts's
+        Core-depends-on-State note).
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T004
     name: Run the full verification gate
@@ -511,7 +526,7 @@ tasks:
       run build && npm test from a clean tree. No code changes are expected; if
       anything fails, stop and report -- do not fix here, the fix belongs to the
       owning task via the normal blocked/failed path."
-    status: waiting
+    status: ready
     depends_on:
       - T003
     acceptance_criteria:

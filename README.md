@@ -98,7 +98,7 @@ pitway --help
 
 For a hands-on walkthrough of the whole workflow — drafting a contract, confirming a milestone, working a task through to completion — see [USAGE.md](./USAGE.md).
 
-> 💡 **Driver Support:** Claude Code (installed by default), OpenCode (opt-in), and Codex (opt-in) driver integrations ship as text assets from a shared common layer — skills and protocol documents are defined once and resolved per driver. PitWay's Core remains provider-agnostic.
+> 💡 **Driver Support:** Claude Code (installed by default), OpenCode (opt-in), and Codex (opt-in) driver integrations ship as text assets from a shared common layer — skills, protocol documents, and command docs are defined once and resolved per driver (Claude Code carries whole-file command overrides only for its own `argument-hint` frontmatter). PitWay's Core remains provider-agnostic.
 
 > ⚠️ **What PitWay enforces vs what relies on driver discipline.** Mechanically enforced: the state machines, `write_scope` boundaries, verification gates, commit trailers, and git-safety checks — no driver can bypass these through the CLI. Installed-instruction-only: stopping for human approval gates, driver-presented progress footers, and bounded worker reports are mandated by the installed protocol documents every driver loads, but PitWay cannot observe a live session's obedience — violations surface in review/audit, never at runtime.
 
@@ -109,8 +109,8 @@ For a hands-on walkthrough of the whole workflow — drafting a contract, confir
 - **Command Reference:** Run `pitway --help` for the full, authoritative CLI command surface and available flags. The `milestone-*` commands also answer to shorter `ms-*` aliases (`pitway ms-status`, `ms-confirm`, `ms-merge`, …).
 - **Usage Guide:** See [USAGE.md](./USAGE.md) for a hands-on walkthrough — installation, your first milestone end to end, inspecting state, mid-flight corrections, and a full command reference table.
 - **Claude Code:** `pitway init` installs PitWay's commands as real Claude Code slash commands (`.claude/commands/*.md`, each carrying `description`/`argument-hint` metadata for the `/` picker), alongside the driver protocol documents that explain how and when to use them.
-- **OpenCode:** `pitway init --opencode` installs the same command surface in OpenCode's own convention (`.opencode/commands/*.md`) plus the shared skills and protocol documents. Skills and protocol content come from the common layer — defined once, never forked per driver.
-- **Codex:** `pitway init --codex` installs the same command surface in Codex's convention (`.codex/commands/*.md`) plus the shared skills and protocol documents. Skills and protocol content come from the common layer — defined once, never forked per driver.
+- **OpenCode:** `pitway init --opencode` installs the same command surface in OpenCode's own convention (`.opencode/commands/*.md`) plus the shared skills and protocol documents. Command docs, skills, and protocol content all come from the common layer — defined once, never forked per driver.
+- **Codex:** `pitway init --codex` installs the same command surface in Codex's convention (`.codex/commands/*.md`) plus the shared skills and protocol documents. Command docs, skills, and protocol content all come from the common layer — defined once, never forked per driver.
 
 ---
 
