@@ -55,7 +55,7 @@ tasks:
       --opencode/--codex must report zero drift when classified by the POST-move
       code (classifyDriverAssets all 'identical'). Do not reword any doc body;
       do not touch src/state/driver-assets.ts's resolution rule."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - src/integrations/common/commands/ holds 32 docs in quoted
@@ -288,7 +288,18 @@ tasks:
         tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
         tests/integration/multi-driver-assets.test.ts
         tests/integration/build-bin.test.ts tests/integration/init.test.ts
-    result: null
+    result:
+      summary: "[truncated] dy reworded; driver-assets.ts untouched. Observation for
+        the report: scripts/copy-claude-assets.mjs does not clean
+        dist/integrations/, so a stale codex/ or opencode/ dir from an earlier
+        build survives locally (dist is gitignored; content would be identical
+        anyway, so no behavior effect)."
+      evidence: Tests  430 passed (430) | Start at  22:51:06 | Duration  6.83s
+        (transform 1.19s, setup 0ms, import 1.73s, tests 10.40s, environment
+        0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T002
     name: Fix state/journal cycle and make git/safety a pure Git layer

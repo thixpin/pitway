@@ -34,8 +34,11 @@ function sourceDriverDir(driver: string): string {
   return new URL(`../../src/integrations/${driver}/`, import.meta.url).pathname;
 }
 
-// Recursively lists every file under `dir`, relative to `dir`, sorted.
+// Recursively lists every file under `dir`, relative to `dir`, sorted. A
+// missing directory lists as empty: since M038/T001 a driver that overrides
+// nothing (codex, opencode) ships no directory at all.
 function listFilesRecursive(dir: string): string[] {
+  if (!existsSync(dir)) return [];
   const entries = readdirSync(dir, { withFileTypes: true });
   const files: string[] = [];
   for (const entry of entries) {
@@ -65,13 +68,16 @@ function findStrayOverrides(driverFiles: string[], commonFiles: string[]): strin
 }
 
 describe('multi-driver source resolution (AC008)', () => {
-  it('resolves every logical asset to the correct source tier for both drivers', () => {
+  it('resolves every logical asset to the correct source tier for every driver', () => {
     const commonFiles = listFilesRecursive(commonDir);
     expect(commonFiles.length).toBeGreaterThan(0);
     for (const driver of DRIVERS) {
       const driverDir = sourceDriverDir(driver);
       const driverFiles = listFilesRecursive(driverDir);
-      expect(driverFiles.length).toBeGreaterThan(0);
+      // M038/T001 (AC001): only claude ships overrides; codex and opencode
+      // ship no driver directory and resolve entirely to common/.
+      if (driver === 'claude') expect(driverFiles.length).toBeGreaterThan(0);
+      else expect(driverFiles).toEqual([]);
 
       // The resolved logical set is exactly the union of the two tiers,
       // re-derived from disk here, independent of the module's own glob.
@@ -90,24 +96,23 @@ describe('multi-driver source resolution (AC008)', () => {
     }
   });
 
-  it('command docs come from each driver\'s own directory; skills and protocol docs from common/, for both drivers', () => {
+  it('claude command docs come from claude/ overrides; codex and opencode command docs, and every skill and protocol doc, come from common/', () => {
     const commonFiles = listFilesRecursive(commonDir);
-    // No command doc lives in the common tier -- commands are inherently
-    // driver-specific (each driver's own frontmatter convention).
-    expect(commonFiles.some((f) => f.startsWith('commands/'))).toBe(false);
+    // M038/T001 (AC001): the canonical shared body of every command doc
+    // lives once in the common tier.
+    expect(commonFiles.some((f) => f.startsWith('commands/'))).toBe(true);
 
     for (const driver of DRIVERS) {
       const driverDir = sourceDriverDir(driver);
       for (const asset of resolveDriverAssets(driver)) {
         const source = resolveDriverAssetSource(driver, asset);
-        if (asset.startsWith('commands/')) {
-          // Claude command docs from claude/, OpenCode command docs from
-          // opencode/ -- never cross-driver, never common.
+        if (asset.startsWith('commands/') && driver === 'claude') {
+          // Claude Code keeps a whole-file override per command doc, because
+          // its frontmatter (argument-hint) genuinely differs.
           expect(source).toBe(join(driverDir, asset));
         } else {
-          // Skills (skills/**, including NOTICE.md) and the root-level
-          // protocol docs resolve to common/ for BOTH drivers (AC005: no
-          // skill/protocol overrides shipped).
+          // Skills (skills/**, including NOTICE.md), the root-level protocol
+          // docs, and the codex/opencode command docs resolve to common/.
           expect(source).toBe(join(commonDir, asset));
         }
       }
@@ -115,17 +120,18 @@ describe('multi-driver source resolution (AC008)', () => {
   });
 
   it('all drivers ship the same command-doc set, derived by glob, never a hardcoded count', () => {
-    const allCommands = DRIVERS.map((driver) =>
-      listFilesRecursive(sourceDriverDir(driver)).filter((f) => f.startsWith('commands/')),
-    );
-    const [claudeCommands] = allCommands;
-    expect(claudeCommands!.length).toBeGreaterThan(0);
-    // AC005: every driver's command set mirrors Claude Code's command docs
-    // one-for-one (same relative filenames, including the ms-*.md aliases).
-    for (const commands of allCommands) {
-      expect(commands).toEqual(claudeCommands);
+    const commonCommands = listFilesRecursive(commonDir).filter((f) => f.startsWith('commands/'));
+    expect(commonCommands.length).toBeGreaterThan(0);
+    // AC005 / M038: every driver's resolved command set mirrors the common
+    // tier one-for-one (same relative filenames, including the ms-*.md
+    // aliases); claude's overrides shadow exactly that set, no more, no less.
+    for (const driver of DRIVERS) {
+      expect(resolveDriverAssets(driver).filter((f) => f.startsWith('commands/'))).toEqual(commonCommands);
     }
-    expect(claudeCommands!.some((f) => /^commands\/ms-[^/]+\.md$/.test(f))).toBe(true);
+    expect(
+      listFilesRecursive(sourceDriverDir('claude')).filter((f) => f.startsWith('commands/')),
+    ).toEqual(commonCommands);
+    expect(commonCommands.some((f) => /^commands\/ms-[^/]+\.md$/.test(f))).toBe(true);
   });
 });
 

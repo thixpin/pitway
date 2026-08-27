@@ -665,3 +665,45 @@ describe('driver-then-common resolution equivalence (durable invariant)', () => 
     );
   });
 });
+
+// M038/T001 (AC001, AC003): the canonical shared body of every command doc
+// lives once under common/commands/; Claude Code keeps a whole-file override
+// per command only because its frontmatter (argument-hint) genuinely
+// differs. Each override's body must stay byte-identical to its common/
+// counterpart, and its description must match -- the parity invariant that
+// replaced the old per-driver triplication.
+describe('M038 claude command overrides stay in parity with common/commands (AC001, AC003)', () => {
+  const claudeCommandsDir = fileURLToPath(new URL('../../src/integrations/claude/commands/', import.meta.url));
+  const commonCommandsDir = fileURLToPath(new URL('../../src/integrations/common/commands/', import.meta.url));
+  const commonCommandDocs = listMarkdownFiles(commonCommandsDir);
+
+  function split(text: string): { description: string; body: string } {
+    const match = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(text);
+    expect(match).not.toBeNull();
+    const description = /^description:\s*"?(.*?)"?$/m.exec(match![1]!);
+    expect(description).not.toBeNull();
+    return { description: description![1]!, body: match![2]! };
+  }
+
+  it('common/commands/ ships a command doc set, and claude/commands/ overrides exactly that set', () => {
+    expect(commonCommandDocs.length).toBeGreaterThan(0);
+    expect(listMarkdownFiles(claudeCommandsDir)).toEqual(commonCommandDocs);
+  });
+
+  it.each(commonCommandDocs.map((doc) => [doc]))(
+    'claude/commands/%s: body byte-identical to common/, description matching, frontmatter genuinely driver-specific',
+    (doc) => {
+      const claudeText = readFileSync(join(claudeCommandsDir, doc), 'utf8');
+      const commonText = readFileSync(join(commonCommandsDir, doc), 'utf8');
+      const claude = split(claudeText);
+      const common = split(commonText);
+      expect(claude.body).toBe(common.body);
+      expect(claude.description).toBe(common.description);
+      // The override earns its existence only by differing in frontmatter:
+      // Claude Code's own lenient unquoted-description convention, plus
+      // argument-hint on every command that takes arguments. A byte-identical
+      // override would be pure duplication and must fall back to common/.
+      expect(claudeText).not.toBe(commonText);
+    },
+  );
+});
