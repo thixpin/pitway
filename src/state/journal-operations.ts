@@ -3,7 +3,14 @@ import type {
   JournalEntry,
   JournalOperationType,
   JournalRecord,
-} from '../../state/journal.js';
+} from './journal.js';
+
+// M038/T002 (AC004): pure helpers over already-read journal records. They
+// lived in src/core/journal/operations.ts until src/state/journal.ts's own
+// need for derivePending/resolveTargetPath made State import Core -- an
+// upward edge in the declared CLI -> Core -> State + Git layering. They are
+// State-layer knowledge (what a journal entry is, which state file it maps
+// to), so they live here now. Zero fs/path imports, layering-tested.
 
 export class JournalValidationError extends Error {}
 
@@ -50,8 +57,9 @@ export function buildJournalEntry(input: BuildJournalEntryInput): Omit<JournalEn
 // self-healing recovery to compare on-disk content against what a commit at
 // HEAD actually committed. Pure — zero fs/path imports (layering-tested).
 // `milestoneDir` is the already-resolved directory name (bare or slugged);
-// resolving it is the caller's job (src/state/journal.ts, src/git/safety.ts
-// — both already State-layer-adjacent), keeping this module free of any I/O.
+// resolving it is the caller's job (src/state/journal.ts's reconcilePending
+// and src/core/journal/pending-targets.ts), keeping this module free of any
+// I/O.
 export function resolveTargetPath(
   entry: Pick<JournalEntry, 'type'>,
   milestoneDir: string,

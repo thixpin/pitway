@@ -10,7 +10,7 @@ import { promoteBacklogItem } from '../../src/core/backlog/promote.js';
 import { archiveBacklogItem } from '../../src/core/backlog/archive.js';
 import { listBacklogItems } from '../../src/core/backlog/list.js';
 import { showBacklogItem } from '../../src/core/backlog/show.js';
-import { derivePending } from '../../src/core/journal/operations.js';
+import { derivePending } from '../../src/state/journal-operations.js';
 import { appendBacklogArchiveRecord, readJournal, type JournalEntry } from '../../src/state/journal.js';
 import { loadBacklog } from '../../src/state/store.js';
 import { createTaskWorktree } from '../../src/git/worktree.js';

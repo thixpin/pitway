@@ -2,6 +2,7 @@ import { assertOnMilestoneBranch } from '../../git/branch.js';
 import { commitOrResume } from '../../git/commit-or-resume.js';
 import { git } from '../../git/exec.js';
 import { checkWorkingTreeClean, classifyDirtyPaths } from '../../git/safety.js';
+import { resolvePendingJournalTargets } from '../journal/pending-targets.js';
 import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
 import { parseContractFile } from '../../state/contract-file.js';
 import { reconcilePending } from '../../state/journal.js';
@@ -187,7 +188,7 @@ export function completeMilestone(root: string, milestoneId: string): MilestoneC
   // entry (usage-add / milestone-confirm --amend, both immediate-write, no
   // commit of their own) is expected to ride along in this completion
   // commit rather than being refused as unrelated dirt.
-  const journalExpected = classifyDirtyPaths(root, { journalMilestone: milestoneId }).expected;
+  const journalExpected = classifyDirtyPaths(root, { journalTargetPaths: resolvePendingJournalTargets(root, milestoneId) }).expected;
   const expectedPaths = [
     ...new Set([...completionPaths(root, milestoneId), '.pitway/backlog.yaml', ...journalExpected]),
   ];

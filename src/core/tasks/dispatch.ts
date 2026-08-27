@@ -7,7 +7,7 @@ import {
   type JournalRecord,
   type JournalWorktreeDispatch,
 } from '../../state/journal.js';
-import { derivePending } from '../journal/operations.js';
+import { derivePending } from '../../state/journal-operations.js';
 import { createTaskWorktree, taskBranchName, taskWorktreePath } from '../../git/worktree.js';
 import { git } from '../../git/exec.js';
 import { checkParallelEligibility } from './parallel-eligibility.js';

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveContract, saveState, saveTasks, saveVerificationResults } from '../../src/state/store.js';
 import { appendJournalEntry, readJournal, reconcilePending } from '../../src/state/journal.js';
-import { derivePending, resolveTargetPath } from '../../src/core/journal/operations.js';
+import { derivePending, resolveTargetPath } from '../../src/state/journal-operations.js';
 import { buildCli } from '../../src/cli/index.js';
 import { registerAutoRunCommand } from '../../src/cli/commands/auto-run.js';
 import type { ContractFrontmatter } from '../../src/state/schemas.js';

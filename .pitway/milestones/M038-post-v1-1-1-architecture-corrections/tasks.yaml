@@ -354,7 +354,7 @@ tasks:
       from ../core/ and src/git/safety.ts contains no import from ../state/ or
       ../core/. TDD: write the direction test first (RED), then move code
       (GREEN)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - src/core/journal/operations.ts no longer exists; derivePending,
@@ -398,6 +398,9 @@ tasks:
       - tests/integration/milestone-confirm.test.ts
       - tests/integration/auto-run.test.ts
       - tests/integration/task-update.test.ts
+      - src/core/tasks/amend.ts
+      - src/core/tasks/dispatch.ts
+      - src/core/milestones/confirm.ts
     write_scope:
       - src/core/journal/operations.ts
       - src/core/journal/pending-targets.ts
@@ -422,6 +425,9 @@ tasks:
       - tests/integration/milestone-confirm.test.ts
       - tests/integration/auto-run.test.ts
       - tests/integration/task-update.test.ts
+      - src/core/tasks/amend.ts
+      - src/core/tasks/dispatch.ts
+      - src/core/milestones/confirm.ts
     verification:
       strategy: command
       detail: npx vitest run tests/unit/git-safety.test.ts tests/unit/journal.test.ts
@@ -430,7 +436,18 @@ tasks:
         tests/integration/task-update.test.ts
         tests/integration/task-verify.test.ts
         tests/integration/milestone-complete.test.ts
-    result: null
+    result:
+      summary: "[truncated] ointed/backlog
+        root-level/unresolvable-dir/slugged-dir/dedup; journal.test.ts keeps the
+        core/journal no-fs check and adds the same for the State module;
+        git-safety.test.ts's journal cases now feed journalTargetPaths from the
+        Core helper with unchanged expectations. No CLI output touched."
+      evidence: Tests  236 passed (236) | Start at  22:56:34 | Duration  65.74s
+        (transform 1.94s, setup 0ms, import 3.14s, tests 135.18s, environment
+        0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T003
     name: Update layout and layering documentation
@@ -452,7 +469,7 @@ tasks:
       src/integrations/ (a body change would invalidate the pinned-sha256
       manifest and is out of scope); if a doc under src/integrations/ turns out
       to be stale, stop and report rather than editing. No behavior change."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002

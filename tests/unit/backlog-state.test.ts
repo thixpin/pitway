@@ -13,7 +13,7 @@ import {
   JournalError,
   readJournal,
 } from '../../src/state/journal.js';
-import { derivePending } from '../../src/core/journal/operations.js';
+import { derivePending } from '../../src/state/journal-operations.js';
 
 const ALL_STATUSES: BacklogStatus[] = ['pending', 'promoted', 'archived'];
 

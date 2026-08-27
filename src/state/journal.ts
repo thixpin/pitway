@@ -5,7 +5,7 @@ import { parse, stringify } from 'yaml';
 import { z } from 'zod';
 import { git } from '../git/exec.js';
 import { resolvePitwayJournalPath } from '../git/paths.js';
-import { derivePending, resolveTargetPath } from '../core/journal/operations.js';
+import { derivePending, resolveTargetPath } from './journal-operations.js';
 import { formatIssues } from './contract-file.js';
 import { resolveMilestoneDirName } from './store.js';
 

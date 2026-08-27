@@ -1,7 +1,4 @@
 import { assertGitWorkTree, git, GitError } from './exec.js';
-import { readJournal } from '../state/journal.js';
-import { resolveMilestoneDirName } from '../state/store.js';
-import { derivePending, resolveTargetPath } from '../core/journal/operations.js';
 
 export { GitError };
 
@@ -44,11 +41,13 @@ export interface ClassifyDirtyPathsOptions {
   // tasks.yaml / verification-results.yaml). Always expected, independent
   // of taskWriteScope/verifiedCleanStart.
   pendingTransitionPaths?: string[];
-  // Milestone id to check for pending journal entries (see
-  // src/state/journal.ts) whose target files should also be classified
-  // expected. Journal entries checkpointed by a commit are no longer
-  // pending and stop counting.
-  journalMilestone?: string;
+  // Repo-relative target files of the active milestone's pending journal
+  // entries, already resolved by the caller (Core's
+  // resolvePendingJournalTargets in src/core/journal/pending-targets.ts).
+  // Always expected, independent of taskWriteScope/verifiedCleanStart.
+  // This module never reads the journal itself (M038/T002): it stays a
+  // pure Git classification layer fed from above.
+  journalTargetPaths?: string[];
 }
 
 // Classifies each path reported by checkWorkingTreeClean as expected or
@@ -63,9 +62,9 @@ export interface ClassifyDirtyPathsOptions {
 //   the task must have actually started from a verified clean tree for its
 //   write scope to mean anything.
 // - A path is expected when it appears in pendingTransitionPaths (an
-//   ordinary pending task_transition/verification_result write) or when it
-//   matches the target file of a pending journal entry for
-//   journalMilestone (T001) — both regardless of taskWriteScope/
+//   ordinary pending task_transition/verification_result write) or in
+//   journalTargetPaths (the target file of a pending journal entry, T001,
+//   resolved by the caller) — both regardless of taskWriteScope/
 //   verifiedCleanStart.
 // - Everything else is unexpected.
 //
@@ -84,25 +83,7 @@ export function classifyDirtyPaths(
   const writeScope = new Set(options.taskWriteScope ?? []);
   const pendingTransitionPaths = new Set(options.pendingTransitionPaths ?? []);
 
-  let journalTargets = new Set<string>();
-  if (options.journalMilestone !== undefined) {
-    const milestone = options.journalMilestone;
-    const pending = derivePending(readJournal(cwd)).filter((entry) => entry.milestone === milestone);
-    if (pending.length > 0) {
-      try {
-        // safety.ts already depends on the State layer (readJournal/
-        // derivePending above) — resolving the milestone directory here
-        // extends that existing dependency rather than introducing a new
-        // one (unlike src/git/baseline.ts, which stays State-free and
-        // receives an already-resolved directory from its Core caller).
-        const milestoneDir = resolveMilestoneDirName(cwd, milestone);
-        journalTargets = new Set(pending.map((entry) => resolveTargetPath(entry, milestoneDir)));
-      } catch {
-        // Directory not resolvable — no journal-pending paths can be
-        // classified expected; everything falls through to the other rules.
-      }
-    }
-  }
+  const journalTargets = new Set(options.journalTargetPaths ?? []);
 
   const expected: string[] = [];
   const unexpected: string[] = [];

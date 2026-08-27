@@ -4,7 +4,7 @@ import { formatIssues } from '../../state/contract-file.js';
 import { appendJournalEntry, readJournal, type JournalEntry } from '../../state/journal.js';
 import { taskSchema, type Task } from '../../state/schemas.js';
 import { loadContract, loadState, loadTasks, readInputFile, saveTasks } from '../../state/store.js';
-import { derivePending } from '../journal/operations.js';
+import { derivePending } from '../../state/journal-operations.js';
 
 export class TaskAmendError extends Error {}
 

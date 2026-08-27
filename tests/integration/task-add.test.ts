@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCli, registerAllCommands } from '../../src/cli/index.js';
 import { registerTaskAddCommand } from '../../src/cli/commands/task-add.js';
-import { derivePending } from '../../src/core/journal/operations.js';
+import { derivePending } from '../../src/state/journal-operations.js';
 import { readJournal, type JournalEntry } from '../../src/state/journal.js';
 import { loadConfig, loadTasks, saveConfig } from '../../src/state/store.js';
 import { WORKTREES_DIR } from '../../src/git/worktree.js';
