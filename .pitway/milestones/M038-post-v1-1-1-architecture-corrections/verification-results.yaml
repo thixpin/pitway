@@ -1,2 +1,71 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-27T16:02:32Z
+    evidence: Tests  328 passed (328) | Start at  23:02:32 | Duration  359ms
+      (transform 128ms, setup 0ms, import 209ms, tests 329ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 961
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-27T16:02:39Z
+    evidence: Tests  102 passed (102) | Start at  23:02:32 | Duration  6.96s
+      (transform 981ms, setup 0ms, import 1.33s, tests 10.32s, environment 0ms)
+    recorded_by: command
+    duration_ms: 7354
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-27T16:02:46Z
+    evidence: Tests  388 passed (388) | Start at  23:02:40 | Duration  6.56s
+      (transform 639ms, setup 0ms, import 908ms, tests 6.92s, environment 0ms)
+    recorded_by: command
+    duration_ms: 6968
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-27T16:02:58Z
+    evidence: Tests  80 passed (80) | Start at  23:02:47 | Duration  11.38s
+      (transform 114ms, setup 0ms, import 232ms, tests 12.02s, environment 0ms)
+    recorded_by: command
+    duration_ms: 11763
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-27T16:04:13Z
+    evidence: Tests  144 passed (144) | Start at  23:02:59 | Duration  74.22s
+      (transform 1.15s, setup 0ms, import 1.74s, tests 134.09s, environment 0ms)
+    recorded_by: command
+    duration_ms: 74775
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-27T16:04:24Z
+    evidence: Tests  80 passed (80) | Start at  23:04:13 | Duration  11.02s
+      (transform 138ms, setup 0ms, import 298ms, tests 14.26s, environment 0ms)
+    recorded_by: command
+    duration_ms: 11592
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-27T16:07:33Z
+    evidence: Tests  2164 passed (2164) | Start at  23:04:25 | Duration  187.52s
+      (transform 4.95s, setup 0ms, import 22.43s, tests 1269.74s, environment
+      12ms)
+    recorded_by: command
+    duration_ms: 188421
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-27T16:18:39Z
+    evidence: "Architect review: AGENTS.md, README driver section, and header
+      comments in src/state/driver-assets.ts, src/state/claude-assets.ts,
+      scripts/copy-claude-assets.mjs, src/git/safety.ts,
+      src/state/journal-operations.ts read in full; none claims command docs
+      live per driver or that safety.ts depends on State/Core. Stale-claim grep
+      over AGENTS.md/README/USAGE/src/scripts returns only correct
+      install-destination statements. Developer approved closing M038 in
+      conversation."
+    recorded_by: developer

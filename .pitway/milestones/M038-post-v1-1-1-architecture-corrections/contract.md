@@ -2,7 +2,7 @@
 schema_version: 1
 id: M038
 title: Post-v1.1.1 Architecture Corrections
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-27T15:47:34Z
 verification_approved_hash: sha256:ddca97e49f4f4c6123433fba9e5fcbf8a04545ba4aff853cd4359bcebdf26999
