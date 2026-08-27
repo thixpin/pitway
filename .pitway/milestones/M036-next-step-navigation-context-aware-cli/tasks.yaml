@@ -172,7 +172,7 @@ tasks:
       \"-- run pitway verify <mId>\" when the check's type is \"command\", or
       \"-- run pitway verify <mId> --check <id> --pass|--fail --evidence
       <text>\" when its type is \"manual\" or \"review\"."
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - An incomplete task in status review names 'task-update <id> completed';
@@ -192,8 +192,18 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/integration/milestone-complete.test.ts
-    result: null
+    result:
+      summary: "[truncated] pdate <id> ready for blocked/failed, nothing fabricated
+        for other statuses; pitway verify <mId> for a missing/failing
+        command-type check, the --check --pass|--fail --evidence form for
+        manual/review-type checks. Independently reviewed the diff before
+        verifying. 4 new tests, 28/28 passing."
+      evidence: Tests  28 passed (28) | Start at  13:41:26 | Duration  24.45s
+        (transform 289ms, setup 0ms, import 417ms, tests 23.94s, environment
+        0ms)
     attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
     usage: null
   - id: T005
     name: Add verified recovery detail to resume's blocked/waiting entries
