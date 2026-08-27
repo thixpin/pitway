@@ -6,7 +6,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { GitError, checkWorkingTreeClean, classifyDirtyPaths } from '../../src/git/safety.js';
 import { assertGitWorkTree, git as execGit } from '../../src/git/exec.js';
 import { appendCheckpointMarker, appendJournalEntry } from '../../src/state/journal.js';
-import { resolveTargetPath } from '../../src/core/journal/operations.js';
+import { resolveTargetPath } from '../../src/state/journal-operations.js';
+import { resolvePendingJournalTargets } from '../../src/core/journal/pending-targets.js';
 
 let repo: string;
 
@@ -174,7 +175,7 @@ describe('classifyDirtyPaths', () => {
     });
 
     const relTarget = resolveTargetPath({ type: 'usage_recording' }, 'M005');
-    const result = classifyDirtyPaths(repo, { journalMilestone: 'M005' });
+    const result = classifyDirtyPaths(repo, { journalTargetPaths: resolvePendingJournalTargets(repo, 'M005') });
     expect(result.expected).toContain(relTarget);
     expect(result.unexpected).not.toContain(relTarget);
   });
@@ -194,7 +195,7 @@ describe('classifyDirtyPaths', () => {
     appendCheckpointMarker(repo, 'M005', 'op-usage-2', 'deadbeef');
 
     const relTarget = resolveTargetPath({ type: 'usage_recording' }, 'M005');
-    const result = classifyDirtyPaths(repo, { journalMilestone: 'M005' });
+    const result = classifyDirtyPaths(repo, { journalTargetPaths: resolvePendingJournalTargets(repo, 'M005') });
     expect(result.unexpected).toContain(relTarget);
     expect(result.expected).not.toContain(relTarget);
   });
@@ -213,7 +214,7 @@ describe('classifyDirtyPaths', () => {
     });
 
     const relTarget = resolveTargetPath({ type: 'usage_recording' }, 'M005');
-    const result = classifyDirtyPaths(repo, { journalMilestone: 'M006' });
+    const result = classifyDirtyPaths(repo, { journalTargetPaths: resolvePendingJournalTargets(repo, 'M006') });
     expect(result.unexpected).toContain(relTarget);
     expect(result.expected).not.toContain(relTarget);
   });
@@ -230,7 +231,7 @@ describe('classifyDirtyPaths', () => {
       taskWriteScope: ['src/thing.ts'],
       verifiedCleanStart: true,
       pendingTransitionPaths: ['tasks.yaml'],
-      journalMilestone: 'M005',
+      journalTargetPaths: resolvePendingJournalTargets(repo, 'M005'),
     });
     expect(result.expected).toEqual(['src/thing.ts']);
     expect(result.unexpected).toEqual(['stray.txt']);
@@ -262,9 +263,10 @@ describe('classifyDirtyPaths', () => {
   // M018/T002 (AC005): a pending backlog_recording entry's root-level
   // target (.pitway/backlog.yaml, not nested under any milestone
   // directory) is classified expected through the exact same generic
-  // journalMilestone allowlist as a milestone-nested target like
+  // journal-target allowlist as a milestone-nested target like
   // usage.yaml above -- no code change to classifyDirtyPaths was needed
-  // for this.
+  // for this. (M038/T002: the allowlist is now supplied as journalTargetPaths,
+  // resolved by Core's resolvePendingJournalTargets, not read by safety.ts.)
   it('classifies the root-level .pitway/backlog.yaml as expected via a pending backlog_recording entry', () => {
     mkdirSync(join(repo, '.pitway', 'milestones', 'M018'), { recursive: true });
     writeFileSync(join(repo, '.pitway', 'backlog.yaml'), 'schema_version: 1\nitems: []\n');
@@ -278,12 +280,12 @@ describe('classifyDirtyPaths', () => {
 
     const relTarget = resolveTargetPath({ type: 'backlog_recording' }, 'M018');
     expect(relTarget).toBe('.pitway/backlog.yaml');
-    const result = classifyDirtyPaths(repo, { journalMilestone: 'M018' });
+    const result = classifyDirtyPaths(repo, { journalTargetPaths: resolvePendingJournalTargets(repo, 'M018') });
     expect(result.expected).toContain(relTarget);
     expect(result.unexpected).not.toContain(relTarget);
   });
 
-  it('does not classify .pitway/backlog.yaml as expected for an unrelated journalMilestone', () => {
+  it('does not classify .pitway/backlog.yaml as expected for an unrelated milestone pending-target set', () => {
     mkdirSync(join(repo, '.pitway', 'milestones', 'M018'), { recursive: true });
     writeFileSync(join(repo, '.pitway', 'backlog.yaml'), 'schema_version: 1\nitems: []\n');
 
@@ -295,7 +297,7 @@ describe('classifyDirtyPaths', () => {
     });
 
     const relTarget = resolveTargetPath({ type: 'backlog_recording' }, 'M018');
-    const result = classifyDirtyPaths(repo, { journalMilestone: 'M019' });
+    const result = classifyDirtyPaths(repo, { journalTargetPaths: resolvePendingJournalTargets(repo, 'M019') });
     expect(result.unexpected).toContain(relTarget);
     expect(result.expected).not.toContain(relTarget);
   });

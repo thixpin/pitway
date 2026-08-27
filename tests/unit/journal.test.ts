@@ -23,7 +23,7 @@ import {
   derivePending,
   JournalValidationError,
   resolveTargetPath,
-} from '../../src/core/journal/operations.js';
+} from '../../src/state/journal-operations.js';
 import { composeMessage } from '../../src/git/trailers.js';
 
 function git(args: string[], cwd: string): string {
@@ -762,6 +762,14 @@ describe('saveJournalFile atomic write (temp-file-then-rename)', () => {
     expect(realTmpLeftovers).toEqual([]);
 
     rmSync(strayTmpPath);
+  });
+});
+
+describe('layering: src/state/journal-operations.ts is pure -- no node:fs or node:path (M038/T002)', () => {
+  it('contains zero direct fs/path imports', () => {
+    const text = readFileSync(join(process.cwd(), 'src', 'state', 'journal-operations.ts'), 'utf8');
+    expect(text).not.toMatch(/from\s+['"]node:fs['"]/);
+    expect(text).not.toMatch(/from\s+['"]node:path['"]/);
   });
 });
 

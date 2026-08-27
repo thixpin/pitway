@@ -15,7 +15,7 @@ import {
   saveVerificationResults,
 } from '../../src/state/store.js';
 import type { ContractFrontmatter } from '../../src/state/schemas.js';
-import { derivePending } from '../../src/core/journal/operations.js';
+import { derivePending } from '../../src/state/journal-operations.js';
 import { readJournal, type JournalEntry } from '../../src/state/journal.js';
 
 function git(args: string[], cwd: string): string {

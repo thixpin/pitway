@@ -16,7 +16,7 @@ import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-ad
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
 import { registerTaskAmendCommand } from '../../src/cli/commands/task-amend.js';
 import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js';
-import { derivePending } from '../../src/core/journal/operations.js';
+import { derivePending } from '../../src/state/journal-operations.js';
 import { readJournal, type JournalEntry } from '../../src/state/journal.js';
 import { loadTasks } from '../../src/state/store.js';
 import type { Task } from '../../src/state/schemas.js';

@@ -7,6 +7,7 @@ import { assertOnMilestoneBranch } from '../../git/branch.js';
 import { commitOrResume } from '../../git/commit-or-resume.js';
 import { git } from '../../git/exec.js';
 import { checkWorkingTreeClean, classifyDirtyPaths } from '../../git/safety.js';
+import { resolvePendingJournalTargets } from '../journal/pending-targets.js';
 import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
 import { trimTail } from '../verification/text-trim.js';
 import { verificationRepairsRepoPath, verificationResultsRepoPath } from '../verification/repair.js';
@@ -460,7 +461,7 @@ function completeTask(
   // src/core/milestones/confirm.ts) is expected to ride along in this
   // completion commit rather than being refused as unrelated dirt.
   const journalExpected = classifyDirtyPaths(root, {
-    journalMilestone: milestoneId,
+    journalTargetPaths: resolvePendingJournalTargets(root, milestoneId),
     // B029: same rationale as the in_progress transition above -- a prior
     // verify run's dirty verification-results.yaml/verification-repairs.yaml
     // rides along into this completion commit rather than refusing it.
@@ -678,7 +679,7 @@ export function updateTask(
     // false, leaving this guarantee exactly as strict as before.
     const taskAttempts = task.attempts ?? 0;
     const classified = classifyDirtyPaths(root, {
-      journalMilestone: milestoneId,
+      journalTargetPaths: resolvePendingJournalTargets(root, milestoneId),
       taskWriteScope: task.write_scope ?? task.relevant_files ?? [],
       verifiedCleanStart: taskAttempts > 0,
       // B029: a `pitway verify` run between tasks leaves verification-

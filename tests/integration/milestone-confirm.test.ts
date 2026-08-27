@@ -10,7 +10,7 @@ import { registerMilestoneConfirmCommand } from '../../src/cli/commands/mileston
 import { registerMilestoneReviewCommand } from '../../src/cli/commands/milestone-review.js';
 import { registerTaskDispatchCommand } from '../../src/cli/commands/task-dispatch.js';
 import { computeVerificationHash } from '../../src/core/contracts/verification-hash.js';
-import { derivePending } from '../../src/core/journal/operations.js';
+import { derivePending } from '../../src/state/journal-operations.js';
 import { readJournal, reconcilePending, type JournalEntry } from '../../src/state/journal.js';
 import { loadConfig, loadContract, loadTasks, saveConfig } from '../../src/state/store.js';
 import { listClaudeAssetDestinations } from '../../src/state/claude-assets.js';

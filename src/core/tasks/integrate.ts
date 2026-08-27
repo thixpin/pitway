@@ -16,6 +16,7 @@ import {
 } from '../../git/apply.js';
 import { git } from '../../git/exec.js';
 import { classifyDirtyPaths, checkWorkingTreeClean } from '../../git/safety.js';
+import { resolvePendingJournalTargets } from '../journal/pending-targets.js';
 import { deleteTaskBranch, removeTaskWorktree, WORKTREE_MARKER } from '../../git/worktree.js';
 import { checkWriteScope } from './write-scope-check.js';
 import { deriveLiveDispatches } from './dispatch.js';
@@ -196,7 +197,7 @@ export function integrateTask(root: string, taskId: string): TaskIntegrateView {
   const tasksPath = `.pitway/milestones/${resolveMilestoneDirName(root, milestoneId)}/tasks.yaml`;
   const expected = new Set(
     classifyDirtyPaths(root, {
-      journalMilestone: milestoneId,
+      journalTargetPaths: resolvePendingJournalTargets(root, milestoneId),
       pendingTransitionPaths: [tasksPath],
     }).expected,
   );

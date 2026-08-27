@@ -79,8 +79,21 @@ describe('build produces a real, spawnable dist/ binary (M008/T001/AC001)', () =
 
   // M023/T001: both source tiers ship -- dist/state/driver-assets.js
   // resolves from dist/integrations/<driver>/ AND dist/integrations/common/.
-  // M023/T002: the opencode driver directory rides the same whole-tree copy.
-  it.each(['claude', 'common', 'opencode'])(
+  // M038/T001: the tier list is derived from src/integrations/ on disk, so a
+  // driver that ships no directory (codex, opencode resolve entirely to
+  // common/) is simply not a tier -- never a hardcoded list that would
+  // demand a directory the source tree no longer has.
+  const sourceTiers = readdirSync(join(repoRoot, 'src', 'integrations'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+
+  it('src/integrations/ ships the claude override tier and the common tier', () => {
+    expect(sourceTiers).toContain('claude');
+    expect(sourceTiers).toContain('common');
+  });
+
+  it.each(sourceTiers)(
     'copies every src/integrations/%s/ asset to dist/integrations/ under the same relative layout',
     (tier) => {
       const srcAssetsDir = join(repoRoot, 'src', 'integrations', tier);

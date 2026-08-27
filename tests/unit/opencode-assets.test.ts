@@ -84,77 +84,68 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-// AC005: OpenCode ships exactly one command doc per Claude Code command doc
-// (the expected set derived from glob discovery of claude/commands/, never a
-// hardcoded count), in OpenCode's own verified convention -- one markdown
-// file per command under commands/, frontmatter carrying only `description`
-// (always quoted; `argument-hint` is a Claude Code field, not an OpenCode
-// one), body mirroring the Claude source doc's own body verbatim.
-describe('OpenCode command docs mirror the Claude Code command set (AC005)', () => {
+// AC005 (M023) / M038-T001 (AC001, AC003): the shared command-doc bodies
+// live once under common/commands/ -- one markdown file per command,
+// frontmatter carrying only `description` (always quoted; `argument-hint`
+// is a Claude Code field, not a OpenCode one), body byte-identical to the
+// Claude Code override's own body. The expected set is derived from glob
+// discovery of claude/commands/, never a hardcoded count.
+describe('Shared command docs mirror the Claude Code command set (AC005, M038/AC001)', () => {
   const claudeCommandDocs = listMarkdownFiles(join(claudeDir, 'commands'));
 
-  it('ships exactly one commands/<name>.md per Claude Code command doc, including the ms-* aliases', () => {
+  it('common/ ships exactly one commands/<name>.md per Claude Code command doc, including the ms-* aliases', () => {
     expect(claudeCommandDocs.length).toBeGreaterThan(0);
-    expect(listMarkdownFiles(join(opencodeDir, 'commands'))).toEqual(claudeCommandDocs);
+    expect(listMarkdownFiles(join(commonDir, 'commands'))).toEqual(claudeCommandDocs);
   });
 
   it.each(claudeCommandDocs.map((doc) => [doc]))(
-    'commands/%s re-wraps its Claude source: parseable quoted-description-only frontmatter, body verbatim',
+    'commands/%s re-wraps its Claude override: parseable quoted-description-only frontmatter, body verbatim',
     (doc) => {
-      const opencode = readFileSync(join(opencodeDir, 'commands', doc), 'utf8');
+      const shared = readFileSync(join(commonDir, 'commands', doc), 'utf8');
       const claude = readFileSync(join(claudeDir, 'commands', doc), 'utf8');
-      const parsed = splitFrontmatter(opencode);
+      const parsed = splitFrontmatter(shared);
       const claudeParsed = splitClaudeSource(claude);
       // OpenCode's verified frontmatter convention: `description` only --
       // strict-YAML parseable (the descriptions contain a second colon, so
       // they must be quoted), no argument-hint.
       expect(Object.keys(parsed.frontmatter)).toEqual(['description']);
-      expect(opencode).toMatch(/^---\ndescription: "/);
+      expect(shared).toMatch(/^---\ndescription: "/);
       expect(parsed.frontmatter['description']).toBe(claudeParsed.description);
       expect(String(parsed.frontmatter['description']).startsWith('PitWay: ')).toBe(true);
       // The body -- the pitway-invocation instruction -- mirrors the Claude
-      // source doc's own body byte-for-byte.
+      // override doc's own body byte-for-byte.
       expect(parsed.body).toBe(claudeParsed.body);
     },
   );
 
-  it('each ms-*.md alias stays byte-parallel to its canonical opencode counterpart', () => {
+  it('each ms-*.md alias stays byte-parallel to its canonical common/ counterpart', () => {
     const aliases = claudeCommandDocs.filter((doc) => doc.startsWith('ms-'));
     expect(aliases.length).toBe(8);
     for (const alias of aliases) {
       const canonical = alias.replace('ms-', 'milestone-');
-      expect(readFileSync(join(opencodeDir, 'commands', alias))).toEqual(
-        readFileSync(join(opencodeDir, 'commands', canonical)),
+      expect(readFileSync(join(commonDir, 'commands', alias))).toEqual(
+        readFileSync(join(commonDir, 'commands', canonical)),
       );
     }
   });
 });
 
-// AC005: skills and protocol docs are NOT overridden for OpenCode -- they
-// resolve to common/ entirely. The driver directory holds command docs and
-// nothing else.
-describe('OpenCode resolution: commands from opencode/, everything else from common/ (AC005)', () => {
-  it('src/integrations/opencode/ contains only commands/*.md -- no skill or protocol-doc overrides', () => {
-    const driverFiles = listMarkdownFiles(opencodeDir);
-    expect(driverFiles.length).toBeGreaterThan(0);
-    expect(driverFiles.every((f) => /^commands\/[^/]+\.md$/.test(f))).toBe(true);
+// AC005 / M038-T001 (AC001, AC002): OpenCode overrides nothing -- command
+// docs, skills, and protocol docs all resolve to common/. The driver
+// directory ships no files at all (and so does not exist in the tree);
+// the resolver treats a missing driver directory as "no overrides".
+describe('OpenCode resolution: everything from common/ (AC005, M038/AC001)', () => {
+  it('src/integrations/opencode/ ships no override files', () => {
+    expect(listMarkdownFiles(opencodeDir)).toEqual([]);
   });
 
-  it('the resolved opencode set is the opencode/ command docs union the common/ fallbacks', () => {
-    const union = [
-      ...new Set([...listMarkdownFiles(opencodeDir), ...listMarkdownFiles(commonDir)]),
-    ].sort();
-    expect(resolveDriverAssets('opencode')).toEqual(union);
+  it('the resolved codex set is exactly the common/ asset set', () => {
+    expect(resolveDriverAssets('opencode')).toEqual(listMarkdownFiles(commonDir));
   });
 
-  it('every skill and protocol doc resolves to its common/ source; every command doc to opencode/', () => {
+  it('every command doc, skill, and protocol doc resolves to its common/ source', () => {
     for (const asset of resolveDriverAssets('opencode')) {
-      const source = resolveDriverAssetSource('opencode', asset);
-      if (asset.startsWith('commands/')) {
-        expect(source).toBe(join(opencodeDir, asset));
-      } else {
-        expect(source).toBe(join(commonDir, asset));
-      }
+      expect(resolveDriverAssetSource('opencode', asset)).toBe(join(commonDir, asset));
     }
   });
 });
@@ -189,9 +180,9 @@ describe('OpenCode destination paths (AC006)', () => {
   });
 
   it('never collides with a claude destination path', () => {
-    const opencode = new Set(listDriverAssetDestinations('opencode'));
+    const codex = new Set(listDriverAssetDestinations('opencode'));
     for (const destination of listDriverAssetDestinations('claude')) {
-      expect(opencode.has(destination)).toBe(false);
+      expect(codex.has(destination)).toBe(false);
     }
   });
 });
@@ -199,7 +190,7 @@ describe('OpenCode destination paths (AC006)', () => {
 // AC007: classification of installed .opencode/ assets against a real temp
 // directory tree -- absent/identical/conflict, each asset independently,
 // mirroring claude-assets.test.ts's classifyClaudeAssets coverage.
-describe('classifyDriverAssets(root, "opencode")', () => {
+describe('classifyDriverAssets(root, "codex")', () => {
   it('classifies every asset absent when .opencode/ does not exist at all', () => {
     const result = classifyDriverAssets(root, 'opencode');
     expect(result.length).toBe(resolveDriverAssets('opencode').length);
@@ -235,8 +226,8 @@ describe('classifyDriverAssets(root, "opencode")', () => {
   });
 });
 
-// M025/T010 (AC012/B017 governance): automatic non-blocking issue capture rule in protocol-worker.md (opencode driver resolves to common/)
-describe('M025 T010 opencode protocol-worker non-blocking issue capture rule (AC012)', () => {
+// M025/T010 (AC012/B017 governance): automatic non-blocking issue capture rule in protocol-worker.md (codex driver resolves to common/)
+describe('M025 T010 codex protocol-worker non-blocking issue capture rule (AC012)', () => {
   it('protocol-worker.md instructs agents to surface unrelated non-blocking findings immediately via the existing PitWay workflow/host mechanism', () => {
     const text = shippedContent('protocol-worker.md').toString('utf8');
     expect(text).toMatch(/unrelated, non-blocking/);
@@ -262,8 +253,8 @@ describe('M025 T010 opencode protocol-worker non-blocking issue capture rule (AC
   });
 });
 
-// M025/T003 (B014): every covered opencode command doc carries a usage block (```sh + pitway), backlog documents --milestone/--task
-describe('M025 T003 opencode command docs carry usage blocks (B014)', () => {
+// M025/T003 (B014): every covered codex command doc carries a usage block (```sh + pitway), backlog documents --milestone/--task
+describe('M025 T003 codex command docs carry usage blocks (B014)', () => {
   const COVERED_COMMAND_DOCS = [
     'commands/auto-run.md',
     'commands/backlog.md',
@@ -314,8 +305,8 @@ describe('M025 T003 opencode command docs carry usage blocks (B014)', () => {
   });
 });
 
-// M025/T004 (AC004/B011): common protocol-driver verbatim relay + footer habit rule (shared asset, pinned via opencode resolution as well)
-describe('M025 T004 common protocol-driver verbatim relay + footer habit (AC004/B011) via opencode', () => {
+// M025/T004 (AC004/B011): common protocol-driver verbatim relay + footer habit rule (shared asset, pinned via codex resolution as well)
+describe('M025 T004 common protocol-driver verbatim relay + footer habit (AC004/B011) via codex', () => {
   it('protocol-driver.md mandates verbatim table+footer relay and the routine-update footer closing line', () => {
     const text = shippedContent('protocol-driver.md').toString('utf8');
     expect(text).toContain('reproduce the rendered table and racing footer as-is');
@@ -325,9 +316,9 @@ describe('M025 T004 common protocol-driver verbatim relay + footer habit (AC004/
   });
 });
 
-// M025/T005 (AC005/B013,B015): opencode milestone-status/ms-status full-detail passthrough + footer relay (B014 usage blocks owned here as well)
-describe('M025 T005 opencode milestone-status full-detail + footer relay (AC005/B013,B015)', () => {
-  it('opencode milestone-status.md carries the relay rule and a usage block', () => {
+// M025/T005 (AC005/B013,B015): codex milestone-status/ms-status full-detail passthrough + footer relay (B014 usage blocks owned here as well)
+describe('M025 T005 codex milestone-status full-detail + footer relay (AC005/B013,B015)', () => {
+  it('codex milestone-status.md carries the relay rule and a usage block', () => {
     const text = shippedContent('commands/milestone-status.md').toString('utf8');
     expect(text).toContain('Read-only');
     expect(text).toContain('preserve the rendered table and racing footer as-is');
@@ -336,7 +327,7 @@ describe('M025 T005 opencode milestone-status full-detail + footer relay (AC005/
     expect(text).toMatch(/--json/);
   });
 
-  it('opencode ms-status.md carries the relay rule and a usage block and stays byte-identical to milestone-status.md', () => {
+  it('codex ms-status.md carries the relay rule and a usage block and stays byte-identical to milestone-status.md', () => {
     const text = shippedContent('commands/ms-status.md').toString('utf8');
     expect(text).toContain('Read-only');
     expect(text).toContain('preserve the rendered table and racing footer as-is');

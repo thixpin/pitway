@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { relative, resolve, sep } from 'node:path';
 import { git } from '../../git/exec.js';
 import { checkWorkingTreeClean, classifyDirtyPaths } from '../../git/safety.js';
+import { resolvePendingJournalTargets } from '../journal/pending-targets.js';
 import {
   appendTaskVerifyEvidenceRecord,
   type JournalTaskVerifyEvidence,
@@ -234,7 +235,7 @@ export function runTaskVerify(
     }
   }
 
-  const journalExpected = classifyDirtyPaths(root, { journalMilestone: milestoneId }).expected;
+  const journalExpected = classifyDirtyPaths(root, { journalTargetPaths: resolvePendingJournalTargets(root, milestoneId) }).expected;
   const allowedPaths = [...new Set([...declaredPaths, tasksRepoPath(root, milestoneId), ...journalExpected])];
   assertDirtySubset(root, allowedPaths);
 

@@ -13,7 +13,7 @@ import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js
 import { registerVerifyCommand } from '../../src/cli/commands/verify.js';
 import { deterministicBranchName } from '../../src/core/milestones/confirm.js';
 import { mergeMilestone, MilestoneMergeError } from '../../src/core/milestones/merge.js';
-import { derivePending } from '../../src/core/journal/operations.js';
+import { derivePending } from '../../src/state/journal-operations.js';
 import { readJournal } from '../../src/state/journal.js';
 import { loadContract, saveContract } from '../../src/state/store.js';
 

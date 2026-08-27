@@ -19,7 +19,7 @@ import {
 } from '../../state/store.js';
 import type { ContractFile } from '../../state/contract-file.js';
 import { resolveBranchStrategy, type Task } from '../../state/schemas.js';
-import { derivePending } from '../journal/operations.js';
+import { derivePending } from '../../state/journal-operations.js';
 import { computeVerificationHash } from '../contracts/verification-hash.js';
 import { resolveReadyTasks } from '../tasks/dependencies.js';
 import { transitionMilestone } from './state-machine.js';

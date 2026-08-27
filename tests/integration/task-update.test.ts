@@ -32,7 +32,7 @@ import { deterministicBranchName } from '../../src/core/milestones/confirm.js';
 import type { Task } from '../../src/state/schemas.js';
 import { recordUsage } from '../../src/core/metrics/aggregate.js';
 import { addBacklogItem } from '../../src/core/backlog/add.js';
-import { derivePending } from '../../src/core/journal/operations.js';
+import { derivePending } from '../../src/state/journal-operations.js';
 import {
   appendJournalEntry,
   appendTaskVerifyEvidenceRecord,

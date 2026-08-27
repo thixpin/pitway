@@ -84,77 +84,68 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-// AC005: Codex ships exactly one command doc per Claude Code command doc
-// (the expected set derived from glob discovery of claude/commands/, never a
-// hardcoded count), in Codex's own verified convention -- one markdown
-// file per command under commands/, frontmatter carrying only `description`
-// (always quoted; `argument-hint` is a Claude Code field, not an Codex
-// one), body mirroring the Claude source doc's own body verbatim.
-describe('Codex command docs mirror the Claude Code command set (AC005)', () => {
+// AC005 (M023) / M038-T001 (AC001, AC003): the shared command-doc bodies
+// live once under common/commands/ -- one markdown file per command,
+// frontmatter carrying only `description` (always quoted; `argument-hint`
+// is a Claude Code field, not a Codex one), body byte-identical to the
+// Claude Code override's own body. The expected set is derived from glob
+// discovery of claude/commands/, never a hardcoded count.
+describe('Shared command docs mirror the Claude Code command set (AC005, M038/AC001)', () => {
   const claudeCommandDocs = listMarkdownFiles(join(claudeDir, 'commands'));
 
-  it('ships exactly one commands/<name>.md per Claude Code command doc, including the ms-* aliases', () => {
+  it('common/ ships exactly one commands/<name>.md per Claude Code command doc, including the ms-* aliases', () => {
     expect(claudeCommandDocs.length).toBeGreaterThan(0);
-    expect(listMarkdownFiles(join(codexDir, 'commands'))).toEqual(claudeCommandDocs);
+    expect(listMarkdownFiles(join(commonDir, 'commands'))).toEqual(claudeCommandDocs);
   });
 
   it.each(claudeCommandDocs.map((doc) => [doc]))(
-    'commands/%s re-wraps its Claude source: parseable quoted-description-only frontmatter, body verbatim',
+    'commands/%s re-wraps its Claude override: parseable quoted-description-only frontmatter, body verbatim',
     (doc) => {
-      const codex = readFileSync(join(codexDir, 'commands', doc), 'utf8');
+      const shared = readFileSync(join(commonDir, 'commands', doc), 'utf8');
       const claude = readFileSync(join(claudeDir, 'commands', doc), 'utf8');
-      const parsed = splitFrontmatter(codex);
+      const parsed = splitFrontmatter(shared);
       const claudeParsed = splitClaudeSource(claude);
       // Codex's verified frontmatter convention: `description` only --
       // strict-YAML parseable (the descriptions contain a second colon, so
       // they must be quoted), no argument-hint.
       expect(Object.keys(parsed.frontmatter)).toEqual(['description']);
-      expect(codex).toMatch(/^---\ndescription: "/);
+      expect(shared).toMatch(/^---\ndescription: "/);
       expect(parsed.frontmatter['description']).toBe(claudeParsed.description);
       expect(String(parsed.frontmatter['description']).startsWith('PitWay: ')).toBe(true);
       // The body -- the pitway-invocation instruction -- mirrors the Claude
-      // source doc's own body byte-for-byte.
+      // override doc's own body byte-for-byte.
       expect(parsed.body).toBe(claudeParsed.body);
     },
   );
 
-  it('each ms-*.md alias stays byte-parallel to its canonical codex counterpart', () => {
+  it('each ms-*.md alias stays byte-parallel to its canonical common/ counterpart', () => {
     const aliases = claudeCommandDocs.filter((doc) => doc.startsWith('ms-'));
     expect(aliases.length).toBe(8);
     for (const alias of aliases) {
       const canonical = alias.replace('ms-', 'milestone-');
-      expect(readFileSync(join(codexDir, 'commands', alias))).toEqual(
-        readFileSync(join(codexDir, 'commands', canonical)),
+      expect(readFileSync(join(commonDir, 'commands', alias))).toEqual(
+        readFileSync(join(commonDir, 'commands', canonical)),
       );
     }
   });
 });
 
-// AC005: skills and protocol docs are NOT overridden for Codex -- they
-// resolve to common/ entirely. The driver directory holds command docs and
-// nothing else.
-describe('Codex resolution: commands from codex/, everything else from common/ (AC005)', () => {
-  it('src/integrations/codex/ contains only commands/*.md -- no skill or protocol-doc overrides', () => {
-    const driverFiles = listMarkdownFiles(codexDir);
-    expect(driverFiles.length).toBeGreaterThan(0);
-    expect(driverFiles.every((f) => /^commands\/[^/]+\.md$/.test(f))).toBe(true);
+// AC005 / M038-T001 (AC001, AC002): Codex overrides nothing -- command
+// docs, skills, and protocol docs all resolve to common/. The driver
+// directory ships no files at all (and so does not exist in the tree);
+// the resolver treats a missing driver directory as "no overrides".
+describe('Codex resolution: everything from common/ (AC005, M038/AC001)', () => {
+  it('src/integrations/codex/ ships no override files', () => {
+    expect(listMarkdownFiles(codexDir)).toEqual([]);
   });
 
-  it('the resolved codex set is the codex/ command docs union the common/ fallbacks', () => {
-    const union = [
-      ...new Set([...listMarkdownFiles(codexDir), ...listMarkdownFiles(commonDir)]),
-    ].sort();
-    expect(resolveDriverAssets('codex')).toEqual(union);
+  it('the resolved codex set is exactly the common/ asset set', () => {
+    expect(resolveDriverAssets('codex')).toEqual(listMarkdownFiles(commonDir));
   });
 
-  it('every skill and protocol doc resolves to its common/ source; every command doc to codex/', () => {
+  it('every command doc, skill, and protocol doc resolves to its common/ source', () => {
     for (const asset of resolveDriverAssets('codex')) {
-      const source = resolveDriverAssetSource('codex', asset);
-      if (asset.startsWith('commands/')) {
-        expect(source).toBe(join(codexDir, asset));
-      } else {
-        expect(source).toBe(join(commonDir, asset));
-      }
+      expect(resolveDriverAssetSource('codex', asset)).toBe(join(commonDir, asset));
     }
   });
 });
