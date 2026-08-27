@@ -2,7 +2,7 @@
 schema_version: 1
 id: M036
 title: Next-step Navigation & Context-Aware CLI Guidance
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-27T12:00:00Z
 verification_approved_hash: sha256:1bccb2b0561a1ec73832c882021aed360c676eb57d70a13cee75d12f7538a03a
