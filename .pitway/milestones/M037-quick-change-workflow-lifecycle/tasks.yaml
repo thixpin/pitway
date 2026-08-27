@@ -291,7 +291,7 @@ tasks:
       manifest (shasum -a 256 each changed file, update its tuple), and confirm
       the codex/opencode asset tests and tests/integration/init.test.ts still
       pass unmodified."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -322,6 +322,9 @@ tasks:
       - src/integrations/claude/commands/milestone-complete.md
       - src/integrations/codex/commands/milestone-complete.md
       - src/integrations/opencode/commands/milestone-complete.md
+      - src/integrations/claude/commands/ms-complete.md
+      - src/integrations/codex/commands/ms-complete.md
+      - src/integrations/opencode/commands/ms-complete.md
       - src/integrations/claude/commands/task-dispatch.md
       - src/integrations/codex/commands/task-dispatch.md
       - src/integrations/opencode/commands/task-dispatch.md
@@ -343,6 +346,9 @@ tasks:
       - src/integrations/claude/commands/milestone-complete.md
       - src/integrations/codex/commands/milestone-complete.md
       - src/integrations/opencode/commands/milestone-complete.md
+      - src/integrations/claude/commands/ms-complete.md
+      - src/integrations/codex/commands/ms-complete.md
+      - src/integrations/opencode/commands/ms-complete.md
       - src/integrations/claude/commands/task-dispatch.md
       - src/integrations/codex/commands/task-dispatch.md
       - src/integrations/opencode/commands/task-dispatch.md
@@ -352,5 +358,14 @@ tasks:
       detail: npx vitest run tests/unit/claude-assets.test.ts
         tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
         tests/integration/init.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "[truncated] tested copies of milestone-complete.md, not in T005's
+        original write_scope -- stopped, reported, got a developer-approved
+        write_scope amendment (task-amend), then synced all 3 aliases
+        byte-identical to their milestone-complete.md counterparts and fixed
+        ms-complete.md's pinned hash tuple."
+      evidence: Tests  337 passed (337) | Start at  16:01:25 | Duration  3.54s
+        (transform 467ms, setup 0ms, import 719ms, tests 3.30s, environment 0ms)
+    attempts: 3
+    usage:
+      total_tokens: 158009

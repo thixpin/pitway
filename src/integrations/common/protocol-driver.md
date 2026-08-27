@@ -196,6 +196,15 @@ validation (every changed path inside `write_scope`, never `.pitway/`).
 Prefer parallel dispatch for two or more `ready` tasks with disjoint write
 scopes and genuinely independent objectives, each substantial enough to
 justify a worker. When in doubt, sequential inline stays the default.
+`pitway resume` surfaces this candidate set itself: when 2+ `ready` tasks
+are mutually eligible (pairwise-disjoint `write_scope`, no dependency
+relationship), its human-mode output additionally renders `🏎️
+Parallel-eligible ready tasks: <id>, <id>, ...` with a `Consider parallel
+dispatch (task-dispatch <id>) for these.` line (`--json`: an additive
+`parallelEligible?: string[]` field, same condition) — advisory only,
+absent entirely when the strategy isn't `parallel_worktrees` or fewer than
+2 tasks qualify; `resume` never calls `task-dispatch` itself, so the
+dispatch decision above is still yours to make.
 
 Per batch:
 
@@ -387,7 +396,11 @@ implied by "keep going," never inferred from a subagent's report:
   `milestone-complete`, under `branch_strategy: milestone` — merges the
   completed milestone's own branch into its target branch
   (`commands/milestone-merge.md`). Not run automatically as part of
-  completion; wait for the developer to ask for it.
+  completion; wait for the developer to ask for it. `milestone-complete`'s
+  own human-mode output states this plainly: `Run 'pitway milestone-merge
+  <id>' only with separate, explicit developer approval -- it is never run
+  automatically.` Relay that line verbatim; it is not license to run
+  `milestone-merge` on the strength of completion alone.
 - **Scope changes**: on a conflict with the confirmed contract, stop work,
   propose the change as a contract amendment (append-only Change Log
   entry), and wait for approval before `milestone-confirm --amend` or

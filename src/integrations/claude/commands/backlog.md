@@ -15,17 +15,22 @@ pitway backlog archive <id> --reason <text> [--json]
 
 Use when you discover work that is genuinely out of scope for the current
 task or milestone and want to continue without expanding it — capture it,
-keep going, deal with it later. Requires an active milestone; there is no
-global/no-milestone backlog.
+keep going, deal with it later. `backlog add` works with **no active
+milestone** — it records `source.milestone: null` in that case, no
+milestone required. `backlog promote` still requires an active/resolvable
+milestone, since it targets a task, which is inherently milestone-scoped;
+only `add`'s milestone coupling was removed.
 
 - `backlog add --title <text> --reason <text> [--milestone <id>] [--task
   <id>]` — records a `pending` item. `--milestone`/`--task` here are
-  **source annotation only** (defaults to the active milestone/no task when
-  omitted) — they never control where the mutation's journal entry attaches
-  (that is always the active milestone, unconditionally, with no override:
+  **source annotation only** (defaults to the active milestone — or `null`
+  when none is active — and no task, when omitted) — they never control
+  where the mutation's journal entry attaches (when a milestone is active,
+  that is always the active milestone, unconditionally, with no override:
   `.pitway/backlog.yaml` is a shared file, not owned by any one milestone's
   directory, so letting a flag redirect attachment could misattribute a
-  pending entry to a milestone that will never checkpoint it).
+  pending entry to a milestone that will never checkpoint it). With no
+  active milestone, behavior is otherwise unchanged.
 - `backlog list [--status pending|promoted|archived]` and `backlog show
   <id>` — read-only.
 - `backlog promote <id> --task <task-id> [--milestone <id>]` — a pure
@@ -42,9 +47,9 @@ Both `promoted` and `archived` are terminal — `pending` is the only status
 either transition starts from.
 
 `.pitway/backlog.yaml` is the authoritative backlog state, committed
-alongside whatever commit the active milestone's workflow next produces —
-never a dedicated commit of its own, and never left dirty in a way that
-breaks a task's own clean-tree check.
+alongside whatever commit the workflow next produces — never a dedicated
+commit of its own, and never left dirty in a way that breaks a task's own
+clean-tree check.
 
 See `../protocol-driver.md`'s "Choosing a correction mechanism" section for
 when to reach for `backlog` instead of `task-add` or a quick-change. Run

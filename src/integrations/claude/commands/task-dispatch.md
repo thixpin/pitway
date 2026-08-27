@@ -29,4 +29,19 @@ to the worker yourself.
 A dispatched task's only exits are `task-integrate` and `task-discard`;
 direct `task-update` status changes refuse until the dispatch is closed.
 
+Under `execution.strategy: parallel_worktrees`, `pitway resume` names
+which `ready` tasks are parallel-eligible right now: when 2+ ready tasks
+are mutually eligible (pairwise-disjoint `write_scope`, no dependency
+relationship), its human-mode output additionally renders
+
+```
+🏎️ Parallel-eligible ready tasks: <id>, <id>, ...
+  Consider parallel dispatch (task-dispatch <id>) for these.
+```
+
+— absent entirely (not an empty section) otherwise. `--json` carries the
+same information as an additive `parallelEligible?: string[]` field,
+present only under the same condition. This is advisory only: `resume`
+itself never calls `task-dispatch`.
+
 See `../protocol-driver.md` (Parallel dispatch) and `../dispatch.md`.
