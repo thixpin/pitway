@@ -9,7 +9,7 @@ tasks:
       after that, mirroring exactly how task-update.ts already does it. JSON
       output (the raw evidence object) is unchanged -- this is human-mode text
       only, the same convention the footer itself already follows.
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - A passing task-verify's human output contains 'task-update <id> review'.
@@ -28,7 +28,18 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/integration/task-verify.test.ts
-    result: null
+    result:
+      summary: "[truncated] on a fail) and appends the racing footer when an active
+        milestone exists, mirroring task-update.ts exactly. --json output
+        unaffected. 4 new tests added; the pre-existing default-CommandDeps test
+        updated to tolerate the new second footer line (mirroring task-update's
+        own equivalent test)."
+      evidence: Tests  28 passed (28) | Start at  13:16:04 | Duration  22.25s
+        (transform 283ms, setup 0ms, import 410ms, tests 21.75s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
     usage: null
   - id: T002
     name: Extend racing footer to task-amend/usage-add/verify/repair/auto-run

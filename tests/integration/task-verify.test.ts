@@ -485,6 +485,56 @@ describe('pitway task-verify human-readable rendering (renderTaskVerifyHuman bra
   });
 });
 
+// M036/T001: next-step guidance -- a pass suggests task-update review, and
+// the racing footer is appended after (mirroring task-update.ts exactly).
+describe('pitway task-verify next-step guidance (M036/T001)', () => {
+  it("suggests 'task-update <id> review' on a passing run", async () => {
+    await update(['T001', 'in_progress']);
+    touchFile('src/a.ts', 'export const a = 1;\n');
+
+    const { error, lines } = await taskVerifyHuman(['T001']);
+    expect(error).toBeUndefined();
+    expect(lines[0]).toContain('task-update T001 review');
+  });
+
+  it('does not suggest anything extra on a failing run', async () => {
+    await update(['T004', 'in_progress']);
+    touchFile('src/d.ts', 'export const d = 1;\n');
+
+    const { error, lines } = await taskVerifyHuman(['T004']);
+    expect(error).toBeUndefined();
+    expect(lines[0]).not.toContain('task-update');
+  });
+
+  it('appends the racing footer after a passing run, when an active milestone exists', async () => {
+    await update(['T001', 'in_progress']);
+    touchFile('src/a.ts', 'export const a = 1;\n');
+    const passing = await taskVerifyHuman(['T001']);
+    expect(passing.lines).toHaveLength(2);
+    expect(passing.lines[1]).toMatch(/🏎️|🏁|🔧/);
+  });
+
+  it('appends the racing footer after a failing run, when an active milestone exists', async () => {
+    await update(['T004', 'in_progress']);
+    touchFile('src/d.ts', 'export const d = 1;\n');
+    const failing = await taskVerifyHuman(['T004']);
+    expect(failing.lines).toHaveLength(2);
+    expect(failing.lines[1]).toMatch(/🏎️|🏁|🔧/);
+  });
+
+  it('--json output is unaffected (no footer line, no next-step key)', async () => {
+    await update(['T001', 'in_progress']);
+    touchFile('src/a.ts', 'export const a = 1;\n');
+
+    const { error, lines } = await taskVerify(['T001']);
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
+    const evidence = JSON.parse(lines[0]!) as JournalTaskVerifyEvidence;
+    expect(evidence.taskId).toBe('T001');
+    expect(Object.keys(evidence)).not.toContain('next');
+  });
+});
+
 // M020/T002 (AC003): registerTaskVerifyCommand's own CommandDeps defaults
 // (deps.write ?? console.log, deps.root ?? process.cwd()) are only reached
 // when a caller registers the command with no overrides at all -- the real
@@ -514,8 +564,14 @@ describe('pitway task-verify default CommandDeps fallbacks', () => {
     }
 
     expect(caught).toBeUndefined();
-    expect(calls).toHaveLength(1);
+    // M036/T001: human output now appends the racing footer as a second
+    // write when an active milestone is confirmed (mirrors task-update's
+    // own default-CommandDeps test).
+    expect(calls.length).toBeGreaterThanOrEqual(1);
     expect(calls[0]?.[0]).toMatch(/✅ pass/);
+    if (calls.length === 2) {
+      expect(String(calls[1]?.[0])).toMatch(/🏎️|🏁|🔧/);
+    }
   });
 });
 

@@ -2,9 +2,11 @@ import type { Command } from 'commander';
 import { runTaskVerify } from '../../core/tasks/verify.js';
 import type { JournalTaskVerifyEvidence } from '../../state/journal.js';
 import { renderOutput } from '../output.js';
+import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
 
 function renderTaskVerifyHuman(view: JournalTaskVerifyEvidence): string {
-  const icon = view.exitCode === 0 && view.terminationReason === 'exited' ? '✅ pass' : '❌ fail';
+  const passed = view.exitCode === 0 && view.terminationReason === 'exited';
+  const icon = passed ? '✅ pass' : '❌ fail';
   const counts =
     view.passCount !== undefined || view.failCount !== undefined
       ? ` (${view.passCount ?? 0} passed, ${view.failCount ?? 0} failed)`
@@ -13,9 +15,12 @@ function renderTaskVerifyHuman(view: JournalTaskVerifyEvidence): string {
     view.typecheck === undefined
       ? ''
       : `; typecheck ${view.typecheck.exitCode === 0 ? '✅ pass' : '❌ fail'}`;
+  // M036/T001: on a pass, name the next command -- the failing case's
+  // existing pass/fail/evidence report is already the actionable output.
+  const next = passed ? ` Next: task-update ${view.taskId} review.` : '';
   return (
     `🧪 Task ${view.taskId} verified ${icon}${counts} in ${view.durationMs}ms${typecheck} ` +
-    `— evidence ${view.id}.`
+    `— evidence ${view.id}.${next}`
   );
 }
 
@@ -43,5 +48,9 @@ export function registerTaskVerifyCommand(program: Command, deps: CommandDeps = 
       }
       const view = runTaskVerify(root, id, { typecheckCommand: options.typecheck, timeoutMs });
       write(renderOutput(view, { json: options.json }, renderTaskVerifyHuman));
+      if (!options.json) {
+        const footer = getFooterForActiveMilestone(root);
+        if (footer !== null) write(footer);
+      }
     });
 }
