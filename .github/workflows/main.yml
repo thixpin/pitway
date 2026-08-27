@@ -1,27 +1,26 @@
 name: Publish to npm
 
-# Three jobs, one file, each gated to its own trigger so nothing runs
+# Two jobs, one file, each gated to its own trigger so nothing runs
 # redundantly:
-#   - test:   push to main / PR to main (formerly test.yml) -- full suite +
-#             coverage + Codecov upload, the source the README's coverage
-#             badge reflects.
-#   - codeql: weekly cron / manual dispatch / tag push (formerly its own
-#             always-on-push/PR codeql.yml -- that cadence duplicated what
-#             `test` already covers, so it was dropped).
-#   - stage:  tag push / manual dispatch -> validate -> `npm stage publish`,
-#             gated on the test job (above) actually passing rather than
-#             re-running its own copy of test/typecheck. Approval happens
-#             on npmjs.com ("Staged Packages" tab, 2FA required) -- not
-#             here. `npm stage approve` can't run under OIDC, so this
-#             workflow never attempts it.
+#   - test:  push to main / PR to main (formerly test.yml) -- full suite +
+#            coverage + Codecov upload, the source the README's coverage
+#            badge reflects.
+#   - stage: tag push / manual dispatch -> validate -> `npm stage publish`,
+#            gated on the test job (above) actually passing rather than
+#            re-running its own copy of test/typecheck. Approval happens
+#            on npmjs.com ("Staged Packages" tab, 2FA required) -- not
+#            here. `npm stage approve` can't run under OIDC, so this
+#            workflow never attempts it.
+#
+# CodeQL analysis lives in its own workflow (`codeql.yml`), following
+# GitHub's default cadence (push/PR/weekly) -- not gated to this file's
+# triggers at all, so no `schedule:` trigger is needed here.
 on:
   push:
     branches: ["main"]
     tags: ["v*"]
   pull_request:
     branches: ["main"]
-  schedule:
-    - cron: "0 6 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -32,10 +31,6 @@ permissions:
 
 jobs:
   test:
-    # Every trigger except the weekly cron (that one is codeql-only) --
-    # including tag-push/workflow_dispatch, so stage below has a real
-    # test run in *this* workflow run to depend on, not just a skipped job.
-    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -61,27 +56,6 @@ jobs:
           files: ./coverage/lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
-
-  codeql:
-    name: CodeQL Analyze (javascript-typescript)
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: javascript-typescript
-
-      - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@v4
-        with:
-          category: "/language:javascript-typescript"
 
   stage:
     needs: test

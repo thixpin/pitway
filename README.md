@@ -157,7 +157,7 @@ All project claims are bounded strictly by evidence that survives a fresh clone:
 
 Dependency updates arrive as [Dependabot](https://docs.github.com/en/code-security/dependabot) pull requests (weekly, grouped dev-dependencies, no auto-merge — see `.github/dependabot.yml`). Dependabot security alerts are a repository setting, not something this file turns on: enable them under **Settings → Code security** if you want them.
 
-Static analysis runs via [CodeQL](https://codeql.github.com/) (`.github/workflows/main.yml`), scanning the TypeScript/JavaScript source for common vulnerability patterns. CodeQL runs weekly, manually, and on release tags — not on every push/PR, since the `test` job's own push/PR cadence already covers those. Results appear under the repository's **Security → Code scanning** tab.
+Static analysis runs via [CodeQL](https://codeql.github.com/) (`.github/workflows/codeql.yml`), scanning the TypeScript/JavaScript source for common vulnerability patterns. Follows GitHub's default cadence: every push and pull request to `main`, plus a weekly schedule. Results appear under the repository's **Security → Code scanning** tab.
 
 See [SECURITY.md](./SECURITY.md) for how to report a vulnerability.
 

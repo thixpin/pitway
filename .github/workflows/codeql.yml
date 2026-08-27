@@ -1,0 +1,41 @@
+name: "CodeQL"
+
+# GitHub's default CodeQL setup cadence: every push and pull request against
+# main, plus a weekly schedule so a dependency-only security fix still gets
+# scanned even with no code push. Split out of main.yml (which previously
+# ran this job only on a weekly cron / manual dispatch / tag push, to avoid
+# a redundant workflow run per push/PR) back into its own file to match
+# GitHub's own guide.
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: CodeQL Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:javascript-typescript"
