@@ -57,8 +57,10 @@ tasks:
       is advisory-only (never auto-run, never blocking), and that a
       non-identical asset may be a deliberate local edit or a stale shipped
       version -- PitWay cannot tell which, matching init.ts's own existing
-      honesty caveat."
-    status: ready
+      honesty caveat. Also update the pinned commands/resume.md sha256 entry in
+      tests/unit/claude-assets.test.ts's migration manifest, which the doc edit
+      breaks."
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -66,18 +68,35 @@ tasks:
         substance and match the shipped behavior from T001.
       - The doc states plainly that PitWay cannot distinguish a deliberate local
         edit from a stale version.
+      - tests/unit/claude-assets.test.ts's pinned resume.md hash matches the new
+        content.
     context_files:
       - src/cli/commands/resume.ts
       - src/integrations/claude/commands/resume.md
       - src/integrations/codex/commands/resume.md
       - src/integrations/opencode/commands/resume.md
+      - tests/unit/claude-assets.test.ts
     write_scope:
       - src/integrations/claude/commands/resume.md
       - src/integrations/codex/commands/resume.md
       - src/integrations/opencode/commands/resume.md
+      - tests/unit/claude-assets.test.ts
     verification:
       strategy: manual
       detail: Read the resume.md diff across all three drivers and confirm it
-        accurately describes the shipped behavior, including the honesty caveat.
-    result: null
+        accurately describes the shipped behavior, including the honesty caveat;
+        confirm tests/unit/claude-assets.test.ts passes with the updated hash.
+    result:
+      summary: "[truncated] n all three drivers' resume.md (identical bodies, verified
+        via diff). Amended write_scope mid-task to also cover
+        tests/unit/claude-assets.test.ts's pinned commands/resume.md hash, which
+        the doc edit broke; updated it and re-verified all driver-asset tests
+        plus the full suite (2035/2035)."
+      evidence: manual diff of all three resume.md files (identical bodies confirmed),
+        tests/unit/claude-assets.test.ts + codex-assets.test.ts +
+        opencode-assets.test.ts + init.test.ts all passing (337/337), full suite
+        2035/2035
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
     usage: null

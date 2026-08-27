@@ -542,7 +542,7 @@ const PRE_M023_ASSET_MANIFEST: ReadonlyArray<readonly [string, string]> = [
   ['commands/ms-review.md', '618fc902d15a6fada3a4a4027231ba6b1a0663b7a0b18700e9316b366eeea8c3'],
   ['commands/ms-status.md', 'fd591acc69047eb4dceb43d14cc8d8a040acbd893b21f39a8c82299567eebb0c'],
   ['commands/quick-change.md', '4c6c25dd73923d5265b3a61686b572a358b29f14ca7f8f23ae43fcd400da59d9'],
-  ['commands/resume.md', 'df2e0da7669c478b29ec7aa5b430562240948f7802c03d4830ca2ab72f84709d'],
+  ['commands/resume.md', 'ea063f91a413697ad338e63e6f79faa91aaa369b983b0a83014faa0d127d4243'],
   ['commands/task-add.md', 'de03d91bdbf99238050ba82ea12b55ae89aabdc277589f210ef3ab4d50d8a1db'],
   ['commands/task-amend.md', 'a32aceb632d0fa9200e116614d624a652a4eeed660087e58db42b277b6c94b5d'],
   ['commands/task-discard.md', '5ff651a972b3e0b64efa4a1d0a9eda4249c70045cca10c61a86c0d6ac5c485cc'],
