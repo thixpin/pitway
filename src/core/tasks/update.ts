@@ -414,8 +414,13 @@ function findCompletionCommit(
 // dispatch that leaves none) never warns; supplying --usage always
 // suppresses it regardless of dispatch history.
 // B019 (qc-f0f57dfa): warning is actionable -- it names the dispatch.md MUST
-// rule (forward the sub-agent tool-result usage via --usage) and the
-// fallback path (pitway usage-add <id> --category task --usage ...).
+// rule (forward the sub-agent tool-result usage via --usage).
+// B033 (qc-20ca12b6): the fallback this used to name -- pitway usage-add
+// <id> --category task -- never existed (usage-add only supports
+// milestone-level planning|qa; task-amend cannot touch usage either).
+// There is genuinely no retroactive path once a task completes without
+// --usage, so the warning says that plainly instead of pointing at a
+// dead-end command.
 function computeUsageWarning(
   root: string,
   milestoneId: string,
@@ -430,8 +435,8 @@ function computeUsageWarning(
   return (
     `${taskId} was completed after a worktree dispatch with no --usage supplied; ` +
     `its usage stays null -> N/A (detection only, never estimated). ` +
-    `Forward the dispatched sub-agent's reported usage via --usage on this completing call per dispatch.md step 8; ` +
-    `if unavailable, add it afterwards via pitway usage-add <id> --category task --usage '{"total_tokens": N}' or record why unavailable`
+    `Forward the dispatched sub-agent's reported usage via --usage on this completing call per dispatch.md step 8 -- ` +
+    `this cannot be added retroactively once the task is completed; if the usage is genuinely unavailable, null is correct`
   );
 }
 

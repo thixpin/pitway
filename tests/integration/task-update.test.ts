@@ -1277,10 +1277,10 @@ tasks:
     expect(errLines).toHaveLength(1);
     expect(errLines[0]).toContain('T001');
     expect(errLines[0]).toMatch(/N\/A/);
-    // B019: actionable guidance
+    // B019/B033: actionable guidance, and no dead-end usage-add pointer.
     expect(errLines[0]).toMatch(/--usage/);
     expect(errLines[0]).toMatch(/dispatch\.md/);
-    expect(errLines[0]).toMatch(/pitway usage-add/);
+    expect(errLines[0]).not.toMatch(/usage-add/);
     expect(task('T001').usage).toBeNull();
   });
 
@@ -1299,8 +1299,7 @@ tasks:
     expect(view.usageWarning).toMatch(/N\/A/);
     expect(view.usageWarning).toMatch(/--usage/);
     expect(view.usageWarning).toMatch(/dispatch\.md/);
-    expect(view.usageWarning).toMatch(/pitway usage-add/);
-    expect(view.usageWarning).toMatch(/--category task/);
+    expect(view.usageWarning).not.toMatch(/usage-add/);
   });
 
   it('suppresses the warning entirely when --usage is supplied', async () => {
@@ -1365,9 +1364,11 @@ tasks:
     expect(String(errCalls[0]![0])).toMatch(/N\/A/);
   });
 
-  // B019: actionable warning guides the driver to forward --usage per dispatch.md,
-  // and documents the fallback via usage-add when the figure was unavailable.
-  it('warning is actionable: mentions forwarding via --usage per dispatch.md and fallback via usage-add --category task', async () => {
+  // B019/B033: actionable warning guides the driver to forward --usage per
+  // dispatch.md, and states plainly that there is no retroactive fallback
+  // once the task is completed (usage-add only ever accumulates
+  // milestone-level planning/qa usage, never a task's own -- B033).
+  it('warning is actionable: mentions forwarding via --usage per dispatch.md, and that there is no retroactive path', async () => {
     await dispatchAndIntegrate('T001', 'src/a.ts');
     const { errLines, error } = await update(['T001', 'completed', ...completionFlags()]);
     expect(error).toBeUndefined();
@@ -1375,9 +1376,8 @@ tasks:
     const warning = errLines[0]!;
     expect(warning).toMatch(/dispatch\.md step 8/);
     expect(warning).toMatch(/--usage/);
-    expect(warning).toMatch(/pitway usage-add/);
-    expect(warning).toMatch(/--category task/);
-    expect(warning).toMatch(/\{"total_tokens": N\}/);
+    expect(warning).not.toMatch(/usage-add/);
+    expect(warning).toMatch(/cannot be added retroactively/);
   });
 
   it('fallback: completing with --usage sets usage, and usage-add can record milestone usage after a prior N/A completion', async () => {

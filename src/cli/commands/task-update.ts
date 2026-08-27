@@ -32,7 +32,7 @@ export function registerTaskUpdateCommand(program: Command, deps: CommandDeps = 
     .option('--message <path>', 'path to a file containing the completion commit message')
     .option(
       '--usage <json>',
-      'measured token usage JSON to accumulate onto the task (MUST forward dispatched sub-agent tool-result usage per dispatch.md step 8; fallback: pitway usage-add <id> --category task --usage \'{"total_tokens": N}\')',
+      'measured token usage JSON to accumulate onto the task (MUST forward dispatched sub-agent tool-result usage per dispatch.md step 8 -- cannot be added retroactively once the task is completed)',
     )
     .option(
       '--evidence <id>',
