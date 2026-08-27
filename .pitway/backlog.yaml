@@ -685,14 +685,14 @@ items:
       new call site. Comment-only, no logic fix needed. Flagged by the T004
       worker, who correctly left it untouched (outside its declared
       write_scope).
-    status: pending
+    status: archived
     source:
       milestone: M037
       task: T004
     created_at: 2026-08-27T08:27:20.854Z
-    resolved_at: null
+    resolved_at: 2026-08-27T09:14:25.092Z
     promoted_to: null
-    archived_reason: null
+    archived_reason: closed by quick-change qc-605b388a
   - id: B035
     title: archive.ts journals before state write; can double-journal on retry
     reason: "src/core/backlog/archive.ts's archiveBacklogItem appends its journal

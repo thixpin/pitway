@@ -42,10 +42,13 @@ export function checkParallelEligibility(
   }
 
   for (const other of concurrent) {
-    // Redundant-by-construction for well-formed graphs (rule 1: a ready
-    // candidate's dependencies are all completed, and no in_progress task is
-    // completed, so no dependency can exist in either direction) -- kept as
-    // cheap defense-in-depth in a pure function.
+    // Redundant-by-construction for well-formed graphs, in every call site:
+    // a task only reaches ready (and in_progress is reachable only via ready
+    // -- state-machine.ts) once every dependency is completed, so no two
+    // tasks drawn from {ready, in_progress} can ever be dependency-related
+    // in either direction -- true for dispatch.ts's ready-candidate-vs-
+    // in_progress-set call and resume.ts's ready-vs-ready pairwise loop
+    // (M037/T004) alike. Kept as cheap defense-in-depth in a pure function.
     if (
       isTransitivelyDependent(allTasks, candidate.id, other.id) ||
       isTransitivelyDependent(allTasks, other.id, candidate.id)
