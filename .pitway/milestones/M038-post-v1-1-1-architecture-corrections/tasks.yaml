@@ -1,0 +1,501 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Deduplicate driver command docs into common/commands
+    objective: "Move every shared command-doc body to
+      src/integrations/common/commands/<name>.md and make codex/opencode resolve
+      command docs from common/. BEFORE any edit: run npx vitest run
+      tests/unit/claude-assets.test.ts tests/unit/codex-assets.test.ts
+      tests/unit/opencode-assets.test.ts
+      tests/integration/multi-driver-assets.test.ts
+      tests/integration/build-bin.test.ts and confirm green; then snapshot, for
+      each driver, resolveDriverAssets(driver) plus the sha256 of
+      resolveDriverAssetSource(driver, asset) for every asset, into a scratch
+      file -- this is the baseline the post-move result MUST equal byte-for-byte
+      (AC002). The move: for each of the 32 docs, plain-filesystem `mv
+      src/integrations/codex/commands/<name>.md
+      src/integrations/common/commands/<name>.md` (codex and opencode are
+      byte-identical, so either is the source of truth; verify with diff -r
+      first), then `rm` the opencode copy. Do NOT stage with git mv/git rm:
+      completion's dirty-path check is an exact per-path match against unstaged
+      git status, which reports a move as a separate deleted path plus an
+      untracked path -- both old and new paths are declared in write_scope for
+      exactly that reason. Do NOT touch src/integrations/claude/commands/
+      content -- those 32 files stay as whole-file overrides (argument-hint
+      frontmatter is a real Claude Code UX difference; the lookup is a static
+      whole-file override per driver-assets.ts and must not be changed). After
+      the move, codex/ and opencode/ directories contain nothing and disappear
+      from git; driver-assets.ts's listMarkdownAssets already treats a missing
+      directory as empty, but scripts/copy-claude-assets.mjs copies the whole
+      tree (fine) and tests/integration/build-bin.test.ts iterates per-tier
+      source dirs -- make that test tolerate a tier whose source dir does not
+      exist (an absent source dir means nothing to copy, not a failure). Rewrite
+      parity tests to pin the NEW invariant, not the old layout: (1)
+      tests/unit/codex-assets.test.ts and tests/unit/opencode-assets.test.ts
+      currently assert 'commands from <driver>/', '<driver>/ contains only
+      commands/*.md', and per-doc 're-wraps its Claude source' -- change these
+      to assert the driver dir ships nothing and every command doc resolves to
+      common/, and move the re-wrap check (quoted description-only frontmatter,
+      description equal to claude's, body byte-identical to claude's) to run
+      against common/commands/ instead, keeping the ms-* alias byte-parity check
+      against common/; (2) tests/integration/multi-driver-assets.test.ts's
+      'command docs come from each driver's own directory' becomes 'claude
+      command docs come from claude/ overrides; codex and opencode command docs
+      come from common/'; the 'all drivers ship the same command-doc set' and
+      stray-override guard should pass as-is (claude overrides now genuinely
+      shadow common/ files -- confirm, and if findStrayOverrides needs no change
+      leave it alone); (3) tests/unit/claude-assets.test.ts's pinned-sha256
+      one-time migration manifest checks claude/common content that this task
+      does not edit -- it must pass unmodified; add one new describe asserting
+      that for every common/commands/<name>.md a claude/commands/<name>.md
+      override exists whose body is byte-identical and whose description
+      matches. Finally re-run the pre-move snapshot comparison: resolved asset
+      set and per-asset content sha256 for all three drivers must be identical
+      to the baseline, and a temp repo initialised with the PRE-move build for
+      --opencode/--codex must report zero drift when classified by the POST-move
+      code (classifyDriverAssets all 'identical'). Do not reword any doc body;
+      do not touch src/state/driver-assets.ts's resolution rule."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - src/integrations/common/commands/ holds 32 docs in quoted
+        description-only frontmatter form; src/integrations/codex/ and
+        src/integrations/opencode/ hold no files.
+      - For all three drivers, resolveDriverAssets() and the sha256 of every
+        resolved asset's content are identical to the pre-move baseline
+        snapshot.
+      - Every claude/commands/<name>.md override has a body byte-identical to
+        common/commands/<name>.md and a matching description; ms-* aliases in
+        common/ are byte-identical to their milestone-* counterparts.
+      - codex/opencode asset tests, multi-driver-assets, init, and build-bin
+        tests pass with layout-pinning assertions replaced by their successors;
+        the claude pinned-sha256 manifest passes unmodified.
+      - A repo initialised from the pre-move build reports no drift under the
+        post-move classifyDriverAssets for any driver.
+    context_files:
+      - src/state/driver-assets.ts
+      - src/state/claude-assets.ts
+      - scripts/copy-claude-assets.mjs
+      - src/integrations/claude/commands/task-update.md
+      - src/integrations/common/commands/auto-run.md
+      - src/integrations/common/commands/backlog.md
+      - src/integrations/common/commands/milestone-add.md
+      - src/integrations/common/commands/milestone-cancel.md
+      - src/integrations/common/commands/milestone-complete.md
+      - src/integrations/common/commands/milestone-confirm.md
+      - src/integrations/common/commands/milestone-list.md
+      - src/integrations/common/commands/milestone-merge.md
+      - src/integrations/common/commands/milestone-review.md
+      - src/integrations/common/commands/milestone-status.md
+      - src/integrations/common/commands/ms-add.md
+      - src/integrations/common/commands/ms-cancel.md
+      - src/integrations/common/commands/ms-complete.md
+      - src/integrations/common/commands/ms-confirm.md
+      - src/integrations/common/commands/ms-list.md
+      - src/integrations/common/commands/ms-merge.md
+      - src/integrations/common/commands/ms-review.md
+      - src/integrations/common/commands/ms-status.md
+      - src/integrations/common/commands/quick-change.md
+      - src/integrations/common/commands/resume.md
+      - src/integrations/common/commands/task-add.md
+      - src/integrations/common/commands/task-amend.md
+      - src/integrations/common/commands/task-discard.md
+      - src/integrations/common/commands/task-dispatch.md
+      - src/integrations/common/commands/task-integrate.md
+      - src/integrations/common/commands/task-status.md
+      - src/integrations/common/commands/task-update.md
+      - src/integrations/common/commands/task-verify.md
+      - src/integrations/common/commands/usage-add.md
+      - src/integrations/common/commands/verification-repair.md
+      - src/integrations/common/commands/verify.md
+      - src/integrations/common/commands/write-ms-artifacts.md
+      - src/integrations/codex/commands/auto-run.md
+      - src/integrations/codex/commands/backlog.md
+      - src/integrations/codex/commands/milestone-add.md
+      - src/integrations/codex/commands/milestone-cancel.md
+      - src/integrations/codex/commands/milestone-complete.md
+      - src/integrations/codex/commands/milestone-confirm.md
+      - src/integrations/codex/commands/milestone-list.md
+      - src/integrations/codex/commands/milestone-merge.md
+      - src/integrations/codex/commands/milestone-review.md
+      - src/integrations/codex/commands/milestone-status.md
+      - src/integrations/codex/commands/ms-add.md
+      - src/integrations/codex/commands/ms-cancel.md
+      - src/integrations/codex/commands/ms-complete.md
+      - src/integrations/codex/commands/ms-confirm.md
+      - src/integrations/codex/commands/ms-list.md
+      - src/integrations/codex/commands/ms-merge.md
+      - src/integrations/codex/commands/ms-review.md
+      - src/integrations/codex/commands/ms-status.md
+      - src/integrations/codex/commands/quick-change.md
+      - src/integrations/codex/commands/resume.md
+      - src/integrations/codex/commands/task-add.md
+      - src/integrations/codex/commands/task-amend.md
+      - src/integrations/codex/commands/task-discard.md
+      - src/integrations/codex/commands/task-dispatch.md
+      - src/integrations/codex/commands/task-integrate.md
+      - src/integrations/codex/commands/task-status.md
+      - src/integrations/codex/commands/task-update.md
+      - src/integrations/codex/commands/task-verify.md
+      - src/integrations/codex/commands/usage-add.md
+      - src/integrations/codex/commands/verification-repair.md
+      - src/integrations/codex/commands/verify.md
+      - src/integrations/codex/commands/write-ms-artifacts.md
+      - src/integrations/opencode/commands/auto-run.md
+      - src/integrations/opencode/commands/backlog.md
+      - src/integrations/opencode/commands/milestone-add.md
+      - src/integrations/opencode/commands/milestone-cancel.md
+      - src/integrations/opencode/commands/milestone-complete.md
+      - src/integrations/opencode/commands/milestone-confirm.md
+      - src/integrations/opencode/commands/milestone-list.md
+      - src/integrations/opencode/commands/milestone-merge.md
+      - src/integrations/opencode/commands/milestone-review.md
+      - src/integrations/opencode/commands/milestone-status.md
+      - src/integrations/opencode/commands/ms-add.md
+      - src/integrations/opencode/commands/ms-cancel.md
+      - src/integrations/opencode/commands/ms-complete.md
+      - src/integrations/opencode/commands/ms-confirm.md
+      - src/integrations/opencode/commands/ms-list.md
+      - src/integrations/opencode/commands/ms-merge.md
+      - src/integrations/opencode/commands/ms-review.md
+      - src/integrations/opencode/commands/ms-status.md
+      - src/integrations/opencode/commands/quick-change.md
+      - src/integrations/opencode/commands/resume.md
+      - src/integrations/opencode/commands/task-add.md
+      - src/integrations/opencode/commands/task-amend.md
+      - src/integrations/opencode/commands/task-discard.md
+      - src/integrations/opencode/commands/task-dispatch.md
+      - src/integrations/opencode/commands/task-integrate.md
+      - src/integrations/opencode/commands/task-status.md
+      - src/integrations/opencode/commands/task-update.md
+      - src/integrations/opencode/commands/task-verify.md
+      - src/integrations/opencode/commands/usage-add.md
+      - src/integrations/opencode/commands/verification-repair.md
+      - src/integrations/opencode/commands/verify.md
+      - src/integrations/opencode/commands/write-ms-artifacts.md
+      - tests/unit/claude-assets.test.ts
+      - tests/unit/codex-assets.test.ts
+      - tests/unit/opencode-assets.test.ts
+      - tests/integration/multi-driver-assets.test.ts
+      - tests/integration/build-bin.test.ts
+      - tests/integration/init.test.ts
+    write_scope:
+      - src/integrations/common/commands/auto-run.md
+      - src/integrations/common/commands/backlog.md
+      - src/integrations/common/commands/milestone-add.md
+      - src/integrations/common/commands/milestone-cancel.md
+      - src/integrations/common/commands/milestone-complete.md
+      - src/integrations/common/commands/milestone-confirm.md
+      - src/integrations/common/commands/milestone-list.md
+      - src/integrations/common/commands/milestone-merge.md
+      - src/integrations/common/commands/milestone-review.md
+      - src/integrations/common/commands/milestone-status.md
+      - src/integrations/common/commands/ms-add.md
+      - src/integrations/common/commands/ms-cancel.md
+      - src/integrations/common/commands/ms-complete.md
+      - src/integrations/common/commands/ms-confirm.md
+      - src/integrations/common/commands/ms-list.md
+      - src/integrations/common/commands/ms-merge.md
+      - src/integrations/common/commands/ms-review.md
+      - src/integrations/common/commands/ms-status.md
+      - src/integrations/common/commands/quick-change.md
+      - src/integrations/common/commands/resume.md
+      - src/integrations/common/commands/task-add.md
+      - src/integrations/common/commands/task-amend.md
+      - src/integrations/common/commands/task-discard.md
+      - src/integrations/common/commands/task-dispatch.md
+      - src/integrations/common/commands/task-integrate.md
+      - src/integrations/common/commands/task-status.md
+      - src/integrations/common/commands/task-update.md
+      - src/integrations/common/commands/task-verify.md
+      - src/integrations/common/commands/usage-add.md
+      - src/integrations/common/commands/verification-repair.md
+      - src/integrations/common/commands/verify.md
+      - src/integrations/common/commands/write-ms-artifacts.md
+      - src/integrations/codex/commands/auto-run.md
+      - src/integrations/codex/commands/backlog.md
+      - src/integrations/codex/commands/milestone-add.md
+      - src/integrations/codex/commands/milestone-cancel.md
+      - src/integrations/codex/commands/milestone-complete.md
+      - src/integrations/codex/commands/milestone-confirm.md
+      - src/integrations/codex/commands/milestone-list.md
+      - src/integrations/codex/commands/milestone-merge.md
+      - src/integrations/codex/commands/milestone-review.md
+      - src/integrations/codex/commands/milestone-status.md
+      - src/integrations/codex/commands/ms-add.md
+      - src/integrations/codex/commands/ms-cancel.md
+      - src/integrations/codex/commands/ms-complete.md
+      - src/integrations/codex/commands/ms-confirm.md
+      - src/integrations/codex/commands/ms-list.md
+      - src/integrations/codex/commands/ms-merge.md
+      - src/integrations/codex/commands/ms-review.md
+      - src/integrations/codex/commands/ms-status.md
+      - src/integrations/codex/commands/quick-change.md
+      - src/integrations/codex/commands/resume.md
+      - src/integrations/codex/commands/task-add.md
+      - src/integrations/codex/commands/task-amend.md
+      - src/integrations/codex/commands/task-discard.md
+      - src/integrations/codex/commands/task-dispatch.md
+      - src/integrations/codex/commands/task-integrate.md
+      - src/integrations/codex/commands/task-status.md
+      - src/integrations/codex/commands/task-update.md
+      - src/integrations/codex/commands/task-verify.md
+      - src/integrations/codex/commands/usage-add.md
+      - src/integrations/codex/commands/verification-repair.md
+      - src/integrations/codex/commands/verify.md
+      - src/integrations/codex/commands/write-ms-artifacts.md
+      - src/integrations/opencode/commands/auto-run.md
+      - src/integrations/opencode/commands/backlog.md
+      - src/integrations/opencode/commands/milestone-add.md
+      - src/integrations/opencode/commands/milestone-cancel.md
+      - src/integrations/opencode/commands/milestone-complete.md
+      - src/integrations/opencode/commands/milestone-confirm.md
+      - src/integrations/opencode/commands/milestone-list.md
+      - src/integrations/opencode/commands/milestone-merge.md
+      - src/integrations/opencode/commands/milestone-review.md
+      - src/integrations/opencode/commands/milestone-status.md
+      - src/integrations/opencode/commands/ms-add.md
+      - src/integrations/opencode/commands/ms-cancel.md
+      - src/integrations/opencode/commands/ms-complete.md
+      - src/integrations/opencode/commands/ms-confirm.md
+      - src/integrations/opencode/commands/ms-list.md
+      - src/integrations/opencode/commands/ms-merge.md
+      - src/integrations/opencode/commands/ms-review.md
+      - src/integrations/opencode/commands/ms-status.md
+      - src/integrations/opencode/commands/quick-change.md
+      - src/integrations/opencode/commands/resume.md
+      - src/integrations/opencode/commands/task-add.md
+      - src/integrations/opencode/commands/task-amend.md
+      - src/integrations/opencode/commands/task-discard.md
+      - src/integrations/opencode/commands/task-dispatch.md
+      - src/integrations/opencode/commands/task-integrate.md
+      - src/integrations/opencode/commands/task-status.md
+      - src/integrations/opencode/commands/task-update.md
+      - src/integrations/opencode/commands/task-verify.md
+      - src/integrations/opencode/commands/usage-add.md
+      - src/integrations/opencode/commands/verification-repair.md
+      - src/integrations/opencode/commands/verify.md
+      - src/integrations/opencode/commands/write-ms-artifacts.md
+      - tests/unit/claude-assets.test.ts
+      - tests/unit/codex-assets.test.ts
+      - tests/unit/opencode-assets.test.ts
+      - tests/integration/multi-driver-assets.test.ts
+      - tests/integration/build-bin.test.ts
+      - tests/integration/init.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
+        tests/integration/multi-driver-assets.test.ts
+        tests/integration/build-bin.test.ts tests/integration/init.test.ts
+    result: null
+    usage: null
+  - id: T002
+    name: Fix state/journal cycle and make git/safety a pure Git layer
+    objective: "Two direction fixes, no behavior change. (a) src/state/journal.ts:8
+      imports derivePending/resolveTargetPath from
+      src/core/journal/operations.ts, which type-imports
+      JournalEntry/JournalRecord/etc. back from state/journal.ts -- a
+      State<->Core cycle. Move derivePending, buildJournalEntry,
+      resolveTargetPath, and JournalValidationError into the State layer: create
+      src/state/journal-operations.ts (keeping the existing function bodies and
+      comments verbatim, importing types from ./journal.js -- or, if
+      journal.ts's own import of them makes that a cycle within State, place
+      them directly in journal.ts; choose whichever leaves zero cycles) and
+      DELETE src/core/journal/operations.ts rather than leaving a re-export
+      shim. Update every importer: src/state/journal.ts, src/git/safety.ts (see
+      b), and the tests that import ../../src/core/journal/operations.js
+      (backlog-state, journal, git-safety unit tests; usage-add, backlog,
+      task-add, task-amend, milestone-complete, milestone-merge,
+      milestone-confirm, auto-run, task-update integration tests).
+      tests/unit/journal.test.ts:768's 'layering: src/core/journal/ must not
+      import node:fs or node:path' test must be re-pointed at the new State
+      module (same no-fs/no-path assertion) rather than deleted. (b)
+      src/git/safety.ts imports readJournal (state), resolveMilestoneDirName
+      (state), and derivePending/resolveTargetPath (core) solely to compute
+      journalTargets inside classifyDirtyPaths when options.journalMilestone is
+      set. Replace the journalMilestone option with journalTargetPaths?:
+      string[] -- already-resolved repo-relative paths, treated exactly like the
+      old journalTargets set (expected regardless of
+      taskWriteScope/verifiedCleanStart). Add one Core helper, e.g.
+      resolvePendingJournalTargets(root, milestoneId): string[] in
+      src/core/journal/pending-targets.ts, that performs the old branch
+      verbatim: readJournal -> derivePending -> filter by milestone -> if any,
+      resolveMilestoneDirName inside the same try/catch (unresolvable directory
+      => []) -> map resolveTargetPath. Update all five call sites to pass
+      journalTargetPaths: resolvePendingJournalTargets(root, milestoneId):
+      src/core/tasks/update.ts (two sites, ~462 and ~680),
+      src/core/tasks/verify.ts:237, src/core/tasks/integrate.ts:198,
+      src/core/milestones/complete.ts:190. After this, src/git/safety.ts imports
+      only from ./exec.js. Update safety.ts's binding-semantics comment block so
+      it describes journalTargetPaths and no longer claims the module depends on
+      the State layer. Tests: rewrite the journalMilestone cases in
+      tests/unit/git-safety.test.ts to pass journalTargetPaths directly (same
+      expected/unexpected outcomes, including the root-level backlog.yaml and
+      unrelated-milestone cases, which now exercise the Core helper instead);
+      add a new unit test file for the Core helper covering: pending entry for
+      the milestone -> its target path; pending entry for another milestone ->
+      excluded; checkpointed entry -> excluded; backlog_recording ->
+      .pitway/backlog.yaml; unresolvable milestone directory -> [] with no
+      throw. Add an import-direction test (in tests/unit/journal.test.ts or a
+      new tests/unit/layering.test.ts) asserting by source inspection that
+      src/state/journal.ts and src/state/journal-operations.ts contain no import
+      from ../core/ and src/git/safety.ts contains no import from ../state/ or
+      ../core/. TDD: write the direction test first (RED), then move code
+      (GREEN)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - src/core/journal/operations.ts no longer exists; derivePending,
+        buildJournalEntry, resolveTargetPath, and JournalValidationError are
+        exported from the State layer with unchanged behavior, and every
+        src/tests importer is updated.
+      - src/state/journal.ts has no import from src/core/; src/git/safety.ts
+        imports only from ./exec.js.
+      - classifyDirtyPaths accepts journalTargetPaths; a single Core helper
+        resolves pending journal targets and is used by all five former
+        journalMilestone call sites; classification outcomes for every existing
+        scenario are unchanged.
+      - The git-safety, journal, and backlog-state unit tests pass with the same
+        asserted outcomes; a new unit test covers the Core helper; an
+        import-direction test guards both boundaries.
+      - Human and --json output of task-update, task-verify, task-integrate, and
+        milestone-complete is byte-for-byte unchanged.
+    context_files:
+      - src/state/journal.ts
+      - src/state/store.ts
+      - src/git/safety.ts
+      - src/git/exec.ts
+      - src/core/tasks/update.ts
+      - src/core/tasks/verify.ts
+      - src/core/tasks/integrate.ts
+      - src/core/milestones/complete.ts
+      - tests/unit/git-safety.test.ts
+      - tests/unit/journal.test.ts
+      - tests/unit/backlog-state.test.ts
+      - src/core/journal/operations.ts
+      - src/core/journal/pending-targets.ts
+      - src/state/journal-operations.ts
+      - tests/unit/layering.test.ts
+      - tests/unit/pending-journal-targets.test.ts
+      - tests/integration/usage-add.test.ts
+      - tests/integration/backlog.test.ts
+      - tests/integration/task-add.test.ts
+      - tests/integration/task-amend.test.ts
+      - tests/integration/milestone-complete.test.ts
+      - tests/integration/milestone-merge.test.ts
+      - tests/integration/milestone-confirm.test.ts
+      - tests/integration/auto-run.test.ts
+      - tests/integration/task-update.test.ts
+    write_scope:
+      - src/core/journal/operations.ts
+      - src/core/journal/pending-targets.ts
+      - src/state/journal.ts
+      - src/state/journal-operations.ts
+      - src/git/safety.ts
+      - src/core/tasks/update.ts
+      - src/core/tasks/verify.ts
+      - src/core/tasks/integrate.ts
+      - src/core/milestones/complete.ts
+      - tests/unit/git-safety.test.ts
+      - tests/unit/journal.test.ts
+      - tests/unit/backlog-state.test.ts
+      - tests/unit/layering.test.ts
+      - tests/unit/pending-journal-targets.test.ts
+      - tests/integration/usage-add.test.ts
+      - tests/integration/backlog.test.ts
+      - tests/integration/task-add.test.ts
+      - tests/integration/task-amend.test.ts
+      - tests/integration/milestone-complete.test.ts
+      - tests/integration/milestone-merge.test.ts
+      - tests/integration/milestone-confirm.test.ts
+      - tests/integration/auto-run.test.ts
+      - tests/integration/task-update.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/git-safety.test.ts tests/unit/journal.test.ts
+        tests/unit/backlog-state.test.ts tests/unit/layering.test.ts
+        tests/unit/pending-journal-targets.test.ts
+        tests/integration/task-update.test.ts
+        tests/integration/task-verify.test.ts
+        tests/integration/milestone-complete.test.ts
+    result: null
+    usage: null
+  - id: T003
+    name: Update layout and layering documentation
+    objective: "Bring every statement of the driver-asset layout and the layering
+      boundary in line with T001 and T002. AGENTS.md's 'Core must never import
+      AI-provider code' bullet says Claude-specific material lives under
+      src/integrations/claude/ and describes the common-to-override lookup --
+      keep it accurate: command docs now live in
+      src/integrations/common/commands/ with claude/ holding frontmatter-bearing
+      whole-file overrides. README.md's OpenCode/Codex bullets say 'Skills and
+      protocol content come from the common layer' -- extend to command docs.
+      Header comments in src/state/driver-assets.ts (lines ~6-18:
+      'src/integrations/<driver>/ holds that driver's command docs'),
+      src/state/claude-assets.ts (~12-13), and scripts/copy-claude-assets.mjs
+      describe the two tiers -- correct them. src/git/safety.ts's comment block
+      and the relocated journal helper's comments (the old resolveTargetPath
+      comment names 'src/git/safety.ts -- both already State-layer-adjacent')
+      must not claim safety.ts depends on State. Do not edit any file under
+      src/integrations/ (a body change would invalidate the pinned-sha256
+      manifest and is out of scope); if a doc under src/integrations/ turns out
+      to be stale, stop and report rather than editing. No behavior change."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+    acceptance_criteria:
+      - AGENTS.md, README.md, and the listed header comments describe the
+        post-M038 layout and layering; no remaining claim that command docs live
+        per driver or that safety.ts depends on State/Core.
+      - No file under src/integrations/ is modified; the claude pinned-sha256
+        manifest still passes.
+    context_files:
+      - AGENTS.md
+      - README.md
+      - src/state/driver-assets.ts
+      - src/state/claude-assets.ts
+      - scripts/copy-claude-assets.mjs
+      - src/git/safety.ts
+      - src/state/journal-operations.ts
+      - src/core/journal/pending-targets.ts
+      - tests/unit/claude-assets.test.ts
+    write_scope:
+      - AGENTS.md
+      - README.md
+      - src/state/driver-assets.ts
+      - src/state/claude-assets.ts
+      - scripts/copy-claude-assets.mjs
+      - src/git/safety.ts
+      - src/state/journal-operations.ts
+      - src/core/journal/pending-targets.ts
+    verification:
+      strategy: manual
+      detail: Read the diff for AGENTS.md, README.md, and each listed comment block;
+        confirm CT007's criteria and that git diff --stat shows nothing under
+        src/integrations/.
+    result: null
+    usage: null
+  - id: T004
+    name: Run the full verification gate
+    objective: "Milestone-level gate after T001-T003: run npm run typecheck && npm
+      run build && npm test from a clean tree. No code changes are expected; if
+      anything fails, stop and report -- do not fix here, the fix belongs to the
+      owning task via the normal blocked/failed path."
+    status: waiting
+    depends_on:
+      - T003
+    acceptance_criteria:
+      - npm run typecheck passes.
+      - npm run build passes and dist/integrations/ contains common/commands/
+        and claude/commands/ only.
+      - npm test passes in full.
+    context_files:
+      - package.json
+    write_scope: []
+    verification:
+      strategy: command
+      detail: npm run typecheck && npm run build && npm test
+    result: null
+    usage: null
