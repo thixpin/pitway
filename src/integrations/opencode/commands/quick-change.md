@@ -5,7 +5,7 @@ description: "PitWay: Bounded small-fix workflow, usable whenever no milestone i
 # quick-change
 
 ```sh
-pitway quick-change create --objective <text> [--scope <path> ...] --verify <command> [--tdd-exempt <reason>] [--json]
+pitway quick-change create --objective <text> [--scope <path> ...] --verify <command> [--tdd-exempt <reason>] [--closes <backlog-id>] [--json]
 pitway quick-change approve <change-id> [--json]
 pitway quick-change run <change-id> [--json]
 pitway quick-change commit <change-id> [--json]
@@ -37,13 +37,16 @@ skill + TDD discipline B020 + human-approval gate B021):
 2. **Confirm the root cause.** State it in one sentence, and check that
    the fix you're about to make targets it, not the symptom.
 3. **`quick-change create --objective <text> --scope <path>... --verify
-   <command> [--tdd-exempt <reason>]`** — requires `active_milestone: null`
-   and a clean working tree. `--objective` should name the bug and the
-   confirmed root cause; `--scope` declares the exact file census the fix
-   may touch — an allow-list ceiling `commit` enforces, not a requirement
-   that every declared path be modified. Prefer extending an existing
-   adjacent test as `--verify`; only add a new one when nothing already
-   covers this path.
+   <command> [--tdd-exempt <reason>] [--closes <backlog-id>]`** — requires
+   `active_milestone: null` and a clean working tree. `--objective` should
+   name the bug and the confirmed root cause; `--scope` declares the exact
+   file census the fix may touch — an allow-list ceiling `commit` enforces,
+   not a requirement that every declared path be modified. Prefer extending
+   an existing adjacent test as `--verify`; only add a new one when nothing
+   already covers this path. `--closes <backlog-id>` links this change to a
+   pending backlog item it resolves — `create` validates the id exists and
+   is `pending` (refuses with a clear error otherwise). Optional; a change
+   with no `--closes` hashes identically to one predating the flag.
 4. **`quick-change approve <change-id>`** — hashes and locks the declared
    scope/verify command (and any `--tdd-exempt` reason).
 5. **Reproduce / RED.** Write the regression test before the fix whenever
@@ -74,7 +77,13 @@ skill + TDD discipline B020 + human-approval gate B021):
     `PitWay-Change: <change-id>` trailer, only once the latest run passed
     **and**, unless `--tdd-exempt` was declared, at least one prior `fail`
     exists in the run history (enforced RED→GREEN). A single `pass` with
-    no prior `fail` is refused.
+    no prior `fail` is refused. When the change was created with `--closes
+    <backlog-id>`, the linked backlog item is archived in this **same**
+    atomic commit as the fix — one commit, never a separate one, and the
+    trailer stays `PitWay-Change: <change-id>` only. The archive is
+    checked against the item's current status first, so a crash/retry
+    between a successful archive and the landed commit is a safe no-op,
+    never a hard failure.
 
 A quick-change that is not a defect fix (a docs-only tweak, a version
 bump) skips steps 1-2 and 5's reproduction, typically declaring
@@ -84,7 +93,9 @@ bump) skips steps 1-2 and 5's reproduction, typically declaring
 approved) change with no git operation. `quick-change promote <change-id>`
 terminally converts a draft or approved change into a milestone draft
 candidate instead — a promoted change can never later be committed as a
-quick-change.
+quick-change. Both carry a `--closes` id as provenance only — **neither
+ever archives the linked backlog item**; it stays `pending`, exactly as if
+`--closes` had never been passed. Only `commit` archives it.
 
 `pitway resume` is the authoritative recovery view for a pending
 quick-change; `quick-change status [<change-id>]` is a convenience read

@@ -43,6 +43,10 @@ export function promoteQuickChange(root: string, changeId: string): QuickChangeP
       `cannot promote ${changeId}: status is "${current.status}", not draft or approved`,
     );
   }
+  // M037/T001: promote NEVER archives current.closesBacklogId's linked
+  // backlog item -- it only carries the field forward as provenance on the
+  // terminal 'promoted' record, exactly like every other field here. Only
+  // commit.ts's own archive step ever advances a linked item's status.
   const record = appendQuickChangeRecord(root, {
     id: current.id,
     status: 'promoted',
@@ -53,6 +57,7 @@ export function promoteQuickChange(root: string, changeId: string): QuickChangeP
     runs: current.runs,
     ...(current.tddExempt !== undefined ? { tddExempt: current.tddExempt } : {}),
     ...(current.tddExemptReason !== undefined ? { tddExemptReason: current.tddExemptReason } : {}),
+    ...(current.closesBacklogId !== undefined ? { closesBacklogId: current.closesBacklogId } : {}),
   });
   return { id: record.id, status: 'promoted', objective: record.objective, scope: record.scope };
 }

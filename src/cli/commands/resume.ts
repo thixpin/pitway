@@ -8,6 +8,7 @@ import { loadConfig, loadContract, loadReviews, loadState, loadTasks } from '../
 import { deriveQuickChangeState, readAllQuickChanges } from '../../core/quick-change/create.js';
 import { listBacklogItems } from '../../core/backlog/list.js';
 import { deriveLiveDispatches } from '../../core/tasks/dispatch.js';
+import { checkParallelEligibility } from '../../core/tasks/parallel-eligibility.js';
 import { deriveLatestFindingsByRole } from '../../core/reviews/roles.js';
 import { listTaskWorktrees } from '../../git/worktree.js';
 import { renderOutput } from '../output.js';
@@ -111,6 +112,12 @@ export interface ResumeView {
   // (never null) when no installed driver has drifted, keeping that JSON
   // output byte-identical to before this milestone.
   driverDrift?: DriverDriftView;
+  // M037/T004: additive --json key, same discipline as the others above --
+  // absent (never an empty array) unless execution.strategy is
+  // parallel_worktrees AND checkParallelEligibility's own pairwise logic
+  // finds 2+ ready tasks mutually eligible for parallel dispatch today.
+  // Advisory only: resume never calls task-dispatch or mutates state.
+  parallelEligible?: string[];
 }
 
 export interface OpenReviewView {
@@ -306,6 +313,32 @@ function buildParallelView(root: string, milestoneId: string, tasks: Task[]): Pa
   };
 }
 
+// M037/T004: names ready-but-undispatched tasks that are mutually eligible
+// for parallel dispatch TODAY, by reusing checkParallelEligibility's own
+// pairwise write_scope-overlap and transitive-dependency logic unchanged --
+// never reimplemented. checkParallelEligibility is shaped for "one ready
+// candidate vs. a concurrent set" (dispatch.ts's real call passes ALL
+// in_progress tasks as that set); here every ready task is compared against
+// every OTHER ready task one pair at a time, explicitly excluding each
+// candidate from its own comparison (dispatch.ts's in_progress-set call gets
+// that exclusion for free -- an in_progress task is never also the ready
+// candidate). A task id is named whenever it has at least one mutually
+// eligible ready partner; pure and read-only, never a dispatch trigger.
+function buildParallelEligible(readyTasks: Task[], allTasks: Task[]): string[] | undefined {
+  const eligibleIds = new Set<string>();
+  for (let i = 0; i < readyTasks.length; i++) {
+    for (let j = i + 1; j < readyTasks.length; j++) {
+      const a = readyTasks[i]!;
+      const b = readyTasks[j]!;
+      if (checkParallelEligibility(a, [b], allTasks).eligible) {
+        eligibleIds.add(a.id);
+        eligibleIds.add(b.id);
+      }
+    }
+  }
+  return eligibleIds.size >= 2 ? [...eligibleIds].sort() : undefined;
+}
+
 // Reads only .pitway/ — no conversation or session input required. When
 // multiple tasks are ready, recommends the lowest task id (declared order),
 // deterministically, with no other prioritization in MVP.
@@ -357,10 +390,18 @@ export function buildResumeView(root: string): ResumeView {
   const progress = computeMilestoneProgress(tasksFile.tasks);
   const verificationPassed = allChecksPassed(contract, computeLatestCheckResults(root, state.active_milestone));
   const footer = computeRacingFooter(contract.frontmatter.status, progress, verificationPassed, tasksFile.tasks);
+  const strategy = resolveExecutionStrategy(loadConfig(root));
   const parallel =
-    resolveExecutionStrategy(loadConfig(root)) === 'parallel_worktrees'
+    strategy === 'parallel_worktrees'
       ? buildParallelView(root, state.active_milestone, tasksFile.tasks)
       : null;
+  const parallelEligible =
+    strategy === 'parallel_worktrees'
+      ? buildParallelEligible(
+          tasksFile.tasks.filter((t) => t.status === 'ready'),
+          tasksFile.tasks,
+        )
+      : undefined;
 
   const openSession = loadReviews(root, state.active_milestone).sessions.find((s) => s.status === 'open');
   const openReview: OpenReviewView | undefined =
@@ -399,6 +440,7 @@ export function buildResumeView(root: string): ResumeView {
     footer,
     ...(openReview ? { openReview } : {}),
     ...(driverDrift ? { driverDrift } : {}),
+    ...(parallelEligible ? { parallelEligible } : {}),
   };
 }
 
@@ -505,6 +547,10 @@ export function renderResumeHuman(view: ResumeView): string {
         lines.push(`  [${r.class}] ${r.detail}`);
       }
     }
+  }
+  if (view.parallelEligible !== undefined) {
+    lines.push('', `🏎️ Parallel-eligible ready tasks: ${view.parallelEligible.join(', ')}`);
+    lines.push('  Consider parallel dispatch (task-dispatch <id>) for these.');
   }
   const waitingDetailLines = renderWaitingDetailsHuman(view.waitingDetails);
   const blockedDetailLines = renderBlockedDetailsHuman(view.blockedDetails);

@@ -675,3 +675,56 @@ items:
       and task-update's --usage flag help text no longer point at the
       non-existent 'usage-add --category task' fallback; both now state plainly
       there is no retroactive path once a task completes without --usage."
+  - id: B034
+    title: Stale redundancy comment in parallel-eligibility.ts after M037/T004 reuse
+    reason: src/core/tasks/parallel-eligibility.ts's dependency-check redundancy
+      comment (~line 44-48) is phrased only for the original
+      ready-vs-in_progress call site (dispatch.ts). M037/T004 reuses
+      checkParallelEligibility for a ready-vs-ready pairwise loop in resume.ts;
+      the comment's reasoning still holds there but now reads as stale for the
+      new call site. Comment-only, no logic fix needed. Flagged by the T004
+      worker, who correctly left it untouched (outside its declared
+      write_scope).
+    status: pending
+    source:
+      milestone: M037
+      task: T004
+    created_at: 2026-08-27T08:27:20.854Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B035
+    title: archive.ts journals before state write; can double-journal on retry
+    reason: "src/core/backlog/archive.ts's archiveBacklogItem appends its journal
+      record (appendBacklogArchiveRecord) BEFORE calling saveBacklog. A crash
+      precisely between those two steps, followed by a retry (e.g. a
+      quick-change commit's status-check-then-archive guard added in M037/T001),
+      re-reads backlog.yaml as still pending and archives again, appending a
+      second backlog_archive journal record for one logical archive. State ends
+      up correctly archived exactly once (no hard failure); only the journal
+      audit trail double-writes. Confirmed pre-existing and out of scope for
+      M037/T001 by both the architect review (round 2) and the T001 worker. Fix
+      direction: write state first, journal after, or make the journal append
+      idempotent per archive."
+    status: pending
+    source:
+      milestone: M037
+      task: T001
+    created_at: 2026-08-27T08:31:41.023Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B036
+    title: "M037 rebuild spot-check: live backlog add with no active milestone"
+    reason: T002 live verification after rebuilding+reinstalling pitway from repo
+      source (session discovered the global pitway binary was disconnected from
+      this repo).
+    status: archived
+    source:
+      milestone: null
+      task: null
+    created_at: 2026-08-27T09:08:32.392Z
+    resolved_at: 2026-08-27T09:09:38.483Z
+    promoted_to: null
+    archived_reason: Spot-check artifact from live-verifying T002 after
+      rebuilding/reinstalling pitway; not real work, no promotion needed.

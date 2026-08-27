@@ -1,0 +1,130 @@
+schema_version: 1
+sessions:
+  - id: rev-e88416c6a982
+    status: decided
+    created_at: 2026-08-27T07:36:49Z
+    roles:
+      - architect
+    content_hash: sha256:932cd4a90c9f29e65ece8d80ba99ae87610a185c5017b6388e1b1a93c2674d05
+    findings:
+      - role: architect
+        recorded_at: 2026-08-27T07:46:22Z
+        findings:
+          - severity: blocker
+            finding: T001 has commit.ts call archiveBacklogItem unconditionally before
+              staging, on every commit attempt including retries. archive.ts's
+              transitionBacklogItem rejects archived->archived (no transition
+              defined), throwing. If a crash lands after the archive succeeds
+              but before the git commit, every retry of `quick-change commit`
+              re-calls archiveBacklogItem on an already-archived item and
+              hard-fails, permanently wedging that change. This falsifies
+              AC003's "resume after an interrupted commit does not
+              double-archive" guarantee -- it doesn't double-archive, it
+              unrecoverably errors. commit.ts's existing re-entry check only
+              guards the git-commit half (resolveChangeCommitSha), with no
+              analogous guard for the archive half.
+            targets:
+              - ac002
+              - ac003
+              - t001
+            recommendation: Before calling archiveBacklogItem in commit.ts, check the item's
+              current status; skip the call when already archived, mirroring
+              completeTask's status-check-before- mutate pattern. Add a resume
+              test that crashes between archive and git-commit.
+          - severity: major
+            finding: T002 says to mirror archive.ts's "already-milestone-less, direct-write
+              pattern" by skipping the journaled path entirely and only calling
+              saveBacklog. But archive.ts does NOT skip journaling -- it appends
+              a dedicated milestone-less backlog_archive journal record
+              (excluded from derivePending's entry-only filter) and then calls
+              saveBacklog. Implementing T002 literally would make a
+              milestone-less backlog add leave no journal trail at all, breaking
+              the "every backlog mutation is journal-backed" invariant. The
+              correct mirror needs a new milestone-less journal record kind in
+              src/state/journal.ts -- not in T002's write_scope, and it would
+              overlap T001's write_scope on that same file, undercutting
+              T001-T004's claimed independence.
+            targets:
+              - ac004
+              - t001
+              - t002
+            recommendation: Have T002 add a dedicated milestone-less journal record kind
+              (mirroring backlog_archive) rather than skipping journaling, add
+              src/state/journal.ts to T002's write_scope, and re-check T001/T002
+              write_scope disjointness.
+          - severity: minor
+            finding: T004 claims no parallel-dispatch-eligibility computation exists
+              anywhere and points only at dispatch.ts/task-dispatch.ts. In fact
+              src/core/tasks/parallel-eligibility.ts already implements this via
+              checkParallelEligibility (pairwise write_scope-overlap and
+              dependency checking), shaped for one candidate vs. in_progress
+              tasks, and treats legacy relevant_files-only tasks as ineligible
+              (undeclared write_scope). T004 needs to adapt it into a pairwise
+              loop across ready tasks rather than reimplement from scratch, and
+              should drop relevant_files from its own eligibility wording to
+              match existing policy.
+            targets:
+              - t004
+              - ac006
+            recommendation: Point T004 at parallel-eligibility.ts's
+              checkParallelEligibility, describe the pairwise-loop adaptation
+              needed, and drop relevant_files from the comparison to match
+              existing dispatch-time policy.
+        usage:
+          total_tokens: 97609
+    decision:
+      outcome: revision_requested
+      note: "Architect blocker: archive-before-check race in commit.ts; major: T002
+        must add a real journal record kind, not skip journaling; minor: T004
+        should reuse parallel-eligibility.ts"
+      decided_at: 2026-08-27T08:08:19Z
+  - id: rev-4fca2ad989a7
+    status: decided
+    created_at: 2026-08-27T08:09:58Z
+    roles:
+      - architect
+    content_hash: sha256:b044144c09da5c2574a4a354c7ff320c38fb14d4e522b4184384c7b1776f9e0b
+    findings:
+      - role: architect
+        recorded_at: 2026-08-27T08:13:49Z
+        findings:
+          - severity: minor
+            finding: "T001's fix genuinely closes the described blocker: the status check
+              before archiving, skipping when already archived, makes a retry
+              after a crash between archive and the landed git commit a safe
+              no-op. One residual, narrower window remains but is pre-existing
+              and out of this contract's scope: archiveBacklogItem itself
+              journals before writing state, so a crash between those two steps
+              followed by a retry re-archives (state ends up correctly archived
+              exactly once; only the audit trail double-writes a journal
+              record). Does not violate AC003's state-level guarantee and causes
+              no hard failure."
+            targets:
+              - t001
+              - ac003
+            recommendation: "Optional, non-blocking: note in T001 that archive.ts's own
+              journal-before-state write order is pre-existing and out of scope,
+              or file a backlog item if exactness matters later."
+          - severity: minor
+            finding: "T004's reuse of checkParallelEligibility for a ready-vs-ready pairwise
+              loop is sound (dependency check is already symmetric; the
+              redundancy property generalizes). Two adaptation pitfalls aren't
+              called out in the contract text: (1) the in-code comment
+              justifying dependency-check redundancy is phrased for in_progress
+              tasks and will read stale once reused for ready-vs-ready, though
+              the conclusion still holds; (2) a pairwise loop over ready tasks
+              must explicitly exclude the candidate itself from the comparison
+              set, or every task self-flags as a write-scope conflict against
+              itself."
+            targets:
+              - t004
+            recommendation: No contract change needed; flag to the T004 implementer to
+              exclude self from the comparison loop and update the stale
+              redundant-by-construction comment for the new call site.
+        usage:
+          total_tokens: 88110
+    decision:
+      outcome: accepted
+      note: 2 minor non-blocking findings from round 2; folding implementer notes into
+        T001/T004 text before confirm
+      decided_at: 2026-08-27T08:14:07Z

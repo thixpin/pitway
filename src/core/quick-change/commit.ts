@@ -1,9 +1,18 @@
 import { commitOrResume } from '../../git/commit-or-resume.js';
 import { checkWorkingTreeClean } from '../../git/safety.js';
 import { composeMessage, resolveChangeCommitSha } from '../../git/trailers.js';
+import { archiveBacklogItem } from '../backlog/archive.js';
+import { listBacklogItems } from '../backlog/list.js';
 import { appendQuickChangeRecord, type JournalQuickChange } from '../../state/journal.js';
 import { listSafeManagedDirtyPaths } from '../../state/managed-init-paths.js';
 import { QuickChangeError, requireQuickChange } from './create.js';
+
+// The one deterministic path a --closes commit ever adds to expectedPaths,
+// beyond the change's own declared scope -- mirrors the literal string
+// src/core/milestones/complete.ts already uses for the identical purpose
+// (backlog.yaml is a shared, root-level file with no per-caller path
+// helper exported from state/store.ts to reuse).
+const BACKLOG_PATH = '.pitway/backlog.yaml';
 
 // T004: lands an approved quick-change as one commit via commitOrResume,
 // exactly its declared scope, carrying a PitWay-Change: <change-id> trailer
@@ -29,6 +38,7 @@ function appendCommittedSnapshot(root: string, current: JournalQuickChange): voi
     runs: current.runs,
     ...(current.tddExempt !== undefined ? { tddExempt: current.tddExempt } : {}),
     ...(current.tddExemptReason !== undefined ? { tddExemptReason: current.tddExemptReason } : {}),
+    ...(current.closesBacklogId !== undefined ? { closesBacklogId: current.closesBacklogId } : {}),
   });
 }
 
@@ -121,9 +131,40 @@ export function commitQuickChange(root: string, changeId: string): QuickChangeCo
   // first quick-change commit, when it is also the repository's first
   // commit since init, must also be allowed to sweep and stage the managed
   // init output alongside the change's own scope, exactly like a
-  // milestone's own baseline commit already does.
-  const expectedPaths = [...current.scope, ...listSafeManagedDirtyPaths(root)];
+  // milestone's own baseline commit already does. M037/T001: the
+  // deterministic backlog.yaml path is added only when closesBacklogId is
+  // set, so a no-closes commit's expectedPaths -- and therefore its
+  // observable behavior -- stays byte-for-byte unchanged.
+  const expectedPaths = [
+    ...current.scope,
+    ...listSafeManagedDirtyPaths(root),
+    ...(current.closesBacklogId !== undefined ? [BACKLOG_PATH] : []),
+  ];
+  // Checked BEFORE the archive call below: refuses on unrelated dirt first,
+  // so a commit that's going to be refused anyway never mutates the backlog
+  // -- shrinks the mutate-before-refuse window to nothing on that path.
   assertDirtySubset(root, expectedPaths);
+
+  // M037/T001: fold the linked backlog item's archive into this same
+  // commit, BEFORE staging anything -- called only when the item isn't
+  // already archived. Resume-safety: resolveChangeCommitSha's self-heal
+  // above only covers the git-commit half of this operation; it does not
+  // guard this archive call. If a prior attempt already archived the item
+  // but the git commit itself never landed (crash/interrupt in between), a
+  // retried commit lands here again with the local record still 'approved'
+  // and existingSha still undefined -- re-checking the item's current
+  // status first (mirroring completeTask's status-check-before-mutate
+  // pattern, src/core/tasks/update.ts) makes that retry a safe no-op on the
+  // archive half: archive.ts's transitionBacklogItem rejects an
+  // archived -> archived transition by throwing, so calling
+  // archiveBacklogItem unconditionally here would turn a safe retry into a
+  // hard failure.
+  if (current.closesBacklogId !== undefined) {
+    const linkedItem = listBacklogItems(root).find((item) => item.id === current.closesBacklogId);
+    if (linkedItem === undefined || linkedItem.status !== 'archived') {
+      archiveBacklogItem(root, current.closesBacklogId, `closed by quick-change ${current.id}`);
+    }
+  }
 
   const message = composeMessage(`fix: ${current.objective}`, { 'PitWay-Change': current.id });
 

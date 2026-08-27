@@ -9,6 +9,8 @@ import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-ad
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
 import { registerQuickChangeCommand } from '../../src/cli/commands/quick-change.js';
 import { registerResumeCommand } from '../../src/cli/commands/resume.js';
+import { loadBacklog, saveBacklog } from '../../src/state/store.js';
+import type { BacklogItem } from '../../src/state/schemas.js';
 
 function git(args: string[], cwd: string): string {
   return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
@@ -97,9 +99,11 @@ async function create(
   objective = 'Fix the regression',
   scope = ['target.txt'],
   verify = PASSING_VERIFY,
+  options: { closes?: string } = {},
 ): Promise<{ lines: string[]; error?: Error }> {
   const args = ['quick-change', 'create', '--objective', objective, '--verify', verify, '--json'];
   for (const s of scope) args.push('--scope', s);
+  if (options.closes !== undefined) args.push('--closes', options.closes);
   return run(args, root);
 }
 
@@ -207,6 +211,78 @@ describe('quick-change create/approve/run/commit end to end', () => {
     const committed = await commit(id);
     expect(committed.error?.message).toMatch(/no passing run/);
     expect(commitCount(root)).toBe(before);
+  });
+});
+
+// M037/T001: seeds a pending backlog item directly (backlog add's CLI
+// command requires an active milestone, which quick-change create's own
+// gate forbids -- so this seeds the state file directly, committed,
+// mirroring the unit-level fixtures in tests/unit/quick-change-commit.test.ts
+// and tests/unit/quick-change-lifecycle.test.ts).
+function makePendingBacklogItem(root: string, id: string, title = 'Some backlog item'): void {
+  const backlog = loadBacklog(root);
+  const item: BacklogItem = {
+    id: id as BacklogItem['id'],
+    title,
+    reason: 'test fixture',
+    status: 'pending',
+    source: { milestone: null, task: null },
+    created_at: new Date().toISOString(),
+    resolved_at: null,
+    promoted_to: null,
+    archived_reason: null,
+  };
+  saveBacklog(root, { schema_version: backlog.schema_version, items: [...backlog.items, item] });
+  git(['add', '.pitway/backlog.yaml'], root);
+  git(['commit', '-q', '-m', 'test: seed backlog item'], root);
+}
+
+function backlogStatus(cwd: string, id: string): string | undefined {
+  return loadBacklog(cwd).items.find((item) => item.id === id)?.status;
+}
+
+describe('quick-change create --closes <backlog-id> via the real CLI', () => {
+  it('refuses an unknown or non-pending backlog id, with a clear error', async () => {
+    const unknown = await create('Fix it', ['target.txt'], PASSING_VERIFY, { closes: 'B999' });
+    expect(unknown.error?.message).toMatch(/B999/);
+  });
+
+  it('lands the fix and the backlog archive in exactly one commit, with only a PitWay-Change trailer', async () => {
+    makePendingBacklogItem(root, 'B001');
+    const created = await create('Fix it', ['target.txt'], PASSING_VERIFY, { closes: 'B001' });
+    expect(created.error).toBeUndefined();
+    const id = idOf(created.lines);
+    expect((JSON.parse(created.lines[0]!) as { closesBacklogId?: string }).closesBacklogId).toBe('B001');
+
+    await approve(id);
+    await doRun(id); // RED
+    writeFileSync(join(root, 'target.txt'), 'FIXED\n');
+    await doRun(id); // GREEN
+
+    const before = commitCount(root);
+    const committed = await commit(id);
+    expect(committed.error).toBeUndefined();
+    expect(commitCount(root)).toBe(before + 1);
+
+    expect(backlogStatus(root, 'B001')).toBe('archived');
+    const message = headMessage(root);
+    expect(message).toContain(`PitWay-Change: ${id}`);
+    expect(message).not.toMatch(/PitWay-(?!Change)/);
+    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+  });
+
+  it('cancel and promote never archive the linked backlog item; it stays pending', async () => {
+    makePendingBacklogItem(root, 'B001');
+    const createdA = await create('Cancel me', ['target.txt'], PASSING_VERIFY, { closes: 'B001' });
+    const idA = idOf(createdA.lines);
+    expect((await cancel(idA)).error).toBeUndefined();
+    expect(backlogStatus(root, 'B001')).toBe('pending');
+
+    makePendingBacklogItem(root, 'B002');
+    const createdB = await create('Promote me', ['target.txt'], PASSING_VERIFY, { closes: 'B002' });
+    const idB = idOf(createdB.lines);
+    expect((await promote(idB)).error).toBeUndefined();
+    expect(backlogStatus(root, 'B002')).toBe('pending');
   });
 });
 

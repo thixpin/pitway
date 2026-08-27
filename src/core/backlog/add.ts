@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto';
-import { appendJournalEntry } from '../../state/journal.js';
+import { createHash, randomBytes } from 'node:crypto';
+import { appendBacklogAddUnscopedRecord, appendJournalEntry } from '../../state/journal.js';
 import type { BacklogItem } from '../../state/schemas.js';
 import {
   loadBacklog,
@@ -58,12 +58,28 @@ export interface BacklogAddView {
   status: 'pending';
 }
 
-// backlog add (AC001, AC003, AC004): --milestone/--task here are source
-// annotation ONLY, never journal-attachment routing (that is always the
+function generateBacklogAddUnscopedId(): string {
+  return `bau-${randomBytes(6).toString('hex')}`;
+}
+
+// backlog add (AC001, AC003, AC004; T002 decoupled from requiring an active
+// milestone): --milestone/--task here are source annotation ONLY, never
+// journal-attachment routing (when a milestone is active, that is always the
 // active milestone, unconditionally). source.milestone defaults to the
 // active milestone when omitted, preserving discovery context by default;
 // source.task has no equivalent auto-detection (no state.yaml-level
 // "current task" concept exists).
+//
+// T002: unlike resolveActiveMilestoneStrict (still used unchanged by
+// promote, which targets a task -- inherently milestone-scoped), add reads
+// active_milestone directly and tolerates null. When active, behavior is
+// byte-for-byte unchanged: the same journaled kind:'entry'/backlog_recording
+// path below. When null, there is no milestone for an entry-kind record to
+// attach to (its `milestone` field is non-nullable, shared with
+// usage_recording/contract_amendment/etc., which legitimately require a
+// real milestone id) -- so this appends the dedicated milestone-less
+// backlog_add_unscoped record instead (mirrors archive.ts's own
+// backlog_archive precedent exactly), then saves the backlog directly.
 export function addBacklogItem(root: string, inputs: BacklogAddInputs): BacklogAddView {
   const title = inputs.title.trim();
   if (title.length === 0) {
@@ -74,13 +90,18 @@ export function addBacklogItem(root: string, inputs: BacklogAddInputs): BacklogA
     throw new BacklogError('backlog add requires a non-empty --reason');
   }
 
-  const activeMilestone = resolveActiveMilestoneStrict(root);
+  const activeMilestone = loadState(root).active_milestone;
 
   const sourceMilestone = inputs.sourceMilestone ?? activeMilestone;
   const sourceTask = inputs.sourceTask;
   if (sourceTask !== undefined) {
+    if (sourceMilestone === null) {
+      throw new BacklogError(
+        'backlog add --task requires --milestone (or an active milestone) to resolve against',
+      );
+    }
     assertTaskExists(root, sourceMilestone, sourceTask);
-  } else {
+  } else if (sourceMilestone !== null) {
     assertMilestoneExists(root, sourceMilestone);
   }
 
@@ -99,17 +120,29 @@ export function addBacklogItem(root: string, inputs: BacklogAddInputs): BacklogA
     archived_reason: null,
   };
 
-  const operationId = createHash('sha256')
-    .update(JSON.stringify({ milestone: activeMilestone, id, item }))
-    .digest('hex');
+  if (activeMilestone !== null) {
+    const operationId = createHash('sha256')
+      .update(JSON.stringify({ milestone: activeMilestone, id, item }))
+      .digest('hex');
 
-  appendJournalEntry(root, {
-    milestone: activeMilestone,
-    type: 'backlog_recording',
-    operationId,
-    target: id,
-    payload: { operation: 'add', item },
-  });
+    appendJournalEntry(root, {
+      milestone: activeMilestone,
+      type: 'backlog_recording',
+      operationId,
+      target: id,
+      payload: { operation: 'add', item },
+    });
+  } else {
+    appendBacklogAddUnscopedRecord(root, {
+      id: generateBacklogAddUnscopedId(),
+      target: id,
+      title,
+      reason,
+      sourceMilestone,
+      sourceTask: sourceTask ?? null,
+      at: item.created_at,
+    });
+  }
   saveBacklog(root, { schema_version: backlog.schema_version, items: [...backlog.items, item] });
 
   return { id, status: 'pending' };

@@ -1060,6 +1060,142 @@ tasks:
   });
 });
 
+// M037/T004: names ready-but-undispatched tasks that checkParallelEligibility's
+// own pairwise logic (disjoint write_scope, no dependency relationship) finds
+// mutually eligible for parallel dispatch today. Advisory only -- resume must
+// never call task-dispatch itself, so these fixtures use the lighter
+// saveState/saveTasks harness (no real dispatch) rather than the
+// milestone-add/confirm one above.
+describe('pitway resume parallel-eligible ready tasks (M037/T004)', () => {
+  function setup(tasks: Task[]): void {
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    saveContract(root, 'M001', { frontmatter: frontmatter('in_progress'), body: '\n' });
+    saveTasks(root, 'M001', { schema_version: 1, tasks });
+  }
+
+  // write_scope requires the context_files/write_scope declaration style
+  // (never combined with the legacy relevant_files task() defaults to), and
+  // write_scope must be a subset of context_files.
+  function scopedTask(overrides: Partial<Task> & Pick<Task, 'id' | 'status' | 'write_scope'>): Task {
+    return task({
+      ...overrides,
+      relevant_files: undefined,
+      context_files: overrides.write_scope,
+    });
+  }
+
+  function enableParallelStrategy(): void {
+    saveConfig(root, { ...loadConfig(root), execution: { strategy: 'parallel_worktrees' } });
+  }
+
+  it('names 2+ ready tasks with disjoint write_scope and no dependency relationship', async () => {
+    enableParallelStrategy();
+    setup([
+      scopedTask({ id: 'T001', status: 'ready', write_scope: ['src/a.ts'] }),
+      scopedTask({ id: 'T002', status: 'ready', write_scope: ['src/b.ts'] }),
+    ]);
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(lines.join('\n'));
+    expect(view.parallelEligible).toEqual(['T001', 'T002']);
+
+    const humanProgram = buildCli();
+    const humanLines: string[] = [];
+    registerResumeCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
+    await humanProgram.parseAsync(['node', 'pitway', 'resume']);
+    const human = humanLines.join('\n');
+    expect(human).toContain('Parallel-eligible ready tasks: T001, T002');
+    expect(human.toLowerCase()).toContain('consider parallel dispatch');
+  });
+
+  it('is absent when execution.strategy is not parallel_worktrees', async () => {
+    setup([
+      scopedTask({ id: 'T001', status: 'ready', write_scope: ['src/a.ts'] }),
+      scopedTask({ id: 'T002', status: 'ready', write_scope: ['src/b.ts'] }),
+    ]);
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(lines.join('\n'));
+    expect('parallelEligible' in view).toBe(false);
+
+    const humanProgram = buildCli();
+    const humanLines: string[] = [];
+    registerResumeCommand(humanProgram, { root, write: (s) => humanLines.push(s) });
+    await humanProgram.parseAsync(['node', 'pitway', 'resume']);
+    expect(humanLines.join('\n')).not.toContain('Parallel-eligible');
+  });
+
+  it('is absent when fewer than 2 ready tasks qualify (write_scope overlap)', async () => {
+    enableParallelStrategy();
+    setup([
+      scopedTask({ id: 'T001', status: 'ready', write_scope: ['src/a.ts'] }),
+      scopedTask({ id: 'T002', status: 'ready', write_scope: ['src/a.ts'] }),
+    ]);
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(lines.join('\n'));
+    expect('parallelEligible' in view).toBe(false);
+  });
+
+  it('is absent when only one task is ready', async () => {
+    enableParallelStrategy();
+    setup([scopedTask({ id: 'T001', status: 'ready', write_scope: ['src/a.ts'] })]);
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(lines.join('\n'));
+    expect('parallelEligible' in view).toBe(false);
+  });
+
+  it('excludes a dependency-related pair while naming an unrelated eligible pair', async () => {
+    enableParallelStrategy();
+    // T003 depends on T001, so T001 could never actually be ready while T003
+    // is also ready under the normal state machine -- exercised anyway as
+    // defense-in-depth. T002 is unrelated to both and disjoint in write_scope.
+    setup([
+      scopedTask({ id: 'T001', status: 'ready', write_scope: ['src/a.ts'] }),
+      scopedTask({ id: 'T002', status: 'ready', write_scope: ['src/b.ts'] }),
+      scopedTask({ id: 'T003', status: 'ready', write_scope: ['src/c.ts'], depends_on: ['T001'] }),
+    ]);
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(lines.join('\n'));
+    expect(view.parallelEligible).toEqual(['T001', 'T002', 'T003']);
+  });
+
+  it('never invokes task-dispatch or mutates task status', async () => {
+    enableParallelStrategy();
+    setup([
+      scopedTask({ id: 'T001', status: 'ready', write_scope: ['src/a.ts'] }),
+      scopedTask({ id: 'T002', status: 'ready', write_scope: ['src/b.ts'] }),
+    ]);
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(lines.join('\n'));
+    expect(view.parallelEligible).toEqual(['T001', 'T002']);
+    // Read-only: both tasks remain untouched in state.
+    expect(view.ready.sort()).toEqual(['T001', 'T002']);
+    expect(view.inProgress).toEqual([]);
+  });
+});
+
 // The default CommandDeps fallbacks (deps.write ?? console.log,
 // deps.root ?? process.cwd()) are only reached when a caller registers the
 // command with no overrides -- the real shape a bare `pitway resume`

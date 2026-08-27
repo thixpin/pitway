@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { relative, resolve, sep } from 'node:path';
 import { checkWorkingTreeClean } from '../../git/safety.js';
+import { listBacklogItems } from '../backlog/list.js';
 import {
   appendQuickChangeRecord,
   readJournal,
@@ -31,6 +32,11 @@ export interface CreateQuickChangeInputs {
   // Must provide a non-empty reason; hashed/locked at approve time.
   tddExempt?: boolean;
   tddExemptReason?: string;
+  // M037/T001: optional backlog item this quick-change closes on commit.
+  // Must name an existing, currently-pending backlog item; validated here
+  // (not deferred to commit), then hashed/locked at approve time exactly
+  // like tddExempt.
+  closesBacklogId?: string;
 }
 
 export interface QuickChangeView {
@@ -43,6 +49,7 @@ export interface QuickChangeView {
   runs: JournalQuickChange['runs'];
   tddExempt?: boolean;
   tddExemptReason?: string;
+  closesBacklogId?: string;
 }
 
 function toView(record: JournalQuickChange): QuickChangeView {
@@ -56,6 +63,7 @@ function toView(record: JournalQuickChange): QuickChangeView {
     runs: record.runs,
     ...(record.tddExempt !== undefined ? { tddExempt: record.tddExempt } : {}),
     ...(record.tddExemptReason !== undefined ? { tddExemptReason: record.tddExemptReason } : {}),
+    ...(record.closesBacklogId !== undefined ? { closesBacklogId: record.closesBacklogId } : {}),
   };
 }
 
@@ -156,21 +164,47 @@ function assertNoActiveMilestone(root: string): void {
   }
 }
 
-// sha256 over the declared scope + verify command + tdd exemption exactly as approved --
-// deliberately narrower than computeVerificationHash's contract-frontmatter
-// canonicalization (src/core/contracts/verification-hash.ts), since a
-// quick-change has no contract frontmatter to hash from. Prefixed
+// sha256 over the declared scope + verify command + tdd exemption + closes-backlog-id
+// exactly as approved -- deliberately narrower than computeVerificationHash's
+// contract-frontmatter canonicalization (src/core/contracts/verification-hash.ts),
+// since a quick-change has no contract frontmatter to hash from. Prefixed
 // "sha256:" to match the same format sha256Hash (src/state/schemas.ts) and
 // verification_approved_hash already use. B020: tddExempt fields are part of
-// the hash so they are locked at approve time.
+// the hash so they are locked at approve time. M037/T001: closesBacklogId is
+// included ONLY when defined -- a change with no --closes at all must hash
+// identically to how it hashed before this field existed (AC: byte-for-byte
+// unchanged for the no-closes path), so the key itself is omitted rather
+// than defaulted to null the way tddExempt/tddExemptReason are.
 function computeQuickChangeHash(
   scope: string[],
   verifyCommand: string,
   tddExempt?: boolean,
   tddExemptReason?: string,
+  closesBacklogId?: string,
 ): string {
-  const canonical = JSON.stringify({ scope, verifyCommand, tddExempt: tddExempt ?? false, tddExemptReason: tddExemptReason ?? null });
+  const canonical = JSON.stringify({
+    scope,
+    verifyCommand,
+    tddExempt: tddExempt ?? false,
+    tddExemptReason: tddExemptReason ?? null,
+    ...(closesBacklogId !== undefined ? { closesBacklogId } : {}),
+  });
   return `sha256:${createHash('sha256').update(canonical).digest('hex')}`;
+}
+
+// M037/T001: validates --closes at create time -- the id must name an
+// existing, currently-pending backlog item. Deferred to commit time only for
+// the resume-safety already-archived check (commit.ts), never for this
+// existence/status gate, which is exactly what create's own error should
+// surface immediately rather than a confusing failure much later.
+function assertClosesBacklogId(root: string, backlogId: string): void {
+  const item = listBacklogItems(root).find((i) => i.id === backlogId);
+  if (item === undefined) {
+    throw new QuickChangeError(`--closes ${backlogId}: backlog item not found`);
+  }
+  if (item.status !== 'pending') {
+    throw new QuickChangeError(`--closes ${backlogId}: backlog item is not pending (status: ${item.status})`);
+  }
 }
 
 function generateChangeId(): string {
@@ -204,6 +238,9 @@ export function createQuickChange(
   assertNoActiveMilestone(root);
   assertCleanWorkingTree(root);
   const scope = assertValidScope(root, inputs.scope);
+  if (inputs.closesBacklogId !== undefined) {
+    assertClosesBacklogId(root, inputs.closesBacklogId);
+  }
 
   const id = generateChangeId();
   const record = appendQuickChangeRecord(root, {
@@ -214,6 +251,7 @@ export function createQuickChange(
     verifyCommand: inputs.verifyCommand,
     runs: [],
     ...(inputs.tddExempt === true ? { tddExempt: true as const, tddExemptReason: inputs.tddExemptReason! } : {}),
+    ...(inputs.closesBacklogId !== undefined ? { closesBacklogId: inputs.closesBacklogId } : {}),
   });
   return toView(record);
 }
@@ -246,6 +284,7 @@ export function approveQuickChange(root: string, changeId: string): QuickChangeV
     current.verifyCommand,
     current.tddExempt,
     current.tddExemptReason,
+    current.closesBacklogId,
   );
   const record = appendQuickChangeRecord(root, {
     id: current.id,
@@ -257,6 +296,7 @@ export function approveQuickChange(root: string, changeId: string): QuickChangeV
     runs: current.runs,
     ...(current.tddExempt !== undefined ? { tddExempt: current.tddExempt } : {}),
     ...(current.tddExemptReason !== undefined ? { tddExemptReason: current.tddExemptReason } : {}),
+    ...(current.closesBacklogId !== undefined ? { closesBacklogId: current.closesBacklogId } : {}),
   });
   return toView(record);
 }
@@ -283,6 +323,7 @@ export function cancelQuickChange(root: string, changeId: string): QuickChangeVi
     runs: current.runs,
     ...(current.tddExempt !== undefined ? { tddExempt: current.tddExempt } : {}),
     ...(current.tddExemptReason !== undefined ? { tddExemptReason: current.tddExemptReason } : {}),
+    ...(current.closesBacklogId !== undefined ? { closesBacklogId: current.closesBacklogId } : {}),
   });
   return toView(record);
 }

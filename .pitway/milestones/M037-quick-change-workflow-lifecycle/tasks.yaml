@@ -1,0 +1,371 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Add quick-change create --closes with atomic commit fold
+    objective: "Add \"quick-change create --closes <backlog-id>\": validate the
+      backlog id exists and is status pending (listBacklogItems / loadBacklog
+      lookup), store closesBacklogId on the journal record, and include it in
+      computeQuickChangeHash (create.ts) exactly like tddExempt so it's locked
+      at approve and re-validated by run. At commit time (commit.ts), when
+      closesBacklogId is set: call archiveBacklogItem(root, closesBacklogId,
+      \"<a reason naming the quick-change id>\") BEFORE staging, add the
+      deterministic .pitway/backlog.yaml path (pitwayPath(root, 'backlog.yaml'))
+      to expectedPaths alongside the existing scope, and let the single
+      commitOrResume call cover both the fix and the archive -- one commit,
+      PitWay-Change: <id> trailer only, never any other .pitway/ path. cancel
+      and promote must never archive the linked item even when closesBacklogId
+      is set (add explicit tests proving it stays pending after cancel/promote,
+      not just implicit non-behavior). Resume-safety: the existing
+      resolveChangeCommitSha self-heal only covers the git-commit half; it does
+      NOT guard the archive call, and archive.ts's transitionBacklogItem rejects
+      an archived->archived transition by throwing. Before calling
+      archiveBacklogItem, check the linked item's current status
+      (loadBacklog/listBacklogItems) and skip the call when it is already
+      archived -- mirroring completeTask's status-check-before-mutate pattern
+      (tasks/update.ts) -- so a crash/interrupt between a successful archive and
+      the git commit landing makes a retried `commit` a safe no-op, never a hard
+      failure. Add a test that simulates exactly that: archive succeeds, commit
+      is interrupted before the git commit, then commit is retried -- it must
+      succeed without erroring and without a second archive attempt. Note:
+      archiveBacklogItem itself journals before writing state (archive.ts), so a
+      crash precisely between those two steps, followed by a retry, can still
+      append a second backlog_archive journal record for one logical archive --
+      state ends up correctly archived exactly once (no hard failure, AC003's
+      state-level guarantee holds); this narrower journal-audit-trail gap is
+      pre-existing in archive.ts and explicitly out of scope for this task."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - quick-change create --closes <id> refuses for an unknown or non-pending
+        backlog id, with a clear error.
+      - A committed quick-change with --closes lands the fix and the backlog
+        archive in exactly one commit, with only a PitWay-Change trailer.
+      - quick-change cancel and quick-change promote never archive the linked
+        backlog item; it stays pending.
+      - Re-running commit after a successful commit+archive is a safe no-op (no
+        double-commit, no double-archive, no error).
+      - Re-running commit after the archive succeeded but the git commit did not
+        yet land is also a safe no-op (no error, no second archive attempt).
+      - quick-change create/run/commit/promote with no --closes at all is
+        byte-for-byte unchanged from today.
+    context_files:
+      - src/state/journal.ts
+      - src/core/quick-change/create.ts
+      - src/core/quick-change/run.ts
+      - src/core/quick-change/commit.ts
+      - src/core/quick-change/promote.ts
+      - src/cli/commands/quick-change.ts
+      - src/core/backlog/archive.ts
+      - src/core/backlog/list.ts
+      - src/state/store.ts
+      - src/state/schemas.ts
+      - tests/unit/quick-change-lifecycle.test.ts
+      - tests/unit/quick-change-commit.test.ts
+      - tests/integration/quick-change.test.ts
+    write_scope:
+      - src/state/journal.ts
+      - src/core/quick-change/create.ts
+      - src/core/quick-change/run.ts
+      - src/core/quick-change/commit.ts
+      - src/core/quick-change/promote.ts
+      - src/cli/commands/quick-change.ts
+      - tests/unit/quick-change-lifecycle.test.ts
+      - tests/unit/quick-change-commit.test.ts
+      - tests/integration/quick-change.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/quick-change-lifecycle.test.ts
+        tests/unit/quick-change-commit.test.ts
+        tests/integration/quick-change.test.ts
+    result:
+      summary: "[truncated] eview round. cancel/promote carry closesBacklogId as
+        provenance but never archive. .pitway/backlog.yaml (literal
+        '.pitway/backlog.yaml', matching the existing precedent in
+        milestones/complete.ts since pitwayPath is private/unexported) joins
+        expectedPaths only when closesBacklogId is set."
+      evidence: "RED confirmed first: 11 failing tests for the expected reasons
+        (unimplemented validation/hash/archive logic). GREEN: npx vitest run
+        tests/unit/quick-change-lifecycle.test.ts
+        tests/unit/quick-change-commit.test.ts
+        tests/integration/quick-change.test.ts -> 96/96 passed. npx tsc --noEmit
+        clean. CT001/CT002/CT003 verified pass via pitway verify."
+    attempts: 1
+    usage:
+      total_tokens: 171608
+  - id: T002
+    name: Decouple backlog add from requiring an active milestone
+    objective: "pitway backlog add currently refuses unconditionally with \"no
+      active milestone\" (resolveActiveMilestoneStrict, add.ts) because it
+      journals a kind: 'entry' record whose milestone id is non-nullable in the
+      shared entry schema other journal kinds still legitimately require. Do NOT
+      loosen that shared schema, and do NOT skip journaling. Instead, mirror
+      archive.ts's real pattern exactly: archiveBacklogItem does not skip the
+      journal -- it appends a dedicated milestone-less backlog_archive record
+      (excluded from derivePending's entry-only filter) and then calls
+      saveBacklog. Add an analogous new milestone-less journal record
+      kind/schema in src/state/journal.ts (e.g. a backlog_add_unscoped kind, no
+      milestone field, excluded from derivePending the same way backlog_archive
+      is) for this path to append. When active_milestone is null: append that
+      new record, then call saveBacklog directly with source.milestone: null
+      (backlogReferenceSchema already allows this -- schemas.ts). When a
+      milestone IS active, behavior is completely unchanged (existing journaled
+      kind:'entry' path). backlog promote's existing active-milestone
+      requirement is unaffected -- out of scope, since promote targets a task,
+      which is inherently milestone-scoped. Because this task and T001 both
+      extend src/state/journal.ts, T002 depends on T001 (sequenced, not
+      parallel) to avoid a write_scope collision."
+    status: completed
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - "pitway backlog add succeeds with no active milestone, recording
+        source.milestone: null."
+      - A milestone-less backlog add appends a real journal record (not silently
+        untracked) -- the audit trail stays complete.
+      - pitway backlog add with an active milestone is byte-for-byte unchanged
+        from today (same journaled pending-entry path).
+      - backlog promote/archive/list are unaffected.
+    context_files:
+      - src/core/backlog/add.ts
+      - src/core/backlog/archive.ts
+      - src/core/backlog/list.ts
+      - src/state/journal.ts
+      - src/state/store.ts
+      - src/state/schemas.ts
+      - tests/unit/backlog-state.test.ts
+      - tests/integration/backlog.test.ts
+    write_scope:
+      - src/core/backlog/add.ts
+      - src/state/journal.ts
+      - tests/unit/backlog-state.test.ts
+      - tests/integration/backlog.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/backlog-state.test.ts
+        tests/integration/backlog.test.ts
+    result:
+      summary: "[truncated] ote, which stays milestone-scoped and out of this task's
+        scope); when active, the code path is byte-for-byte the same
+        appendJournalEntry call as before; when null, appends the new record
+        then saves the backlog directly. --task without a resolvable milestone
+        is refused with a clear error."
+      evidence: 'TDD: RED confirmed (missing export / thrown "no active milestone"
+        error) before implementation. npx vitest run
+        tests/unit/backlog-state.test.ts tests/integration/backlog.test.ts ->
+        71/71 passed. CT004 verified pass via pitway verify.'
+    attempts: 1
+    usage:
+      total_tokens: 127556
+  - id: T003
+    name: State the merge-approval gate in milestone-complete's own output
+    objective: "milestone-complete's human-mode output today says only \"Completed
+      milestone <id>: recorded in commit <sha>.\" -- and its own footer call is
+      unreachable (active_milestone is already cleared to null by the time it
+      runs), so nothing in the command's real output mentions milestone-merge at
+      all. Add one explicit sentence stating that milestone-merge requires
+      separate, explicit developer approval and is never run automatically --
+      the same next-step-guidance discipline M036 established elsewhere
+      (human-mode only, additive, --json output unchanged). This does not touch
+      the actual approval rule itself (already correctly documented in
+      protocol-driver.md and unenforced-but-honest by design) -- only makes it
+      visible at the point where a driver might otherwise chain straight into
+      merge."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - milestone-complete's human-mode output states plainly that
+        milestone-merge needs separate developer approval.
+      - milestone-complete's --json output is byte-for-byte unchanged.
+    context_files:
+      - src/cli/commands/milestone-complete.ts
+      - tests/integration/milestone-complete.test.ts
+    write_scope:
+      - src/cli/commands/milestone-complete.ts
+      - tests/integration/milestone-complete.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/milestone-complete.test.ts
+    result:
+      summary: "[truncated] ly that milestone-merge requires separate, explicit
+        developer approval and is never run automatically -- one sentence
+        appended to renderMilestoneCompleteHuman, covering both the committed
+        and already-committed outcomes. --json output unchanged (human renderer
+        never invoked in JSON mode)."
+      evidence: "RED: 2 tests failed for the expected reason (sentence absent). GREEN:
+        30/30 tests passed (tests/integration/milestone-complete.test.ts,
+        26.55s). Cross-checked no other test asserts an exact match on this
+        output string outside the touched test file (one partial-prefix regex
+        match in racing-footer-surfaces.test.ts is unaffected). CT005 verified
+        pass via pitway verify."
+    attempts: 1
+    usage:
+      total_tokens: 87964
+  - id: T004
+    name: Name parallel-dispatch-eligible ready tasks in resume
+    objective: "pitway resume never names which ready tasks are actually eligible
+      for parallel dispatch today, even when execution.strategy:
+      parallel_worktrees is set (ParallelView/buildParallelView only classifies
+      already-dispatched worktree state, never ready-but-undispatched
+      eligibility). The eligibility computation itself already exists:
+      src/core/tasks/parallel-eligibility.ts's checkParallelEligibility does
+      pairwise write_scope-overlap and transitive-dependency checking, and
+      already treats a task with an undeclared write_scope (legacy
+      relevant_files-only) as ineligible -- reuse it, do not reimplement the
+      comparison from scratch. It is currently shaped for \"one ready candidate
+      vs. currently in_progress tasks\" (used by dispatch.ts); adapt it into a
+      pairwise loop across all ready tasks for this use. Add an additive
+      parallelEligible field (or similar) to ResumeView, populated only when
+      execution.strategy is parallel_worktrees and there are 2+ ready tasks that
+      checkParallelEligibility's own pairwise logic finds mutually eligible
+      (disjoint write_scope, no dependency relationship) -- drop relevant_files
+      from the eligibility wording entirely, matching the existing dispatch-time
+      policy where only write_scope is compared. This is advisory only: resume
+      must never call task-dispatch itself. Human-mode output names the eligible
+      task ids and a one-line hint to consider parallel dispatch. Absent (not an
+      empty array/section) when execution.strategy is not parallel_worktrees, or
+      when fewer than 2 ready tasks qualify. Adaptation notes: exclude the
+      candidate task itself from its own comparison set in the pairwise loop
+      (dispatch.ts's existing call compares a ready candidate against
+      in_progress tasks, which trivially excludes it -- a ready-vs-ready loop
+      will not, unless done explicitly); the in-code comment justifying the
+      dependency- check redundancy is phrased for the in_progress case and
+      should be updated/generalized for this new ready-vs-ready call site rather
+      than left to read as stale."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - resume names 2+ ready tasks that checkParallelEligibility's pairwise
+        logic finds mutually eligible (disjoint write_scope, no dependency
+        relationship), only when parallel_worktrees is enabled.
+      - The field/section is absent (not empty) when parallel_worktrees is off,
+        or fewer than 2 ready tasks qualify.
+      - resume never invokes task-dispatch or mutates any state -- read-only,
+        same as every other resume computation.
+      - Every existing resume test's asserted output is unchanged.
+    context_files:
+      - src/cli/commands/resume.ts
+      - src/core/tasks/parallel-eligibility.ts
+      - src/core/tasks/dispatch.ts
+      - src/cli/commands/task-dispatch.ts
+      - src/state/schemas.ts
+      - tests/integration/resume.test.ts
+    write_scope:
+      - src/cli/commands/resume.ts
+      - tests/integration/resume.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/resume.test.ts
+    result:
+      summary: "[truncated]  tasks reusing checkParallelEligibility
+        (parallel-eligibility.ts) unchanged for each pair, excluding each
+        candidate from comparing against itself. Human output renders the
+        eligible ids plus a one-line hint; --json carries the same field. resume
+        never calls task-dispatch or mutates state."
+      evidence: "New describe block in tests/integration/resume.test.ts (M037/T004):
+        names 2+ disjoint ready tasks; absent when strategy isn't
+        parallel_worktrees; absent when <2 qualify (write_scope overlap,
+        single-ready); a 3-task case verifying a dependency-related pair is
+        excluded while an unrelated eligible pair still surfaces; a
+        read-only/no-mutation check. npx vitest run
+        tests/integration/resume.test.ts -> 44/44 passed. npx tsc --noEmit ->
+        clean. CT006 verified pass via pitway verify."
+    attempts: 1
+    usage:
+      total_tokens: 109276
+  - id: T005
+    name: Update protocol/command/driver docs for M037, fix pinned hashes
+    objective: "Update every doc affected by T001-T004 across protocol-driver.md and
+      all three drivers: rewrite backlog.md's now-false \"Requires an active
+      milestone; there is no global/no-milestone backlog\" claim (T002);
+      document quick-change.md's new --closes flag, its single-commit guarantee,
+      and the cancel/promote non-archiving invariant (T001); reinforce the
+      merge-approval gate in milestone-complete.md and protocol-driver.md,
+      matching T003's shipped wording (T003); document the new resume
+      parallel-dispatch nudge in task-dispatch.md and protocol-driver.md's
+      \"Prefer parallel dispatch\" text (T004). Check
+      dispatch.md/coordination.md/ protocol-worker.md for any assumption backlog
+      add always has an active milestone, and fix if found. Remove any
+      instruction that contradicts the shipped behavior -- do not leave stale
+      claims alongside corrected ones. Regenerate every touched common/claude
+      asset's pinned sha256 in tests/unit/claude-assets.test.ts's migration
+      manifest (shasum -a 256 each changed file, update its tuple), and confirm
+      the codex/opencode asset tests and tests/integration/init.test.ts still
+      pass unmodified."
+    status: completed
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+    acceptance_criteria:
+      - backlog.md (all 3 drivers) no longer claims an active milestone is
+        required for add.
+      - quick-change.md (all 3 drivers) documents --closes accurately, matching
+        T001's shipped behavior exactly.
+      - milestone-complete.md (all 3 drivers) and protocol-driver.md state the
+        merge-approval gate.
+      - task-dispatch.md (all 3 drivers) and protocol-driver.md mention the new
+        resume parallel-dispatch nudge.
+      - Every touched common/claude asset's pinned hash in claude-assets.test.ts
+        matches; codex/opencode asset tests and init.test.ts pass unmodified.
+    context_files:
+      - src/integrations/common/protocol-driver.md
+      - src/integrations/common/dispatch.md
+      - src/integrations/common/coordination.md
+      - src/integrations/common/protocol-worker.md
+      - src/integrations/claude/commands/backlog.md
+      - src/integrations/codex/commands/backlog.md
+      - src/integrations/opencode/commands/backlog.md
+      - src/integrations/claude/commands/quick-change.md
+      - src/integrations/codex/commands/quick-change.md
+      - src/integrations/opencode/commands/quick-change.md
+      - src/integrations/claude/commands/milestone-complete.md
+      - src/integrations/codex/commands/milestone-complete.md
+      - src/integrations/opencode/commands/milestone-complete.md
+      - src/integrations/claude/commands/ms-complete.md
+      - src/integrations/codex/commands/ms-complete.md
+      - src/integrations/opencode/commands/ms-complete.md
+      - src/integrations/claude/commands/task-dispatch.md
+      - src/integrations/codex/commands/task-dispatch.md
+      - src/integrations/opencode/commands/task-dispatch.md
+      - tests/unit/claude-assets.test.ts
+      - tests/unit/codex-assets.test.ts
+      - tests/unit/opencode-assets.test.ts
+      - tests/integration/init.test.ts
+    write_scope:
+      - src/integrations/common/protocol-driver.md
+      - src/integrations/common/dispatch.md
+      - src/integrations/common/coordination.md
+      - src/integrations/common/protocol-worker.md
+      - src/integrations/claude/commands/backlog.md
+      - src/integrations/codex/commands/backlog.md
+      - src/integrations/opencode/commands/backlog.md
+      - src/integrations/claude/commands/quick-change.md
+      - src/integrations/codex/commands/quick-change.md
+      - src/integrations/opencode/commands/quick-change.md
+      - src/integrations/claude/commands/milestone-complete.md
+      - src/integrations/codex/commands/milestone-complete.md
+      - src/integrations/opencode/commands/milestone-complete.md
+      - src/integrations/claude/commands/ms-complete.md
+      - src/integrations/codex/commands/ms-complete.md
+      - src/integrations/opencode/commands/ms-complete.md
+      - src/integrations/claude/commands/task-dispatch.md
+      - src/integrations/codex/commands/task-dispatch.md
+      - src/integrations/opencode/commands/task-dispatch.md
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
+        tests/integration/init.test.ts
+    result:
+      summary: "[truncated] tested copies of milestone-complete.md, not in T005's
+        original write_scope -- stopped, reported, got a developer-approved
+        write_scope amendment (task-amend), then synced all 3 aliases
+        byte-identical to their milestone-complete.md counterparts and fixed
+        ms-complete.md's pinned hash tuple."
+      evidence: Tests  337 passed (337) | Start at  16:01:25 | Duration  3.54s
+        (transform 467ms, setup 0ms, import 719ms, tests 3.30s, environment 0ms)
+    attempts: 3
+    usage:
+      total_tokens: 158009

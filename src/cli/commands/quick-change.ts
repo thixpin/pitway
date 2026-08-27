@@ -55,6 +55,7 @@ function toStatusView(record: JournalQuickChange): QuickChangeView {
     runs: record.runs,
     ...(record.tddExempt !== undefined ? { tddExempt: record.tddExempt } : {}),
     ...(record.tddExemptReason !== undefined ? { tddExemptReason: record.tddExemptReason } : {}),
+    ...(record.closesBacklogId !== undefined ? { closesBacklogId: record.closesBacklogId } : {}),
   };
 }
 
@@ -104,9 +105,17 @@ export function registerQuickChangeCommand(program: Command, deps: CommandDeps =
     .option('--scope <path>', 'repeatable: repo-relative path this change may edit', collect, [])
     .option('--verify <command>', 'the command that verifies the fix')
     .option('--tdd-exempt <reason>', 'exempt TDD RED→GREEN requirement (doc-only / test-free changes); requires a reason')
+    .option('--closes <backlog-id>', 'a pending backlog item this change closes; archived in the same commit')
     .option('--json', 'output machine-readable JSON')
     .action(
-      (options: { objective?: string; scope: string[]; verify?: string; tddExempt?: string; json?: boolean }) => {
+      (options: {
+        objective?: string;
+        scope: string[];
+        verify?: string;
+        tddExempt?: string;
+        closes?: string;
+        json?: boolean;
+      }) => {
         if (options.objective === undefined) {
           throw new Error('quick-change create requires --objective <text>');
         }
@@ -121,6 +130,7 @@ export function registerQuickChangeCommand(program: Command, deps: CommandDeps =
           ...(options.tddExempt !== undefined
             ? { tddExempt: true as const, tddExemptReason: options.tddExempt }
             : {}),
+          ...(options.closes !== undefined ? { closesBacklogId: options.closes } : {}),
         });
         write(renderOutput(view, { json: options.json }, renderViewHuman));
       },
