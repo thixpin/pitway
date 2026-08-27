@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.1.0] — 2026-08-27
+
+### Highlights
+
+- `pitway resume` now detects and surfaces installed driver configuration
+  drift (Claude/Codex/OpenCode asset mismatches against what the repo
+  expects), pointing at `pitway init --reconfigure` to fix it
+- New `quick-change create --closes <backlog-id>`: a quick-change can now
+  close the backlog item it fixes in the same atomic commit as the fix
+  itself, instead of needing a separate manual archive commit
+- `pitway backlog add` no longer requires an active milestone — it records
+  `source.milestone: null` and works standalone; `promote` still requires
+  one, since it targets a milestone-scoped task
+- `pitway resume` now names ready tasks eligible for parallel dispatch
+  today when `execution.strategy: parallel_worktrees` is set — advisory
+  only, it never dispatches anything itself
+- `milestone-complete`'s own output now states plainly that
+  `milestone-merge` requires separate, explicit developer approval and is
+  never run automatically
+- Next-step navigation: `task-verify`, `task-amend`, `usage-add`, `verify`,
+  `verification-repair`, `auto-run`, and `milestone-complete` now suggest
+  the right next command or name accurate recovery steps directly in their
+  own output
+- Fixed: a dispatched reviewer subagent's usage could go unrecorded in
+  `milestone-review record` with no on-screen reminder to forward it
+- Fixed: `usage-add`'s fallback help text pointed at a `task-update`
+  retroactive-usage path that doesn't exist
+- Fixed: a crash between a backlog item's journal write and its state
+  write, followed by a retry, could double-write its archive journal
+  record (state was always correctly archived exactly once; only the
+  audit trail could duplicate)
+- Docs: quick-change protocol and workflow diagram now document
+  investigation, root-cause, approval, and `--closes` across all three
+  drivers (Claude, Codex, OpenCode)
+
 ## [1.0.6] — 2026-08-26
 
 ### Highlights
