@@ -661,11 +661,14 @@ items:
       add a real retroactive path (e.g. a task-specific usage category/command)
       if that is judged worth the complexity -- a documentation fix is the
       minimal, safe option."
-    status: pending
+    status: archived
     source:
       milestone: M036
       task: null
     created_at: 2026-08-27T06:42:43.872Z
-    resolved_at: null
+    resolved_at: 2026-08-27T07:15:09.270Z
     promoted_to: null
-    archived_reason: null
+    archived_reason: "Fixed in c752d13 (qc-20ca12b6): computeUsageWarning's message
+      and task-update's --usage flag help text no longer point at the
+      non-existent 'usage-add --category task' fallback; both now state plainly
+      there is no retroactive path once a task completes without --usage."
