@@ -14,7 +14,7 @@ tasks:
       with "--no-claude" appended if and only if .claude/ does not exist. No
       drift anywhere -> no new field, no new output line, existing behavior
       unchanged.'
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - resume detects drift only for an installed driver (its destination
@@ -36,7 +36,18 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/integration/resume.test.ts
-    result: null
+    result:
+      summary: "[truncated] s absent. 7 new tests added to
+        tests/integration/resume.test.ts covering: no-driver-installed,
+        up-to-date, single-driver conflict, the --no-claude edge case both ways,
+        multi-driver drift, and non-blocking/non-mutating behavior. Manually
+        smoke-tested against a real built CLI/scratch repo."
+      evidence: Tests  34 passed (34) | Start at  10:32:59 | Duration  11.74s
+        (transform 286ms, setup 0ms, import 393ms, tests 11.26s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
     usage: null
   - id: T002
     name: Document the driver-drift advisory in resume.md
@@ -47,7 +58,7 @@ tasks:
       non-identical asset may be a deliberate local edit or a stale shipped
       version -- PitWay cannot tell which, matching init.ts's own existing
       honesty caveat."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
