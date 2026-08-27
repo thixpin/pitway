@@ -16,7 +16,7 @@ import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js
 import { loadConfig, loadTasks, saveConfig } from '../../src/state/store.js';
 import { readJournal } from '../../src/state/journal.js';
 import { dispatchTask } from '../../src/core/tasks/dispatch.js';
-import type { ParallelView } from '../../src/cli/commands/resume.js';
+import type { ParallelView } from '../../src/core/views/resume.js';
 
 // AC008/T008 (M014): task-discard lifecycle, the single-exit guard on
 // task-update, and resume's four-class residue reporting.

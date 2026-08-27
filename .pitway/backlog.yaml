@@ -735,14 +735,14 @@ items:
       (resolveNextTask was already extracted once for this reason, footer.ts
       M013/AC004); move to Core so they are unit-testable, CLI keeps
       registration + rendering"
-    status: pending
+    status: archived
     source:
       milestone: M038
       task: null
     created_at: 2026-08-27T15:41:44.541Z
-    resolved_at: null
+    resolved_at: 2026-08-27T16:27:13.980Z
     promoted_to: null
-    archived_reason: null
+    archived_reason: closed by quick-change qc-005b5a1d
   - id: B038
     title: Single CLI helper for the racing footer; icon rendering out of Core
     reason: "Post-v1.1.1 architecture review finding 4: 16 command files hand-repeat

@@ -1,23 +1,12 @@
-import type { MilestoneStatus, TaskStatus } from '../state/schemas.js';
+import type { MilestoneStatus } from '../state/schemas.js';
+
+// B037: taskStatusLabel moved to Core (src/core/tasks/status-label.ts) so
+// Core view assembly can embed it; re-exported here so every CLI renderer
+// keeps importing it from the same place.
+export { taskStatusLabel } from '../core/tasks/status-label.js';
 
 // Presentation only — status values themselves stay plain engineering
 // vocabulary everywhere else (schemas, state files, logs).
-const TASK_LABELS: Record<TaskStatus, string> = {
-  planned: '◌ Planned',
-  waiting: '◌ Waiting',
-  ready: '◌ Ready',
-  in_progress: '● In Progress',
-  blocked: '⚠ Blocked',
-  review: '● Review',
-  completed: '✓ Completed',
-  failed: '✗ Failed',
-  cancelled: '✗ Cancelled',
-};
-
-export function taskStatusLabel(status: TaskStatus): string {
-  return TASK_LABELS[status];
-}
-
 const MILESTONE_LABELS: Record<MilestoneStatus, string> = {
   draft: '◌ Draft',
   confirmed: '◌ Confirmed',

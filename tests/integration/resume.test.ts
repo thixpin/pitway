@@ -24,7 +24,7 @@ import { deterministicBranchName } from '../../src/core/milestones/confirm.js';
 import { dispatchTask } from '../../src/core/tasks/dispatch.js';
 import { createTaskWorktree } from '../../src/git/worktree.js';
 import { installDriverAssets, resolveDriverAssets } from '../../src/state/driver-assets.js';
-import type { ParallelView } from '../../src/cli/commands/resume.js';
+import type { ParallelView } from '../../src/core/views/resume.js';
 import type { ContractFrontmatter, Task } from '../../src/state/schemas.js';
 
 let root: string;
