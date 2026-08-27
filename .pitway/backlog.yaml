@@ -675,3 +675,21 @@ items:
       and task-update's --usage flag help text no longer point at the
       non-existent 'usage-add --category task' fallback; both now state plainly
       there is no retroactive path once a task completes without --usage."
+  - id: B034
+    title: Stale redundancy comment in parallel-eligibility.ts after M037/T004 reuse
+    reason: src/core/tasks/parallel-eligibility.ts's dependency-check redundancy
+      comment (~line 44-48) is phrased only for the original
+      ready-vs-in_progress call site (dispatch.ts). M037/T004 reuses
+      checkParallelEligibility for a ready-vs-ready pairwise loop in resume.ts;
+      the comment's reasoning still holds there but now reads as stale for the
+      new call site. Comment-only, no logic fix needed. Flagged by the T004
+      worker, who correctly left it untouched (outside its declared
+      write_scope).
+    status: pending
+    source:
+      milestone: M037
+      task: T004
+    created_at: 2026-08-27T08:27:20.854Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null

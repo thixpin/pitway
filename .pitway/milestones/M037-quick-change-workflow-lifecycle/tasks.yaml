@@ -208,7 +208,7 @@ tasks:
       dependency- check redundancy is phrased for the in_progress case and
       should be updated/generalized for this new ready-vs-ready call site rather
       than left to read as stale."
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - resume names 2+ ready tasks that checkParallelEligibility's pairwise
@@ -232,9 +232,23 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/integration/resume.test.ts
-    result: null
+    result:
+      summary: "[truncated]  tasks reusing checkParallelEligibility
+        (parallel-eligibility.ts) unchanged for each pair, excluding each
+        candidate from comparing against itself. Human output renders the
+        eligible ids plus a one-line hint; --json carries the same field. resume
+        never calls task-dispatch or mutates state."
+      evidence: "New describe block in tests/integration/resume.test.ts (M037/T004):
+        names 2+ disjoint ready tasks; absent when strategy isn't
+        parallel_worktrees; absent when <2 qualify (write_scope overlap,
+        single-ready); a 3-task case verifying a dependency-related pair is
+        excluded while an unrelated eligible pair still surfaces; a
+        read-only/no-mutation check. npx vitest run
+        tests/integration/resume.test.ts -> 44/44 passed. npx tsc --noEmit ->
+        clean. CT006 verified pass via pitway verify."
     attempts: 1
-    usage: null
+    usage:
+      total_tokens: 109276
   - id: T005
     name: Update protocol/command/driver docs for M037, fix pinned hashes
     objective: "Update every doc affected by T001-T004 across protocol-driver.md and
