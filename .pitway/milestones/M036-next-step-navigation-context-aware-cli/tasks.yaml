@@ -1,0 +1,255 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Suggest task-update review and add the footer to task-verify
+    objective: task-verify's human-mode output, on a pass, appends a suggestion to
+      run "task-update <id> review" as the next command (never on a fail, where
+      the existing pass/fail/evidence report already is the actionable output).
+      Also wire in the existing racing footer (getFooterForActiveMilestone)
+      after that, mirroring exactly how task-update.ts already does it. JSON
+      output (the raw evidence object) is unchanged -- this is human-mode text
+      only, the same convention the footer itself already follows.
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - A passing task-verify's human output contains 'task-update <id> review'.
+      - A failing task-verify's human output is unchanged from today.
+      - The racing footer appears after a passing or failing task-verify when an
+        active milestone exists, and is absent when it doesn't.
+      - task-verify's --json output is byte-for-byte unchanged.
+    context_files:
+      - src/core/milestones/footer.ts
+      - src/cli/commands/task-update.ts
+      - src/cli/commands/task-verify.ts
+      - tests/integration/task-verify.test.ts
+    write_scope:
+      - src/cli/commands/task-verify.ts
+      - tests/integration/task-verify.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/task-verify.test.ts
+    result:
+      summary: "[truncated] on a fail) and appends the racing footer when an active
+        milestone exists, mirroring task-update.ts exactly. --json output
+        unaffected. 4 new tests added; the pre-existing default-CommandDeps test
+        updated to tolerate the new second footer line (mirroring task-update's
+        own equivalent test)."
+      evidence: Tests  28 passed (28) | Start at  13:16:04 | Duration  22.25s
+        (transform 283ms, setup 0ms, import 410ms, tests 21.75s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
+    usage: null
+  - id: T002
+    name: Extend racing footer to task-amend/usage-add/verify/repair/auto-run
+    objective: "Wire getFooterForActiveMilestone into task-amend and usage-add's
+      human-mode success output unconditionally (mirroring task-update.ts). For
+      verify's and verification-repair's approve/commit/cancel subcommands
+      specifically, add the footer only when the command's resolved milestone id
+      equals state.active_milestone -- never a footer describing a different
+      milestone than the one just acted on. For auto-run, add the footer only to
+      the enable/disable subcommands, never to its read-only status subcommand.
+      Never add a footer to verify's --status display either (read-only).
+      milestone-add is explicitly out of scope (see contract Non-Goals: a
+      provable no-op)."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - task-amend's and usage-add's human-mode success output ends with the
+        racing footer when an active milestone exists, and is unchanged when it
+        doesn't.
+      - verify's and verification-repair's approve/commit/cancel human output
+        gets the footer only when the acted-on milestone id equals the active
+        milestone; never otherwise.
+      - auto-run's enable/disable human output gets the footer under the same
+        active-milestone condition; auto-run status and verify --status never
+        do.
+      - Every touched command's --json output is byte-for-byte unchanged.
+    context_files:
+      - src/core/milestones/footer.ts
+      - src/state/store.ts
+      - src/cli/commands/task-update.ts
+      - src/cli/commands/task-amend.ts
+      - src/cli/commands/usage-add.ts
+      - src/cli/commands/verify.ts
+      - src/cli/commands/verification-repair.ts
+      - src/cli/commands/auto-run.ts
+      - tests/integration/task-amend.test.ts
+      - tests/integration/usage-add.test.ts
+      - tests/integration/verify.test.ts
+      - tests/integration/verification-repair.test.ts
+      - tests/integration/auto-run.test.ts
+    write_scope:
+      - src/cli/commands/task-amend.ts
+      - src/cli/commands/usage-add.ts
+      - src/cli/commands/verify.ts
+      - src/cli/commands/verification-repair.ts
+      - src/cli/commands/auto-run.ts
+      - tests/integration/task-amend.test.ts
+      - tests/integration/usage-add.test.ts
+      - tests/integration/verify.test.ts
+      - tests/integration/verification-repair.test.ts
+      - tests/integration/auto-run.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/task-amend.test.ts
+        tests/integration/usage-add.test.ts tests/integration/verify.test.ts
+        tests/integration/verification-repair.test.ts
+        tests/integration/auto-run.test.ts
+    result:
+      summary: "[truncated] . All loadState reads in the new guard helper are
+        defensively try/caught, matching getFooterForActiveMilestone's own
+        resilience (a missing state.yaml never blocks primary output). 21 new
+        tests across 5 files; 3 pre-existing default-CommandDeps tests updated
+        for the new second write line."
+      evidence: Tests  164 passed (164) | Start at  13:32:13 | Duration  57.07s
+        (transform 1.58s, setup 0ms, import 2.92s, tests 107.50s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
+    usage: null
+  - id: T003
+    name: Hint milestone-complete once verify confirms full readiness
+    objective: verify's human-mode run and record output paths (never --status) add
+      one line naming "milestone-complete <id>" as the next command, but only
+      when BOTH allChecksPassed(contract, computeLatestCheckResults(root, id))
+      is true AND every required task is already completed
+      (computeMilestoneProgress's completed === total) -- reusing the exact same
+      helpers footer.ts/complete.ts already call, never VerifyRunView's own
+      passed/pending fields (pending never clears for a manual/review check even
+      once recorded, so gating on it would make the hint permanently dead
+      whenever one exists). Word the line to complement, not duplicate, the
+      racing footer's existing "developer approval" phrasing when both appear
+      together (e.g. reference running it after developer approval).
+    status: completed
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - verify's run/record human output contains 'milestone-complete <id>' only
+        when every check has passed AND every required task is completed.
+      - The hint is absent whenever any check is pending/failing, or any
+        required task is incomplete, even if verify's own immediate result looks
+        like a pass.
+      - verify's --status output is unaffected.
+    context_files:
+      - src/core/verification/status.ts
+      - src/core/milestones/progress.ts
+      - src/core/milestones/footer.ts
+      - src/cli/commands/verify.ts
+      - tests/integration/verify.test.ts
+    write_scope:
+      - src/cli/commands/verify.ts
+      - tests/integration/verify.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/verify.test.ts
+    result:
+      summary: "[truncated] plicates the footer's own \"developer approval\" phrasing.
+        5 new tests covering: absent while a manual check is still pending,
+        present once the last check is recorded pass and all tasks are
+        completed, absent when checks pass but a task isn't completed, absent on
+        --status, absent in --json."
+      evidence: Tests  43 passed (43) | Start at  13:37:21 | Duration  23.97s
+        (transform 370ms, setup 0ms, import 496ms, tests 23.38s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
+    usage: null
+  - id: T004
+    name: Name accurate per-item recovery commands in milestone-complete refusals
+    objective: "milestone-complete's three refusal messages currently list bare
+      \"<id> (<status>)\" / \"<id>\" entries. Extend them with an accurate
+      recovery command per item, computed from data already in scope at
+      assertGatesSatisfied's throw site (src/core/milestones/complete.ts): for
+      an incomplete task, append \"-- run task-update <id> completed\" only when
+      its status is \"review\", \"-- run task-update <id> ready\" when its
+      status is \"blocked\" or \"failed\", and nothing extra for any other
+      status (planned/waiting/ready/in_progress keep today's bare entry -- do
+      not fabricate a command for these). For a missing or failing check, append
+      \"-- run pitway verify <mId>\" when the check's type is \"command\", or
+      \"-- run pitway verify <mId> --check <id> --pass|--fail --evidence
+      <text>\" when its type is \"manual\" or \"review\"."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - An incomplete task in status review names 'task-update <id> completed';
+        blocked or failed names 'task-update <id> ready'; any other status is
+        unchanged from today.
+      - A missing/failing command-type check names 'pitway verify <mId>'; a
+        missing/failing manual/review-type check names the --check --pass|--fail
+        --evidence form.
+      - The refusal condition itself, and every other existing message's
+        wording, is otherwise unchanged.
+    context_files:
+      - src/core/milestones/complete.ts
+      - tests/integration/milestone-complete.test.ts
+    write_scope:
+      - src/core/milestones/complete.ts
+      - tests/integration/milestone-complete.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/milestone-complete.test.ts
+    result:
+      summary: "[truncated] pdate <id> ready for blocked/failed, nothing fabricated
+        for other statuses; pitway verify <mId> for a missing/failing
+        command-type check, the --check --pass|--fail --evidence form for
+        manual/review-type checks. Independently reviewed the diff before
+        verifying. 4 new tests, 28/28 passing."
+      evidence: Tests  28 passed (28) | Start at  13:41:26 | Duration  24.45s
+        (transform 289ms, setup 0ms, import 417ms, tests 23.94s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
+    usage: null
+  - id: T005
+    name: Add verified recovery detail to resume's blocked/waiting entries
+    objective: "pitway resume's blocked and waiting task lists currently render as
+      bare task-id arrays with no suggested recovery. For a waiting task, add a
+      structured detail naming its specific incomplete dependency (derivable
+      from the task graph's depends_on alone -- e.g. \"waiting on T002\"). For a
+      blocked task, add a structured detail stating the verified recovery
+      command \"task-update <id> ready\" (per .claude/commands/task-update.md's
+      own documented \"failed/blocked -> ready -> in_progress\" recovery path --
+      this is the actual source of truth; protocol-driver.md has no blocked-task
+      text). Never fabricate a cause for why a task is blocked -- no schema
+      field records one. This must be additive: the existing `blocked: string[]`
+      / `waiting: string[]` fields keep their exact current shape and content in
+      --json output -- add new field(s) alongside them, never replace them.
+      Human-mode output gains the same detail, rendered similarly to the
+      existing worktree-residue block."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - resume --json still has blocked/waiting as plain id-string arrays,
+        byte-identical to today when nothing is blocked/waiting.
+      - A waiting task's detail names the specific dependency it's waiting on; a
+        blocked task's detail states 'task-update <id> ready', never a
+        fabricated cause.
+      - Every existing resume test's asserted output is unchanged.
+    context_files:
+      - src/cli/commands/resume.ts
+      - .claude/commands/task-update.md
+      - tests/integration/resume.test.ts
+    write_scope:
+      - src/cli/commands/resume.ts
+      - tests/integration/resume.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/resume.test.ts
+    result:
+      summary: "[truncated] te.md), never a fabricated cause. Present only when
+        non-empty, keeping --json byte-identical to before when nothing is
+        waiting/blocked. Human mode renders both as new blocks matching the
+        worktree-residue style. Independently reviewed the diff before
+        verifying. 4 new tests, 38/38 passing."
+      evidence: Tests  38 passed (38) | Start at  13:43:08 | Duration  11.69s
+        (transform 270ms, setup 0ms, import 387ms, tests 11.21s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
+    usage: null

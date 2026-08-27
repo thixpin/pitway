@@ -76,18 +76,32 @@ function findCompletionCommit(root: string, milestoneId: string, since?: string)
 
 // AC005: every non-cancelled task completed and the latest result for every
 // check pass — diagnostics name exactly what is missing.
+function taskRecoverySuffix(id: string, status: string): string {
+  if (status === 'review') return ` -- run task-update ${id} completed`;
+  if (status === 'blocked' || status === 'failed') return ` -- run task-update ${id} ready`;
+  return '';
+}
+
+function checkRecoverySuffix(id: string, milestoneId: string, type: string): string {
+  if (type === 'command') return ` -- run pitway verify ${milestoneId}`;
+  return ` -- run pitway verify ${milestoneId} --check ${id} --pass|--fail --evidence <text>`;
+}
+
 function assertGatesSatisfied(root: string, milestoneId: string, contract: ContractFile): void {
   const incompleteTasks = loadTasks(root, milestoneId)
     .tasks.filter((t) => t.status !== 'cancelled' && t.status !== 'completed')
-    .map((t) => `${t.id} (${t.status})`);
+    .map((t) => `${t.id} (${t.status})${taskRecoverySuffix(t.id, t.status)}`);
 
   const latest = computeLatestCheckResults(root, milestoneId);
   const missingChecks: string[] = [];
   const failingChecks: string[] = [];
   for (const check of contract.frontmatter.verification) {
     const status = latest.get(check.id);
-    if (status === undefined) missingChecks.push(check.id);
-    else if (status !== 'pass') failingChecks.push(check.id);
+    if (status === undefined) {
+      missingChecks.push(`${check.id}${checkRecoverySuffix(check.id, milestoneId, check.type)}`);
+    } else if (status !== 'pass') {
+      failingChecks.push(`${check.id}${checkRecoverySuffix(check.id, milestoneId, check.type)}`);
+    }
   }
 
   const problems: string[] = [];

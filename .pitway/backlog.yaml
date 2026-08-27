@@ -610,3 +610,62 @@ items:
       milestone: M034
       task: T005
     archived_reason: "auto-closed: promoted work completed via M034 completion"
+  - id: B032
+    title: milestone-review record has no usage-forwarding safeguard (unlike
+      task-update)
+    reason: "Root cause confirmed (not a producer/propagation/persistence defect):
+      src/core/reviews/record.ts:117 correctly stores usage exactly when --usage
+      is passed; the Agent tool's dispatch completion notification reliably
+      provides subagent_tokens. usage: null happens purely because the driver
+      doesn't forward it -- proven live this session: commit f889380 added an
+      explicit MUST reminder to milestone-review.md's Record step, yet the very
+      next review session (M036) recorded both roles with usage: null despite
+      having the token figures in hand moments earlier. Contrast: task-update
+      completed already has a partial mechanical safeguard for this exact class
+      of gap (computeUsageWarning, src/core/tasks/update.ts:419-436, from B019)
+      -- but it only fires when a worktree_dispatch journal record exists
+      (parallel_worktrees task dispatch), so it wouldn't catch this case either;
+      milestone-review record has no equivalent warning at all. Recommended
+      direction: since PitWay's CLI has no way to know a milestone-review
+      session used a dispatched subagent (unconfined, no worktree, no journal
+      trail, per protocol-driver.md), a computeUsageWarning-style check isn't
+      directly portable -- consider instead a resume/milestone-status advisory
+      (mirroring M035's driver-drift pattern) that flags a decided review
+      session with any role's usage still null, so the gap surfaces before the
+      session moves on, rather than relying solely on a doc-level MUST read once
+      at dispatch time."
+    status: pending
+    source:
+      milestone: M036
+      task: null
+    created_at: 2026-08-27T06:15:53.038Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B033
+    title: task-update's usage warning suggests a usage-add category that doesn't
+      exist
+    reason: "Live repro: M036/T004 completed after a worktree dispatch with no
+      --usage forwarded (my own oversight). computeUsageWarning
+      (src/core/tasks/update.ts:419-436, B019) correctly fired and suggested the
+      fallback: pitway usage-add <id> --category task --usage '{...}'. That
+      command refuses: usage-add's USAGE_CATEGORIES
+      (src/core/metrics/aggregate.ts) is only planning|qa, no task category
+      exists. task-amend's AMENDABLE_FIELDS also excludes usage. Confirmed: once
+      a task completes without --usage, there is currently NO CLI path to
+      retroactively record it -- the warnings own suggested remediation is a
+      dead end, and the task's usage stays null permanently (which is honest per
+      the never-estimate policy, but the guidance text is wrong). Recommended
+      direction: either fix the warning text to state plainly that a missed task
+      usage cannot be added after completion (set expectations correctly), or
+      add a real retroactive path (e.g. a task-specific usage category/command)
+      if that is judged worth the complexity -- a documentation fix is the
+      minimal, safe option."
+    status: pending
+    source:
+      milestone: M036
+      task: null
+    created_at: 2026-08-27T06:42:43.872Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null

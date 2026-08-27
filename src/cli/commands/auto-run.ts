@@ -2,7 +2,24 @@ import type { Command } from 'commander';
 import { appendAutoRunRecord, readJournal } from '../../state/journal.js';
 import { loadContract, loadState } from '../../state/store.js';
 import { isAutoRunAuthorized, type AutoRunReason } from '../../core/journal/auto-run.js';
+import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
 import { renderOutput } from '../output.js';
+
+// M036/T002: enable/disable take an optional (default: active) milestone
+// id -- show the footer only when it resolved to the active milestone,
+// never one for a different milestone than the one just acted on. status
+// is read-only and never gets a footer.
+function writeFooterIfActive(root: string, resolvedId: string, write: (line: string) => void): void {
+  let isActive = false;
+  try {
+    isActive = loadState(root).active_milestone === resolvedId;
+  } catch {
+    isActive = false;
+  }
+  if (!isActive) return;
+  const footer = getFooterForActiveMilestone(root);
+  if (footer !== null) write(footer);
+}
 
 export class AutoRunError extends Error {}
 
@@ -110,6 +127,7 @@ export function registerAutoRunCommand(program: Command, deps: CommandDeps = {})
       const root = deps.root ?? process.cwd();
       const view = enableAutoRun(root, milestoneId);
       write(renderOutput(view, { json: options.json }, renderActionHuman));
+      if (!options.json) writeFooterIfActive(root, view.id, write);
     });
 
   autoRun
@@ -120,6 +138,7 @@ export function registerAutoRunCommand(program: Command, deps: CommandDeps = {})
       const root = deps.root ?? process.cwd();
       const view = disableAutoRun(root, milestoneId);
       write(renderOutput(view, { json: options.json }, renderActionHuman));
+      if (!options.json) writeFooterIfActive(root, view.id, write);
     });
 
   autoRun

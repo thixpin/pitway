@@ -8,7 +8,7 @@ import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
 import { registerVerifyCommand } from '../../src/cli/commands/verify.js';
-import { loadState, loadVerificationResults, saveState } from '../../src/state/store.js';
+import { loadState, loadTasks, loadVerificationResults, saveState, saveTasks } from '../../src/state/store.js';
 
 function git(args: string[], cwd: string): string {
   return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
@@ -853,5 +853,109 @@ describe('pitway verify default CommandDeps fallbacks', () => {
     expect(caught).toBeUndefined();
     expect(calls).toHaveLength(1);
     expect(String(calls[0]?.[0])).toContain('🔍 Verification status M001');
+  });
+});
+
+// M036/T002: the racing footer on verify's mutating paths (run, single-check
+// run, record), guarded to the active milestone; never on --status.
+describe('pitway verify racing footer (M036/T002)', () => {
+  it('appends the footer for a run against the active milestone', async () => {
+    await confirmed();
+    const { error, lines } = await run(['verify', 'M001'], root);
+    expect(error).toBeUndefined();
+    expect(lines[lines.length - 1]).toMatch(/🏎️|🏁|🔧/);
+  });
+
+  it('never appends a footer for a run against a milestone other than the active one', async () => {
+    await confirmed();
+    // Point active_milestone elsewhere -- verify still targets M001
+    // explicitly, so this proves the guard, not milestone-add's own
+    // single-active-milestone constraint.
+    saveState(root, { ...loadState(root), active_milestone: 'M999' });
+    const { error, lines } = await run(['verify', 'M001'], root);
+    expect(error).toBeUndefined();
+    expect(lines[lines.length - 1]).not.toMatch(/🏎️|🏁|🔧/);
+  });
+
+  it('never appends a footer to --status even against the active milestone', async () => {
+    await confirmed();
+    const { error, lines } = await run(['verify', 'M001', '--status'], root);
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
+  });
+
+  it('never appends a footer line in --json mode', async () => {
+    await confirmed();
+    const { error, lines } = await run(['verify', 'M001', '--json'], root);
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
+  });
+});
+
+// M036/T003: the milestone-complete hint, gated on the real completion
+// precondition (allChecksPassed + full task completion) -- never on
+// VerifyRunView's own passed/pending fields, which stay non-empty for a
+// pending manual check even once it's recorded pass.
+describe('pitway verify milestone-complete hint (M036/T003)', () => {
+  function markAllTasksCompleted(): void {
+    const tasksFile = loadTasks(root, 'M001');
+    saveTasks(root, 'M001', {
+      ...tasksFile,
+      tasks: tasksFile.tasks.map((t) => ({ ...t, status: 'completed' })),
+    });
+  }
+
+  it('never appears on a run alone (DEFAULT_CHECKS leaves CT003 pending)', async () => {
+    await confirmed();
+    markAllTasksCompleted();
+    const { error, lines } = await run(['verify', 'M001'], root);
+    expect(error).toBeUndefined();
+    expect(lines.join('\n')).not.toContain('milestone-complete M001');
+  });
+
+  it('appears once the last pending check is recorded pass AND every task is completed', async () => {
+    await confirmed();
+    markAllTasksCompleted();
+    await run(['verify', 'M001'], root); // records CT001/CT002 pass, CT003 stays pending
+    const { error, lines } = await run(
+      ['verify', 'M001', '--check', 'CT003', '--pass', '--evidence', 'docs reviewed'],
+      root,
+    );
+    expect(error).toBeUndefined();
+    expect(lines.join('\n')).toContain('milestone-complete M001');
+    expect(lines.join('\n')).toContain('developer approval');
+  });
+
+  it('does not appear when checks all pass but a required task is not yet completed', async () => {
+    await confirmed(); // T001 stays 'planned' -- never marked completed
+    await run(['verify', 'M001'], root);
+    const { error, lines } = await run(
+      ['verify', 'M001', '--check', 'CT003', '--pass', '--evidence', 'docs reviewed'],
+      root,
+    );
+    expect(error).toBeUndefined();
+    expect(lines.join('\n')).not.toContain('milestone-complete M001');
+  });
+
+  it('never appears on --status', async () => {
+    await confirmed();
+    markAllTasksCompleted();
+    await run(['verify', 'M001'], root);
+    await run(['verify', 'M001', '--check', 'CT003', '--pass', '--evidence', 'docs reviewed'], root);
+    const { error, lines } = await run(['verify', 'M001', '--status'], root);
+    expect(error).toBeUndefined();
+    expect(lines.join('\n')).not.toContain('milestone-complete M001');
+  });
+
+  it('never appears in --json mode', async () => {
+    await confirmed();
+    markAllTasksCompleted();
+    await run(['verify', 'M001'], root);
+    const { error, lines } = await run(
+      ['verify', 'M001', '--check', 'CT003', '--pass', '--evidence', 'docs reviewed', '--json'],
+      root,
+    );
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
   });
 });

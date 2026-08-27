@@ -1,0 +1,194 @@
+schema_version: 1
+sessions:
+  - id: rev-2e378a7a34f2
+    status: decided
+    created_at: 2026-08-27T05:55:16Z
+    roles:
+      - ui-ux
+      - architect
+    content_hash: sha256:b436e81e0eb22c3711fb5ab53c3368175f7119adcd3ad8e8670bcbfbdfbd19bc
+    findings:
+      - role: ui-ux
+        recorded_at: 2026-08-27T06:03:39Z
+        findings:
+          - severity: blocker
+            finding: 'AC004/T003 mandates fixed recovery commands that are wrong in the
+              common case. "task-update <id> completed" is only valid from
+              status "review" (state-machine.ts: completed is reachable only via
+              review -> completed); for a task at planned/waiting/
+              ready/in_progress/blocked/failed, running the printed command
+              throws immediately. Symmetrically, "pitway verify <mId>" only
+              executes command-type checks (run.ts: non-command checks are
+              pushed to pending and skipped); for a missing/failing manual or
+              review check it resolves nothing.'
+            targets:
+              - ac004
+              - t003
+            recommendation: 'Branch the message on data already in hand: per-status command
+              for tasks (blocked->"task-update <id> ready",
+              review->"...completed", others->the actual next transition), and
+              per check.type ("verify <mId>" for command, "verify <mId> --check
+              <ctid> --pass|--fail --evidence <text>" for manual/review).'
+          - severity: major
+            finding: "AC003/T002 don't say which of verify's four human-render paths
+              (run/record/ single-check/status) get the \"next:
+              milestone-complete\" hint, nor which of verify's and auto-run's
+              paths get the AC002 footer. When the last blocking item is a
+              manual/ review check, the developer resolves it via verify --check
+              <ctid> --pass, not a full run -- if only the run path gets the
+              hint, it's silent exactly when checks first turn green."
+            targets:
+              - ac002
+              - ac003
+              - t002
+            recommendation: "Enumerate verify's/auto-run's render paths explicitly: footer
+              on every mutating success path, never on read-only status
+              displays; the milestone-complete hint on both run and record
+              whenever the result is all-pass/none-pending."
+          - severity: minor
+            finding: AC003's hint fires once every check has passed, but milestone-complete
+              also requires every required task completed. Verification can pass
+              before all tasks are completed, so the hint can point at a command
+              that immediately refuses.
+            targets:
+              - ac003
+              - t002
+            recommendation: Gate the hint on task completion too, reusing the existing
+              progress computation.
+          - severity: minor
+            finding: AC005/T004 asks for blocked-task detail matching
+              DispatchResidue.detail's quality, but no schema field records why
+              a task is blocked, and blocked's only transition is ready. The
+              detail can only ever say "investigate, then task-update <id>
+              ready" -- it can't name a cause the way DispatchResidue does.
+            targets:
+              - ac005
+              - t004
+            recommendation: Reword AC005 to set the realistic bar for blocked (recovery
+              command only) versus waiting (both cause and command are derivable
+              from depends_on).
+          - severity: minor
+            finding: "AC002 includes milestone-add, but its footer is unconditionally null:
+              createMilestone always points active_milestone at the newly
+              created draft, and computeRacingFooter returns null for status
+              draft. There is no reachable state where milestone-add's footer
+              renders anything."
+            targets:
+              - ac002
+              - t002
+            recommendation: Drop milestone-add from AC002, or document it's a structural
+              no-op today.
+          - severity: minor
+            finding: AC006 reads as a blanket "every existing test's asserted output is
+              unchanged," but T003 explicitly edits complete.ts's existing
+              thrown-error strings and lists milestone-complete.test.ts in
+              write_scope -- existing assertions on those exact strings are
+              expected to change. Taken literally, AC006 makes T003 unlandable.
+            targets:
+              - ac006
+              - t003
+            recommendation: Reword AC006 to exempt T003's three refusal-message strings.
+        usage: null
+      - role: architect
+        recorded_at: 2026-08-27T06:03:40Z
+        findings:
+          - severity: major
+            finding: AC004 assigns one recovery command, "pitway verify <mId>", to every
+              missing/failing check regardless of type. runVerification only
+              executes command-type checks; manual/review checks it always
+              pushes to pending and never resolves. A missing/ failing manual or
+              review check needs "pitway verify <mId> --check <ctid>
+              --pass|--fail --evidence <text>" to actually be fixed.
+            targets:
+              - ac004
+              - t003
+            recommendation: "In assertGatesSatisfied's message, branch the recovery text on
+              check.type: command -> \"pitway verify <mId>\"; manual/review ->
+              \"pitway verify <mId> --check <id> --pass|--fail --evidence
+              <text>\"."
+          - severity: major
+            finding: "AC003's \"every check passed with none pending\" condition can never
+              fire for any milestone with a manual/review check: runVerification
+              unconditionally pushes every non-command check's id to pending,
+              even after it has a recorded pass (confirmed in
+              tests/integration/verify.test.ts:296-297, where pending still
+              equals ['CT003'] post-recording). The milestone-complete hint
+              would be dead for PitWay's own common case (mixed command +
+              manual/review checks)."
+            targets:
+              - ac003
+              - t002
+            recommendation: Gate the hint on a fresh allChecksPassed(contract,
+              computeLatestCheckResults(root, id)) read after the run, the same
+              mechanism footer.ts/complete.ts already use, not on
+              VerifyRunView's passed/pending fields.
+          - severity: major
+            finding: "AC002 requires wiring getFooterForActiveMilestone into milestone-add,
+              but it can never observably render. createMilestone always leaves
+              active_milestone pointing at the just-created milestone, always
+              status draft, and computeRacingFooter returns null unconditionally
+              for status draft. AC006 makes this unfalsifiable: no test can
+              assert an unreachable footer ever prints."
+            targets:
+              - ac002
+              - t002
+            recommendation: Drop milestone-add from AC002's footer list, or state explicitly
+              that the wiring is intentional future-proofing with no observable
+              effect today.
+          - severity: minor
+            finding: verify and verification-repair's subcommands take an explicit milestone
+              id that need not equal state.active_milestone. Wiring
+              getFooterForActiveMilestone unconditionally means output naming
+              milestone X could be immediately followed by a racing footer
+              describing a different milestone Y -- actively misleading rather
+              than merely uninformative.
+            targets:
+              - ac002
+              - t002
+            recommendation: Render the footer only when the command's resolved milestone id
+              equals state.active_milestone, or note this as an accepted edge
+              case.
+          - severity: minor
+            finding: T002's write_scope lists verification-repair.ts and auto-run.ts as
+              whole files, but each has multiple subcommands and the contract
+              doesn't say which get the footer. auto-run status is a read-only
+              query, not a state-changing success output like the other 8
+              precedent commands -- footer-on-query would be a new pattern.
+            targets:
+              - ac002
+              - t002
+            recommendation: Have T002 enumerate exactly which subcommands get the footer
+              (likely approve/commit/cancel and enable/disable, with status
+              excluded).
+          - severity: minor
+            finding: "T004's brief points at protocol-driver.md for existing blocked-task
+              recovery guidance, but protocol-driver.md contains no \"blocked\"
+              text at all. The actual authoritative recovery text lives in
+              .claude/commands/task-update.md: \"failed/ blocked -> ready ->
+              in_progress retries\", i.e. the recovery command is \"task-update
+              <id> ready\"."
+            targets:
+              - ac005
+              - t004
+            recommendation: Point T004 at .claude/commands/task-update.md (not
+              protocol-driver.md), and record "task-update <id> ready" as the
+              verified blocked-recovery command.
+          - severity: minor
+            finding: "Design-consistency nit: once verification passes, the existing racing
+              footer already says \"Next: developer approval\". T002's new
+              verify hint would separately say \"run milestone-complete <id>\"
+              right next to it -- two adjacent next-step indicators phrased
+              differently for the same state."
+            targets:
+              - ac003
+              - t002
+            recommendation: Word the new verify hint to complement rather than duplicate the
+              footer's "developer approval" phrasing.
+        usage: null
+    decision:
+      outcome: revision_requested
+      note: "Blocker + 2 majors, both roles converged: AC004 recovery commands wrong
+        for non-review tasks/non-command checks; AC003's hint condition never
+        fires with a manual/review check; AC002's milestone-add footer wiring is
+        a no-op. Revising contract before re-draft."
+      decided_at: 2026-08-27T06:04:21Z

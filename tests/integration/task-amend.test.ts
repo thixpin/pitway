@@ -633,8 +633,35 @@ describe('pitway task-amend default CommandDeps fallbacks (M024/T005)', () => {
       calls = logSpy.mock.calls;
       logSpy.mockRestore();
     }
-    expect(calls).toHaveLength(1);
+    // M036/T002: human output now appends the racing footer as a second
+    // write when an active milestone is confirmed (mirrors task-update's
+    // own default-CommandDeps test).
+    expect(calls.length).toBeGreaterThanOrEqual(1);
     expect(String(calls[0]![0])).toContain('T001');
+    if (calls.length === 2) {
+      expect(String(calls[1]![0])).toMatch(/🏎️|🏁|🔧/);
+    }
     expect(task('T001').objective).toBe('Fallback-deps amended objective.');
+  });
+});
+
+// M036/T002: the racing footer is appended after a successful amendment,
+// human mode only, when an active milestone exists.
+describe('pitway task-amend racing footer (M036/T002)', () => {
+  it('appends the footer in human mode when an active milestone exists', async () => {
+    const file = amendFile({ objective: 'Amended objective for footer test.' });
+    const { error, lines } = await run(
+      ['task-amend', 'T001', '--file', file, '--change-log', 'Footer test.'],
+      root,
+    );
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(2);
+    expect(lines[1]).toMatch(/🏎️|🏁|🔧/);
+  });
+
+  it('never appends a footer line in --json mode', async () => {
+    const { error, lines } = await amend('T001', { objective: 'Amended objective, json mode.' });
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
   });
 });

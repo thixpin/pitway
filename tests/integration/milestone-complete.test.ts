@@ -356,9 +356,27 @@ describe('pitway milestone-complete gates (AC005)', () => {
     const { error } = await run(['milestone-complete', 'M001'], root);
     expect(error?.message).toMatch(/T002/);
     expect(error?.message).not.toMatch(/\bT001\b/);
+    // in_progress is not review/blocked/failed: no recovery command appended.
+    expect(error?.message).toContain('T002 (in_progress)');
+    expect(error?.message).not.toContain('task-update');
     expect(loadContract(root, 'M001').frontmatter.status).toBe('in_progress');
     expect(loadState(root).active_milestone).toBe('M001');
     expect(commitCount(root)).toBe(2);
+  });
+
+  it("names 'task-update <id> completed' for a review-status task", async () => {
+    await confirmed();
+    writeTaskStatuses('review', 'completed');
+    const { error } = await run(['milestone-complete', 'M001'], root);
+    expect(error?.message).toContain('T001 (review) -- run task-update T001 completed');
+  });
+
+  it("names 'task-update <id> ready' for blocked or failed task statuses", async () => {
+    await confirmed();
+    writeTaskStatuses('blocked', 'failed');
+    const { error } = await run(['milestone-complete', 'M001'], root);
+    expect(error?.message).toContain('T001 (blocked) -- run task-update T001 ready');
+    expect(error?.message).toContain('T002 (failed) -- run task-update T002 ready');
   });
 
   it('does not count cancelled tasks against completion', async () => {
@@ -370,18 +388,35 @@ describe('pitway milestone-complete gates (AC005)', () => {
     expect(loadContract(root, 'M001').frontmatter.status).toBe('completed');
   });
 
-  it('refuses when a check has no recorded result, naming exactly that check', async () => {
+  it('refuses when a check has no recorded result, naming exactly that check with its recovery command', async () => {
     await confirmed();
     writeTaskStatuses('completed', 'completed');
-    // Command checks run and pass; CT003 is never recorded.
+    // Command checks run and pass; CT003 (type: manual) is never recorded.
     const verify = await run(['verify', 'M001'], root);
     expect(verify.error).toBeUndefined();
     const { error } = await run(['milestone-complete', 'M001'], root);
-    expect(error?.message).toMatch(/CT003/);
+    expect(error?.message).toContain(
+      'CT003 -- run pitway verify M001 --check CT003 --pass|--fail --evidence <text>',
+    );
     expect(error?.message).not.toMatch(/CT001/);
     expect(error?.message).not.toMatch(/CT002/);
     expect(loadContract(root, 'M001').frontmatter.status).toBe('in_progress');
     expect(commitCount(root)).toBe(2);
+  });
+
+  it('refuses when a command-type check has no recorded result, naming the plain verify command', async () => {
+    await confirmed();
+    writeTaskStatuses('completed', 'completed');
+    // Only the manual check is recorded; CT001/CT002 (type: command) are not.
+    const record = await run(
+      ['verify', 'M001', '--check', 'CT003', '--pass', '--evidence', 'docs reviewed'],
+      root,
+    );
+    expect(record.error).toBeUndefined();
+    const { error } = await run(['milestone-complete', 'M001'], root);
+    expect(error?.message).toContain('CT001 -- run pitway verify M001');
+    expect(error?.message).toContain('CT002 -- run pitway verify M001');
+    expect(error?.message).not.toContain('--check');
   });
 
   it('refuses when the latest result for a check is fail; a later pass unblocks', async () => {
@@ -395,7 +430,9 @@ describe('pitway milestone-complete gates (AC005)', () => {
     expect(fail.error).toBeUndefined();
 
     const refused = await run(['milestone-complete', 'M001'], root);
-    expect(refused.error?.message).toMatch(/CT003/);
+    expect(refused.error?.message).toContain(
+      'CT003 -- run pitway verify M001 --check CT003 --pass|--fail --evidence <text>',
+    );
     expect(refused.error?.message).not.toMatch(/CT001/);
     expect(loadContract(root, 'M001').frontmatter.status).toBe('in_progress');
 

@@ -21,9 +21,11 @@ import {
 } from '../../src/core/verification/run.js';
 import {
   loadContract,
+  loadState,
   loadTasks,
   loadVerificationRepairs,
   loadVerificationResults,
+  saveState,
   saveVerificationRepairs,
 } from '../../src/state/store.js';
 import type { Task } from '../../src/state/schemas.js';
@@ -920,5 +922,54 @@ Run-path coverage.
     expect(() =>
       recordCheckResult(root, 'M001', { check: 'CT002', status: 'pass', evidence: '   ' }),
     ).toThrowError(/requires non-empty --evidence/);
+  });
+});
+
+// M036/T002: the racing footer on approve/commit/cancel, guarded to the
+// active milestone (all three take an explicit milestone argument).
+describe('pitway verification-repair racing footer (M036/T002)', () => {
+  it('appends the footer for approve/commit against the active milestone', async () => {
+    await readyForRepair();
+    const approved = await run(
+      ['verification-repair', 'approve', 'M001', '--file', 'repair-target.txt', '--check', 'CT001', '--change-log', 'Fix.'],
+      root,
+    );
+    expect(approved.error).toBeUndefined();
+    expect(approved.lines[approved.lines.length - 1]).toMatch(/🏎️|🏁|🔧/);
+
+    seedRepairTarget('FIXED AGAIN\n');
+    git(['add', 'repair-target.txt'], root);
+    const committed = await run(['verification-repair', 'commit', 'M001', 'VR001'], root);
+    expect(committed.error).toBeUndefined();
+    expect(committed.lines[committed.lines.length - 1]).toMatch(/🏎️|🏁|🔧/);
+  });
+
+  it('appends the footer for cancel against the active milestone', async () => {
+    await readyForRepair();
+    await run(
+      ['verification-repair', 'approve', 'M001', '--file', 'repair-target.txt', '--check', 'CT001', '--change-log', 'Fix.'],
+      root,
+    );
+    const cancelled = await run(['verification-repair', 'cancel', 'M001', 'VR001'], root);
+    expect(cancelled.error).toBeUndefined();
+    expect(cancelled.lines[cancelled.lines.length - 1]).toMatch(/🏎️|🏁|🔧/);
+  });
+
+  it('never appends a footer for a milestone other than the active one', async () => {
+    await readyForRepair();
+    saveState(root, { ...loadState(root), active_milestone: 'M999' });
+    const approved = await run(
+      ['verification-repair', 'approve', 'M001', '--file', 'repair-target.txt', '--check', 'CT001', '--change-log', 'Fix.'],
+      root,
+    );
+    expect(approved.error).toBeUndefined();
+    expect(approved.lines).toHaveLength(1);
+  });
+
+  it('never appends a footer line in --json mode', async () => {
+    await readyForRepair();
+    const { error, lines } = await approve(['repair-target.txt'], ['CT001']);
+    expect(error).toBeUndefined();
+    expect(lines).toHaveLength(1);
   });
 });
