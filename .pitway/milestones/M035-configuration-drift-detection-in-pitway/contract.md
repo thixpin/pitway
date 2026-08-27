@@ -2,10 +2,10 @@
 schema_version: 1
 id: M035
 title: Configuration Drift Detection in pitway resume
-status: in_progress
+status: completed
 requirement: null
-confirmed_at: 2026-08-27T03:29:25Z
-verification_approved_hash: sha256:77053ad3035585652edcdfd30be63f0511511be2a23fc3909557fac9e4e7463c
+confirmed_at: 2026-08-27T10:00:00Z
+verification_approved_hash: sha256:0beb2f10487da26ef2d666803e6546dff75cf1b35e922f9bd59292adeb5ae906
 base_branch: main
 base_revision: 229be9c3d31dd9313593faa538dc3eac5c91bd6a
 acceptance_criteria:
@@ -60,6 +60,7 @@ verification:
     criterion: AC006
     type: command
     command: npm test
+    timeout_ms: 900000
 ---
 
 # Contract
@@ -112,3 +113,10 @@ with `--no-claude` appended only when `.claude/` is absent.
 ## Change Log
 
 - 2026-08-27: Draft created.
+- 2026-08-27: Both tasks completed. CT006 (full suite) failed on its
+  first three runs at milestone-level verify -- not a regression (direct
+  npm test runs passed cleanly at 2035/2035 each time, just slow:
+  250-352s under today's system load); the drafted contract omitted an
+  explicit timeout_ms, so it inherited the ~120s default. Added
+  timeout_ms: 900000 to CT006 (developer-approved), matching the same
+  fix M033 needed for the identical reason.
