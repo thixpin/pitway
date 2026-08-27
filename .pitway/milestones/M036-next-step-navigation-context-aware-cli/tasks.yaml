@@ -123,7 +123,7 @@ tasks:
       whenever one exists). Word the line to complement, not duplicate, the
       racing footer's existing "developer approval" phrasing when both appear
       together (e.g. reference running it after developer approval).
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -145,7 +145,18 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/integration/verify.test.ts
-    result: null
+    result:
+      summary: "[truncated] plicates the footer's own \"developer approval\" phrasing.
+        5 new tests covering: absent while a manual check is still pending,
+        present once the last check is recorded pass and all tasks are
+        completed, absent when checks pass but a task isn't completed, absent on
+        --status, absent in --json."
+      evidence: Tests  43 passed (43) | Start at  13:37:21 | Duration  23.97s
+        (transform 370ms, setup 0ms, import 496ms, tests 23.38s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-sonnet-5
     usage: null
   - id: T004
     name: Name accurate per-item recovery commands in milestone-complete refusals
@@ -161,7 +172,7 @@ tasks:
       \"-- run pitway verify <mId>\" when the check's type is \"command\", or
       \"-- run pitway verify <mId> --check <id> --pass|--fail --evidence
       <text>\" when its type is \"manual\" or \"review\"."
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - An incomplete task in status review names 'task-update <id> completed';
@@ -182,6 +193,7 @@ tasks:
       strategy: command
       detail: npx vitest run tests/integration/milestone-complete.test.ts
     result: null
+    attempts: 1
     usage: null
   - id: T005
     name: Add verified recovery detail to resume's blocked/waiting entries
@@ -199,7 +211,7 @@ tasks:
       --json output -- add new field(s) alongside them, never replace them.
       Human-mode output gains the same detail, rendered similarly to the
       existing worktree-residue block."
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance_criteria:
       - resume --json still has blocked/waiting as plain id-string arrays,
@@ -219,4 +231,5 @@ tasks:
       strategy: command
       detail: npx vitest run tests/integration/resume.test.ts
     result: null
+    attempts: 1
     usage: null

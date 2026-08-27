@@ -8,9 +8,15 @@ import {
   type VerifyRecordView,
   type VerifyRunView,
 } from '../../core/verification/run.js';
-import { getVerificationStatus, type VerifyStatusView } from '../../core/verification/status.js';
+import {
+  allChecksPassed,
+  computeLatestCheckResults,
+  getVerificationStatus,
+  type VerifyStatusView,
+} from '../../core/verification/status.js';
 import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
-import { loadState } from '../../state/store.js';
+import { computeMilestoneProgress } from '../../core/milestones/progress.js';
+import { loadContract, loadState, loadTasks } from '../../state/store.js';
 import { renderOutput } from '../output.js';
 
 // M036/T002: verify's run/single-check-run/record paths mutate state and
@@ -26,6 +32,27 @@ function writeFooterIfActive(root: string, resolvedId: string, write: (line: str
   if (!isActive) return;
   const footer = getFooterForActiveMilestone(root);
   if (footer !== null) write(footer);
+}
+
+// M036/T003: reuses the exact same helpers footer.ts/complete.ts already
+// call for this exact question -- never VerifyRunView's own passed/pending
+// fields, which never clear pending for a manual/review check even once
+// recorded (so gating on them would make this hint permanently dead
+// whenever one exists). Complements, rather than duplicates, the racing
+// footer's own "Next: developer approval" phrasing when both appear
+// together after the last check turns green.
+function completionHintLine(root: string, milestoneId: string): string | null {
+  try {
+    const contract = loadContract(root, milestoneId);
+    const latest = computeLatestCheckResults(root, milestoneId);
+    if (!allChecksPassed(contract, latest)) return null;
+    const tasksFile = loadTasks(root, milestoneId);
+    const progress = computeMilestoneProgress(tasksFile.tasks);
+    if (progress.completed !== progress.total) return null;
+    return `✅ All checks passed and every task is completed — run milestone-complete ${milestoneId} after developer approval.`;
+  } catch {
+    return null;
+  }
 }
 
 function renderRunHuman(view: VerifyRunView): string {
@@ -104,7 +131,11 @@ export function registerVerifyCommand(program: Command, deps: CommandDeps = {}):
         }
         const view = runVerification(root, id);
         write(renderOutput(view, { json: options.json }, renderRunHuman));
-        if (!options.json) writeFooterIfActive(root, view.id, write);
+        if (!options.json) {
+          const hint = completionHintLine(root, view.id);
+          if (hint !== null) write(hint);
+          writeFooterIfActive(root, view.id, write);
+        }
         return;
       }
 
@@ -130,6 +161,10 @@ export function registerVerifyCommand(program: Command, deps: CommandDeps = {}):
         evidence: options.evidence,
       });
       write(renderOutput(view, { json: options.json }, renderRecordHuman));
-      if (!options.json) writeFooterIfActive(root, view.id, write);
+      if (!options.json) {
+        const hint = completionHintLine(root, view.id);
+        if (hint !== null) write(hint);
+        writeFooterIfActive(root, view.id, write);
+      }
     });
 }
