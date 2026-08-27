@@ -693,3 +693,24 @@ items:
     resolved_at: null
     promoted_to: null
     archived_reason: null
+  - id: B035
+    title: archive.ts journals before state write; can double-journal on retry
+    reason: "src/core/backlog/archive.ts's archiveBacklogItem appends its journal
+      record (appendBacklogArchiveRecord) BEFORE calling saveBacklog. A crash
+      precisely between those two steps, followed by a retry (e.g. a
+      quick-change commit's status-check-then-archive guard added in M037/T001),
+      re-reads backlog.yaml as still pending and archives again, appending a
+      second backlog_archive journal record for one logical archive. State ends
+      up correctly archived exactly once (no hard failure); only the journal
+      audit trail double-writes. Confirmed pre-existing and out of scope for
+      M037/T001 by both the architect review (round 2) and the T001 worker. Fix
+      direction: write state first, journal after, or make the journal append
+      idempotent per archive."
+    status: pending
+    source:
+      milestone: M037
+      task: T001
+    created_at: 2026-08-27T08:31:41.023Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null

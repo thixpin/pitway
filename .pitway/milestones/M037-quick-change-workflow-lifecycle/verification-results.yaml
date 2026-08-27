@@ -40,3 +40,11 @@ results:
     recorded_by: command
     duration_ms: 23585
     termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-27T08:40:55Z
+    evidence: Tests  71 passed (71) | Start at  15:40:23 | Duration  32.45s
+      (transform 386ms, setup 0ms, import 596ms, tests 32.73s, environment 0ms)
+    recorded_by: command
+    duration_ms: 33138
+    termination_reason: exited

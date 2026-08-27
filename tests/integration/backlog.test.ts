@@ -208,10 +208,33 @@ describe('backlog add', () => {
     expect(pending).toHaveLength(1);
     expect(pending[0]).toMatchObject({ milestone: 'M001', type: 'backlog_recording', target: 'B001' });
   });
+
+  // T002: decouples backlog add from requiring an active milestone.
+  it('succeeds with no active milestone, recording source.milestone: null via a milestone-less journal record (no commit)', async () => {
+    await completeTaskT001();
+    expect((await run(['verify'], root)).error).toBeUndefined();
+    expect((await run(['milestone-complete', 'M001'], root)).error).toBeUndefined();
+
+    const before = commitCount(root);
+    const view = addBacklogItem(root, { title: 'Found after completion', reason: 'No milestone active.' });
+    expect(view).toEqual({ id: 'B001', status: 'pending' });
+    expect(commitCount(root)).toBe(before);
+
+    const item = showBacklogItem(root, 'B001');
+    expect(item.source).toEqual({ milestone: null, task: null });
+
+    // A real journal record, not silently untracked -- the dedicated
+    // backlog_add_unscoped kind, never a backlog_recording entry (there is
+    // no active milestone for an entry-kind record to attach to).
+    const unscoped = readJournal(root).filter((r) => r.kind === 'backlog_add_unscoped');
+    expect(unscoped).toHaveLength(1);
+    expect(unscoped[0]).toMatchObject({ target: 'B001', title: 'Found after completion' });
+    expect(pendingBacklogEntries()).toHaveLength(0);
+  });
 });
 
 describe('backlog: unconditional active-milestone journal attachment (AC004)', () => {
-  it('fails clearly with no active milestone (add/promote), but archive is unaffected (M021/T002, B007)', async () => {
+  it('promote still fails with no active milestone; add and archive are unaffected/succeed (M021/T002, B007; T002 decoupled add)', async () => {
     addBacklogItem(root, { title: 'X', reason: 'Y' });
 
     await completeTaskT001();
@@ -219,8 +242,14 @@ describe('backlog: unconditional active-milestone journal attachment (AC004)', (
     expect((await run(['milestone-complete', 'M001'], root)).error).toBeUndefined();
 
     const expectedMessage = /no active milestone; run milestone-add or resume the active one first/;
-    expect(() => addBacklogItem(root, { title: 'X', reason: 'Y' })).toThrowError(expectedMessage);
+    // backlog promote's active-milestone requirement is unaffected by T002
+    // (it targets a task, which is inherently milestone-scoped).
     expect(() => promoteBacklogItem(root, 'B001', { taskId: 'T001' })).toThrowError(expectedMessage);
+
+    // T002: backlog add no longer requires an active milestone -- succeeds,
+    // recording source.milestone: null.
+    expect(() => addBacklogItem(root, { title: 'X', reason: 'Y' })).not.toThrow();
+    expect(showBacklogItem(root, 'B002').source).toEqual({ milestone: null, task: null });
 
     // B007's own finding, reproduced directly: archive must succeed with no
     // active milestone -- it finalizes an already fully identified item

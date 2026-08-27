@@ -1,11 +1,19 @@
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { canTransitionBacklogItem, transitionBacklogItem } from '../../src/core/backlog/state-machine.js';
 import { listBacklogItems } from '../../src/core/backlog/list.js';
 import { loadBacklog, saveBacklog } from '../../src/state/store.js';
 import type { BacklogItem, BacklogStatus } from '../../src/state/schemas.js';
+import {
+  appendBacklogAddUnscopedRecord,
+  appendJournalEntry,
+  JournalError,
+  readJournal,
+} from '../../src/state/journal.js';
+import { derivePending } from '../../src/core/journal/operations.js';
 
 const ALL_STATUSES: BacklogStatus[] = ['pending', 'promoted', 'archived'];
 
@@ -158,5 +166,97 @@ describe('backlog list filters core (M025/T008)', () => {
     listBacklogItems(root, { task: 'T001' });
     listBacklogItems(root, { status: 'pending', milestone: 'M001', task: 'T001' });
     expect(loadBacklog(root).items).toHaveLength(before);
+  });
+});
+
+// T002: backlog_add_unscoped -- a new sibling journal record kind, no
+// milestone field, appended by `backlog add` when no milestone is active
+// (mirrors backlog_archive's own no-milestone-field precedent). Exercised
+// directly against src/state/journal.ts, the same tier as this file's
+// existing state-machine/list coverage.
+describe('backlog_add_unscoped journal record (T002)', () => {
+  let root: string;
+
+  const baseRecord = {
+    id: 'bau-1',
+    target: 'B001',
+    title: 'Discovered mid-task',
+    reason: 'Out of scope, no active milestone.',
+    sourceMilestone: null as string | null,
+    sourceTask: null as string | null,
+    at: '2026-08-25T00:00:00Z',
+  };
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'pitway-backlog-journal-'));
+    // resolvePitwayJournalPath resolves the journal path via git -- a real
+    // (even if minimal) repo is required, mirroring tests/unit/journal.test.ts's
+    // own setup for the same reason.
+    execFileSync('git', ['init', '-q'], { cwd: root });
+    execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: root });
+    execFileSync('git', ['config', 'user.name', 'Test'], { cwd: root });
+    writeFileSync(join(root, 'README.md'), 'hello\n');
+    execFileSync('git', ['add', 'README.md'], { cwd: root });
+    execFileSync('git', ['commit', '-q', '-m', 'init'], { cwd: root });
+    mkdirSync(join(root, '.pitway'), { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('appends a backlog_add_unscoped record and reads it back', () => {
+    const record = appendBacklogAddUnscopedRecord(root, baseRecord);
+    expect(record.kind).toBe('backlog_add_unscoped');
+    const all = readJournal(root);
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({
+      kind: 'backlog_add_unscoped',
+      id: 'bau-1',
+      target: 'B001',
+      title: 'Discovered mid-task',
+      reason: 'Out of scope, no active milestone.',
+      sourceMilestone: null,
+      sourceTask: null,
+    });
+  });
+
+  it('carries no milestone field, like backlog_archive', () => {
+    const record = appendBacklogAddUnscopedRecord(root, baseRecord);
+    expect(record).not.toHaveProperty('milestone');
+  });
+
+  it('is excluded from derivePending like every other sibling record kind', () => {
+    appendBacklogAddUnscopedRecord(root, baseRecord);
+    appendJournalEntry(root, {
+      milestone: 'M001',
+      type: 'usage_recording',
+      operationId: 'op-1',
+      payload: {},
+    });
+    const pending = derivePending(readJournal(root));
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.operationId).toBe('op-1');
+  });
+
+  it('rejects a record missing required fields, appending nothing', () => {
+    expect(() =>
+      appendBacklogAddUnscopedRecord(root, {
+        ...baseRecord,
+        // Runtime-invalid: empty target.
+        target: '',
+      }),
+    ).toThrow(JournalError);
+    expect(readJournal(root)).toHaveLength(0);
+  });
+
+  it('allows an explicit sourceMilestone/sourceTask (no active milestone, but --milestone/--task given)', () => {
+    const record = appendBacklogAddUnscopedRecord(root, {
+      ...baseRecord,
+      sourceMilestone: 'M002',
+      sourceTask: 'T001',
+    });
+    expect(record.sourceMilestone).toBe('M002');
+    expect(record.sourceTask).toBe('T001');
   });
 });

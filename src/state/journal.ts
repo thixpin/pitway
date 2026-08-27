@@ -307,6 +307,33 @@ export const journalBacklogArchiveSchema = z.strictObject({
   at: z.string().min(1),
 });
 
+// Eleventh sibling member of the discriminated union (T002): records one
+// `backlog add` outcome when no milestone is active at add time. Mirrors
+// journalBacklogArchiveSchema's own no-milestone-field precedent -- unlike
+// journalEntrySchema's kind:'entry' path (whose `milestone` field is
+// non-nullable, shared with usage_recording/contract_amendment/etc., which
+// legitimately require a real milestone id), a milestone-less add has
+// nothing to attach an entry-kind record to. sourceMilestone/sourceTask
+// carry the item's resolved source.* values as recorded on the backlog item
+// itself (usually both null, but an explicit --milestone/--task override
+// can still populate them even with no *active* milestone). Like every
+// other sibling above, this is never referenced by a checkpoint marker and
+// never folded into a milestone commit -- there is no target state file for
+// resolveTargetPath to map it to, and derivePending's `kind === 'entry'`
+// filter already excludes it structurally. Append-only:
+// appendBacklogAddUnscopedRecord is the sole writer (src/core/backlog/add.ts)
+// and never mutates a prior record.
+export const journalBacklogAddUnscopedSchema = z.strictObject({
+  kind: z.literal('backlog_add_unscoped'),
+  id: z.string().min(1),
+  target: journalBacklogItemId,
+  title: z.string().min(1),
+  reason: z.string().min(1),
+  sourceMilestone: journalMilestoneId.nullable(),
+  sourceTask: journalTaskId.nullable(),
+  at: z.string().min(1),
+});
+
 export const journalRecordSchema = z.discriminatedUnion('kind', [
   journalEntrySchema,
   journalCheckpointSchema,
@@ -318,6 +345,7 @@ export const journalRecordSchema = z.discriminatedUnion('kind', [
   journalWorktreeDiscardSchema,
   journalMilestoneMergeSchema,
   journalBacklogArchiveSchema,
+  journalBacklogAddUnscopedSchema,
 ]);
 
 export const journalFileSchema = z.strictObject({
@@ -341,6 +369,7 @@ export type JournalWorktreeIntegrate = z.infer<typeof journalWorktreeIntegrateSc
 export type JournalWorktreeDiscard = z.infer<typeof journalWorktreeDiscardSchema>;
 export type JournalMilestoneMerge = z.infer<typeof journalMilestoneMergeSchema>;
 export type JournalBacklogArchive = z.infer<typeof journalBacklogArchiveSchema>;
+export type JournalBacklogAddUnscoped = z.infer<typeof journalBacklogAddUnscopedSchema>;
 export type JournalRecord = z.infer<typeof journalRecordSchema>;
 export type JournalFile = z.infer<typeof journalFileSchema>;
 
@@ -562,6 +591,23 @@ export function appendBacklogArchiveRecord(
   const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
   if (!result.success) {
     throw new JournalError(`refusing to append invalid backlog_archive record: ${formatIssues(result.error)}`);
+  }
+  saveJournalFile(cwd, result.data);
+  return full;
+}
+
+// Appends a backlog_add_unscoped record -- a full, self-contained snapshot
+// of one milestone-less `backlog add` outcome, never a patch; same
+// sibling-record discipline as every appender above.
+export function appendBacklogAddUnscopedRecord(
+  cwd: string,
+  record: Omit<JournalBacklogAddUnscoped, 'kind'>,
+): JournalBacklogAddUnscoped {
+  const file = loadJournalFile(cwd);
+  const full: JournalBacklogAddUnscoped = { kind: 'backlog_add_unscoped', ...record };
+  const result = journalFileSchema.safeParse({ ...file, entries: [...file.entries, full] });
+  if (!result.success) {
+    throw new JournalError(`refusing to append invalid backlog_add_unscoped record: ${formatIssues(result.error)}`);
   }
   saveJournalFile(cwd, result.data);
   return full;

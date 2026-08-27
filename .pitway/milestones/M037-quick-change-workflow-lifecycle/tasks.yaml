@@ -114,7 +114,7 @@ tasks:
       which is inherently milestone-scoped. Because this task and T001 both
       extend src/state/journal.ts, T002 depends on T001 (sequenced, not
       parallel) to avoid a write_scope collision."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -143,8 +143,19 @@ tasks:
       strategy: command
       detail: npx vitest run tests/unit/backlog-state.test.ts
         tests/integration/backlog.test.ts
-    result: null
-    usage: null
+    result:
+      summary: "[truncated] ote, which stays milestone-scoped and out of this task's
+        scope); when active, the code path is byte-for-byte the same
+        appendJournalEntry call as before; when null, appends the new record
+        then saves the backlog directly. --task without a resolvable milestone
+        is refused with a clear error."
+      evidence: 'TDD: RED confirmed (missing export / thrown "no active milestone"
+        error) before implementation. npx vitest run
+        tests/unit/backlog-state.test.ts tests/integration/backlog.test.ts ->
+        71/71 passed. CT004 verified pass via pitway verify.'
+    attempts: 1
+    usage:
+      total_tokens: 127556
   - id: T003
     name: State the merge-approval gate in milestone-complete's own output
     objective: "milestone-complete's human-mode output today says only \"Completed
@@ -280,7 +291,7 @@ tasks:
       manifest (shasum -a 256 each changed file, update its tuple), and confirm
       the codex/opencode asset tests and tests/integration/init.test.ts still
       pass unmodified."
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T002
