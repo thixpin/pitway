@@ -16,3 +16,27 @@ results:
     recorded_by: command
     duration_ms: 14480
     termination_reason: exited
+  - check: CT001
+    status: pass
+    at: 2026-08-27T08:30:10Z
+    evidence: Tests  72 passed (72) | Start at  15:29:49 | Duration  20.45s
+      (transform 527ms, setup 0ms, import 890ms, tests 27.01s, environment 6ms)
+    recorded_by: command
+    duration_ms: 21125
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-27T08:30:31Z
+    evidence: Tests  60 passed (60) | Start at  15:30:11 | Duration  20.63s
+      (transform 449ms, setup 0ms, import 674ms, tests 30.49s, environment 0ms)
+    recorded_by: command
+    duration_ms: 21344
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-27T08:30:55Z
+    evidence: Tests  96 passed (96) | Start at  15:30:32 | Duration  22.76s
+      (transform 609ms, setup 0ms, import 979ms, tests 42.32s, environment 0ms)
+    recorded_by: command
+    duration_ms: 23585
+    termination_reason: exited

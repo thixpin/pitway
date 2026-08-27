@@ -33,7 +33,7 @@ tasks:
       state ends up correctly archived exactly once (no hard failure, AC003's
       state-level guarantee holds); this narrower journal-audit-trail gap is
       pre-existing in archive.ts and explicitly out of scope for this task."
-    status: in_progress
+    status: completed
     depends_on: []
     acceptance_criteria:
       - quick-change create --closes <id> refuses for an unknown or non-pending
@@ -77,9 +77,21 @@ tasks:
       detail: npx vitest run tests/unit/quick-change-lifecycle.test.ts
         tests/unit/quick-change-commit.test.ts
         tests/integration/quick-change.test.ts
-    result: null
+    result:
+      summary: "[truncated] eview round. cancel/promote carry closesBacklogId as
+        provenance but never archive. .pitway/backlog.yaml (literal
+        '.pitway/backlog.yaml', matching the existing precedent in
+        milestones/complete.ts since pitwayPath is private/unexported) joins
+        expectedPaths only when closesBacklogId is set."
+      evidence: "RED confirmed first: 11 failing tests for the expected reasons
+        (unimplemented validation/hash/archive logic). GREEN: npx vitest run
+        tests/unit/quick-change-lifecycle.test.ts
+        tests/unit/quick-change-commit.test.ts
+        tests/integration/quick-change.test.ts -> 96/96 passed. npx tsc --noEmit
+        clean. CT001/CT002/CT003 verified pass via pitway verify."
     attempts: 1
-    usage: null
+    usage:
+      total_tokens: 171608
   - id: T002
     name: Decouple backlog add from requiring an active milestone
     objective: "pitway backlog add currently refuses unconditionally with \"no
@@ -102,7 +114,7 @@ tasks:
       which is inherently milestone-scoped. Because this task and T001 both
       extend src/state/journal.ts, T002 depends on T001 (sequenced, not
       parallel) to avoid a write_scope collision."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:

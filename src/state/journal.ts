@@ -111,6 +111,13 @@ export const journalQuickChangeRunSchema = z.strictObject({
   evidence: z.string().min(1),
 });
 
+// Defined locally, mirroring journalMilestoneId/journalTaskId's own
+// precedent above -- this task's write scope stays limited to journal.ts +
+// the quick-change modules rather than widening onto state/schemas.ts for
+// an id-pattern already defined there under a different name
+// (backlogItemId, private to schemas.ts).
+const journalBacklogItemId = z.string().regex(/^B\d{3}$/, 'backlog item id must match B000');
+
 export const journalQuickChangeSchema = z
   .strictObject({
     kind: z.literal('quick_change'),
@@ -121,7 +128,7 @@ export const journalQuickChangeSchema = z
     // widened/narrowed) once approvedHash is set at approve.
     scope: z.array(z.string().min(1)),
     verifyCommand: z.string().min(1),
-    // Set once approved: sha256 over {scope, verifyCommand, tddExempt, tddExemptReason} exactly as
+    // Set once approved: sha256 over {scope, verifyCommand, tddExempt, tddExemptReason, closesBacklogId} exactly as
     // declared at create. Absent on a still-draft record. Gates `quick-change
     // run` (T004's job) the same way verification_approved_hash gates
     // `pitway verify` today.
@@ -132,6 +139,11 @@ export const journalQuickChangeSchema = z
     // Must be declared at create time and is hashed/locked at approve time.
     tddExempt: z.boolean().optional(),
     tddExemptReason: z.string().min(1).optional(),
+    // M037/T001: optional backlog item this quick-change closes on commit.
+    // Declared at create time (validated pending), locked/hashed at approve
+    // time exactly like tddExempt, and never mutated by cancel/promote --
+    // only commit.ts's archive step ever advances the linked item's status.
+    closesBacklogId: journalBacklogItemId.optional(),
   })
   .superRefine((data, ctx) => {
     if (data.tddExempt === true && (data.tddExemptReason === undefined || data.tddExemptReason.trim().length === 0)) {

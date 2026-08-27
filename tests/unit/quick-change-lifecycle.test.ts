@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -15,7 +16,8 @@ import { commitQuickChange } from '../../src/core/quick-change/commit.js';
 import { promoteQuickChange } from '../../src/core/quick-change/promote.js';
 import { runQuickChange } from '../../src/core/quick-change/run.js';
 import { readJournal } from '../../src/state/journal.js';
-import { loadState, saveState } from '../../src/state/store.js';
+import { loadBacklog, loadState, saveBacklog, saveState } from '../../src/state/store.js';
+import type { BacklogItem } from '../../src/state/schemas.js';
 
 function git(args: string[], cwd: string): string {
   return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
@@ -379,5 +381,145 @@ describe('deriveQuickChangeState', () => {
 describe('fixture sanity', () => {
   it('active_milestone starts null after the beforeEach setup', () => {
     expect(loadState(repo).active_milestone).toBeNull();
+  });
+});
+
+// M037/T001: quick-change create --closes <backlog-id>. Committed
+// immediately, mirroring the beforeEach fixture's own commit of
+// state.yaml -- create's clean-working-tree gate otherwise refuses on the
+// backlog.yaml this fixture writes.
+function makePendingBacklogItem(root: string, id: string, title = 'Some backlog item'): void {
+  const backlog = loadBacklog(root);
+  const item: BacklogItem = {
+    id: id as BacklogItem['id'],
+    title,
+    reason: 'test fixture',
+    status: 'pending',
+    source: { milestone: null, task: null },
+    created_at: new Date().toISOString(),
+    resolved_at: null,
+    promoted_to: null,
+    archived_reason: null,
+  };
+  saveBacklog(root, { schema_version: backlog.schema_version, items: [...backlog.items, item] });
+  git(['add', '.pitway/backlog.yaml'], root);
+  git(['commit', '-q', '-m', 'test: seed backlog item'], root);
+}
+
+function archiveBacklogItemDirectly(root: string, id: string): void {
+  const backlog = loadBacklog(root);
+  saveBacklog(root, {
+    schema_version: backlog.schema_version,
+    items: backlog.items.map((item) =>
+      item.id === id
+        ? { ...item, status: 'archived' as const, resolved_at: new Date().toISOString(), archived_reason: 'test fixture' }
+        : item,
+    ),
+  });
+  git(['add', '.pitway/backlog.yaml'], root);
+  git(['commit', '-q', '-m', 'test: archive backlog item'], root);
+}
+
+describe('createQuickChange --closes <backlog-id>', () => {
+  it('refuses an unknown backlog id', () => {
+    expect(() =>
+      createQuickChange(repo, {
+        objective: 'Fix it',
+        scope: ['README.md'],
+        verifyCommand: 'echo ok',
+        closesBacklogId: 'B999',
+      }),
+    ).toThrow(/B999/);
+  });
+
+  it('refuses a backlog id that is not pending', () => {
+    makePendingBacklogItem(repo, 'B001');
+    archiveBacklogItemDirectly(repo, 'B001');
+    expect(() =>
+      createQuickChange(repo, {
+        objective: 'Fix it',
+        scope: ['README.md'],
+        verifyCommand: 'echo ok',
+        closesBacklogId: 'B001',
+      }),
+    ).toThrow(/B001/);
+  });
+
+  it('accepts a pending backlog id, carrying it through create -> approve', () => {
+    makePendingBacklogItem(repo, 'B001');
+    const created = createQuickChange(repo, {
+      objective: 'Fix it',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      closesBacklogId: 'B001',
+    });
+    expect((created as any).closesBacklogId).toBe('B001');
+
+    const approved = approveQuickChange(repo, created.id);
+    expect((approved as any).closesBacklogId).toBe('B001');
+    expect(approved.approvedHash).toMatch(/^sha256:[0-9a-f]{64}$/);
+  });
+
+  it('two changes differing only in closesBacklogId produce different approved hashes', () => {
+    makePendingBacklogItem(repo, 'B001');
+    makePendingBacklogItem(repo, 'B002');
+    const a = createQuickChange(repo, {
+      objective: 'Fix it',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      closesBacklogId: 'B001',
+    });
+    const b = createQuickChange(repo, {
+      objective: 'Fix it',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      closesBacklogId: 'B002',
+    });
+    const approvedA = approveQuickChange(repo, a.id);
+    const approvedB = approveQuickChange(repo, b.id);
+    expect(approvedA.approvedHash).not.toBe(approvedB.approvedHash);
+  });
+
+  it('a change created and approved with no --closes at all produces the same hash as before this feature (regression guard)', () => {
+    const created = createQuickChange(repo, {
+      objective: 'Fix it',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+    });
+    const approved = approveQuickChange(repo, created.id);
+    expect(approved.approvedHash).toBe(
+      'sha256:' +
+        createHash('sha256')
+          .update(JSON.stringify({ scope: ['README.md'], verifyCommand: 'echo ok', tddExempt: false, tddExemptReason: null }))
+          .digest('hex'),
+    );
+  });
+});
+
+describe('cancelQuickChange and promoteQuickChange never archive a linked backlog item', () => {
+  it('cancel leaves the linked backlog item pending', () => {
+    makePendingBacklogItem(repo, 'B001');
+    const created = createQuickChange(repo, {
+      objective: 'Fix it',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      closesBacklogId: 'B001',
+    });
+    cancelQuickChange(repo, created.id);
+    const item = loadBacklog(repo).items.find((i) => i.id === 'B001');
+    expect(item?.status).toBe('pending');
+  });
+
+  it('promote leaves the linked backlog item pending', () => {
+    makePendingBacklogItem(repo, 'B001');
+    const created = createQuickChange(repo, {
+      objective: 'Fix it',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      closesBacklogId: 'B001',
+    });
+    promoteQuickChange(repo, created.id);
+    const item = loadBacklog(repo).items.find((i) => i.id === 'B001');
+    expect(item?.status).toBe('pending');
   });
 });

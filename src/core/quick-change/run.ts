@@ -18,18 +18,28 @@ export interface QuickChangeRunView {
   evidence: string;
 }
 
-// Recomputes the identical sha256({scope, verifyCommand, tddExempt, tddExemptReason}) hash create.ts's
-// computeQuickChangeHash produces at approve time. That function is private
-// to create.ts (not exported), so this is a small, pure, local duplicate --
-// a deliberate bounded duplication rather than widening this task's write
-// scope onto create.ts to export it.
+// Recomputes the identical sha256({scope, verifyCommand, tddExempt, tddExemptReason, closesBacklogId})
+// hash create.ts's computeQuickChangeHash produces at approve time. That
+// function is private to create.ts (not exported), so this is a small, pure,
+// local duplicate -- a deliberate bounded duplication rather than widening
+// this task's write scope onto create.ts to export it. closesBacklogId is
+// included ONLY when defined, exactly mirroring create.ts's own comment: a
+// change with no --closes must hash identically to before this field
+// existed.
 function computeQuickChangeHash(
   scope: string[],
   verifyCommand: string,
   tddExempt?: boolean,
   tddExemptReason?: string,
+  closesBacklogId?: string,
 ): string {
-  const canonical = JSON.stringify({ scope, verifyCommand, tddExempt: tddExempt ?? false, tddExemptReason: tddExemptReason ?? null });
+  const canonical = JSON.stringify({
+    scope,
+    verifyCommand,
+    tddExempt: tddExempt ?? false,
+    tddExemptReason: tddExemptReason ?? null,
+    ...(closesBacklogId !== undefined ? { closesBacklogId } : {}),
+  });
   return `sha256:${createHash('sha256').update(canonical).digest('hex')}`;
 }
 
@@ -57,6 +67,7 @@ export function runQuickChange(root: string, changeId: string): QuickChangeRunVi
     current.verifyCommand,
     current.tddExempt,
     current.tddExemptReason,
+    current.closesBacklogId,
   );
   if (recomputedHash !== current.approvedHash) {
     throw new QuickChangeError(
@@ -79,6 +90,7 @@ export function runQuickChange(root: string, changeId: string): QuickChangeRunVi
     runs: [...current.runs, { at: new Date().toISOString(), status, evidence }],
     ...(current.tddExempt !== undefined ? { tddExempt: current.tddExempt } : {}),
     ...(current.tddExemptReason !== undefined ? { tddExemptReason: current.tddExemptReason } : {}),
+    ...(current.closesBacklogId !== undefined ? { closesBacklogId: current.closesBacklogId } : {}),
   });
 
   return { id: record.id, status, evidence };

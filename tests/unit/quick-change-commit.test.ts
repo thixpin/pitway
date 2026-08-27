@@ -12,7 +12,8 @@ import { commitQuickChange } from '../../src/core/quick-change/commit.js';
 import { runQuickChange } from '../../src/core/quick-change/run.js';
 import { appendQuickChangeRecord } from '../../src/state/journal.js';
 import { composeMessage, resolveChangeCommitSha, resolveCommitSha } from '../../src/git/trailers.js';
-import { saveState } from '../../src/state/store.js';
+import { loadBacklog, saveBacklog, saveState } from '../../src/state/store.js';
+import type { BacklogItem } from '../../src/state/schemas.js';
 
 function git(args: string[], cwd: string): string {
   return execFileSync('git', args, { cwd, stdio: 'pipe' }).toString();
@@ -47,6 +48,47 @@ function createAndApprove(verifyCommand: string): QuickChangeView {
     verifyCommand,
   });
   return approveQuickChange(repo, created.id);
+}
+
+// M037/T001: quick-change create --closes fixtures. Committed immediately,
+// mirroring the beforeEach fixture's own commit of state.yaml -- create's
+// clean-working-tree gate otherwise refuses on the backlog.yaml this
+// fixture writes.
+function makePendingBacklogItem(root: string, id: string, title = 'Some backlog item'): void {
+  const backlog = loadBacklog(root);
+  const item: BacklogItem = {
+    id: id as BacklogItem['id'],
+    title,
+    reason: 'test fixture',
+    status: 'pending',
+    source: { milestone: null, task: null },
+    created_at: new Date().toISOString(),
+    resolved_at: null,
+    promoted_to: null,
+    archived_reason: null,
+  };
+  saveBacklog(root, { schema_version: backlog.schema_version, items: [...backlog.items, item] });
+  git(['add', '.pitway/backlog.yaml'], root);
+  git(['commit', '-q', '-m', 'test: seed backlog item'], root);
+}
+
+function backlogStatus(root: string, id: string): string | undefined {
+  return loadBacklog(root).items.find((item) => item.id === id)?.status;
+}
+
+function createApproveRunClosing(backlogId: string): QuickChangeView {
+  const created = createQuickChange(repo, {
+    objective: 'Fix the readme typo',
+    scope: ['README.md'],
+    verifyCommand: 'echo ok',
+    tddExempt: true,
+    tddExemptReason: 'test-only: echo ok has no RED state',
+    closesBacklogId: backlogId,
+  });
+  const approved = approveQuickChange(repo, created.id);
+  writeFileSync(join(repo, 'README.md'), 'fixed\n');
+  runQuickChange(repo, approved.id);
+  return approved;
 }
 
 describe('runQuickChange', () => {
@@ -285,6 +327,106 @@ describe('commitQuickChange TDD discipline (B020 RED→GREEN)', () => {
     expect(second.status).toBe('pass');
     const result = commitQuickChange(repo, approved.id);
     expect(result.outcome).toBe('committed');
+  });
+});
+
+describe('commitQuickChange --closes <backlog-id>', () => {
+  it('archives the linked backlog item in the same commit, with only a PitWay-Change trailer', () => {
+    makePendingBacklogItem(repo, 'B001');
+    const approved = createApproveRunClosing('B001');
+    const before = commitCount(repo);
+
+    const result = commitQuickChange(repo, approved.id);
+    expect(result.outcome).toBe('committed');
+    expect(commitCount(repo)).toBe(before + 1);
+
+    expect(backlogStatus(repo, 'B001')).toBe('archived');
+    const message = headMessage(repo);
+    expect(message).toContain(`PitWay-Change: ${approved.id}`);
+    expect(message).not.toContain('PitWay-Milestone');
+    expect(message).not.toContain('PitWay-Task');
+    expect(message).not.toMatch(/PitWay-(?!Change)/);
+
+    const status = git(['status', '--porcelain'], repo).trim();
+    expect(status).toBe('');
+  });
+
+  it('a change with no --closes at all never touches backlog.yaml', () => {
+    const created = createQuickChange(repo, {
+      objective: 'Fix the readme typo',
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      tddExempt: true,
+      tddExemptReason: 'test-only: echo ok has no RED state',
+    });
+    const approved = approveQuickChange(repo, created.id);
+    writeFileSync(join(repo, 'README.md'), 'fixed\n');
+    runQuickChange(repo, approved.id);
+    const before = commitCount(repo);
+    commitQuickChange(repo, approved.id);
+    expect(commitCount(repo)).toBe(before + 1);
+    expect(headMessage(repo)).not.toContain('backlog');
+    const files = git(['show', '--name-only', '--format='], repo)
+      .split('\n')
+      .filter((l) => l.trim().length > 0);
+    expect(files).not.toContain('.pitway/backlog.yaml');
+  });
+
+  it('is a safe no-op when re-run after a successful commit+archive (no double-commit, no double-archive)', () => {
+    makePendingBacklogItem(repo, 'B001');
+    const approved = createApproveRunClosing('B001');
+    commitQuickChange(repo, approved.id);
+    expect(backlogStatus(repo, 'B001')).toBe('archived');
+    const before = commitCount(repo);
+
+    const again = commitQuickChange(repo, approved.id);
+    expect(again.outcome).toBe('already-committed');
+    expect(commitCount(repo)).toBe(before);
+    expect(backlogStatus(repo, 'B001')).toBe('archived');
+  });
+
+  it('is a safe no-op when re-run after the archive succeeded but the git commit did not land (crash between archive and commit)', () => {
+    makePendingBacklogItem(repo, 'B001');
+    const approved = createApproveRunClosing('B001');
+
+    // Simulate the archive half of a prior commit attempt succeeding, then
+    // the process crashing before commitOrResume's git commit landed --
+    // archiveBacklogItem's own immediate write already happened, but no
+    // commit exists yet and the local quick-change record is still
+    // 'approved'.
+    const backlog = loadBacklog(repo);
+    saveBacklog(repo, {
+      schema_version: backlog.schema_version,
+      items: backlog.items.map((item) =>
+        item.id === 'B001'
+          ? { ...item, status: 'archived' as const, resolved_at: new Date().toISOString(), archived_reason: `closed by quick-change ${approved.id}` }
+          : item,
+      ),
+    });
+
+    const before = commitCount(repo);
+    const result = commitQuickChange(repo, approved.id);
+    expect(result.outcome).toBe('committed');
+    expect(commitCount(repo)).toBe(before + 1);
+    expect(backlogStatus(repo, 'B001')).toBe('archived');
+
+    const status = git(['status', '--porcelain'], repo).trim();
+    expect(status).toBe('');
+  });
+
+  it('refuses to commit --closes when the latest run failed, and never archives the linked item', () => {
+    makePendingBacklogItem(repo, 'B001');
+    const created = createQuickChange(repo, {
+      objective: 'Fix it',
+      scope: ['README.md'],
+      verifyCommand: 'exit 1',
+      closesBacklogId: 'B001',
+    });
+    const approved = approveQuickChange(repo, created.id);
+    writeFileSync(join(repo, 'README.md'), 'fixed\n');
+    runQuickChange(repo, approved.id);
+    expect(() => commitQuickChange(repo, approved.id)).toThrow(/no passing run/);
+    expect(backlogStatus(repo, 'B001')).toBe('pending');
   });
 });
 
