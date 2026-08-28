@@ -12,7 +12,7 @@ tasks:
       milestone-status, task-status, verify --status, backlog list,
       milestone-review report). List any context-only fact as a gap with a
       proposed durable home; fix nothing.
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Every fact cites a real durable location and a surfacing command; gaps
@@ -30,7 +30,21 @@ tasks:
     verification:
       strategy: manual
       detail: Read the audit against AC001.
-    result: null
+    result:
+      summary: "[truncated] ed-but-undecided human decisions have no durable home --
+        with the observation that M041 recovered because the Orchestrator set
+        the task blocked first, proposed as a protocol rule (T004), while G1/G2
+        are proposed as one additive resume amendment for T005 (developer to
+        approve or decline)."
+      evidence: Rows cite src/state/journal.ts record kinds (entry, checkpoint,
+        auto_run, quick_change, task_verify_evidence,
+        worktree_dispatch/integrate/discard, milestone_merge, backlog_archive,
+        backlog_add_unscoped), src/state/store.ts files, resume/milestone-status
+        view fields, and M041 section 4's two real restarts as the reference
+        recoveries.
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T002
     name: Orchestrator restart recovery test from resume alone
@@ -130,7 +144,7 @@ tasks:
       src/core/views/resume.ts and/or src/state/schemas.ts, keeping existing
       --json output byte-identical when the new data is absent, with tests.
       Otherwise cancel this task (task-update T005 cancelled)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
