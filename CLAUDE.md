@@ -5,5 +5,5 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 <!-- pitway:managed:start -->
 @AGENTS.md
 
-See .claude/protocol-driver.md for the full Claude Code driver protocol.
+See .claude/protocol-driver.md for the full Claude Code driver protocol, and .claude/protocol-orchestrator.md for the Orchestrator role.
 <!-- pitway:managed:end -->

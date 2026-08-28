@@ -6,6 +6,7 @@
 - Never edit `.pitway/` directly.
 - Work only within a confirmed task boundary.
 - Obtain a task's bounded context via `pitway task-status <id> --context`.
+- The driver protocol is split into roles: `protocol-driver.md` (Main Agent: developer conversation and every approval gate), `protocol-orchestrator.md` (Orchestrator: task execution), and `protocol-worker.md` (Worker: one bounded task) in the installed driver directory.
 <!-- pitway:managed:end -->
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
