@@ -44,9 +44,13 @@ acceptance_criteria:
       that existing installs need pitway init --reconfigure to receive the new
       protocol asset -- not by running init in this repository.
   - id: AC005
-    text: No Core, CLI, State, or Git behavior change beyond the root-instruction
-      block text; no change under src/integrations/ other than the additive
-      cross-references of AC003; full suite and typecheck pass.
+    text: No Core, CLI, State, or Git behavior change except one bounded,
+      precedent-backed addition in src/state/root-instructions.ts -- the exact
+      previous managed-block text (frozen byte-for-byte, like the LEGACY_*
+      forms) is recognised and rewritten to the new block on init --reconfigure,
+      while any other differing managed block stays block_mismatch and is
+      preserved untouched; no change under src/integrations/ other than the
+      additive cross-references of AC003; full suite and typecheck pass.
 verification:
   - id: CT001
     criterion: AC001
@@ -135,3 +139,11 @@ T001-T004 are independent; T005 depends on all four.
 - 2026-08-29: Registered as M043 -- next sequential id after M042 -- with
   the M041/M042 evidence corrections folded in (AC004) and the M041
   protocol-text gaps explicitly deferred to the lifecycle follow-up.
+- 2026-08-29: AC005 amended during T002 (developer-approved). Core's
+  existing rule preserves any differing managed block (block_mismatch),
+  so changing the block text alone would leave every existing install --
+  this repository included -- without the new protocol-orchestrator.md
+  pointer. AC002's migration therefore needs one bounded Core addition: the
+  exact previous managed block is frozen and rewritten to the new block on
+  init --reconfigure, exactly as the pre-B008 LEGACY_* forms already are;
+  user-authored or otherwise-differing blocks remain preserved.

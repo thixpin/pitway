@@ -56,7 +56,7 @@ tasks:
       with no other content touched; confirm tests/integration/init.test.ts
       passes (update only assertions that pin the old block text). No other
       behavior change.
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Old blocks classify block_mismatch and migrate; other file content
@@ -73,7 +73,17 @@ tasks:
       strategy: command
       detail: npx vitest run tests/unit/root-instructions.test.ts
         tests/integration/init.test.ts
-    result: null
+    result:
+      summary: "[truncated] nit-paths.ts, resume view), so the union widening is
+        type-only. Tests: content constants assert the new pointer; new describe
+        covers prior-block classification for both files, in-place migration
+        with surrounding user content intact, idempotent rerun, and preservation
+        of an unknown block."
+      evidence: Tests  62 passed (62) | Start at  01:15:02 | Duration  3.56s
+        (transform 347ms, setup 0ms, import 475ms, tests 3.01s, environment 0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T003
     name: Role cross-references in supporting protocol docs
