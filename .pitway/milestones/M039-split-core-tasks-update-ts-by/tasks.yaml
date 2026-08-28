@@ -1,0 +1,164 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Split update.ts into responsibility modules with unit tests
+    objective: "Pure file split of src/core/tasks/update.ts (708 lines); every
+      function body moves verbatim with its comments, same
+      names/signatures/error text. New modules: (1)
+      src/core/tasks/update-error.ts -- `export class TaskUpdateError extends
+      Error {}`; update.ts re-exports it (`export { TaskUpdateError } from
+      './update-error.js'`) so src/cli/commands/task-update.ts and tests keep
+      importing from update.js unchanged. (2) src/core/tasks/evidence.ts --
+      MISSING_HASH_MARKER (moved from verify.ts; verify.ts re-exports it from
+      evidence.ts in THIS task so its own importers are untouched until T002),
+      normalizeRepoRelativePath (update.ts's TaskUpdateError-throwing copy),
+      buildFingerprint, isExecutionPassing, validateTaskVerifyEvidence,
+      resolveTaskVerifyEvidence, hasVerifiedEvidence -- export all of them (the
+      previously-private ones become exported so they can be unit-tested). (3)
+      src/core/tasks/usage.ts -- parseUsageInput, accumulateUsage,
+      computeUsageWarning. (4) src/core/tasks/result-input.ts -- resultSchema,
+      TaskResult type, SUMMARY_CAP, EVIDENCE_CAP, TRUNCATION_MARKER, capField,
+      readInput, parseResultInput. (5) src/core/tasks/completion-commit.ts --
+      tasksRepoPath, milestoneSince, CommittedTaskRecord, findCompletionCommit.
+      update.ts keeps updateTask, completeTask, expectedMilestoneBranch,
+      resolveActiveMilestone, findTask, assertDirtySubset, persistTask, and the
+      TaskUpdateInputs/TaskUpdateView interfaces; it must end under 400 lines
+      and must no longer import from './verify.js'. Update the two
+      hasVerifiedEvidence importers (src/core/views/milestone-status.ts,
+      tests/integration/task-update.test.ts) to evidence.ts. TDD: write the four
+      unit test files FIRST against the new paths (RED: modules absent), then
+      split (GREEN). Unit tests, per AC004: tests/unit/task-usage.test.ts
+      (accumulateUsage: both measured -> summed input/output/total; one side
+      missing input_tokens -> field kept from the other; both missing -> field
+      absent; prior null -> delta; delta null -> prior. parseUsageInput: valid;
+      malformed JSON -> TaskUpdateError 'invalid --usage JSON'; schema violation
+      -> 'invalid --usage'. computeUsageWarning against a temp git repo journal:
+      no worktree_dispatch record -> null; dispatched + usage not provided ->
+      the exact warning text; dispatched + provided -> null).
+      tests/unit/task-result-input.test.ts (capField under/at/over cap with
+      '[truncated] ' prefix and tail preserved; parseResultInput valid,
+      malformed YAML, schema violation, missing file -> TaskUpdateError
+      messages). tests/unit/task-evidence.test.ts (buildFingerprint
+      present/missing entries sorted by path with sha256: prefix and
+      MISSING_HASH_MARKER; isExecutionPassing for exited/0, non-zero,
+      non-exited, typecheck failure; validateTaskVerifyEvidence each refusal
+      branch by message -- task mismatch, failing run, attempt mismatch, command
+      mismatch, write_scope mismatch, fingerprint mismatch -- and a passing
+      case; resolveTaskVerifyEvidence implicit newest-passing selection skipping
+      a later failing record, explicit id, unknown id -> 'unknown evidence id';
+      hasVerifiedEvidence true only when a record's evidence equals
+      task.result.evidence). tests/unit/task-completion-commit.test.ts against a
+      temp git repo (findCompletionCommit: no trailer commit -> undefined;
+      matching committed tasks.yaml -> sha; trailer present but record differs
+      -> 'ambiguous state' TaskUpdateError). Reuse the fixture patterns from
+      tests/integration/task-update.test.ts and
+      tests/unit/pending-journal-targets.test.ts. Do not touch verify.ts beyond
+      the MISSING_HASH_MARKER re-export."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - update.ts is under 400 lines, contains only orchestration, re-exports
+        TaskUpdateError, and no longer imports from ./verify.js.
+      - evidence.ts, usage.ts, result-input.ts, completion-commit.ts,
+        update-error.ts exist with the listed exports, bodies verbatim.
+      - The four new unit test files pass and were confirmed RED before the
+        split.
+      - task-update, task-verify, milestone-status, racing-footer-surfaces
+        integration tests pass with only import-path edits.
+    context_files:
+      - src/core/tasks/update.ts
+      - src/core/tasks/verify.ts
+      - src/core/views/milestone-status.ts
+      - src/state/journal.ts
+      - src/state/schemas.ts
+      - src/git/trailers.ts
+      - tests/integration/task-update.test.ts
+      - tests/unit/pending-journal-targets.test.ts
+      - src/core/tasks/update-error.ts
+      - src/core/tasks/evidence.ts
+      - src/core/tasks/usage.ts
+      - src/core/tasks/result-input.ts
+      - src/core/tasks/completion-commit.ts
+      - tests/unit/task-evidence.test.ts
+      - tests/unit/task-usage.test.ts
+      - tests/unit/task-result-input.test.ts
+      - tests/unit/task-completion-commit.test.ts
+    write_scope:
+      - src/core/tasks/update.ts
+      - src/core/tasks/verify.ts
+      - src/core/tasks/update-error.ts
+      - src/core/tasks/evidence.ts
+      - src/core/tasks/usage.ts
+      - src/core/tasks/result-input.ts
+      - src/core/tasks/completion-commit.ts
+      - src/core/views/milestone-status.ts
+      - tests/integration/task-update.test.ts
+      - tests/unit/task-evidence.test.ts
+      - tests/unit/task-usage.test.ts
+      - tests/unit/task-result-input.test.ts
+      - tests/unit/task-completion-commit.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/task-evidence.test.ts
+        tests/unit/task-usage.test.ts tests/unit/task-result-input.test.ts
+        tests/unit/task-completion-commit.test.ts tests/unit/layering.test.ts
+        tests/integration/task-update.test.ts
+        tests/integration/task-verify.test.ts
+        tests/integration/milestone-status.test.ts
+        tests/integration/racing-footer-surfaces.test.ts
+    result: null
+    usage: null
+  - id: T002
+    name: Give buildFingerprint one home in evidence.ts
+    objective: src/core/tasks/verify.ts carries its own buildFingerprint
+      (byte-mirroring update.ts's former copy, per its own comment) and, after
+      T001, a re-export of MISSING_HASH_MARKER. Delete verify.ts's local
+      buildFingerprint and the re-export; import both from ./evidence.js.
+      verify.ts's normalizeRepoRelativePath and assertDirtySubset stay local
+      (they throw TaskVerifyError -- consolidating would change error identity;
+      explicitly out of scope). Update any importer of MISSING_HASH_MARKER from
+      verify.js to evidence.js (grep src and tests). Confirm the journal
+      task_verify_evidence fingerprint entries produced by task-verify are
+      byte-identical before and after (the existing task-verify integration
+      tests assert on them). No behavior change.
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - verify.ts defines no buildFingerprint or MISSING_HASH_MARKER of its own;
+        both come from evidence.ts.
+      - No importer of MISSING_HASH_MARKER references verify.js.
+      - task-verify and task-update integration tests pass unmodified.
+    context_files:
+      - src/core/tasks/verify.ts
+      - src/core/tasks/evidence.ts
+      - tests/integration/task-verify.test.ts
+      - tests/unit/task-evidence.test.ts
+    write_scope:
+      - src/core/tasks/verify.ts
+      - tests/unit/task-evidence.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/task-verify.test.ts
+        tests/integration/task-update.test.ts tests/unit/task-evidence.test.ts
+    result: null
+    usage: null
+  - id: T003
+    name: Run the full verification gate
+    objective: "Milestone-level gate after T001-T002: npm run typecheck && npm test
+      from a clean tree. No code changes expected; on any failure stop and
+      report rather than fixing here."
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - npm run typecheck passes.
+      - npm test passes in full.
+    context_files:
+      - package.json
+    write_scope: []
+    verification:
+      strategy: command
+      detail: npm run typecheck && npm test
+    result: null
+    usage: null
