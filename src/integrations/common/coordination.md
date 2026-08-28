@@ -8,6 +8,13 @@ finding); any decision made against it — what's dirty, what's expected,
 whether it's safe to proceed — is working from data that was already
 wrong when it was read.
 
+**Which role does this (M043).** Taking the fresh snapshot, classifying
+dirty paths, and every gating decision below belong to the session
+dispatching workers — the *Orchestrator* role (`protocol-orchestrator.md`)
+when the roles are split, the single driver session otherwise. The Main
+Agent relies on the Orchestrator's report, never on its own earlier
+snapshot.
+
 ## The rule
 
 **Always take a fresh snapshot after a dispatched subagent completes —

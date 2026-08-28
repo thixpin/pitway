@@ -67,6 +67,8 @@ confirmation is the one mandatory approval gate in the whole lifecycle.
 | A small, independent fix, no milestone active | **Quick Change** | [Fixing an Already-Completed Milestone](#fixing-an-already-completed-milestone) |
 | Running independent tasks concurrently | An **execution mode** (`execution.strategy`), not a separate lane — applies inside whichever of the above you're already using | [Workflow Policies](#workflow-policies) |
 
+Who runs which command once a milestone is under way — the Main Agent, Orchestrator, and Worker roles — is described under [Driver Roles](#driver-roles).
+
 ## Walkthrough: Your First Milestone
 
 ### 1. Draft a contract and task graph
@@ -336,6 +338,30 @@ sharing the identical skills and protocol documents from the common layer.
 All drivers answer to the same CLI and the same human approval gates —
 `milestone-confirm`/`milestone-complete` always wait for an explicit
 developer yes, whatever tool is driving.
+
+### Driver roles
+
+The protocol documents describe three roles, and which `pitway` commands
+each one runs:
+
+| Role | Loads | Runs |
+| --- | --- | --- |
+| **Main Agent** | `protocol-driver.md` | Developer conversation and every gate or scope command: `milestone-add`, `milestone-confirm` (incl. `--amend`), `milestone-complete`, `milestone-merge`, `milestone-cancel`, `task-add`, `task-amend`, `quick-change *`, `milestone-review decide`, `verification-repair approve`, `auto-run enable|disable` |
+| **Orchestrator** | `protocol-orchestrator.md` | Execution inside a confirmed milestone: `task-update`, `task-verify`, `task-dispatch|integrate|discard`, `verify`, `usage-add`, `backlog add|promote|archive`, `milestone-review start|brief|record|report`, `verification-repair propose|commit|cancel` — and it hands every human decision to the Main Agent |
+| **Worker** | `protocol-worker.md` | One bounded task from its context bundle; never calls `pitway`, never touches `.pitway/` |
+
+Read-only commands belong to either role. One session may play Main Agent
+and Orchestrator together — today's default — or two sessions may split
+them, which is how PitWay's own M041 was executed. The boundary between
+them is protocol-enforced: PitWay installs and pins the instruction text but
+cannot check at runtime which role a session is playing, so a violation is
+caught in review, never blocked by Core — the same honest limit as every
+other approval gate. The full partition and the decisions behind it live in
+`docs/architecture/orchestrator-role.md`.
+
+`protocol-orchestrator.md` is installed by `pitway init` for every driver.
+A repository initialised before it shipped shows it as configuration drift
+in `pitway resume`; run `pitway init --reconfigure` to receive it.
 
 ## Command Reference
 

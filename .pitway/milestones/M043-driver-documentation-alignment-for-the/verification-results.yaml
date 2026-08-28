@@ -1,0 +1,49 @@
+schema_version: 1
+results:
+  - check: CT002
+    status: pass
+    at: 2026-08-28T18:20:53Z
+    evidence: Tests  62 passed (62) | Start at  01:20:49 | Duration  3.49s
+      (transform 355ms, setup 0ms, import 484ms, tests 2.95s, environment 0ms)
+    recorded_by: command
+    duration_ms: 4124
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-28T18:20:53Z
+    evidence: Tests  371 passed (371) | Start at  01:20:53 | Duration  308ms
+      (transform 129ms, setup 0ms, import 206ms, tests 325ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 681
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-28T18:24:01Z
+    evidence: Tests  2265 passed (2265) | Start at  01:20:54 | Duration  186.93s
+      (transform 4.75s, setup 0ms, import 23.23s, tests 1265.57s, environment
+      16ms)
+    recorded_by: command
+    duration_ms: 187788
+    termination_reason: exited
+  - check: CT001
+    status: pass
+    at: 2026-08-28T18:24:53Z
+    evidence: "Developer review 2026-08-29: README.md 'Driver Roles' section and
+      USAGE.md 'Driver roles' subsection describe Main Agent / Orchestrator /
+      Worker with the protocol doc each loads and the gate-vs-execution command
+      ownership matching docs/architecture/orchestrator-role.md Decision 1,
+      state the boundary is protocol-enforced (B021 honest limit), and carry the
+      init --reconfigure note; the Which Workflow Should I Use? guides changed
+      only by a pointer."
+    recorded_by: developer
+  - check: CT004
+    status: pass
+    at: 2026-08-28T18:24:53Z
+    evidence: "Developer review 2026-08-29: docs/evidence/M041/split-role-dogfood.md
+      section 6 contains no '+' between the Orchestrator readings and restates
+      them per docs/evidence/M042/synthesis.md section 6 / claude.md section (c)
+      with the correction noted; docs/architecture/orchestrator-role.md Decision
+      1 Orchestrator row names the ms-review alias (M041 finding 5-iv); the
+      README states the init --reconfigure step for pre-existing installs
+      (finding 5-iii). Each correction cites its finding."
+    recorded_by: developer

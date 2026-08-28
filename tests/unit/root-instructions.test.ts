@@ -64,6 +64,9 @@ describe('root instruction content constants', () => {
     const block = extractBlock(CLAUDE_MD_CONTENT);
     expect(block).toContain('@AGENTS.md');
     expect(block).toContain('.claude/protocol-driver.md');
+    // M043/T002 (AC002): the Orchestrator role's protocol doc is pointed at too.
+    expect(block).toContain('.claude/protocol-orchestrator.md');
+    expect(AGENTS_MD_CONTENT).toContain('protocol-orchestrator.md');
     // AC: no SHARED_BULLETS text duplicated into CLAUDE.md.
     expect(CLAUDE_MD_CONTENT).not.toContain('pitway resume');
     expect(CLAUDE_MD_CONTENT).not.toContain('- This project uses');
@@ -203,5 +206,51 @@ describe('applyRootInstructionFiles', () => {
     expect(result).toEqual({ agentsMd: 'created' });
     expect('claudeMd' in result).toBe(false);
     expect(() => readFileSync(join(root, 'CLAUDE.md'), 'utf8')).toThrow();
+  });
+});
+
+// M043/T002 (AC002, AC005): a file carrying the exact PRIOR managed block
+// (as shipped before protocol-orchestrator.md existed) is migrated in place
+// -- only the block is replaced -- while any other differing block is still
+// preserved. Frozen prior text is re-declared here independently so a
+// drift in the production constant fails by name.
+const PRIOR_AGENTS_BLOCK = `<!-- pitway:managed:start -->\n${LEGACY_BULLETS}\n<!-- pitway:managed:end -->`;
+const PRIOR_CLAUDE_BLOCK =
+  '<!-- pitway:managed:start -->\n@AGENTS.md\n\n' +
+  'See .claude/protocol-driver.md for the full Claude Code driver protocol.\n<!-- pitway:managed:end -->';
+
+describe('known prior managed block migrates in place (M043/T002)', () => {
+  it('classifies the prior AGENTS.md and CLAUDE.md blocks as prior_block conflicts', () => {
+    writeFileSync(join(root, 'AGENTS.md'), `# Agent Instructions\n\n${PRIOR_AGENTS_BLOCK}\n`);
+    writeFileSync(join(root, 'CLAUDE.md'), `# Claude Code Instructions\n\n${PRIOR_CLAUDE_BLOCK}\n`);
+    expect(classifyRootInstructionFiles(root)).toEqual([
+      { file: 'AGENTS.md', status: 'conflict', conflictKind: 'prior_block' },
+      { file: 'CLAUDE.md', status: 'conflict', conflictKind: 'prior_block' },
+    ]);
+  });
+
+  it('replaces only the block, leaving user content above and below untouched, and reports migrated', () => {
+    const above = '# My hand-written AGENTS.md\n\nKeep this.\n\n';
+    const below = '\n\n## More of mine\n\nAnd this.\n';
+    writeFileSync(join(root, 'AGENTS.md'), `${above}${PRIOR_AGENTS_BLOCK}${below}`);
+    writeFileSync(join(root, 'CLAUDE.md'), `# Claude Code Instructions\n\n${PRIOR_CLAUDE_BLOCK}\n`);
+    const result = applyRootInstructionFiles(root, { includeClaudeMd: true });
+    expect(result).toEqual({ agentsMd: 'migrated', claudeMd: 'migrated' });
+    const agents = readFileSync(join(root, 'AGENTS.md'), 'utf8');
+    expect(agents.startsWith(above)).toBe(true);
+    expect(agents.endsWith(below)).toBe(true);
+    expect(agents).toContain('protocol-orchestrator.md');
+    expect(agents).not.toContain(PRIOR_AGENTS_BLOCK);
+    expect(readFileSync(join(root, 'CLAUDE.md'), 'utf8')).toBe(CLAUDE_MD_CONTENT);
+    // A rerun is identical: nothing rewritten twice.
+    expect(applyRootInstructionFiles(root, { includeClaudeMd: true })).toEqual({ agentsMd: 'identical', claudeMd: 'identical' });
+  });
+
+  it('still preserves a managed block that matches neither current nor prior', () => {
+    writeFileSync(join(root, 'AGENTS.md'), '# x\n\n<!-- pitway:managed:start -->\nsomething else\n<!-- pitway:managed:end -->\n');
+    expect(classifyRootInstructionFiles(root, { includeClaudeMd: false })).toEqual([
+      { file: 'AGENTS.md', status: 'conflict', conflictKind: 'block_mismatch' },
+    ]);
+    expect(applyRootInstructionFiles(root, { includeClaudeMd: false })).toEqual({ agentsMd: 'preserved' });
   });
 });

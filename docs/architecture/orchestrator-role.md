@@ -75,7 +75,7 @@ creates/abandons planned work** belongs to the Main Agent; a command that
 | `verification-repair propose` / `commit` / `cancel` | Orchestrator | execution |
 | `usage-add` | Orchestrator | execution |
 | `backlog add` / `promote` / `archive` | Orchestrator | execution (capture, never scope growth) |
-| `milestone-review start` / `brief` / `record` / `report` | Orchestrator | execution |
+| `milestone-review start` / `brief` / `record` / `report` (alias ms-review, same subcommands) | Orchestrator | execution |
 | `resume`, `milestone-status` / `ms-status`, `milestone-current` / `ms-current`, `milestone-list` / `ms-list`, `task-status`, `backlog list` / `show`, `quick-change status`, `auto-run status`, `verify --status`, `help` | either | read-only |
 | *(everything)* | Worker | **never** |
 

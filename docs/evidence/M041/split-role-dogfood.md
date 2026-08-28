@@ -99,17 +99,23 @@ None of these was decided by the Orchestrator; it stopped and waited each time.
 
 | Bucket | Figure | Source |
 |---|---|---|
-| Orchestrator | 72,821 tokens (segment 1: through the T001 block) + 94,451 tokens (segment 2: T001 completion through T002) | Runtime-reported per dispatch/resume segment, relayed by the Main Agent |
+| Orchestrator | Readings observed, semantics undetermined: 72,821 (after the T001 block) and 94,451 (after T002), two of five readings the Main Agent received for this one dispatched identity (72,821 → 94,451 → 107,369 → 110,481 → 109,766 — the last one decreased). Not additive segments; no session total statable. | Runtime-reported per dispatch/resume notification (`subagent_tokens`), relayed by the Main Agent |
 | Main Agent | N/A | Not reported by the harness |
 | Worker | none (no dispatches) | — |
 | Auxiliary | N/A | — |
 
-These are measured Orchestrator-bucket figures with **no PitWay field able to
-hold them today**: `task.usage` is per task (segment 2 spans two tasks) and
-`usage-add` accepts only planning/qa. They were deliberately **not** passed
-as `--usage` on any `task-update` — splitting them per task would be
-estimation. Concrete input for M040 Decision 4 / the usage-schema migration
-(M044): an Orchestrator-session bucket keyed by segment, not by task.
+These are Orchestrator-bucket *readings* with **no PitWay field able to
+hold them today**: `task.usage` is per task (one reading spans two tasks)
+and `usage-add` accepts only planning/qa. They were deliberately **not**
+passed as `--usage` on any `task-update` — splitting them per task would be
+estimation. *Corrected by M043/T004 per the M042 telemetry spike*
+(`docs/evidence/M042/synthesis.md` §6, `claude.md` §(c)): this row
+originally joined the two readings with `+`; the spike's semantics probe
+showed the Claude `subagent_tokens` figure is neither cumulative nor
+per-segment (a later reading decreased), so the readings must not be
+summed and no Orchestrator-session total exists. Concrete input for M040
+Decision 4 / the usage-schema migration: an Orchestrator-session bucket of
+readings with a semantics label, never a total.
 
 ## 7. Sufficiency verdict on protocol-only enforcement
 

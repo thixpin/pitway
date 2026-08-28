@@ -22,6 +22,14 @@ choose autonomously**: record the mode and a brief rationale before
 starting the task; don't ask the developer per task unless the choice is
 materially ambiguous.
 
+**Which role does this (M043).** Every step of the sequence below — the
+inline-vs-dispatch choice, `task-update`, gathering the bundle,
+dispatching, the diff review, `task-verify`, and the completing
+`task-update` — is *Orchestrator* work (`protocol-orchestrator.md`). The
+*Main Agent* (`protocol-driver.md`) never runs these steps itself when the
+roles are split; it receives the Orchestrator's report and relays any human
+decision to the developer. The worker never runs any of them.
+
 ## The dispatch sequence
 
 1. Confirm the task is `ready` (`pitway resume` / `pitway task-status

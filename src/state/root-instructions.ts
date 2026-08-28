@@ -11,6 +11,7 @@ const SHARED_BULLETS = [
   '- Never edit `.pitway/` directly.',
   '- Work only within a confirmed task boundary.',
   "- Obtain a task's bounded context via `pitway task-status <id> --context`.",
+  '- The driver protocol is split into roles: `protocol-driver.md` (Main Agent: developer conversation and every approval gate), `protocol-orchestrator.md` (Orchestrator: task execution), and `protocol-worker.md` (Worker: one bounded task) in the installed driver directory.',
 ].join('\n');
 
 // AC011(b): the delimited PitWay-managed block -- markers plus the content
@@ -27,6 +28,29 @@ function managedBlock(body: string): string {
 // block constants -- never two divergent copies of the same text.
 const AGENTS_MD_BLOCK = managedBlock(SHARED_BULLETS);
 const CLAUDE_MD_BLOCK = managedBlock(
+  '@AGENTS.md\n\n' +
+    'See .claude/protocol-driver.md for the full Claude Code driver protocol, ' +
+    'and .claude/protocol-orchestrator.md for the Orchestrator role.',
+);
+
+// M043/T002 (AC002, AC005): the exact managed blocks as they shipped BEFORE
+// protocol-orchestrator.md existed, frozen byte-for-byte on the same
+// principle as the LEGACY_* forms below -- deliberately NOT rebuilt from
+// SHARED_BULLETS, so a later edit to the live block can never silently
+// change what counts as a known prior block. A file carrying one of these
+// is migrated in place (only the block is replaced, everything around it
+// untouched); any other differing block is still block_mismatch and
+// preserved. Never update these.
+const PRIOR_AGENTS_MD_BLOCK = managedBlock(
+  [
+    '- This project uses [PitWay](https://github.com/thixpin/pitway) to control the engineering workflow.',
+    '- Run `pitway resume` before starting or resuming any work.',
+    '- Never edit `.pitway/` directly.',
+    '- Work only within a confirmed task boundary.',
+    "- Obtain a task's bounded context via `pitway task-status <id> --context`.",
+  ].join('\n'),
+);
+const PRIOR_CLAUDE_MD_BLOCK = managedBlock(
   '@AGENTS.md\n\n' +
     'See .claude/protocol-driver.md for the full Claude Code driver protocol.',
 );
@@ -63,11 +87,13 @@ const LEGACY_CLAUDE_MD_CONTENT =
 // 'conflict' subdivides by what apply would do about it: 'legacy' (a
 // byte-equal prior PitWay-generated form -- rewrite outright), 'unmanaged'
 // (a user-authored file with no managed block -- append the block), and
-// 'block_mismatch' (managed block present but differing -- leave alone,
-// the future `pitway update`'s job). The three-value `status` vocabulary
+// 'prior_block' (a byte-equal known prior managed block -- replace the
+// block in place, M043/T002), and 'block_mismatch' (managed block present
+// but differing from both current and prior -- leave alone, the future
+// `pitway update`'s job). The three-value `status` vocabulary
 // is unchanged so consumers filtering on 'conflict' (e.g.
 // src/state/managed-init-paths.ts) keep their conservative semantics.
-export type RootInstructionConflictKind = 'legacy' | 'unmanaged' | 'block_mismatch';
+export type RootInstructionConflictKind = 'legacy' | 'unmanaged' | 'prior_block' | 'block_mismatch';
 
 export interface RootInstructionClassification {
   file: 'AGENTS.md' | 'CLAUDE.md';
@@ -87,6 +113,8 @@ function classifyOne(root: string, file: 'AGENTS.md' | 'CLAUDE.md'): RootInstruc
     // whether the file is the fresh form or a user file it was appended to.
     const installedBlock = installed.slice(start, end + MANAGED_BLOCK_END.length);
     if (installedBlock === block) return { file, status: 'identical' };
+    const prior = file === 'AGENTS.md' ? PRIOR_AGENTS_MD_BLOCK : PRIOR_CLAUDE_MD_BLOCK;
+    if (installedBlock === prior) return { file, status: 'conflict', conflictKind: 'prior_block' };
     return { file, status: 'conflict', conflictKind: 'block_mismatch' };
   }
   const legacy = file === 'AGENTS.md' ? LEGACY_AGENTS_MD_CONTENT : LEGACY_CLAUDE_MD_CONTENT;
@@ -122,7 +150,8 @@ export interface ApplyRootInstructionFilesResult {
 // absent writes the full fixed content ('created'); a current managed
 // block writes nothing ('identical'); a byte-equal legacy PitWay form is
 // rewritten to the new marked form outright ('migrated' -- never
-// appended-to, which would duplicate content); a user-authored file
+// appended-to, which would duplicate content); a known prior managed block
+// has just that block replaced in place ('migrated', M043/T002); a user-authored file
 // without a managed block gets the block appended after a blank line, its
 // own content fully intact above ('appended'); a present-but-differing
 // managed block is left completely unmodified ('preserved') so the caller
@@ -143,6 +172,13 @@ export function applyRootInstructionFiles(
       outcomes.set(file, 'identical');
     } else if (conflictKind === 'legacy') {
       writeFileSync(path, content);
+      outcomes.set(file, 'migrated');
+    } else if (conflictKind === 'prior_block') {
+      // Replace only the managed block; user content above/below untouched.
+      const block = file === 'AGENTS.md' ? AGENTS_MD_BLOCK : CLAUDE_MD_BLOCK;
+      const prior = file === 'AGENTS.md' ? PRIOR_AGENTS_MD_BLOCK : PRIOR_CLAUDE_MD_BLOCK;
+      const existing = readFileSync(path, 'utf8');
+      writeFileSync(path, existing.replace(prior, block));
       outcomes.set(file, 'migrated');
     } else if (conflictKind === 'unmanaged') {
       const block = file === 'AGENTS.md' ? AGENTS_MD_BLOCK : CLAUDE_MD_BLOCK;
