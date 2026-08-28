@@ -215,7 +215,7 @@ tasks:
       pitway resume alone re-oriented it, protocol gaps, and a sufficiency
       verdict on protocol-only enforcement. No runtime orchestration or
       telemetry code of any kind.
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -229,12 +229,26 @@ tasks:
     verification:
       strategy: manual
       detail: Read the evidence record against AC003.
-    result: null
+    result:
+      summary: "[truncated] tocol gaps (directory write_scope, Orchestrator
+        git-checkout rule gap, uninstalled protocol doc, ms-review table nit,
+        blocked->ready ownership), runtime-reported Orchestrator usage with no
+        PitWay field to hold it, and a verdict that runtime role checks are not
+        warranted on this evidence."
+      evidence: "Manual check against AC003: record exists at
+        docs/evidence/M041/split-role-dogfood.md; covers commands per role vs
+        Decision 1, human decisions via Main Agent, restarts + resume
+        sufficiency, protocol gaps, sufficiency verdict; cites commits 2a34294,
+        04c7569 and evidence tve-0cdd174e2e7c, tve-307a487d9134. No code
+        changes."
+    attempts: 1
+    driver: claude-code
+    model: claude-sonnet-5
     usage: null
   - id: T004
     name: Run the full verification gate
     objective: npm run typecheck && npm test from a clean tree; no code changes expected.
-    status: waiting
+    status: ready
     depends_on:
       - T003
     acceptance_criteria:
