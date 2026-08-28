@@ -773,3 +773,35 @@ items:
       milestone: M039
       task: T001
     archived_reason: "auto-closed: promoted work completed via M039 completion"
+  - id: B040
+    title: verification-repair cannot express a review-only verification check
+    reason: "M040/VR001: verification-repair approve refuses without --check, and
+      --check accepts only command-type check ids, so a repair whose only
+      affected check is a review/manual check (CT002 in M040) cannot be scoped
+      honestly -- the repair had to name an unrelated command check (CT005) to
+      allocate a VR id. Needs a way to approve/commit a repair against a
+      review-type check (e.g. re-record required) without borrowing a command
+      check."
+    status: pending
+    source:
+      milestone: null
+      task: null
+    created_at: 2026-08-28T10:35:59.868Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
+  - id: B041
+    title: quick-change commit allows an overly long commit subject line
+    reason: "quick-change commit uses the entire --objective text as the commit
+      subject (observed on c239432 and 107c4da: multi-sentence subjects hundreds
+      of characters long). Should split at the first sentence/line or accept a
+      --message file like task-update completed, keeping the objective in the
+      body."
+    status: pending
+    source:
+      milestone: null
+      task: null
+    created_at: 2026-08-28T10:36:00.345Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null
