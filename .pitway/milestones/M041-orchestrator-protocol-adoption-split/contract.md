@@ -2,7 +2,7 @@
 schema_version: 1
 id: M041
 title: Orchestrator Protocol Adoption & Split-Role Dogfood
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-28T12:54:28Z
 verification_approved_hash: sha256:98cffec5fdabdc8b4848409d26be4ef56c44321bb41e1c624ec3ec51970b0b6c

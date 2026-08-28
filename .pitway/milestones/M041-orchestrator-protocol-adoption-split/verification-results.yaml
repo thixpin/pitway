@@ -1,2 +1,41 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-28T13:28:08Z
+    evidence: Tests  371 passed (371) | Start at  20:28:08 | Duration  315ms
+      (transform 137ms, setup 0ms, import 206ms, tests 316ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 1012
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-28T13:28:09Z
+    evidence: Tests  205 passed (205) | Start at  20:28:09 | Duration  249ms
+      (transform 38ms, setup 0ms, import 53ms, tests 119ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 615
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-28T13:30:56Z
+    evidence: Tests  2262 passed (2262) | Start at  20:28:10 | Duration  166.67s
+      (transform 4.56s, setup 0ms, import 20.76s, tests 1127.52s, environment
+      11ms)
+    recorded_by: command
+    duration_ms: 167489
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-28T13:31:04Z
+    evidence: "Developer review 2026-08-28 (relayed by the Main Agent):
+      docs/evidence/M041/split-role-dogfood.md lists both roles' command usage
+      checked against M040 Decision 1, every human decision surfaced via the
+      Main Agent (write_scope amendment approved, quick-change status
+      classification accepted, backlog offer declined), two restarts with
+      resume-alone re-orientation, five findings, Orchestrator-bucket usage
+      figures, and a sufficiency verdict (runtime role checks not warranted on
+      this evidence). Finding (vi) -- task-verify's 120s default false-failing
+      the 161s full gate -- surfaced after T003 committed and is noted in the
+      milestone report rather than appended."
+    recorded_by: developer
