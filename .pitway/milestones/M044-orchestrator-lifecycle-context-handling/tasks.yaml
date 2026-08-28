@@ -99,7 +99,7 @@ tasks:
       transitions out for the Main Agent. If (ii) changes the partition table,
       keep the M041 partition test passing (backticked spans are parsed as
       commands; use the row/qualifier format the parser expects)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Both decisions recorded with developer approval, rationale, and rejected
@@ -114,7 +114,17 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/unit/claude-assets.test.ts
-    result: null
+    result:
+      summary: "[truncated] he blocked/failed -> ready recovery transition on resume;
+        Decision 1 stands unchanged (task-update stays Orchestrator-owned, no
+        carve-outs), and M041 section 5-v's wrong-role classification of the
+        Main Agent's task-update ready stands. No table edit; the Decision 1
+        partition test passes."
+      evidence: Tests  205 passed (205) | Start at  01:42:41 | Duration  326ms
+        (transform 42ms, setup 0ms, import 59ms, tests 178ms, environment 0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T004
     name: Finalize protocol-orchestrator.md lifecycle and decided rules
@@ -125,7 +135,7 @@ tasks:
       tests/unit/claude-assets.test.ts; the M041 partition test must still pass
       (a newly named command on the 'You run' or 'never run' side must agree
       with the table).
-    status: waiting
+    status: ready
     depends_on:
       - T001
       - T003

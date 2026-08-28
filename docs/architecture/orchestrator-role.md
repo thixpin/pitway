@@ -259,6 +259,60 @@ represents either as isolated beyond the bundle itself (`dispatch.md`,
 
 ---
 
+## Addendum (M044/T003, approved 2026-08-29) — the two M041 protocol-text gaps
+
+Both gaps were found in M041's split-role dogfood
+(`docs/evidence/M041/split-role-dogfood.md` §5-ii, §5-v), presented to the
+developer in conversation with both options, and decided as follows. They
+add rules to `protocol-orchestrator.md`; neither changes Decision 1's
+partition table.
+
+### A1 — Orchestrator working-tree git operations (finding 5-ii)
+
+**Decided: the Orchestrator is git-free, exactly like a worker.** It never
+runs `git` against the working tree to toggle or revert its own work — no
+`git checkout -- <path>`, `git stash`, `git reset`, or the like. A RED
+check moves implementation files aside with the session's own file tools
+and restores them the same way (`protocol-worker.md`'s rule, now shared).
+The only git operations in an Orchestrator's lifetime are the ones
+`pitway` commands perform (completion commits, worktree lifecycle,
+baseline/checkpoints).
+
+Rationale: one rule for every non-Main role, nothing PitWay would have to
+verify, and no judgment call about "which paths count as mine". It also
+removes the one class of action M041 saw that the git-safety primitives
+cannot classify as expected dirt.
+
+Rejected — *permit self-reverting experiments confined to the current
+task's `write_scope`*: keeps M041's mutation-check practice legal, but adds
+a rule PitWay cannot check at runtime and that a resumed session could
+break unknowingly (a revert after a crash would delete uncommitted work).
+
+### A2 — Ownership of the `blocked`/`failed` → `ready` recovery transition (finding 5-v)
+
+**Decided: the Orchestrator re-runs it on resume; Decision 1 stands as
+recorded.** When the Orchestrator surfaces a decision by setting a task
+`blocked` (or a task fails) and the developer approves a correction through
+the Main Agent (`task-amend`, `--amend`), the Main Agent records the
+correction and hands control back; the Orchestrator's first action on
+resume is the recovery transition (`task-update <id> ready`, then
+`in_progress`). `task-update` remains Orchestrator-owned without carve-outs.
+
+Rationale: keeps every execution-side transition with one role, keeps the
+partition table free of conditional rows, and matches the recovery
+invariant — a restarted Orchestrator re-orients from `pitway resume` and
+sees the blocked task with its recovery command (`resume`'s
+`blockedDetails`).
+
+Rejected — *carve recovery transitions out for the Main Agent*: would make
+the Main Agent run an execution command in exactly one situation, require
+a parser-compatible table edit plus a matching "never run" entry in the
+Orchestrator brief, and reintroduce the ambiguity M041 flagged.
+
+Consequence for the record: M041 §5-v's classification of the Main Agent's
+`task-update T001 ready` as a wrong-role command stands — under A2 it
+should have waited for the Orchestrator.
+
 ## Follow-up plan (after M040 completes; none implemented here)
 
 Drafted under `drafts/orchestrator/` (provisional ids, not registered):
