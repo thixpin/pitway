@@ -1,0 +1,174 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Durable-state audit for Orchestrator flush
+    objective: Write docs/architecture/orchestrator-flush-audit.md enumerating every
+      fact an Orchestrator needs to continue or recover a milestone (task
+      statuses/attempts, live dispatches, pending journal entries, verification
+      results and task-verify evidence, open review sessions, pending human
+      decisions, backlog items, milestone branch), each with the durable
+      .pitway/ file or journal record kind (read src/state/journal.ts and
+      src/state/schemas.ts) and the pitway command that surfaces it (resume,
+      milestone-status, task-status, verify --status, backlog list,
+      milestone-review report). List any context-only fact as a gap with a
+      proposed durable home; fix nothing.
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Every fact cites a real durable location and a surfacing command; gaps
+        are listed, not fixed.
+    context_files:
+      - docs/architecture/orchestrator-flush-audit.md
+      - docs/architecture/orchestrator-role.md
+      - docs/evidence/M041/split-role-dogfood.md
+      - src/state/journal.ts
+      - src/state/schemas.ts
+      - src/core/views/resume.ts
+      - src/core/views/milestone-status.ts
+    write_scope:
+      - docs/architecture/orchestrator-flush-audit.md
+    verification:
+      strategy: manual
+      detail: Read the audit against AC001.
+    result: null
+    usage: null
+  - id: T002
+    name: Orchestrator restart recovery test from resume alone
+    objective: Add an integration test to
+      tests/integration/fresh-session-resume.test.ts that builds a mid-execution
+      milestone (one task in_progress, one dispatched under parallel_worktrees,
+      one pending journal entry, one open review session) and asserts the
+      `pitway resume` view alone yields the protocol's next action for a
+      restarted persistent-identity Orchestrator (M040 Decision 2), modelled on
+      M041's two real restarts (post-block; mid-task interruption). Read-only
+      test; no Core change.
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - The test passes and names every recovery input it relies on as a resume
+        field.
+    context_files:
+      - tests/integration/fresh-session-resume.test.ts
+      - tests/integration/resume.test.ts
+      - src/core/views/resume.ts
+      - docs/evidence/M041/split-role-dogfood.md
+    write_scope:
+      - tests/integration/fresh-session-resume.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/fresh-session-resume.test.ts
+        tests/integration/resume.test.ts
+    result: null
+    usage: null
+  - id: T003
+    name: Decide the two M041 protocol-text gaps
+    objective: "Present each gap to the developer in conversation with its options
+      and a recommendation, and record the approved decision as an addendum to
+      docs/architecture/orchestrator-role.md (rationale, rejected alternative,
+      date): (i) Orchestrator working-tree git operations (M041 finding 5-ii):
+      adopt protocol-worker.md's git-free RED-check rule for the Orchestrator,
+      or explicitly permit self-reverting experiments confined to the current
+      task's write_scope; (ii) blocked/failed -> ready recovery ownership after
+      a developer-approved amendment (M041 finding 5-v): the Orchestrator
+      re-runs the transition on resume, or Decision 1 carves recovery
+      transitions out for the Main Agent. If (ii) changes the partition table,
+      keep the M041 partition test passing (backticked spans are parsed as
+      commands; use the row/qualifier format the parser expects)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Both decisions recorded with developer approval, rationale, and rejected
+        alternative; partition test passes.
+    context_files:
+      - docs/architecture/orchestrator-role.md
+      - docs/evidence/M041/split-role-dogfood.md
+      - src/integrations/common/protocol-worker.md
+      - tests/unit/claude-assets.test.ts
+    write_scope:
+      - docs/architecture/orchestrator-role.md
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+    result: null
+    usage: null
+  - id: T004
+    name: Finalize protocol-orchestrator.md lifecycle and decided rules
+    objective: Write the flush/restart rules into
+      src/integrations/common/protocol-orchestrator.md strictly from the T001
+      audit and M040 Decision 2, and add the two rules decided in T003; reword
+      nothing else. Regenerate its pinned sha256 in
+      tests/unit/claude-assets.test.ts; the M041 partition test must still pass
+      (a newly named command on the 'You run' or 'never run' side must agree
+      with the table).
+    status: waiting
+    depends_on:
+      - T001
+      - T003
+    acceptance_criteria:
+      - No lifecycle rule depends on information the audit did not show durable;
+        the two decided rules are stated; pinned hash regenerated; asset and
+        partition tests pass.
+    context_files:
+      - src/integrations/common/protocol-orchestrator.md
+      - docs/architecture/orchestrator-flush-audit.md
+      - docs/architecture/orchestrator-role.md
+      - tests/unit/claude-assets.test.ts
+    write_scope:
+      - src/integrations/common/protocol-orchestrator.md
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
+    result: null
+    usage: null
+  - id: T005
+    name: Close an approved audit gap additively (conditional)
+    objective: "Only if T001 recorded a gap and the developer approved closing it
+      via a milestone-confirm --amend Change Log entry: add the durable field or
+      read-only resume/milestone-status section additively in
+      src/core/views/resume.ts and/or src/state/schemas.ts, keeping existing
+      --json output byte-identical when the new data is absent, with tests.
+      Otherwise cancel this task (task-update T005 cancelled)."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - Additive only; existing outputs byte-identical when the new data is
+        absent; or the task is cancelled with the reason recorded.
+    context_files:
+      - src/core/views/resume.ts
+      - src/state/schemas.ts
+      - tests/integration/resume.test.ts
+      - tests/unit/views-resume.test.ts
+    write_scope:
+      - src/core/views/resume.ts
+      - src/state/schemas.ts
+      - tests/integration/resume.test.ts
+      - tests/unit/views-resume.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/integration/resume.test.ts
+        tests/unit/views-resume.test.ts
+        tests/integration/milestone-status.test.ts
+    result: null
+    usage: null
+  - id: T006
+    name: Run the full verification gate
+    objective: npm run typecheck && npm test from a clean tree (task-verify
+      --timeout 600000). No code changes expected; on failure stop and report.
+    status: waiting
+    depends_on:
+      - T002
+      - T004
+      - T005
+    acceptance_criteria:
+      - Typecheck and full suite pass.
+    context_files:
+      - package.json
+    write_scope: []
+    verification:
+      strategy: command
+      detail: npm run typecheck && npm test
+    result: null
+    usage: null
