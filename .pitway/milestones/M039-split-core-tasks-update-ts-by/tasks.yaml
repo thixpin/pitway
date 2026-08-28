@@ -132,7 +132,7 @@ tasks:
       task_verify_evidence fingerprint entries produced by task-verify are
       byte-identical before and after (the existing task-verify integration
       tests assert on them). No behavior change.
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -152,14 +152,25 @@ tasks:
       strategy: command
       detail: npx vitest run tests/integration/task-verify.test.ts
         tests/integration/task-update.test.ts tests/unit/task-evidence.test.ts
-    result: null
+    result:
+      summary: "[truncated] ition, satisfying AC003). Its own
+        normalizeRepoRelativePath and assertDirtySubset stay local as the
+        contract requires (TaskVerifyError identity). Unused
+        createHash/existsSync/readFileSync imports dropped. A guard test in
+        task-evidence.test.ts asserts verify.ts carries neither definition."
+      evidence: Tests  110 passed (110) | Start at  16:12:34 | Duration  65.55s
+        (transform 719ms, setup 0ms, import 1.05s, tests 87.71s, environment
+        0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T003
     name: Run the full verification gate
     objective: "Milestone-level gate after T001-T002: npm run typecheck && npm test
       from a clean tree. No code changes expected; on any failure stop and
       report rather than fixing here."
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:

@@ -1,6 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { createHash, randomBytes } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { relative, resolve, sep } from 'node:path';
 import { git } from '../../git/exec.js';
 import { checkWorkingTreeClean, classifyDirtyPaths } from '../../git/safety.js';
@@ -31,11 +30,10 @@ export interface RunTaskVerifyInputs {
 // rename representable without any dedicated pairing logic: the old half of
 // a rename fingerprints via this marker, the new half fingerprints its real
 // content, and both are just ordinary entries in the same array.
-// M039/T001: the marker now lives in ./evidence.ts (shared with task
-// completion); re-exported here so existing importers keep working until
-// T002 re-points them.
+// M039: the marker and buildFingerprint live in ./evidence.ts, shared with
+// task completion; the marker is re-exported here for existing importers.
 export { MISSING_HASH_MARKER } from './evidence.js';
-import { MISSING_HASH_MARKER } from './evidence.js';
+import { buildFingerprint } from './evidence.js';
 
 function resolveActiveMilestone(root: string): string {
   const state = loadState(root);
@@ -92,21 +90,9 @@ function isGitIgnored(root: string, relPath: string): boolean {
 // state -- present -> sha256 of real file bytes, missing -> the fixed
 // MISSING_HASH_MARKER. Sorted for a deterministic, order-independent
 // comparison (AC001: write_scope declared in a different order still
-// fingerprints identically).
-function buildFingerprint(root: string, declaredPaths: string[]): JournalTaskVerifyFingerprintEntry[] {
-  return [...declaredPaths].sort().map((relPath) => {
-    const abs = resolve(root, relPath);
-    if (!existsSync(abs)) {
-      return { path: relPath, state: 'missing', hash: MISSING_HASH_MARKER };
-    }
-    const content = readFileSync(abs);
-    return {
-      path: relPath,
-      state: 'present',
-      hash: `sha256:${createHash('sha256').update(content).digest('hex')}`,
-    };
-  });
-}
+// fingerprints identically). M039/T002: ONE implementation, in
+// ./evidence.ts -- the same function task completion recomputes with, so a
+// recorded fingerprint and a fresh one can never drift apart.
 
 // git status --porcelain's own status code for one dirty path, used only to
 // build a precise refusal diagnostic -- never to classify expected/

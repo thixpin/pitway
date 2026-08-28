@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -211,5 +211,16 @@ describe('hasVerifiedEvidence', () => {
     expect(
       hasVerifiedEvidence(root, 'M001', task({ status: 'completed', result: { summary: 's', evidence: 'other' } })),
     ).toBe(false);
+  });
+});
+
+// M039/T002 (AC003): verify.ts must not carry its own fingerprint or marker
+// definition -- one implementation, in evidence.ts.
+describe('verify.ts shares evidence.ts\'s fingerprint implementation', () => {
+  it('defines neither buildFingerprint nor MISSING_HASH_MARKER locally', () => {
+    const text = readFileSync(join(process.cwd(), 'src', 'core', 'tasks', 'verify.ts'), 'utf8');
+    expect(text).not.toMatch(/function buildFingerprint\(/);
+    expect(text).not.toMatch(/const MISSING_HASH_MARKER\s*=/);
+    expect(text).toMatch(/import \{ buildFingerprint \} from '\.\/evidence\.js'/);
   });
 });
