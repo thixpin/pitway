@@ -170,7 +170,7 @@ tasks:
     objective: "Milestone-level gate after T001-T002: npm run typecheck && npm test
       from a clean tree. No code changes expected; on any failure stop and
       report rather than fixing here."
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -182,5 +182,13 @@ tasks:
     verification:
       strategy: command
       detail: npm run typecheck && npm test
-    result: null
+    result:
+      summary: "Milestone gate: npm run typecheck && npm test pass from a clean tree;
+        no code changes."
+      evidence: Tests  2219 passed (2219) | Start at  16:13:44 | Duration  166.09s
+        (transform 4.42s, setup 0ms, import 20.21s, tests 1125.51s, environment
+        14ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
