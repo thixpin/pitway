@@ -31,7 +31,7 @@ tasks:
       buckets, schema migration) as already-decided pointers to
       docs/architecture/orchestrator-role.md. Keep the closing primary principle
       as the first line under the title. Do not edit anything outside drafts/."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - The reframed draft describes the Orchestrator only as a protocol role
@@ -55,7 +55,21 @@ tasks:
       detail: Read both drafts against AC001; grep the reframed draft for
         'Orchestrator Agent' and '.pitway/' to confirm no runtime-component or
         direct-state-access wording remains.
-    result: null
+    result:
+      summary: "[truncated] xiliary bucket, marks Orchestrator overhead
+        PitWay-derived, and replaces the total/percentage framing with the
+        measured-segments-plus-missing convention. Note: drafts/ is gitignored,
+        so these deliverables are local files (same as the original
+        requirement); this commit carries state only."
+      evidence: grep 'Orchestrator Agent' in the reframed draft matches only the
+        reframe note that quotes the original wording to reject it; every
+        '.pitway/' occurrence is a 'never .pitway/ directly' or 'durable
+        .pitway/ files via the CLI' statement. The usage draft cites M009 and
+        contains no percentage or exact-total promise (its only '%' occurrences
+        are inside the sentence forbidding percentage splits, if any).
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T002
     name: Record the four architecture decisions
