@@ -1,2 +1,51 @@
 schema_version: 1
-results: []
+results:
+  - check: CT004
+    status: pass
+    at: 2026-08-28T18:05:36Z
+    evidence: Tests  2262 passed (2262) | Start at  01:03:02 | Duration  154.08s
+      (transform 4.56s, setup 0ms, import 20.23s, tests 1041.43s, environment
+      24ms)
+    recorded_by: command
+    duration_ms: 154576
+    termination_reason: exited
+  - check: CT001
+    status: pass
+    at: 2026-08-28T18:06:37Z
+    evidence: "Developer review 2026-08-29: claude.md (this session), opencode.md
+      (OpenCode 1.18.25 session, sessionIDs ses_fb69…/ses_fb68…), codex.md
+      (Codex session, /private/tmp/pitway-m042-codex.YR8lEO) each cover all five
+      shapes with verbatim samples (notification usage elements; step_finish
+      JSON; FINAL_ANSWER envelopes) or explicit nothing-reported /
+      not-exercisable entries, each authored by a session on its own driver."
+    recorded_by: developer
+  - check: CT002
+    status: pass
+    at: 2026-08-28T18:06:37Z
+    evidence: "Developer review 2026-08-29: synthesis.md section 1 is the drivers x
+      E0-E6 table with a validated-exactly / not-validated / not-exercisable
+      verdict per cell citing the record section; section 2 names observed
+      dimensions per driver (1 / 6 / 0) and states no common set of four exists;
+      sections 5-6 state Main-vs-Orchestrator measurability per driver; every
+      value in sections 5-7 carries measured / PitWay-derived / unavailable."
+    recorded_by: developer
+  - check: CT003
+    status: pass
+    at: 2026-08-28T18:06:38Z
+    evidence: "Developer review 2026-08-29: synthesis.md section 5 quotes a reported
+      sample for every populatable cell (OpenCode step_finish totals; Claude
+      subagent_tokens readings), marks every arithmetic-dependent cell and all
+      Auxiliary cells unavailable, and sections 1 and 8 give explicit
+      confirm/revise verdicts on each M009 conclusion (E0 not validated on all
+      drivers; E2/E3 revised; E4/E6 confirmed; E5 not exercised)."
+    recorded_by: developer
+  - check: CT005
+    status: pass
+    at: 2026-08-28T18:06:38Z
+    evidence: "Developer review 2026-08-29: claude.md section (c) rules the harness
+      figure undeterminable (30201 -> 30513 -> 29319, non-monotonic,
+      non-additive); synthesis.md section 6 restates M041 section 6 with the '+'
+      withdrawn -- five readings of an undetermined figure, no session total; no
+      figure in docs/evidence/M042/ is summed, estimated, split per task, or
+      sourced from a transcript or TUI."
+    recorded_by: developer

@@ -2,7 +2,7 @@
 schema_version: 1
 id: M042
 title: Token Telemetry Spike
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-28T17:20:34Z
 verification_approved_hash: sha256:183249411a1f0b70bc00617f4992d15a62487c73e9a0d82c5fd6dec98d8da46d
