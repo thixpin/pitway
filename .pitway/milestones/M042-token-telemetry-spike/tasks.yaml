@@ -1,0 +1,214 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Observe claude driver usage reporting
+    objective: "On the claude driver, in a throwaway repository initialised with
+      pitway init (never this repo's .pitway/), exercise the five session shapes
+      -- (a) inline task in the main session, (b) a dispatched worker, (c) the
+      same worker resumed for a second task, (d) a dispatched reviewer, (e) any
+      auxiliary session the harness creates -- and record in
+      docs/evidence/M042/claude.md, per shape: the exact surface where usage
+      appeared (tool-result field / envelope key / log / status line / nowhere),
+      the raw sample verbatim and unedited, the fields present (input / output /
+      total / cache-read / cache-write / model / provider / session-or-run id),
+      a two-reading semantics probe on the same session (cumulative vs per-turn
+      vs per-segment vs undeterminable), whether the figure attaches to one
+      specific dispatch instance by a stable identifier, and whether a second
+      session playing the Orchestrator has its usage reported separately and
+      where. Name the token dimensions actually observed. Explicitly record
+      'nothing reported' or 'unavailable (UI-only)' where that is the case. The
+      semantics probe must rule on the M041 section 6 readings (72,821 and
+      94,451): do not sum them; state what two consecutive readings of one
+      dispatched session mean. No estimation, derivation, transcript parsing, or
+      TUI scraping."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - Record cites real claude-driver runs with raw verbatim samples, surface,
+        fields, and a semantics probe for each of the five shapes, or an
+        explicit nothing-reported / not-exercisable entry.
+      - The observed dimensions are named; the M041 readings' semantics are
+        ruled on without summing.
+    context_files:
+      - docs/evidence/M042/claude.md
+      - docs/evidence/M009/token-accounting-feasibility.md
+      - docs/architecture/orchestrator-role.md
+      - docs/evidence/M041/split-role-dogfood.md
+      - src/integrations/common/dispatch.md
+    write_scope:
+      - docs/evidence/M042/claude.md
+    verification:
+      strategy: manual
+      detail: Read the record against AC001 and AC005; confirm every shape has a
+        verbatim sample or an explicit nothing-reported entry and that no figure
+        is summed or estimated.
+    result:
+      summary: "[truncated] rved (not four); per-instance attribution is stable via
+        the notification task-id; Main-vs-Orchestrator split is one-sided
+        (Orchestrator reported as a subagent, Main Agent nothing). No
+        estimation, summing, transcript parsing, or TUI scraping; this repo's
+        .pitway/ untouched by experiments."
+      evidence: "Raw samples quoted verbatim in the record: worker 30201/2/12602;
+        resumed 30513/3/31778; resumed 29319/3/47434; reviewer 29762/1/7577;
+        background process notification with no usage element; main session no
+        figure. Throwaway repo scratchpad/m042-claude (git init + pitway init);
+        git status in this repo shows only docs/evidence/M042/claude.md new."
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
+    usage: null
+  - id: T002
+    name: Observe opencode driver usage reporting
+    objective: Executed by a session running on the opencode driver, in a throwaway
+      repository (git init && pitway init --opencode), never this repo's
+      .pitway/. Same observation protocol as T001 across the five session shapes
+      -- exact surface, raw verbatim sample, fields present, two-reading
+      semantics probe, per-instance attachability, separate-session
+      (Orchestrator) reporting -- recorded in docs/evidence/M042/opencode.md,
+      naming the dimensions actually observed and recording 'nothing reported' /
+      'not exercisable (why)' explicitly. A Claude session may only transcribe
+      what the opencode session hands back, verbatim; it must not substitute its
+      own observations, fabricate a sample, or mark this task complete without
+      real opencode evidence. No estimation, derivation, transcript parsing, or
+      TUI scraping.
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - Record comes from a real opencode-driver session and cites raw verbatim
+        samples, surface, fields, and a semantics probe for each of the five
+        shapes, or an explicit nothing-reported / not-exercisable entry.
+    context_files:
+      - docs/evidence/M042/opencode.md
+      - docs/evidence/M009/token-accounting-feasibility.md
+      - docs/architecture/orchestrator-role.md
+      - src/integrations/common/dispatch.md
+    write_scope:
+      - docs/evidence/M042/opencode.md
+    verification:
+      strategy: manual
+      detail: Read the record against AC001; confirm provenance is an opencode session
+        and every shape has a verbatim sample or an explicit entry.
+    result:
+      summary: "[truncated] arately by session id, parent totals excluding worker
+        totals; auxiliary nothing reported; per-instance attribution stable
+        without beta traces. E0-E6 verdicts recorded per driver. M041 section 6
+        '+' not validated on this driver. No estimation, summing, transcript
+        parsing, or TUI scraping."
+      evidence: "Record provenance: sessionIDs ses_fb690f5deffe5dkamwZEpQX2cN (main),
+        ses_fb68f099affewgwx9iHa60K1ef (worker, resumed),
+        ses_fb68d152dffeQw2X68CHnmeI7k (reviewer); verbatim step_finish lines
+        quoted with timestamps and part ids. Recorded by the Main Agent without
+        alteration; this repo's .pitway/ untouched by the experiment."
+    attempts: 1
+    driver: opencode
+    model: muse-spark-1.2-contributor-free
+    usage: null
+  - id: T003
+    name: Observe codex driver usage reporting
+    objective: "Executed by a session running on the codex driver, in a throwaway
+      repository (git init && pitway init --codex), never this repo's .pitway/.
+      Same observation protocol as T001 across the five session shapes -- exact
+      surface, raw verbatim sample, fields present, two-reading semantics probe,
+      per-instance attachability, separate-session (Orchestrator) reporting --
+      recorded in docs/evidence/M042/codex.md, naming the dimensions actually
+      observed. Codex may not support a given shape (e.g. dispatch): record why
+      it cannot be exercised rather than approximating it. A Claude session may
+      only transcribe what the codex session hands back, verbatim; it must not
+      substitute its own observations, fabricate a sample, or mark this task
+      complete without real codex evidence. No estimation, derivation,
+      transcript parsing, or TUI scraping."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - Record comes from a real codex-driver session and cites raw verbatim
+        samples, surface, fields, and a semantics probe for each of the five
+        shapes, or an explicit nothing-reported / not-exercisable entry.
+    context_files:
+      - docs/evidence/M042/codex.md
+      - docs/evidence/M009/token-accounting-feasibility.md
+      - docs/architecture/orchestrator-role.md
+      - src/integrations/common/dispatch.md
+    write_scope:
+      - docs/evidence/M042/codex.md
+    verification:
+      strategy: manual
+      detail: Read the record against AC001; confirm provenance is a codex session and
+        every shape has a verbatim sample or an explicit entry.
+    result:
+      summary: "[truncated] ied no usage. All four Decision 3 buckets unavailable;
+        E0/E1/E3/E4 not validated, E2 validated exactly, E5/E6 not exercisable;
+        M009's limitation stands for Codex. M041 section 6 readings left as
+        undetermined-semantics readings. No estimation, summing, transcript
+        parsing, or TUI scraping."
+      evidence: "Record quotes complete raw command-result JSON (chunk_id,
+        wall_time_seconds, exit_code, original_token_count, output), dispatch
+        launch results ({\"task_name\": ...}), and FINAL_ANSWER envelopes for
+        two readings each of worker, reviewer, and orchestrator identities, each
+        stating 'usage: nothing reported'. Recorded by the Main Agent without
+        alteration. Note: the Codex session also installed .codex/ and .agents/
+        into this repo; both were removed with developer approval before this
+        transition and are not part of the evidence."
+    attempts: 1
+    driver: codex
+    model: unknown
+    usage: null
+  - id: T004
+    name: Synthesize against M009 E0-E6 and M040 buckets
+    objective: "Write docs/evidence/M042/synthesis.md from the three driver records
+      only: (1) a drivers x E0-E6 table, each cell validated exactly / not
+      validated / not exercisable, citing the sample line, with the M009 rule
+      applied -- a Usage Accounting milestone proceeds only if every exercisable
+      join is validated exactly, otherwise the M009 limitation stands; (2) the
+      named dimensions per driver and whether one common set of four exists; (3)
+      per driver, which of main / subagent / auxiliary produced a reported
+      figure, auxiliary never folded elsewhere; (4) per-instance attribution:
+      stable identifier observed or not, 'not claimable' otherwise; (5) Decision
+      3 buckets per driver: populatable only from a directly reported figure
+      quoted from the record, unavailable wherever arithmetic would be needed;
+      Orchestrator populatable only where a separate session's figure was
+      reported directly; (6) the semantics ruling on the harness figure and a
+      restatement of M041 section 6 consistent with it -- no '+' unless
+      additivity was proven; (7) every computed-only value (overhead, inline
+      cost) listed as PitWay-derived and conditional, never in a measured row;
+      (8) each of M009's four rejected approaches confirmed rejected or revised
+      with evidence; (9) the explicit list of fields the usage-schema migration
+      MAY add (measured on at least one driver) and the list it MUST NOT add;
+      (10) an honesty floor: every unexercised shape or driver listed as a gap,
+      never spoken for. No estimation, summing, or derivation presented as
+      measurement."
+    status: completed
+    depends_on:
+      - T001
+      - T002
+      - T003
+    acceptance_criteria:
+      - Meets AC002, AC003, and AC005; every claim cites a driver-record sample;
+        gaps are listed, not filled.
+    context_files:
+      - docs/evidence/M042/synthesis.md
+      - docs/evidence/M042/claude.md
+      - docs/evidence/M042/opencode.md
+      - docs/evidence/M042/codex.md
+      - docs/evidence/M009/token-accounting-feasibility.md
+      - docs/architecture/orchestrator-role.md
+      - docs/evidence/M041/split-role-dogfood.md
+    write_scope:
+      - docs/evidence/M042/synthesis.md
+    verification:
+      strategy: manual
+      detail: Read the synthesis against AC002, AC003, and AC005; spot-check three
+        cells against the cited driver-record samples.
+    result:
+      summary: "[truncated] determined figure, no total; derived values kept out of
+        measured rows; four rejected approaches re-confirmed; explicit may-add /
+        must-not-add field lists for the usage-schema migration; honesty-floor
+        gap list (E5 unexercised everywhere, Claude semantics unknown, single
+        model per driver)."
+      evidence: Every cell cites claude.md / opencode.md / codex.md sections; no
+        figure summed, split, estimated, or inferred. git status shows only
+        docs/evidence/M042/synthesis.md new; this repo's .pitway/ untouched by
+        any experiment.
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
+    usage: null
