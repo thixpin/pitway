@@ -1,37 +1,29 @@
-import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
-import { relative, resolve, sep } from 'node:path';
-import { parse } from 'yaml';
-import { z } from 'zod';
 import { assertOnMilestoneBranch } from '../../git/branch.js';
 import { commitOrResume } from '../../git/commit-or-resume.js';
-import { git } from '../../git/exec.js';
 import { checkWorkingTreeClean, classifyDirtyPaths } from '../../git/safety.js';
 import { resolvePendingJournalTargets } from '../journal/pending-targets.js';
 import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
-import { trimTail } from '../verification/text-trim.js';
 import { verificationRepairsRepoPath, verificationResultsRepoPath } from '../verification/repair.js';
-import { formatIssues } from '../../state/contract-file.js';
-import {
-  readJournal,
-  reconcilePending,
-  type JournalTaskVerifyEvidence,
-  type JournalTaskVerifyFingerprintEntry,
-} from '../../state/journal.js';
-import {
-  taskStatusSchema,
-  taskUsageSchema,
-  type Task,
-  type TaskStatus,
-  type TaskUsage,
-  type TasksFile,
-} from '../../state/schemas.js';
-import { loadContract, loadState, loadTasks, resolveMilestoneDirName, saveTasks } from '../../state/store.js';
+import { readJournal, reconcilePending } from '../../state/journal.js';
+import { taskStatusSchema, type Task, type TaskStatus, type TasksFile } from '../../state/schemas.js';
+import { loadContract, loadState, loadTasks, saveTasks } from '../../state/store.js';
 import { deterministicBranchName } from '../milestones/confirm.js';
+import { findCompletionCommit, milestoneSince, tasksRepoPath } from './completion-commit.js';
 import { resolveReadyTasks } from './dependencies.js';
 import { deriveLiveDispatches } from './dispatch.js';
+import { resolveTaskVerifyEvidence } from './evidence.js';
+import { parseResultInput, readInput, type TaskResult } from './result-input.js';
 import { transitionTask } from './state-machine.js';
-import { MISSING_HASH_MARKER } from './verify.js';
+import { TaskUpdateError } from './update-error.js';
+import { accumulateUsage, computeUsageWarning, parseUsageInput } from './usage.js';
+
+// M039/T001: this module is orchestration only -- the task state
+// transitions and the completion commit. Evidence resolution lives in
+// ./evidence.ts, --usage handling in ./usage.ts, --result parsing in
+// ./result-input.ts, the completion-commit identity lookup in
+// ./completion-commit.ts, and hasVerifiedEvidence in ./evidence.ts.
+// TaskUpdateError is re-exported so existing importers keep working.
+export { TaskUpdateError } from './update-error.js';
 
 // AC003/T003 (M012): resolves the branch this milestone's commits must land
 // on, or null when no branch is tracked (main strategy, or an untracked
@@ -43,15 +35,6 @@ function expectedMilestoneBranch(root: string, milestoneId: string): string | nu
   const { base_branch: baseBranch, title } = contract.frontmatter;
   return baseBranch != null ? deterministicBranchName(milestoneId, title) : null;
 }
-
-// AC005/T005 (M012): the milestone's own base_revision, when tracked, to
-// bound trailer lookups -- undefined (unbounded, today's exact behavior)
-// under main strategy or when no base_revision is recorded.
-function milestoneSince(root: string, milestoneId: string): string | undefined {
-  return loadContract(root, milestoneId).frontmatter.base_revision ?? undefined;
-}
-
-export class TaskUpdateError extends Error {}
 
 export interface TaskUpdateInputs {
   // M029/T003 (AC003): runtime-reported driver/model traceability, stored in
@@ -82,36 +65,6 @@ export interface TaskUpdateView {
   usageWarning: string | null;
 }
 
-const resultSchema = z.strictObject({
-  summary: z.string().min(1),
-  evidence: z.string().min(1),
-});
-
-type TaskResult = z.infer<typeof resultSchema>;
-
-// AC006: worker reports stay concise and machine-readable -- summary/
-// evidence are bounded at a fixed character length rather than allowed to
-// grow unbounded, reusing T001's shared trimTail helper (a preserved,
-// tail-anchored truncation) instead of inventing a second scheme. The cap
-// only ever applies to a fresh --result write (parseResultInput, below);
-// the completed/re-entry path in completeTask reads task.result as already
-// persisted and never re-parses or rewrites it.
-const SUMMARY_CAP = 300;
-const EVIDENCE_CAP = 1000;
-const TRUNCATION_MARKER = '[truncated] ';
-
-function capField(value: string, cap: number): string {
-  if (value.length <= cap) return value;
-  const budget = Math.max(0, cap - TRUNCATION_MARKER.length);
-  return `${TRUNCATION_MARKER}${trimTail(value, { cap: budget, lines: Number.MAX_SAFE_INTEGER })}`;
-}
-
-// Directory names are assigned once at creation and never renamed (AC007),
-// so resolving against the current on-disk listing is correct even when
-// looking up content at a past commit via git show.
-const tasksRepoPath = (root: string, milestoneId: string): string =>
-  `.pitway/milestones/${resolveMilestoneDirName(root, milestoneId)}/tasks.yaml`;
-
 function resolveActiveMilestone(root: string): string {
   const state = loadState(root);
   if (!state.active_milestone) {
@@ -126,62 +79,6 @@ function findTask(tasks: Task[], id: string): Task {
   return task;
 }
 
-function readInput(path: string, label: string): string {
-  try {
-    return readFileSync(path, 'utf8');
-  } catch (error) {
-    throw new TaskUpdateError(`cannot read ${label} file ${path}: ${(error as Error).message}`);
-  }
-}
-
-function parseResultInput(path: string): TaskResult {
-  const text = readInput(path, 'result');
-  let data: unknown;
-  try {
-    data = parse(text);
-  } catch (error) {
-    throw new TaskUpdateError(`malformed YAML in result file ${path}: ${(error as Error).message}`);
-  }
-  const parsed = resultSchema.safeParse(data);
-  if (!parsed.success) {
-    throw new TaskUpdateError(`invalid result file ${path}: ${formatIssues(parsed.error)}`);
-  }
-  return {
-    summary: capField(parsed.data.summary, SUMMARY_CAP),
-    evidence: capField(parsed.data.evidence, EVIDENCE_CAP),
-  };
-}
-
-function parseUsageInput(text: string): TaskUsage {
-  let data: unknown;
-  try {
-    data = JSON.parse(text);
-  } catch (error) {
-    throw new TaskUpdateError(`invalid --usage JSON: ${(error as Error).message}`);
-  }
-  const parsed = taskUsageSchema.safeParse(data);
-  if (!parsed.success) {
-    throw new TaskUpdateError(`invalid --usage: ${formatIssues(parsed.error)}`);
-  }
-  return parsed.data;
-}
-
-// AC016: accumulate honestly onto prior measured usage — sum what was
-// measured, keep a field absent when neither side measured it, never estimate.
-function accumulateUsage(prior: TaskUsage, delta: TaskUsage): TaskUsage {
-  if (delta === null) return prior;
-  if (prior === null) return delta;
-  const sum = (a: number | undefined, b: number | undefined): number | undefined =>
-    a === undefined && b === undefined ? undefined : (a ?? 0) + (b ?? 0);
-  const input = sum(prior.input_tokens, delta.input_tokens);
-  const output = sum(prior.output_tokens, delta.output_tokens);
-  return {
-    ...(input !== undefined ? { input_tokens: input } : {}),
-    ...(output !== undefined ? { output_tokens: output } : {}),
-    total_tokens: prior.total_tokens + delta.total_tokens,
-  };
-}
-
 // AC009-style refusal before anything is staged, committed, or written.
 function assertDirtySubset(root: string, expectedPaths: string[]): void {
   const expected = new Set(expectedPaths);
@@ -193,252 +90,11 @@ function assertDirtySubset(root: string, expectedPaths: string[]): void {
   }
 }
 
-// Mirrors src/core/tasks/verify.ts's own normalizeRepoRelativePath (itself a
-// local copy of src/core/verification/repair.ts's convention) -- written
-// locally rather than imported, matching this codebase's established
-// per-task duplication of small helpers rather than a cross-task dependency
-// on a sibling module for a five-line function.
-function normalizeRepoRelativePath(root: string, inputPath: string): string {
-  const resolvedRoot = resolve(root);
-  const resolvedPath = resolve(root, inputPath);
-  if (resolvedPath !== resolvedRoot && !resolvedPath.startsWith(resolvedRoot + sep)) {
-    throw new TaskUpdateError(`declared path resolves outside the repository: ${inputPath}`);
-  }
-  return relative(resolvedRoot, resolvedPath).split(sep).join('/');
-}
-
-// Mirrors verify.ts's buildFingerprint exactly (same declared-path sort,
-// same present/missing marker logic, same MISSING_HASH_MARKER import) so a
-// freshly recomputed fingerprint is directly comparable, entry-for-entry,
-// against a record's persisted one.
-function buildFingerprint(root: string, declaredPaths: string[]): JournalTaskVerifyFingerprintEntry[] {
-  return [...declaredPaths].sort().map((relPath) => {
-    const abs = resolve(root, relPath);
-    if (!existsSync(abs)) {
-      return { path: relPath, state: 'missing', hash: MISSING_HASH_MARKER };
-    }
-    const content = readFileSync(abs);
-    return {
-      path: relPath,
-      state: 'present',
-      hash: `sha256:${createHash('sha256').update(content).digest('hex')}`,
-    };
-  });
-}
-
-// M030/T001 (AC001): a record's execution outcome alone, independent of
-// staleness -- shared by validateTaskVerifyEvidence's pass/fail check below
-// and resolveTaskVerifyEvidence's backward search, so the two never define
-// "passing" differently.
-function isExecutionPassing(record: JournalTaskVerifyEvidence): boolean {
-  const typecheckFailed = record.typecheck !== undefined && record.typecheck.exitCode !== 0;
-  return record.terminationReason === 'exited' && record.exitCode === 0 && !typecheckFailed;
-}
-
-// Selection-then-validate (T002/AC001): validates a single already-selected
-// candidate record, naming exactly what differs on any mismatch -- never
-// falling back to search for an older record that happens to match.
-function validateTaskVerifyEvidence(root: string, task: Task, record: JournalTaskVerifyEvidence): void {
-  if (record.taskId !== task.id) {
-    throw new TaskUpdateError(
-      `evidence record ${record.id} is stale: task mismatch (recorded for ${record.taskId}, current task ${task.id})`,
-    );
-  }
-  if (!isExecutionPassing(record)) {
-    const typecheckFailed = record.typecheck !== undefined && record.typecheck.exitCode !== 0;
-    throw new TaskUpdateError(
-      `evidence record ${record.id} represents a failing run (terminationReason=${record.terminationReason}, ` +
-        `exitCode=${record.exitCode}${typecheckFailed ? `, typecheck.exitCode=${record.typecheck?.exitCode}` : ''})`,
-    );
-  }
-  const currentAttempts = task.attempts ?? 0;
-  if (record.attempts !== currentAttempts) {
-    throw new TaskUpdateError(
-      `evidence record ${record.id} is stale: attempt mismatch (recorded ${record.attempts}, current ${currentAttempts})`,
-    );
-  }
-  if (record.command !== task.verification.detail) {
-    throw new TaskUpdateError(
-      `evidence record ${record.id} is stale: command mismatch (recorded "${record.command}", ` +
-        `current "${task.verification.detail}")`,
-    );
-  }
-  const declared = new Set(
-    (task.write_scope ?? task.relevant_files ?? []).map((p) => normalizeRepoRelativePath(root, p)),
-  );
-  const recordPaths = new Set(record.fingerprint.entries.map((e) => e.path));
-  const declaredList = [...declared].sort();
-  const recordList = [...recordPaths].sort();
-  if (declared.size !== recordPaths.size || declaredList.some((p, i) => p !== recordList[i])) {
-    throw new TaskUpdateError(
-      `evidence record ${record.id} is stale: write_scope mismatch (declared ${declaredList.join(', ')}, ` +
-        `evidence covers ${recordList.join(', ')})`,
-    );
-  }
-  const fresh = buildFingerprint(root, declaredList);
-  const freshByPath = new Map(fresh.map((e) => [e.path, e]));
-  for (const entry of record.fingerprint.entries) {
-    const current = freshByPath.get(entry.path);
-    if (current === undefined || current.hash !== entry.hash || current.state !== entry.state) {
-      throw new TaskUpdateError(
-        `evidence record ${record.id} is stale: fingerprint mismatch for ${entry.path} ` +
-          `(recorded ${entry.state}/${entry.hash}, current ${current?.state ?? 'absent'}/${current?.hash ?? 'absent'})`,
-      );
-    }
-  }
-}
-
-// Implicit (M030/T001, AC001): matches are searched newest-to-oldest by
-// append order for the first record whose *execution* passed
-// (isExecutionPassing) -- so a later execution-failing record never masks
-// an earlier execution-passing one. That single candidate then undergoes
-// the same validateTaskVerifyEvidence staleness check as before; a
-// staleness mismatch on it still refuses immediately, citing that record --
-// the backward search never crosses into staleness, it only skips
-// execution-failing records. When no record's execution passed at all,
-// falls through to the newest record's own failing-run error, matching
-// today's behavior. Explicit (--evidence <id>): the id alone is the lookup
-// key, never a milestone/task filter, and never a backward search -- an
-// unknown id is its own distinct refusal, separate from a found-but-
-// diverged record's mismatch refusal. No record at all (implicit, nothing
-// matches; explicit, never supplied) falls through to the existing
-// --result/--message path unchanged.
-function resolveTaskVerifyEvidence(
-  root: string,
-  milestoneId: string,
-  task: Task,
-  evidenceId: string | undefined,
-): JournalTaskVerifyEvidence | undefined {
-  const records = readJournal(root);
-  const isEvidence = (r: (typeof records)[number]): r is JournalTaskVerifyEvidence =>
-    r.kind === 'task_verify_evidence';
-
-  if (evidenceId !== undefined) {
-    const matches = records.filter((r) => isEvidence(r) && r.id === evidenceId) as JournalTaskVerifyEvidence[];
-    const record = matches.length > 0 ? matches[matches.length - 1] : undefined;
-    if (record === undefined) {
-      throw new TaskUpdateError(`unknown evidence id: ${evidenceId}`);
-    }
-    validateTaskVerifyEvidence(root, task, record);
-    return record;
-  }
-
-  const matches = records.filter(
-    (r) => isEvidence(r) && r.milestone === milestoneId && r.taskId === task.id,
-  ) as JournalTaskVerifyEvidence[];
-  if (matches.length === 0) return undefined;
-
-  const passing = [...matches].reverse().find(isExecutionPassing);
-  // matches.length > 0 was just checked above, so the fallback index is
-  // always in bounds; the non-null assertion documents that invariant for
-  // noUncheckedIndexedAccess rather than widening selected's type.
-  const selected = passing ?? matches[matches.length - 1]!;
-  validateTaskVerifyEvidence(root, task, selected);
-  return selected;
-}
-
-// AC007 (M013): evidence-honest labeling for a completed task -- there is no
-// field on the task record itself distinguishing a task-verify-backed
-// completion from a plain --result/--message one; provenance lives only in
-// the append-only journal. True only when a task_verify_evidence record for
-// this exact milestone+task carries the same evidence text now persisted in
-// task.result -- proving the currently-recorded result actually came from
-// that record, not merely that a verify run happened at some point.
-// Deliberately does not call validateTaskVerifyEvidence -- this is a
-// historical-provenance check on an already-completed task, not a
-// freshness/staleness gate on a not-yet-completed one.
-export function hasVerifiedEvidence(root: string, milestoneId: string, task: Task): boolean {
-  if (task.result === null) return false;
-  const records = readJournal(root).filter(
-    (r): r is JournalTaskVerifyEvidence =>
-      r.kind === 'task_verify_evidence' && r.milestone === milestoneId && r.taskId === task.id,
-  );
-  return records.some((r) => r.evidence === task.result!.evidence);
-}
-
 function persistTask(root: string, milestoneId: string, tasksFile: TasksFile, updated: Task): void {
   saveTasks(root, milestoneId, {
     schema_version: tasksFile.schema_version,
     tasks: tasksFile.tasks.map((t) => (t.id === updated.id ? updated : t)),
   });
-}
-
-interface CommittedTaskRecord {
-  id?: unknown;
-  status?: unknown;
-  result?: { summary?: unknown; evidence?: unknown } | null;
-}
-
-// AC018 task-specific identity: candidate matched by both trailers; identity
-// holds iff, in the committed tasks.yaml at that SHA, the target task's record
-// alone shows completed with a result equal to the persisted one. Sibling task
-// changes are ignored — this is a parsed comparison, not byte equality.
-function findCompletionCommit(
-  root: string,
-  milestoneId: string,
-  taskId: string,
-  persisted: TaskResult,
-): string | undefined {
-  const since = milestoneSince(root, milestoneId);
-  const sha = resolveCommitSha(root, {
-    milestone: milestoneId,
-    task: taskId,
-    ...(since !== undefined ? { since } : {}),
-  });
-  if (sha === undefined) return undefined;
-  let record: CommittedTaskRecord | undefined;
-  try {
-    const data = parse(git(['show', `${sha}:${tasksRepoPath(root, milestoneId)}`], root)) as {
-      tasks?: CommittedTaskRecord[];
-    };
-    record = data.tasks?.find((t) => t.id === taskId);
-  } catch {
-    record = undefined;
-  }
-  const matches =
-    record !== undefined &&
-    record.status === 'completed' &&
-    record.result != null &&
-    record.result.summary === persisted.summary &&
-    record.result.evidence === persisted.evidence;
-  if (!matches) {
-    throw new TaskUpdateError(
-      `ambiguous state: commit ${sha} carries the ${taskId} completion trailers but its ` +
-        `committed record does not match the persisted result; inspect manually`,
-    );
-  }
-  return sha;
-}
-
-// M017/T003 (AC005): fresh-completion-only detection -- a task with no
-// worktree_dispatch record at all (never dispatched, or an inline sub-agent
-// dispatch that leaves none) never warns; supplying --usage always
-// suppresses it regardless of dispatch history.
-// B019 (qc-f0f57dfa): warning is actionable -- it names the dispatch.md MUST
-// rule (forward the sub-agent tool-result usage via --usage).
-// B033 (qc-20ca12b6): the fallback this used to name -- pitway usage-add
-// <id> --category task -- never existed (usage-add only supports
-// milestone-level planning|qa; task-amend cannot touch usage either).
-// There is genuinely no retroactive path once a task completes without
-// --usage, so the warning says that plainly instead of pointing at a
-// dead-end command.
-function computeUsageWarning(
-  root: string,
-  milestoneId: string,
-  taskId: string,
-  usageProvided: boolean,
-): string | null {
-  if (usageProvided) return null;
-  const wasWorktreeDispatched = readJournal(root).some(
-    (r) => r.kind === 'worktree_dispatch' && r.milestone === milestoneId && r.taskId === taskId,
-  );
-  if (!wasWorktreeDispatched) return null;
-  return (
-    `${taskId} was completed after a worktree dispatch with no --usage supplied; ` +
-    `its usage stays null -> N/A (detection only, never estimated). ` +
-    `Forward the dispatched sub-agent's reported usage via --usage on this completing call per dispatch.md step 8 -- ` +
-    `this cannot be added retroactively once the task is completed; if the usage is genuinely unavailable, null is correct`
-  );
 }
 
 function completeTask(

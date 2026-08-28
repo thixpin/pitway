@@ -31,7 +31,11 @@ export interface RunTaskVerifyInputs {
 // rename representable without any dedicated pairing logic: the old half of
 // a rename fingerprints via this marker, the new half fingerprints its real
 // content, and both are just ordinary entries in the same array.
-export const MISSING_HASH_MARKER = 'MISSING';
+// M039/T001: the marker now lives in ./evidence.ts (shared with task
+// completion); re-exported here so existing importers keep working until
+// T002 re-points them.
+export { MISSING_HASH_MARKER } from './evidence.js';
+import { MISSING_HASH_MARKER } from './evidence.js';
 
 function resolveActiveMilestone(root: string): string {
   const state = loadState(root);

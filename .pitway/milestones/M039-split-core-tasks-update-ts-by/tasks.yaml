@@ -54,7 +54,7 @@ tasks:
       tests/integration/task-update.test.ts and
       tests/unit/pending-journal-targets.test.ts. Do not touch verify.ts beyond
       the MISSING_HASH_MARKER re-export."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - update.ts is under 400 lines, contains only orchestration, re-exports
@@ -106,7 +106,18 @@ tasks:
         tests/integration/task-verify.test.ts
         tests/integration/milestone-status.test.ts
         tests/integration/racing-footer-surfaces.test.ts
-    result: null
+    result:
+      summary: "[truncated] verify.ts re-exports MISSING_HASH_MARKER from evidence.ts
+        (T002 removes its own buildFingerprint). hasVerifiedEvidence importers
+        (views/milestone-status.ts, task-update.test.ts) re-pointed. update.ts
+        no longer imports ./verify.js. Four new unit files (34 tests) pin every
+        refusal message."
+      evidence: Tests  173 passed (173) | Start at  16:09:25 | Duration  68.24s
+        (transform 2.43s, setup 0ms, import 4.10s, tests 111.75s, environment
+        1ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T002
     name: Give buildFingerprint one home in evidence.ts
@@ -121,7 +132,7 @@ tasks:
       task_verify_evidence fingerprint entries produced by task-verify are
       byte-identical before and after (the existing task-verify integration
       tests assert on them). No behavior change.
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:

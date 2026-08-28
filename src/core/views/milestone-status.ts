@@ -5,7 +5,7 @@ import { computeMilestoneProgress, type MilestoneProgress } from '../milestones/
 import { computeRacingFooter, resolveNextTask } from '../milestones/footer.js';
 import { computeWorkloadPercentage } from '../milestones/workload.js';
 import { computeCriticalPath } from '../tasks/critical-path.js';
-import { hasVerifiedEvidence } from '../tasks/update.js';
+import { hasVerifiedEvidence } from '../tasks/evidence.js';
 import { taskStatusLabel } from '../tasks/status-label.js';
 import { allChecksPassed, computeLatestCheckResults } from '../verification/status.js';
 import { aggregateUsage } from '../metrics/aggregate.js';
