@@ -127,7 +127,7 @@ tasks:
       protocol-enforcement is insufficient). Each of Decisions 1-4 must be
       presented to the developer in conversation and approved before being
       written as decided -- record who decided and when in the document."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - docs/architecture/orchestrator-role.md records Decisions 1-4 with
@@ -160,7 +160,23 @@ tasks:
       detail: Read docs/architecture/orchestrator-role.md against AC002-AC004 and
         AC007; diff the command table against `pitway --help`; spot-check three
         runtime-enforced rows against the cited src/core code.
-    result: null
+    result:
+      summary: "[truncated] untime-enforced, each runtime row citing the refusing Core
+        path; the Decision 1 boundary explicitly protocol-only),
+        preserved-architecture table with the bundle-only isolation limit, and
+        the follow-up plan (M041-M045 drafts + optional runtime role checks)
+        with prerequisites and sequence."
+      evidence: "Every command name listed by `pitway --help` (including ms-* aliases)
+        appears in the partition table (scripted check: no MISSING).
+        Spot-checked three runtime-enforced rows against source: transitionTask
+        throws on an illegal transition (state-machine.ts:23),
+        milestone-complete refuses on unmet checks/tasks (complete.ts:117),
+        task-dispatch refuses a non-eligible task (dispatch.ts:92). Decisions
+        approved in conversation: D1 with the verification-repair approve move,
+        D2/D3/D4 as recommended."
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T003
     name: Ship protocol-orchestrator.md as a common asset
@@ -192,7 +208,7 @@ tasks:
       destination sets stay collision-free (existing test) and init.test's
       install-everything check picks it up (existing glob -- confirm, add
       nothing unless it fails). Do not touch src/state/driver-assets.ts."
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:
