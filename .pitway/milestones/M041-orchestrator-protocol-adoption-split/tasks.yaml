@@ -1,0 +1,105 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Annotate every command doc with its owning role
+    objective: Add a one-line role annotation (Main Agent | Orchestrator | either,
+      read-only) under each command doc's title in
+      src/integrations/common/commands/*.md, mirrored byte-for-byte into the
+      body of each claude/commands/*.md override (frontmatter untouched), per
+      docs/architecture/orchestrator-role.md Decision 1. Keep ms-* aliases
+      identical to their canonical docs. Regenerate pinned hashes in
+      tests/unit/claude-assets.test.ts for every touched doc.
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Every command doc carries exactly one role annotation matching the
+        decision record.
+      - Alias and override parity tests pass; pinned hashes regenerated only for
+        touched docs.
+    context_files:
+      - docs/architecture/orchestrator-role.md
+      - src/integrations/common/commands
+      - src/integrations/claude/commands
+      - tests/unit/claude-assets.test.ts
+    write_scope:
+      - src/integrations/common/commands
+      - src/integrations/claude/commands
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
+    result: null
+    usage: null
+  - id: T002
+    name: Partition-consistency test derived from the decision record
+    objective: Add a test that parses the command/role table in
+      docs/architecture/orchestrator-role.md and asserts each shipped command
+      doc's role annotation matches it, and that protocol-driver.md and
+      protocol-orchestrator.md name no command on the wrong side. Never a second
+      hardcoded list.
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - A drift between the decision record, a command doc, or a protocol doc
+        fails the test by name.
+    context_files:
+      - docs/architecture/orchestrator-role.md
+      - tests/unit/claude-assets.test.ts
+      - src/integrations/common/protocol-driver.md
+      - src/integrations/common/protocol-orchestrator.md
+    write_scope:
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+    result: null
+    usage: null
+  - id: T003
+    name: Split-role dogfood run with evidence
+    objective: Execute one real milestone (this milestone's own remaining tasks, or
+      a designated sibling) with the Main Agent and Orchestrator as separate
+      sessions, each following its protocol doc. The Orchestrator runs as ONE
+      persistent identity for the whole milestone, flushed only after the
+      milestone's terminal state and carrying nothing forward (M040 Decision 2,
+      approved -- not re-decided here). Record under
+      docs/evidence/M041/split-role-dogfood.md which commands each role ran,
+      checked against M040 Decision 1's partition (any command run by the wrong
+      role is a finding, never a re-classification), every human decision
+      surfaced through the Main Agent, any Orchestrator restart and whether
+      pitway resume alone re-oriented it, protocol gaps, and a sufficiency
+      verdict on protocol-only enforcement. No runtime orchestration or
+      telemetry code of any kind.
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - The evidence record exists and meets AC003.
+    context_files:
+      - docs/evidence/M041/split-role-dogfood.md
+      - src/integrations/common/protocol-orchestrator.md
+      - src/integrations/common/protocol-driver.md
+    write_scope:
+      - docs/evidence/M041/split-role-dogfood.md
+    verification:
+      strategy: manual
+      detail: Read the evidence record against AC003.
+    result: null
+    usage: null
+  - id: T004
+    name: Run the full verification gate
+    objective: npm run typecheck && npm test from a clean tree; no code changes expected.
+    status: waiting
+    depends_on:
+      - T003
+    acceptance_criteria:
+      - Typecheck and full suite pass.
+    context_files:
+      - package.json
+    write_scope: []
+    verification:
+      strategy: command
+      detail: npm run typecheck && npm test
+    result: null
+    usage: null
