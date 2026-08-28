@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.1.2] — 2026-08-28
+
+### Highlights
+
+Internal architecture corrections from the post-v1.1.1 review — no CLI
+output, workflow semantics, or installed driver assets change in bytes.
+
+- Driver command docs now ship once, from a shared common tier
+  (`src/integrations/common/commands/`); Codex and OpenCode resolve them
+  from there, and Claude Code keeps only its frontmatter-bearing overrides.
+  A repo initialised on 1.1.1 reports no configuration drift after
+  upgrading
+- The declared `CLI → Core → State + Git` layering now holds everywhere:
+  the journal's pure helpers moved into the State layer (removing a
+  State↔Core import cycle), `git/safety.ts` is a pure Git classification
+  module fed by Core, and the `resume` / `milestone-status` view assembly
+  moved from the CLI into Core view modules, all guarded by import-direction
+  tests
+- `core/tasks/update.ts` split by responsibility (evidence resolution,
+  `--usage` handling, `--result` parsing, completion-commit lookup), with
+  focused unit tests for each; `task-verify` and task completion now share
+  one fingerprint implementation instead of two byte-mirrored copies
+- One shared CLI footer helper replaces sixteen hand-repeated racing-footer
+  blocks across the mutating commands
+
 ## [1.1.1] — 2026-08-27
 
 ### Highlights
