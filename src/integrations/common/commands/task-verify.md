@@ -4,6 +4,8 @@ description: "PitWay: Run an in_progress task's approved verification command an
 
 # task-verify
 
+**Role:** Orchestrator
+
 ```sh
 pitway task-verify <id> [--typecheck <command>] [--timeout <ms>] [--json]
 ```

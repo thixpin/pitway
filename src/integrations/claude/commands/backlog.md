@@ -5,6 +5,8 @@ argument-hint: <add|list|show|promote|archive> [id]
 
 # backlog
 
+**Role:** Orchestrator (add, promote, archive) · either (list, show)
+
 ```sh
 pitway backlog add --title <text> --reason <text> [--milestone <id>] [--task <id>] [--json]
 pitway backlog list [--status pending|promoted|archived] [--milestone <id>] [--task <id>] [--json]

@@ -4,6 +4,8 @@ description: "PitWay: Accumulate measured planning or qa token usage onto a mile
 
 # usage-add
 
+**Role:** Orchestrator
+
 ```sh
 pitway usage-add <id> --category planning|qa --usage <json> [--json]
 ```

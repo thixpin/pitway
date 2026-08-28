@@ -1,0 +1,271 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Annotate every command doc with its owning role
+    objective: Add a one-line role annotation (Main Agent | Orchestrator | either,
+      read-only) under each command doc's title in
+      src/integrations/common/commands/*.md, mirrored byte-for-byte into the
+      body of each claude/commands/*.md override (frontmatter untouched), per
+      docs/architecture/orchestrator-role.md Decision 1. Keep ms-* aliases
+      identical to their canonical docs. Regenerate pinned hashes in
+      tests/unit/claude-assets.test.ts for every touched doc.
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - Every command doc carries exactly one role annotation matching the
+        decision record.
+      - Alias and override parity tests pass; pinned hashes regenerated only for
+        touched docs.
+    context_files:
+      - docs/architecture/orchestrator-role.md
+      - src/integrations/common/commands/auto-run.md
+      - src/integrations/common/commands/backlog.md
+      - src/integrations/common/commands/milestone-add.md
+      - src/integrations/common/commands/milestone-cancel.md
+      - src/integrations/common/commands/milestone-complete.md
+      - src/integrations/common/commands/milestone-confirm.md
+      - src/integrations/common/commands/milestone-list.md
+      - src/integrations/common/commands/milestone-merge.md
+      - src/integrations/common/commands/milestone-review.md
+      - src/integrations/common/commands/milestone-status.md
+      - src/integrations/common/commands/ms-add.md
+      - src/integrations/common/commands/ms-cancel.md
+      - src/integrations/common/commands/ms-complete.md
+      - src/integrations/common/commands/ms-confirm.md
+      - src/integrations/common/commands/ms-list.md
+      - src/integrations/common/commands/ms-merge.md
+      - src/integrations/common/commands/ms-review.md
+      - src/integrations/common/commands/ms-status.md
+      - src/integrations/common/commands/quick-change.md
+      - src/integrations/common/commands/resume.md
+      - src/integrations/common/commands/task-add.md
+      - src/integrations/common/commands/task-amend.md
+      - src/integrations/common/commands/task-discard.md
+      - src/integrations/common/commands/task-dispatch.md
+      - src/integrations/common/commands/task-integrate.md
+      - src/integrations/common/commands/task-status.md
+      - src/integrations/common/commands/task-update.md
+      - src/integrations/common/commands/task-verify.md
+      - src/integrations/common/commands/usage-add.md
+      - src/integrations/common/commands/verification-repair.md
+      - src/integrations/common/commands/verify.md
+      - src/integrations/common/commands/write-ms-artifacts.md
+      - src/integrations/claude/commands/auto-run.md
+      - src/integrations/claude/commands/backlog.md
+      - src/integrations/claude/commands/milestone-add.md
+      - src/integrations/claude/commands/milestone-cancel.md
+      - src/integrations/claude/commands/milestone-complete.md
+      - src/integrations/claude/commands/milestone-confirm.md
+      - src/integrations/claude/commands/milestone-list.md
+      - src/integrations/claude/commands/milestone-merge.md
+      - src/integrations/claude/commands/milestone-review.md
+      - src/integrations/claude/commands/milestone-status.md
+      - src/integrations/claude/commands/ms-add.md
+      - src/integrations/claude/commands/ms-cancel.md
+      - src/integrations/claude/commands/ms-complete.md
+      - src/integrations/claude/commands/ms-confirm.md
+      - src/integrations/claude/commands/ms-list.md
+      - src/integrations/claude/commands/ms-merge.md
+      - src/integrations/claude/commands/ms-review.md
+      - src/integrations/claude/commands/ms-status.md
+      - src/integrations/claude/commands/quick-change.md
+      - src/integrations/claude/commands/resume.md
+      - src/integrations/claude/commands/task-add.md
+      - src/integrations/claude/commands/task-amend.md
+      - src/integrations/claude/commands/task-discard.md
+      - src/integrations/claude/commands/task-dispatch.md
+      - src/integrations/claude/commands/task-integrate.md
+      - src/integrations/claude/commands/task-status.md
+      - src/integrations/claude/commands/task-update.md
+      - src/integrations/claude/commands/task-verify.md
+      - src/integrations/claude/commands/usage-add.md
+      - src/integrations/claude/commands/verification-repair.md
+      - src/integrations/claude/commands/verify.md
+      - src/integrations/claude/commands/write-ms-artifacts.md
+      - tests/unit/claude-assets.test.ts
+    write_scope:
+      - src/integrations/common/commands/auto-run.md
+      - src/integrations/common/commands/backlog.md
+      - src/integrations/common/commands/milestone-add.md
+      - src/integrations/common/commands/milestone-cancel.md
+      - src/integrations/common/commands/milestone-complete.md
+      - src/integrations/common/commands/milestone-confirm.md
+      - src/integrations/common/commands/milestone-list.md
+      - src/integrations/common/commands/milestone-merge.md
+      - src/integrations/common/commands/milestone-review.md
+      - src/integrations/common/commands/milestone-status.md
+      - src/integrations/common/commands/ms-add.md
+      - src/integrations/common/commands/ms-cancel.md
+      - src/integrations/common/commands/ms-complete.md
+      - src/integrations/common/commands/ms-confirm.md
+      - src/integrations/common/commands/ms-list.md
+      - src/integrations/common/commands/ms-merge.md
+      - src/integrations/common/commands/ms-review.md
+      - src/integrations/common/commands/ms-status.md
+      - src/integrations/common/commands/quick-change.md
+      - src/integrations/common/commands/resume.md
+      - src/integrations/common/commands/task-add.md
+      - src/integrations/common/commands/task-amend.md
+      - src/integrations/common/commands/task-discard.md
+      - src/integrations/common/commands/task-dispatch.md
+      - src/integrations/common/commands/task-integrate.md
+      - src/integrations/common/commands/task-status.md
+      - src/integrations/common/commands/task-update.md
+      - src/integrations/common/commands/task-verify.md
+      - src/integrations/common/commands/usage-add.md
+      - src/integrations/common/commands/verification-repair.md
+      - src/integrations/common/commands/verify.md
+      - src/integrations/common/commands/write-ms-artifacts.md
+      - src/integrations/claude/commands/auto-run.md
+      - src/integrations/claude/commands/backlog.md
+      - src/integrations/claude/commands/milestone-add.md
+      - src/integrations/claude/commands/milestone-cancel.md
+      - src/integrations/claude/commands/milestone-complete.md
+      - src/integrations/claude/commands/milestone-confirm.md
+      - src/integrations/claude/commands/milestone-list.md
+      - src/integrations/claude/commands/milestone-merge.md
+      - src/integrations/claude/commands/milestone-review.md
+      - src/integrations/claude/commands/milestone-status.md
+      - src/integrations/claude/commands/ms-add.md
+      - src/integrations/claude/commands/ms-cancel.md
+      - src/integrations/claude/commands/ms-complete.md
+      - src/integrations/claude/commands/ms-confirm.md
+      - src/integrations/claude/commands/ms-list.md
+      - src/integrations/claude/commands/ms-merge.md
+      - src/integrations/claude/commands/ms-review.md
+      - src/integrations/claude/commands/ms-status.md
+      - src/integrations/claude/commands/quick-change.md
+      - src/integrations/claude/commands/resume.md
+      - src/integrations/claude/commands/task-add.md
+      - src/integrations/claude/commands/task-amend.md
+      - src/integrations/claude/commands/task-discard.md
+      - src/integrations/claude/commands/task-dispatch.md
+      - src/integrations/claude/commands/task-integrate.md
+      - src/integrations/claude/commands/task-status.md
+      - src/integrations/claude/commands/task-update.md
+      - src/integrations/claude/commands/task-verify.md
+      - src/integrations/claude/commands/usage-add.md
+      - src/integrations/claude/commands/verification-repair.md
+      - src/integrations/claude/commands/verify.md
+      - src/integrations/claude/commands/write-ms-artifacts.md
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
+    result:
+      summary: "[truncated] out for auto-run, backlog, milestone-review, quick-change,
+        verification-repair, verify). Claude overrides rebuilt as own
+        frontmatter + common body; aliases copied from canonical. 32 commands/*
+        sha256 tuples regenerated in tests/unit/claude-assets.test.ts; no other
+        manifest entry touched."
+      evidence: Tests  336 passed (336) | Start at  20:02:38 | Duration  281ms
+        (transform 111ms, setup 0ms, import 179ms, tests 287ms, environment 0ms)
+    attempts: 2
+    driver: claude-code
+    model: claude-sonnet-5
+    usage: null
+  - id: T002
+    name: Partition-consistency test derived from the decision record
+    objective: Add a test that parses the command/role table in
+      docs/architecture/orchestrator-role.md and asserts each shipped command
+      doc's role annotation matches it, and that protocol-driver.md and
+      protocol-orchestrator.md name no command on the wrong side. Never a second
+      hardcoded list.
+    status: completed
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - A drift between the decision record, a command doc, or a protocol doc
+        fails the test by name.
+    context_files:
+      - docs/architecture/orchestrator-role.md
+      - tests/unit/claude-assets.test.ts
+      - src/integrations/common/protocol-driver.md
+      - src/integrations/common/protocol-orchestrator.md
+    write_scope:
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+    result:
+      summary: "[truncated] orchestrator.md's 'You run' list holds only
+        Orchestrator/either commands and names every Orchestrator-owned one, its
+        'never run' list only Main Agent ones, and protocol-driver.md's
+        Role-split paragraph defers to the record and names no command on the
+        wrong side. No second hardcoded list."
+      evidence: Tests  205 passed (205) | Start at  20:16:49 | Duration  280ms
+        (transform 40ms, setup 0ms, import 56ms, tests 130ms, environment 0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-sonnet-5
+    usage: null
+  - id: T003
+    name: Split-role dogfood run with evidence
+    objective: Execute one real milestone (this milestone's own remaining tasks, or
+      a designated sibling) with the Main Agent and Orchestrator as separate
+      sessions, each following its protocol doc. The Orchestrator runs as ONE
+      persistent identity for the whole milestone, flushed only after the
+      milestone's terminal state and carrying nothing forward (M040 Decision 2,
+      approved -- not re-decided here). Record under
+      docs/evidence/M041/split-role-dogfood.md which commands each role ran,
+      checked against M040 Decision 1's partition (any command run by the wrong
+      role is a finding, never a re-classification), every human decision
+      surfaced through the Main Agent, any Orchestrator restart and whether
+      pitway resume alone re-oriented it, protocol gaps, and a sufficiency
+      verdict on protocol-only enforcement. No runtime orchestration or
+      telemetry code of any kind.
+    status: completed
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - The evidence record exists and meets AC003.
+    context_files:
+      - docs/evidence/M041/split-role-dogfood.md
+      - src/integrations/common/protocol-orchestrator.md
+      - src/integrations/common/protocol-driver.md
+    write_scope:
+      - docs/evidence/M041/split-role-dogfood.md
+    verification:
+      strategy: manual
+      detail: Read the evidence record against AC003.
+    result:
+      summary: "[truncated] tocol gaps (directory write_scope, Orchestrator
+        git-checkout rule gap, uninstalled protocol doc, ms-review table nit,
+        blocked->ready ownership), runtime-reported Orchestrator usage with no
+        PitWay field to hold it, and a verdict that runtime role checks are not
+        warranted on this evidence."
+      evidence: "Manual check against AC003: record exists at
+        docs/evidence/M041/split-role-dogfood.md; covers commands per role vs
+        Decision 1, human decisions via Main Agent, restarts + resume
+        sufficiency, protocol gaps, sufficiency verdict; cites commits 2a34294,
+        04c7569 and evidence tve-0cdd174e2e7c, tve-307a487d9134. No code
+        changes."
+    attempts: 1
+    driver: claude-code
+    model: claude-sonnet-5
+    usage: null
+  - id: T004
+    name: Run the full verification gate
+    objective: npm run typecheck && npm test from a clean tree; no code changes expected.
+    status: completed
+    depends_on:
+      - T003
+    acceptance_criteria:
+      - Typecheck and full suite pass.
+    context_files:
+      - package.json
+    write_scope: []
+    verification:
+      strategy: command
+      detail: npm run typecheck && npm test
+    result:
+      summary: Ran the M041 full verification gate (typecheck + full suite) via
+        task-verify T004; nothing else changed.
+      evidence: Tests  2262 passed (2262) | Start at  20:24:32 | Duration  164.86s
+        (transform 4.35s, setup 0ms, import 19.27s, tests 1118.08s, environment
+        12ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-sonnet-5
+    usage: null

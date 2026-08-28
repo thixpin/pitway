@@ -5,6 +5,8 @@ argument-hint: <create|approve|run|commit|cancel|promote|status> [change-id]
 
 # quick-change
 
+**Role:** Main Agent (create, approve, run, commit, cancel, promote) · either (status)
+
 ```sh
 pitway quick-change create --objective <text> [--scope <path> ...] --verify <command> [--tdd-exempt <reason>] [--closes <backlog-id>] [--json]
 pitway quick-change approve <change-id> [--json]

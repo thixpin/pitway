@@ -5,6 +5,8 @@ argument-hint: <id>
 
 # milestone-confirm
 
+**Role:** Main Agent
+
 ```sh
 pitway milestone-confirm <id> [--amend] [--file <path>] [--json]
 ```

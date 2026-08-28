@@ -4,6 +4,8 @@ description: PitWay: Create the next milestone from a drafted contract and task 
 
 # milestone-add
 
+**Role:** Main Agent
+
 ```sh
 pitway milestone-add --contract <path> --tasks <path> [--requirement <path>] [--replace <id>] [--json]
 ```

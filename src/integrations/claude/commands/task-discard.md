@@ -5,6 +5,8 @@ argument-hint: <id>
 
 # task-discard
 
+**Role:** Orchestrator
+
 ```sh
 pitway task-discard <id> --reason <text> [--json]
 ```

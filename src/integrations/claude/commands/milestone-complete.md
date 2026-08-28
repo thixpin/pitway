@@ -5,6 +5,8 @@ argument-hint: <id>
 
 # milestone-complete
 
+**Role:** Main Agent
+
 ```sh
 pitway milestone-complete <id> [--json]
 ```

@@ -4,6 +4,8 @@ description: "PitWay: Complete an in_progress milestone once every task and chec
 
 # milestone-complete
 
+**Role:** Main Agent
+
 ```sh
 pitway milestone-complete <id> [--json]
 ```

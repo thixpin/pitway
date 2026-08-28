@@ -4,6 +4,8 @@ description: PitWay: Write a drafted contract and task plan to an explicit desti
 
 # write-ms-artifacts
 
+**Role:** Main Agent
+
 ```sh
 pitway write-ms-artifacts --contract <path> --tasks <path> --destination <dir> [--overwrite] [--json]
 ```

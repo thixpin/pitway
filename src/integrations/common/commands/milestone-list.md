@@ -4,6 +4,8 @@ description: "PitWay: List every milestone with a concise one-line status"
 
 # milestone-list
 
+**Role:** either (read-only)
+
 ```sh
 pitway milestone-list [--json]
 ```

@@ -4,6 +4,8 @@ description: "PitWay: Apply a dispatched task's worktree commit to the main tree
 
 # task-integrate
 
+**Role:** Orchestrator
+
 ```sh
 pitway task-integrate <id> [--json]
 ```

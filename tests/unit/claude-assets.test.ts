@@ -521,38 +521,38 @@ describe('Sequential subagent dispatch (AC001, AC005)', () => {
 // invariant lives in the resolution-equivalence suite below, which never
 // pins historical content.
 const PRE_M023_ASSET_MANIFEST: ReadonlyArray<readonly [string, string]> = [
-  ['commands/auto-run.md', '09ed02f780f35e35066dacf323d16fea9e2c4c9ddd5b5ed63e1b07afdfef3f11'],
-  ['commands/backlog.md', 'a1be5b2f0ae3074042b72cb99b141cd4688adfde1b930e34ae7490eccff0d0a4'],
-  ['commands/milestone-add.md', '39b32ee36dcecd3b3d2125de5348d2c3b1ab3244e84079061f72e8bc2a2ab07c'],
-  ['commands/milestone-cancel.md', '097d46f142860f6215ed0808ecaa1a61f4947d23d12425b32bbe287e6b8d09ed'],
-  ['commands/milestone-complete.md', '66f0f408edccfd57a562a93c650fecb6ba05834729d0e3e019cc82b06d444788'],
-  ['commands/milestone-confirm.md', 'b3bdb72a55badf66d5e735c577786ef0c779fe97d42421167e72445f8db8e08b'],
-  ['commands/milestone-list.md', '085229a691673a20a5d69820534e2a6dbffdb842f47863f0c86ca9d2b63f1790'],
-  ['commands/milestone-merge.md', '0c38d2e3f6fde90000fa2461f2d77fd522cdc558cf9608c039639791c4e8a981'],
-  ['commands/milestone-review.md', '618fc902d15a6fada3a4a4027231ba6b1a0663b7a0b18700e9316b366eeea8c3'],
-  ['commands/milestone-status.md', 'dd68d96a262bb75c3e7686b10d453806aa771b495adc82039bfe4c64e1268c3f'],
-  ['commands/ms-add.md', '39b32ee36dcecd3b3d2125de5348d2c3b1ab3244e84079061f72e8bc2a2ab07c'],
-  ['commands/ms-cancel.md', '097d46f142860f6215ed0808ecaa1a61f4947d23d12425b32bbe287e6b8d09ed'],
-  ['commands/ms-complete.md', '66f0f408edccfd57a562a93c650fecb6ba05834729d0e3e019cc82b06d444788'],
-  ['commands/ms-confirm.md', 'b3bdb72a55badf66d5e735c577786ef0c779fe97d42421167e72445f8db8e08b'],
-  ['commands/ms-list.md', '085229a691673a20a5d69820534e2a6dbffdb842f47863f0c86ca9d2b63f1790'],
-  ['commands/ms-merge.md', '0c38d2e3f6fde90000fa2461f2d77fd522cdc558cf9608c039639791c4e8a981'],
-  ['commands/ms-review.md', '618fc902d15a6fada3a4a4027231ba6b1a0663b7a0b18700e9316b366eeea8c3'],
-  ['commands/ms-status.md', 'dd68d96a262bb75c3e7686b10d453806aa771b495adc82039bfe4c64e1268c3f'],
-  ['commands/quick-change.md', '2929589fdff0742b8a3c590febab765161bac34ed46f938e4b40ef85e414a7ad'],
-  ['commands/resume.md', 'ea063f91a413697ad338e63e6f79faa91aaa369b983b0a83014faa0d127d4243'],
-  ['commands/task-add.md', 'de03d91bdbf99238050ba82ea12b55ae89aabdc277589f210ef3ab4d50d8a1db'],
-  ['commands/task-amend.md', 'a32aceb632d0fa9200e116614d624a652a4eeed660087e58db42b277b6c94b5d'],
-  ['commands/task-discard.md', '5ff651a972b3e0b64efa4a1d0a9eda4249c70045cca10c61a86c0d6ac5c485cc'],
-  ['commands/task-dispatch.md', '5f5ac3a46a3158e7b9891e22b99798fd55aea019d4e05ac6e601a4f88dc79e60'],
-  ['commands/task-integrate.md', 'e75b0b6e9b81b5cdf49e52914b11834c3e0d854e3c60adcd664dad9939904c21'],
-  ['commands/task-status.md', 'ba2970670d5bcd8d4319bb35c375058b296b09acb1640c0726c024a6d5aed2ca'],
-  ['commands/task-update.md', '67dcb55a27419673ce3702db93de095f57bd70448279518e7c8c3ae2fb65f94c'],
-  ['commands/task-verify.md', '18aafd92d0c83ef31e8c170a34fcc3f5f4d8e34a824f6cd29df4bde22c36e2cc'],
-  ['commands/usage-add.md', '812942afae8daefd23431f7db10eda28cbacd5b2819adde1005f23162b541306'],
-  ['commands/verification-repair.md', 'faec5c2f3dc2e43b2cc56dd842891a6088201e19034ea2f95cace4bdca01d809'],
-  ['commands/verify.md', '52b73c2b87cf76d8511ee5d0681ecba3066f9bb65a67cf8405b13c73c1313e28'],
-  ['commands/write-ms-artifacts.md', 'e86d1c8243789948fbb4fa98bcb050acb77b4fc34fc6c32d25af276b905a11cd'],
+  ['commands/auto-run.md', '611a07fb5027f1224d531651a6854f2cd2805d4119e51ff1548575c9f3103eb8'],
+  ['commands/backlog.md', 'cbca88994edf5fe336e3a2aaf1ff032d6868936227bf5f644cdde4862aac4835'],
+  ['commands/milestone-add.md', '2ac11b723964b3252c9714db624ad1ea32446a08a59ded1148f2e0a0ea33064e'],
+  ['commands/milestone-cancel.md', 'c317f888574d93011cbc76e1806a20f73cb663421452b8980f444856aa9f5448'],
+  ['commands/milestone-complete.md', '2e983056267a8599c9ac5daefac430269136860709cf6a0d2d14054f936e3327'],
+  ['commands/milestone-confirm.md', '9175defbdc11aa128ce39dab01ea12ecca420895e205adc62c8cfc9cf895e7dc'],
+  ['commands/milestone-list.md', '5b54d1b6e66cdbcc3f95fb09f47a72d4bb3c5db685fe6e119a3de3f99eea0a67'],
+  ['commands/milestone-merge.md', 'c212e93eba0e39844d32d7fba930e451073ce800932f2af6f388e3f9efeeca8b'],
+  ['commands/milestone-review.md', '6e5bfaba0186a787d1fe21877000c2faa77887306a0716cf196ffc40de8c0a60'],
+  ['commands/milestone-status.md', '1b14f082221cf895e8e69d956713fa8f867fe6651a938f06ac5fc9c0351e49c9'],
+  ['commands/ms-add.md', '2ac11b723964b3252c9714db624ad1ea32446a08a59ded1148f2e0a0ea33064e'],
+  ['commands/ms-cancel.md', 'c317f888574d93011cbc76e1806a20f73cb663421452b8980f444856aa9f5448'],
+  ['commands/ms-complete.md', '2e983056267a8599c9ac5daefac430269136860709cf6a0d2d14054f936e3327'],
+  ['commands/ms-confirm.md', '9175defbdc11aa128ce39dab01ea12ecca420895e205adc62c8cfc9cf895e7dc'],
+  ['commands/ms-list.md', '5b54d1b6e66cdbcc3f95fb09f47a72d4bb3c5db685fe6e119a3de3f99eea0a67'],
+  ['commands/ms-merge.md', 'c212e93eba0e39844d32d7fba930e451073ce800932f2af6f388e3f9efeeca8b'],
+  ['commands/ms-review.md', '6e5bfaba0186a787d1fe21877000c2faa77887306a0716cf196ffc40de8c0a60'],
+  ['commands/ms-status.md', '1b14f082221cf895e8e69d956713fa8f867fe6651a938f06ac5fc9c0351e49c9'],
+  ['commands/quick-change.md', '6fa7a53cde427612a06943e2754f4e681f724063245384e32889c2dbf973dfdf'],
+  ['commands/resume.md', 'e7993819035889baf7b89bd21cb5cf9f8da12749beb53e8f956dc67559a0d1da'],
+  ['commands/task-add.md', 'ddac31adf51405074b2aaada3e7e464332e30c72d0c138f1b5b77b2cb808b72c'],
+  ['commands/task-amend.md', 'c2cac5abc29246268b2c843cbf8cdeb7e0e4fda31fa0f2539fc5d23a3dd931da'],
+  ['commands/task-discard.md', '79da77dbeb8dd5cde8d7f3daf8831e683e5fb65dbfc03c7942701a82ff028c04'],
+  ['commands/task-dispatch.md', '2cb938cabc90a35e214dcdf8a6b5ff08d2ca57a107adc70879db3a65c7140e45'],
+  ['commands/task-integrate.md', 'b3bcbcc646797c86b4b33a71e932ba03406334257aaf516e944d0b6aa10ad80f'],
+  ['commands/task-status.md', 'fa9c320b0c0a3a1a26a78a64060914e265c4cdf17484c85615fc8187063bbf09'],
+  ['commands/task-update.md', 'f0726b87724c4a6e36f575c253b5b3a730b049a910df97a28c9c12bb5b40134e'],
+  ['commands/task-verify.md', '8aa767b2937d37cc7557a5db8067824ff320ecc6288d1384fc5f54562163116d'],
+  ['commands/usage-add.md', '9a6b60b781dc30c32e34a3bc99d2c4257af172242923807cb802dc0499184bf6'],
+  ['commands/verification-repair.md', '885eb483764050f6a09ff3cd14ec024fc902d2d1582ae0e12e938b631c65b3e6'],
+  ['commands/verify.md', 'f25a28e38b630ab7794fbc5c4bbc0c145e56e0f9e1512e6076c1c886514c653b'],
+  ['commands/write-ms-artifacts.md', 'b3d4ee5da3d8b34d5b5af65fff86279399f03bfaec98b61f488a136f46d6f36f'],
   ['coordination.md', 'b7af25661169ec0dc0caca9f7a395c23f71b97f22d9a9bca0cb9673968c0500f'],
   ['dispatch.md', 'f7a5b90226872cc4536ed46ee6239c9b82b42187f37a51306716c010416ae495'],
 ['draft-formats.md', '6acdab2c76b7f7dfddfd715fd61d51a126d1f9945b8b11023ef0a50b0856df21'],
@@ -736,5 +736,162 @@ describe('M040 protocol-orchestrator.md ships and states the role rules', () => 
     expect(text).toMatch(/Role split \(M040\)/);
     expect(text).toContain('protocol-orchestrator.md');
     expect(text).toContain('docs/architecture/orchestrator-role.md');
+  });
+});
+
+// M041/T002 (AC001, AC002): the Main Agent / Orchestrator command partition
+// has exactly one source of truth -- the Decision 1 table in
+// docs/architecture/orchestrator-role.md. Every shipped command doc's
+// `**Role:**` line (M041/T001) and both protocol docs' command lists are
+// checked against a parse of that table, never against a second list kept
+// here: adding or moving a command in the record is the only way to change
+// what this suite expects.
+describe('M041 command-doc role annotations and protocol docs agree with the Decision 1 table', () => {
+  type Role = 'Main Agent' | 'Orchestrator' | 'either';
+  interface Assignment {
+    role: Role;
+    qualifier: string;
+  }
+
+  const commonCommandsDir = fileURLToPath(new URL('../../src/integrations/common/commands/', import.meta.url));
+  const commandDocNames = listMarkdownFiles(commonCommandsDir).map((doc) => doc.replace(/\.md$/, ''));
+  const decisionRecord = readFileSync(
+    fileURLToPath(new URL('../../docs/architecture/orchestrator-role.md', import.meta.url)),
+    'utf8',
+  );
+
+  // Parse the Decision 1 table into command -> assignments. Within a row's
+  // command cell, a backticked span is a new command when its first word is
+  // a shipped command doc or the span is neither a flag nor a
+  // `/ `-continuation; otherwise it qualifies (subcommand/flag) the command
+  // before it. So "`quick-change create` / `approve`" yields two Main Agent
+  // assignments for quick-change, and "`verify` (runs, `--check …` records)"
+  // one Orchestrator assignment qualified by --check.
+  function parseDecisionTable(): Map<string, Assignment[]> {
+    const section = /## Decision 1[\s\S]*?(?=\n## Decision 2)/.exec(decisionRecord);
+    expect(section).not.toBeNull();
+    const table = new Map<string, Assignment[]>();
+    for (const line of section![0].split('\n')) {
+      const cells = line.split('|').map((c) => c.trim());
+      if (cells.length < 4 || !cells[1]!.startsWith('`')) continue;
+      const roleCell = cells[2]!;
+      const role: Role | undefined = (['Main Agent', 'Orchestrator', 'either'] as const).find((r) => roleCell === r);
+      if (role === undefined) continue; // the Worker "never" row
+      let current: string | undefined;
+      const spanRe = /`([^`]+)`/g;
+      let match: RegExpExecArray | null;
+      while ((match = spanRe.exec(cells[1]!)) !== null) {
+        const span = match[1]!;
+        const [head = '', ...rest] = span.split(/\s+/);
+        const preceded = cells[1]!.slice(0, match.index).trimEnd();
+        const continuation = head.startsWith('-') || preceded.endsWith('/');
+        if (commandDocNames.includes(head) || (!continuation && current === undefined) || !continuation) {
+          current = head;
+          table.set(current, [...(table.get(current) ?? []), { role, qualifier: rest.join(' ') }]);
+        } else {
+          expect(current).toBeDefined();
+          table.set(current!, [...(table.get(current!) ?? []), { role, qualifier: span }]);
+        }
+      }
+    }
+    return table;
+  }
+
+  function parseRoleLine(doc: string): Assignment[] {
+    const text = shippedContent(`commands/${doc}.md`).toString('utf8');
+    const lines = text.split('\n');
+    const h1 = lines.findIndex((l) => l.startsWith('# '));
+    const roleLines = lines.filter((l) => l.startsWith('**Role:**'));
+    expect(roleLines, `${doc}: exactly one Role line`).toHaveLength(1);
+    expect(lines[h1 + 2], `${doc}: Role line directly under the H1`).toBe(roleLines[0]);
+    const body = roleLines[0]!.replace(/^\*\*Role:\*\*\s*/, '');
+    return body.split(' · ').map((segment) => {
+      const m = /^(Main Agent|Orchestrator|either)(?: \((.*)\))?$/.exec(segment);
+      expect(m, `${doc}: unparseable Role segment "${segment}"`).not.toBeNull();
+      return { role: m![1] as Role, qualifier: m![2] ?? '' };
+    });
+  }
+
+  const table = parseDecisionTable();
+
+  it('parses every shipped command doc out of the table (no doc is missing from the record)', () => {
+    expect(table.size).toBeGreaterThan(0);
+    for (const doc of commandDocNames) expect([...table.keys()], `${doc} absent from Decision 1`).toContain(doc);
+  });
+
+  // An ms-* alias doc is byte-identical to its milestone-* canonical (M019),
+  // so its expected roles are the canonical's; the table's own alias entries
+  // (where a row spells out `ms-…`) must only ever agree with that.
+  function expectedFor(doc: string): Assignment[] {
+    const canonical = doc.replace(/^ms-/, 'milestone-');
+    const expected = table.get(canonical)!;
+    if (canonical !== doc) {
+      for (const own of table.get(doc) ?? []) {
+        expect(expected.map((a) => a.role), `${doc}: alias row contradicts ${canonical}`).toContain(own.role);
+      }
+    }
+    return expected;
+  }
+
+  it.each(commandDocNames.map((doc) => [doc]))('commands/%s.md Role line matches the Decision 1 table', (doc) => {
+    const expected = expectedFor(doc);
+    const actual = parseRoleLine(doc);
+    const expectedRoles = new Set(expected.map((a) => a.role));
+    expect(new Set(actual.map((a) => a.role))).toEqual(expectedRoles);
+    if (expectedRoles.size === 1) {
+      const [only] = expected;
+      expect(actual).toEqual([{ role: only!.role, qualifier: only!.role === 'either' ? 'read-only' : '' }]);
+      return;
+    }
+    const docTokens = actual.flatMap((a) => a.qualifier.split(', ').map((t) => [a.role, t.split(' ')[0]!] as const));
+    for (const [, token] of docTokens) {
+      expect(docTokens.filter(([, t]) => t === token), `${doc}: "${token}" listed under two roles`).toHaveLength(1);
+    }
+    for (const { role, qualifier } of expected) {
+      if (qualifier === '') continue;
+      const token = qualifier.split(/\s+/)[0]!;
+      expect(docTokens, `${doc}: "${token}" should be under ${role}`).toContainEqual([role, token]);
+    }
+  });
+
+  function commandsIn(text: string): string[] {
+    return [...text.matchAll(/`([a-z-]+)(?:\s[^`]*)?`/g)].map((m) => m[1]!).filter((c) => table.has(c));
+  }
+
+  it('protocol-orchestrator.md lists only Orchestrator/either commands as "You run" and only Main Agent ones as "never run"', () => {
+    const text = shippedContent('protocol-orchestrator.md').toString('utf8');
+    const runs = /\*\*Run only execution commands\.\*\* You run([\s\S]*?)plus any read-only/.exec(text);
+    const never = /\*\*You never run a gate or scope command\*\*:([\s\S]*?)belong to the Main Agent/.exec(text);
+    expect(runs).not.toBeNull();
+    expect(never).not.toBeNull();
+    const runCommands = commandsIn(runs![1]!);
+    const neverCommands = commandsIn(never![1]!);
+    expect(runCommands.length).toBeGreaterThan(0);
+    expect(neverCommands.length).toBeGreaterThan(0);
+    for (const cmd of runCommands) {
+      expect(table.get(cmd)!.some((a) => a.role !== 'Main Agent'), `${cmd} is Main Agent-only`).toBe(true);
+    }
+    for (const cmd of neverCommands) {
+      expect(table.get(cmd)!.some((a) => a.role === 'Main Agent'), `${cmd} has no Main Agent side`).toBe(true);
+    }
+    // Every Orchestrator-owned command in the table is named on the "You run" side.
+    for (const [cmd, assignments] of table) {
+      if (assignments.some((a) => a.role === 'Orchestrator')) expect(runCommands, `${cmd} missing`).toContain(cmd);
+    }
+  });
+
+  it('protocol-driver.md role-split paragraph defers to the record and names no command on the wrong side', () => {
+    const text = shippedContent('protocol-driver.md').toString('utf8');
+    const paragraph = /\*\*Role split \(M040\)\.\*\*([\s\S]*?)\n\n/.exec(text);
+    expect(paragraph).not.toBeNull();
+    expect(paragraph![1]).toMatch(/Orchestrator runs the execution\s+commands/);
+    expect(paragraph![1]).toMatch(/only\s+the Main Agent runs gate and scope commands/);
+    expect(paragraph![1]).toContain('docs/architecture/orchestrator-role.md');
+    // The paragraph assigns roles by class, not by name; any command it does
+    // name must still sit on the side the table gives it.
+    const main = /only\s+the Main Agent runs([^.]*)\./.exec(paragraph![1]!);
+    for (const cmd of commandsIn(main?.[1] ?? '')) {
+      expect(table.get(cmd)!.every((a) => a.role === 'Main Agent'), `${cmd} is not Main Agent's`).toBe(true);
+    }
   });
 });

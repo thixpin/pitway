@@ -4,6 +4,8 @@ description: "PitWay: Prepare a parallel-eligible task for worktree execution"
 
 # task-dispatch
 
+**Role:** Orchestrator
+
 ```sh
 pitway task-dispatch <id> [--json]
 ```

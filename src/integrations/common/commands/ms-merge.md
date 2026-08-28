@@ -4,6 +4,8 @@ description: "PitWay: Merge a completed milestone's branch into a target branch"
 
 # milestone-merge
 
+**Role:** Main Agent
+
 ```sh
 pitway milestone-merge <id> [--target <branch>] [--json]
 ```

@@ -4,6 +4,8 @@ description: "PitWay: Confirm a draft milestone, or record an amended verificati
 
 # milestone-confirm
 
+**Role:** Main Agent
+
 ```sh
 pitway milestone-confirm <id> [--amend] [--file <path>] [--json]
 ```

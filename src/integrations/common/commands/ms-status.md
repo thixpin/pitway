@@ -4,6 +4,8 @@ description: "PitWay: Show a milestone's status, contract, progress, and tasks"
 
 # milestone-status
 
+**Role:** either (read-only)
+
 ```sh
 pitway milestone-status [id] [--json]
 ```

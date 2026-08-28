@@ -5,6 +5,8 @@ argument-hint: <id>
 
 # usage-add
 
+**Role:** Orchestrator
+
 ```sh
 pitway usage-add <id> --category planning|qa --usage <json> [--json]
 ```

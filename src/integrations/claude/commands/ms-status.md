@@ -5,6 +5,8 @@ argument-hint: "[id]"
 
 # milestone-status
 
+**Role:** either (read-only)
+
 ```sh
 pitway milestone-status [id] [--json]
 ```

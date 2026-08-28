@@ -4,6 +4,8 @@ description: "PitWay: Transition a task's status; completion commits its files a
 
 # task-update
 
+**Role:** Orchestrator
+
 ```sh
 pitway task-update <id> <status> [--result <path>] [--message <path>] [--usage <json>] [--evidence <id>] [--json]
 ```
