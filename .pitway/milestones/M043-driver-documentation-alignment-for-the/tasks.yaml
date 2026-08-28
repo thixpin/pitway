@@ -1,0 +1,151 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: README and USAGE role sections
+    objective: "Add one short section to README.md and one to USAGE.md describing
+      Main Agent / Orchestrator / Worker: responsibilities (from
+      docs/architecture/orchestrator-role.md Context and Decision 1), the
+      protocol doc each role loads, that one session may play Main Agent and
+      Orchestrator together (the default) or two sessions may split them, and
+      that the boundary is protocol-enforced (B021 honest limit). State that
+      existing installs receive protocol-orchestrator.md only after `pitway init
+      --reconfigure` (M041 finding 5-iii). Add a one-line pointer from the
+      'Which Workflow Should I Use?' guide; change nothing else in that guide.
+      No claims beyond the decision record."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Both sections exist, are accurate against the decision record and
+        protocol docs, and include the init --reconfigure note.
+      - The workflow guide changed only by the pointer.
+    context_files:
+      - README.md
+      - USAGE.md
+      - docs/architecture/orchestrator-role.md
+      - src/integrations/common/protocol-orchestrator.md
+    write_scope:
+      - README.md
+      - USAGE.md
+    verification:
+      strategy: manual
+      detail: Read both sections against the decision record and
+        protocol-orchestrator.md; diff the workflow guide to confirm only the
+        pointer changed.
+    result: null
+    usage: null
+  - id: T002
+    name: Root-instruction blocks reference protocol-orchestrator.md
+    objective: Update AGENTS_MD_BLOCK and CLAUDE_MD_BLOCK in
+      src/state/root-instructions.ts so the installed AGENTS.md / CLAUDE.md
+      point at protocol-orchestrator.md beside protocol-driver.md (one sentence
+      each, matching the existing wording style). Extend
+      tests/unit/root-instructions.test.ts so a file carrying the previous block
+      classifies as block_mismatch and migrates cleanly on init --reconfigure
+      with no other content touched; confirm tests/integration/init.test.ts
+      passes (update only assertions that pin the old block text). No other
+      behavior change.
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Old blocks classify block_mismatch and migrate; other file content
+        untouched; init tests pass.
+    context_files:
+      - src/state/root-instructions.ts
+      - tests/unit/root-instructions.test.ts
+      - tests/integration/init.test.ts
+    write_scope:
+      - src/state/root-instructions.ts
+      - tests/unit/root-instructions.test.ts
+      - tests/integration/init.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/root-instructions.test.ts
+        tests/integration/init.test.ts
+    result: null
+    usage: null
+  - id: T003
+    name: Role cross-references in supporting protocol docs
+    objective: Add only the cross-references needed to name which role performs each
+      step in src/integrations/common/dispatch.md, coordination.md, and
+      report-format.md (e.g. 'the Orchestrator role runs steps 1-8; the Main
+      Agent relays decisions'), pointing at protocol-orchestrator.md; reword or
+      remove nothing. Regenerate the pinned sha256 tuples for the touched docs
+      in tests/unit/claude-assets.test.ts; the M041 partition-consistency test
+      must still pass (no command named on the wrong side).
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Additive cross-references only; pinned hashes regenerated for touched
+        docs; asset and partition tests pass.
+    context_files:
+      - src/integrations/common/dispatch.md
+      - src/integrations/common/coordination.md
+      - src/integrations/common/report-format.md
+      - src/integrations/common/protocol-orchestrator.md
+      - docs/architecture/orchestrator-role.md
+      - tests/unit/claude-assets.test.ts
+    write_scope:
+      - src/integrations/common/dispatch.md
+      - src/integrations/common/coordination.md
+      - src/integrations/common/report-format.md
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
+    result: null
+    usage: null
+  - id: T004
+    name: Apply the M041/M042 evidence corrections
+    objective: (a) In docs/evidence/M041/split-role-dogfood.md section 6, replace
+      the Orchestrator row's '72,821 tokens (segment 1) + 94,451 tokens (segment
+      2)' with the restatement docs/evidence/M042/synthesis.md section 6 gives
+      -- readings of an undetermined-semantics figure (five readings received,
+      last one decreasing), no session total statable -- and adjust the
+      paragraph below the table accordingly; cite synthesis section 6 and
+      claude.md section (c). Leave every other section of the M041 record
+      untouched. (b) In docs/architecture/orchestrator-role.md Decision 1, add
+      the ms-review alias to the Orchestrator 'milestone-review start / brief /
+      record / report' row (M041 finding 5-iv); confirm the M041
+      partition-consistency test still passes. Cite each correction's finding in
+      a one-line note.
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - M041 section 6 has no '+' between readings and cites synthesis section 6.
+      - Decision 1's Orchestrator row names ms-review; partition test passes.
+    context_files:
+      - docs/evidence/M041/split-role-dogfood.md
+      - docs/evidence/M042/synthesis.md
+      - docs/evidence/M042/claude.md
+      - docs/architecture/orchestrator-role.md
+      - tests/unit/claude-assets.test.ts
+    write_scope:
+      - docs/evidence/M041/split-role-dogfood.md
+      - docs/architecture/orchestrator-role.md
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+    result: null
+    usage: null
+  - id: T005
+    name: Run the full verification gate
+    objective: "npm run typecheck && npm test from a clean tree (use task-verify
+      --timeout 600000: the full suite exceeds the 120 s default, M041 finding
+      vi). No code changes expected; on failure stop and report."
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+    acceptance_criteria:
+      - Typecheck and full suite pass.
+    context_files:
+      - package.json
+    write_scope: []
+    verification:
+      strategy: command
+      detail: npm run typecheck && npm test
+    result: null
+    usage: null
