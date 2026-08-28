@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   classifyClaudeAssets,
+  listClaudeAssetDestinations,
   listClaudeAssets,
   listInstalledSkillNames,
 } from '../../src/state/claude-assets.js';
@@ -557,7 +558,9 @@ const PRE_M023_ASSET_MANIFEST: ReadonlyArray<readonly [string, string]> = [
 ['draft-formats.md', '6acdab2c76b7f7dfddfd715fd61d51a126d1f9945b8b11023ef0a50b0856df21'],
   ['interactive-ux.md', 'e8cc6c74b807247ff2f9b35abb5d85622f904b462b5ac4c2a0b20be4f2587aa1'],
   ['lsp-guidance.md', 'e2fc2650c5f53b1ff569db8a340a96d9e6975bc4e2eea5c0a36a745a1fe18b78'],
-  ['protocol-driver.md', '1e8a10aea93c4092a2c10c5cb9df0dedb0ccda5613f282763319db3af3d0a8ac'],
+  ['protocol-driver.md', '218e0afff56dcc6fa31988d4c019a6394c4fc8f649a5cfa52cca3e9d8e2431c6'],
+  // M040/T003: the Orchestrator role's protocol doc, added as a common asset.
+  ['protocol-orchestrator.md', 'f9f04842295af54680c090574be3152b9c6870bac019942c9d4a3ff1ae702b5a'],
   ['protocol-worker.md', '8aa76eac4952afc447cd090356680aa372eed15edcbe16e6728a64ff330b3393'],
   ['report-format.md', '1f78522fe1c9cfad3ff9afa1b3d915e00dd640d2433a52ce63544dde1d6e8dbf'],
   ['skills/NOTICE.md', '8d5dd0d6fb2753abf21aef4e98a3a2969dfac37dea91f059d117424da0dc5976'],
@@ -706,4 +709,32 @@ describe('M038 claude command overrides stay in parity with common/commands (AC0
       expect(claudeText).not.toBe(commonText);
     },
   );
+});
+
+// M040/T003 (AC005, AC006): the Orchestrator role's protocol doc ships as a
+// common asset beside protocol-driver.md / protocol-worker.md, resolves to
+// common/ for every driver, and states the partition and the one rule.
+describe('M040 protocol-orchestrator.md ships and states the role rules', () => {
+  it('is in the resolved set, resolves to common/, and lands at .claude/protocol-orchestrator.md', () => {
+    expect(listClaudeAssets()).toContain('protocol-orchestrator.md');
+    expect(resolveDriverAssetSource('claude', 'protocol-orchestrator.md')).toBe(
+      fileURLToPath(new URL('../../src/integrations/common/protocol-orchestrator.md', import.meta.url)),
+    );
+    expect(listClaudeAssetDestinations()).toContain('.claude/protocol-orchestrator.md');
+  });
+
+  it('states never-.pitway-directly and puts task-update and milestone-confirm on the correct sides', () => {
+    const text = shippedContent('protocol-orchestrator.md').toString('utf8');
+    expect(text).toMatch(/never touch `\.pitway\/` directly/i);
+    expect(text).toMatch(/You run `task-update`/);
+    expect(text).toMatch(/never run a gate or scope command[^.]*`milestone-confirm`/s);
+    expect(text).toMatch(/protocol-enforced/);
+  });
+
+  it('protocol-driver.md cross-references the role split and protocol-orchestrator.md', () => {
+    const text = shippedContent('protocol-driver.md').toString('utf8');
+    expect(text).toMatch(/Role split \(M040\)/);
+    expect(text).toContain('protocol-orchestrator.md');
+    expect(text).toContain('docs/architecture/orchestrator-role.md');
+  });
 });

@@ -337,3 +337,19 @@ describe('M025 T005 codex milestone-status full-detail + footer relay (AC005/B01
     expect(shippedContent('commands/ms-status.md')).toEqual(shippedContent('commands/milestone-status.md'));
   });
 });
+
+// M040/T003 (AC005, AC006): protocol-orchestrator.md ships for codex from common/.
+describe('M040 protocol-orchestrator.md ships for codex', () => {
+  it('is resolved from common/ and lands at .codex/protocol-orchestrator.md', () => {
+    expect(resolveDriverAssets('codex')).toContain('protocol-orchestrator.md');
+    expect(resolveDriverAssetSource('codex', 'protocol-orchestrator.md')).toBe(join(commonDir, 'protocol-orchestrator.md'));
+    expect(listDriverAssetDestinations('codex')).toContain('.codex/protocol-orchestrator.md');
+  });
+
+  it('states the one rule and the partition', () => {
+    const text = shippedContent('protocol-orchestrator.md').toString('utf8');
+    expect(text).toMatch(/never touch `\.pitway\/` directly/i);
+    expect(text).toMatch(/You run `task-update`/);
+    expect(text).toMatch(/never run a gate or scope command[^.]*`milestone-confirm`/s);
+  });
+});

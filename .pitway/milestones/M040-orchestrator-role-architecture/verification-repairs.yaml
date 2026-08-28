@@ -1,0 +1,15 @@
+schema_version: 1
+records:
+  - id: VR001
+    files:
+      - docs/architecture/orchestrator-role.md
+    checks:
+      - CT005
+    change_log: "CT002 failed: Decision 1's read-only row omitted the ms-current,
+      ms-list, ms-status aliases required by AC002 ('every pitway command');
+      repair adds the three aliases to that row only (developer-approved). CT005
+      named as the rerun check because the repair mechanism requires a
+      command-type check; the substantive re-verification is the re-recorded
+      CT002 review."
+    approved_at: 2026-08-28T10:31:15Z
+    status: committed
