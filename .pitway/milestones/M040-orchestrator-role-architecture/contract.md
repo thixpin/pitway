@@ -2,7 +2,7 @@
 schema_version: 1
 id: M040
 title: Orchestrator Role Architecture
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-28T10:02:02Z
 verification_approved_hash: sha256:65371849591f35e54603d572c1b891be618a8f95841ca1fb8dc06fae01f4b1ce
