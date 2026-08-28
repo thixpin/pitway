@@ -2,7 +2,7 @@
 schema_version: 1
 id: M039
 title: Split core/tasks/update.ts by Responsibility
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-28T09:05:01Z
 verification_approved_hash: sha256:fd7d5f53c11c70f4260acf9187f55a98e1deee317e9ee2f4cb56dbd05299b9b9

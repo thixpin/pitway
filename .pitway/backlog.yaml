@@ -763,13 +763,13 @@ items:
       validation/fingerprinting, usage parsing/accumulation, completion-commit
       lookup, and persistence; extract tasks/evidence.ts and tasks/usage.ts as a
       pure file split"
-    status: promoted
+    status: archived
     source:
       milestone: M038
       task: null
     created_at: 2026-08-27T15:41:45.475Z
-    resolved_at: 2026-08-28T09:05:02.428Z
+    resolved_at: 2026-08-28T09:35:02.773Z
     promoted_to:
       milestone: M039
       task: T001
-    archived_reason: null
+    archived_reason: "auto-closed: promoted work completed via M039 completion"
