@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.2.0] — 2026-08-29
+
+### Highlights
+
+- **The Orchestrator role.** PitWay's driver protocol is now written for
+  three roles: the *Main Agent* (developer conversation and every approval
+  gate — `protocol-driver.md`), the *Orchestrator* (task execution planning,
+  dispatch, verification and reporting — the new `protocol-orchestrator.md`,
+  installed for every driver), and the *Worker* (`protocol-worker.md`,
+  unchanged). One session may play Main Agent and Orchestrator together
+  (the default) or two sessions may split them. The Orchestrator is a
+  protocol role, never a runtime component: PitWay ships no orchestrator,
+  scheduler, or agent framework, and the boundary is protocol-enforced —
+  installed and pinned as instruction text, detected in review, never
+  blocked at runtime — exactly like every other approval gate. Decisions and
+  rationale: `docs/architecture/orchestrator-role.md`
+- Every installed command doc now carries a one-line **role annotation**
+  (Main Agent / Orchestrator / either), and `dispatch.md`,
+  `coordination.md`, and `report-format.md` name which role performs each
+  step. README and USAGE gain a Driver Roles section
+- `pitway init --reconfigure` now **migrates the managed block** in an
+  existing `AGENTS.md` / `CLAUDE.md` in place when it matches the exact
+  block a previous version installed — only the block is replaced, your own
+  content is untouched — so existing projects pick up the
+  `protocol-orchestrator.md` pointer. Any other differing block is still
+  preserved, as before
+- Evidence records from PitWay's own dogfooding: a real two-session
+  Main/Orchestrator milestone run (`docs/evidence/M041/`) and a token
+  telemetry spike across the Claude, OpenCode, and Codex drivers
+  (`docs/evidence/M042/`) — measured facts only, informing the future
+  usage-attribution work; no usage schema or accounting behavior changes in
+  this release
+
+Existing installs will report configuration drift for the touched protocol
+documents until `pitway init --reconfigure` is run.
+
 ## [1.1.2] — 2026-08-28
 
 ### Highlights
