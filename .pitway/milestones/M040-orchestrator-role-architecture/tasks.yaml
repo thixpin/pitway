@@ -208,7 +208,7 @@ tasks:
       destination sets stay collision-free (existing test) and init.test's
       install-everything check picks it up (existing glob -- confirm, add
       nothing unless it fails). Do not touch src/state/driver-assets.ts."
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -244,7 +244,17 @@ tasks:
         tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
         tests/integration/multi-driver-assets.test.ts
         tests/integration/init.test.ts
-    result: null
+    result:
+      summary: "[truncated] e/codex/opencode asset suites assert presence, common/
+        resolution, destination path, and the partition/one-rule wording;
+        multi-driver and init suites pass unmodified. No change to
+        driver-assets.ts. Contract AC006 amended (developer-approved) to name
+        the two assets that necessarily drift."
+      evidence: Tests  386 passed (386) | Start at  17:14:28 | Duration  4.03s
+        (transform 835ms, setup 0ms, import 1.29s, tests 3.99s, environment 0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T004
     name: Run the full verification gate
@@ -252,7 +262,7 @@ tasks:
       build && npm test from a clean tree, and confirm
       dist/integrations/common/protocol-orchestrator.md exists after the build.
       No code changes expected; on any failure stop and report."
-    status: waiting
+    status: ready
     depends_on:
       - T003
     acceptance_criteria:

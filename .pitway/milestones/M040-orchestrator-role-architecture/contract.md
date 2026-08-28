@@ -79,7 +79,9 @@ acceptance_criteria:
       the CLI-partition and never-.pitway rules -- while every other pinned
       common/claude hash passes unmodified. pitway init on a fresh repo installs
       it for each driver; a repo initialised on 1.1.2 reports drift for exactly
-      that one new asset (absent), which init --reconfigure clears.
+      the two assets this milestone touches -- protocol-orchestrator.md (absent)
+      and protocol-driver.md (conflict, from AC005's additive cross-reference
+      paragraph) -- and nothing else, which init --reconfigure clears.
   - id: AC007
     text: The decision record ends with a follow-up plan naming the implementation
       milestones that come AFTER these decisions are confirmed, each with its
@@ -213,3 +215,8 @@ restates decisions 1-2); T004 depends on T003.
 
 - 2026-08-28: Draft created from the architecture review of
   drafts/pitway-orchestrated-worker-requirement.md.
+- 2026-08-28: AC006 amended during T003 -- AC005's required cross-reference
+  paragraph changes protocol-driver.md's bytes, so a 1.1.2-initialised repo
+  necessarily drifts on two assets (protocol-orchestrator.md absent,
+  protocol-driver.md conflict), not one; wording corrected to name exactly
+  those two. Verified: init --reconfigure clears both. No scope change.

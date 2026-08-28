@@ -367,6 +367,17 @@ had to be stopped mid-flight).
 
 ## Decision authority and gates
 
+**Role split (M040).** This document describes the *Main Agent* role —
+the session that talks to the developer and owns every gate below. The
+execution half of the same work — planning, dispatching, tracking,
+verifying, and reporting on tasks — is the *Orchestrator* role, described
+in `protocol-orchestrator.md`. One session may play both roles (the
+default); when they are split, the Orchestrator runs the execution
+commands and surfaces every human decision to the Main Agent, and only
+the Main Agent runs gate and scope commands. Which command belongs to
+which role, and why the boundary is protocol-enforced rather than
+runtime-enforced: `docs/architecture/orchestrator-role.md`.
+
 Tiers, most relevant during an auto-continue run through a task graph:
 
 - **Autonomous** — reversible implementation details within the confirmed
