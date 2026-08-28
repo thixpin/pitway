@@ -1,0 +1,239 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Reframe the requirement draft around a protocol role
+    objective: "Rewrite drafts/pitway-orchestrated-worker-requirement.md in place
+      (keep the title's subject, revise the body) so it reads as a
+      driver-protocol role split, not a new component: §1 describes the Main
+      Agent and Orchestrator as two protocol roles that one or two driver
+      sessions may play, shipped as text assets (protocol-driver.md for the Main
+      Agent, a new protocol-orchestrator.md for the Orchestrator), with the
+      explicit statement that PitWay ships no orchestrator runtime, agent,
+      plugin, or framework (AGENTS.md non-goals). Every state-access statement
+      reads 'via pitway commands, never .pitway/ directly'. §2 adopts
+      dispatch.md's wording: PitWay bounds the supplied bundle, never a worker's
+      total harness context. §§3, 4, 5, 10 each gain one sentence pointing at
+      the mechanism that already satisfies them (journal + resume, M016
+      evidence; checkParallelEligibility / task-dispatch family; two-tier driver
+      assets). §6 states that approval gates are protocol-enforced (B021:
+      instruction-pinned, detected in review, never prevented at runtime) and
+      that the Main/Orchestrator boundary will be the same class unless a later
+      milestone adds runtime role checks. Move §§7-9 verbatim-in-spirit into a
+      NEW file drafts/pitway-usage-attribution-requirement.md whose preamble (a)
+      cites docs/evidence/M009/token-accounting-feasibility.md as the binding
+      constraint, (b) declares the Token Telemetry Spike as its prerequisite,
+      (c) replaces the 'MS total = Main + Orchestrator + Workers' identity and
+      the 12%/8%/80% table with 'measured segments plus a missing count, in the
+      existing Tokens: N (k missing) convention', (d) adds the Auxiliary bucket,
+      and (e) marks Orchestrator overhead as PitWay-derived and conditional,
+      never directly measured. The original §11 stays in the reframed draft and
+      gains the four decisions this milestone records (CLI partition, identity,
+      buckets, schema migration) as already-decided pointers to
+      docs/architecture/orchestrator-role.md. Keep the closing primary principle
+      as the first line under the title. Do not edit anything outside drafts/."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - The reframed draft describes the Orchestrator only as a protocol role
+        and never as a PitWay runtime component.
+      - Every workflow-state access statement routes through pitway commands.
+      - drafts/pitway-usage-attribution-requirement.md exists, cites the M009
+        record, is gated on the Token Telemetry Spike, and contains no
+        exact-total or percentage promise.
+    context_files:
+      - drafts/pitway-orchestrated-worker-requirement.md
+      - drafts/pitway-usage-attribution-requirement.md
+      - AGENTS.md
+      - src/integrations/common/dispatch.md
+      - src/integrations/common/protocol-driver.md
+      - docs/evidence/M009/token-accounting-feasibility.md
+    write_scope:
+      - drafts/pitway-orchestrated-worker-requirement.md
+      - drafts/pitway-usage-attribution-requirement.md
+    verification:
+      strategy: manual
+      detail: Read both drafts against AC001; grep the reframed draft for
+        'Orchestrator Agent' and '.pitway/' to confirm no runtime-component or
+        direct-state-access wording remains.
+    result: null
+    usage: null
+  - id: T002
+    name: Record the four architecture decisions
+    objective: "Write docs/architecture/orchestrator-role.md (create the
+      docs/architecture/ directory). Structure: Context (the reframe and why --
+      AGENTS.md non-goals, text-assets-only drivers, protocol-driver.md's fused
+      role today); Decision 1 -- CLI responsibility partition: a table of EVERY
+      pitway command (enumerate from `pitway --help`, including ms-* aliases and
+      quick-change/backlog/milestone-review/auto-run subcommands) with owning
+      role Main Agent | Orchestrator | either (read-only: resume,
+      milestone-status, milestone-current, milestone-list, task-status, backlog
+      list/show, quick-change status, auto-run status, verify --status) and
+      Worker = none; gates stay with the Main Agent (milestone-confirm, --amend,
+      milestone-complete, milestone-merge, milestone-cancel, milestone-add,
+      task-amend, task-add, quick-change create/approve/commit/cancel/promote,
+      milestone-review decide, auto-run enable/disable), execution goes to the
+      Orchestrator (task-update, task-verify, task-dispatch, task-integrate,
+      task-discard, verify runs and --check records, usage-add, backlog
+      add/promote/archive, milestone-review start/brief/record/report,
+      verification-repair). Decision 2 -- identity: PRESENT both options to the
+      developer in conversation and record the chosen one; the recommended
+      default is 'persistent across one milestone, flushed at the milestone's
+      terminal state, never carried into the next' with dispatch.md's
+      sequential-chain context-isolation trade-off restated for the Orchestrator
+      itself (ambient retention across tasks is the mechanism, PitWay cannot
+      verify it, write_scope bounds writes only) and the recovery invariant that
+      a restarted Orchestrator re-orients from `pitway resume` alone. Decision 3
+      -- usage buckets Main / Orchestrator / Worker / Auxiliary: define each;
+      Auxiliary = every session the runtime creates that is neither the Main
+      Agent session, the Orchestrator session, nor a direct task/review dispatch
+      (per M009's three-way partition), never folded elsewhere; state that
+      per-instance Worker attribution is NOT claimable until the M009 beta-trace
+      gap closes; totals are measured segments + missing count only. Decision 4
+      -- schema migration requirements (requirements, no schema change here):
+      additive-only optional fields; task.usage, usage.yaml planning/qa, and
+      review-role usage keep their meaning and map to buckets (task.usage ->
+      Worker or Main-inline per how it was executed, planning/qa -> Main Agent,
+      review usage -> Worker); null stays null (never estimated); raw provider
+      usage preserved where practical; execution/run identifiers are
+      evidence-only like --driver/--model (M029) and never load-bearing for
+      resume or trailers; any new figure must be labeled measured vs
+      PitWay-derived. Gate classification table (AC003): every gate from
+      Decision 1 with class = protocol-enforced (instruction-pinned,
+      review-detected) or runtime-enforced (Core refuses), each runtime row
+      citing the refusing code path (e.g. state-machine.ts transitions,
+      update.ts assertDirtySubset/write_scope, verify hash mismatch,
+      milestone-complete's all-checks gate, dispatch eligibility). Preserved
+      architecture section (AC004) with mechanism pointers and the bundle-only
+      isolation limit. Follow-up plan (AC007): Token Telemetry Spike
+      (prerequisite, no schema change until it reports what the runtime can
+      measure), Usage-schema migration milestone (gated on the spike),
+      Split-role dogfood milestone (run one real milestone with Main and
+      Orchestrator as separate sessions, record evidence under docs/evidence/),
+      and optional Runtime role checks milestone (only if dogfood shows
+      protocol-enforcement is insufficient). Each of Decisions 1-4 must be
+      presented to the developer in conversation and approved before being
+      written as decided -- record who decided and when in the document."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - docs/architecture/orchestrator-role.md records Decisions 1-4 with
+        rationale, rejected alternatives, and the developer's in-conversation
+        approval noted.
+      - The command partition covers every command pitway --help lists.
+      - The gate classification table covers every gate in the partition and
+        cites refusing code for each runtime-enforced row.
+      - The preserved-architecture section and follow-up plan meet AC004 and
+        AC007.
+    context_files:
+      - docs/architecture/orchestrator-role.md
+      - AGENTS.md
+      - src/integrations/common/protocol-driver.md
+      - src/integrations/common/dispatch.md
+      - src/integrations/common/protocol-worker.md
+      - src/integrations/common/report-format.md
+      - docs/evidence/M009/token-accounting-feasibility.md
+      - src/core/tasks/state-machine.ts
+      - src/core/milestones/state-machine.ts
+      - src/core/tasks/update.ts
+      - src/core/tasks/dispatch.ts
+      - src/core/milestones/complete.ts
+      - src/core/verification/run.ts
+      - src/cli/index.ts
+    write_scope:
+      - docs/architecture/orchestrator-role.md
+    verification:
+      strategy: manual
+      detail: Read docs/architecture/orchestrator-role.md against AC002-AC004 and
+        AC007; diff the command table against `pitway --help`; spot-check three
+        runtime-enforced rows against the cited src/core code.
+    result: null
+    usage: null
+  - id: T003
+    name: Ship protocol-orchestrator.md as a common asset
+    objective: "Create src/integrations/common/protocol-orchestrator.md in the same
+      voice and structure as protocol-worker.md (a brief for the session playing
+      the Orchestrator role): what the role owns (execution planning, dispatch,
+      tracking, aggregation, retries/recovery, concise reporting), the CLI
+      partition from Decision 1 as a MUST (which commands it runs, which it
+      never runs and instead surfaces to the Main Agent with the decision framed
+      for the developer), 'never .pitway/ directly -- every read and mutation
+      via pitway' as the first hard rule, the identity/flush rule from Decision
+      2, orientation from `pitway resume` alone on start or restart, honoring
+      dispatch.md / protocol-worker.md / coordination.md / report-format.md by
+      reference (never restating their rules so they cannot drift), reporting to
+      the Main Agent in report-format.md's capped structured shape (status,
+      result, findings, changed files, verification result, commit, blockers,
+      required human decisions -- never transcripts), and the honest limit that
+      this boundary is protocol-enforced, not runtime-enforced. Then add ONE
+      cross-reference paragraph to src/integrations/common/protocol-driver.md
+      (near 'Decision authority and gates' or 'Dispatch discipline') naming the
+      role split and pointing at protocol-orchestrator.md -- add only; reword or
+      remove nothing. Regenerate protocol-driver.md's pinned sha256 tuple in
+      tests/unit/claude-assets.test.ts (shasum -a 256). Add asset tests: in
+      claude-assets, codex-assets, and opencode-assets, assert
+      'protocol-orchestrator.md' is in the resolved set, resolves to common/,
+      lands at <driver-dir>/protocol-orchestrator.md, and its content matches
+      /never .* \\.pitway\\//i and names task-update and milestone-confirm on
+      the correct sides of the partition; in multi-driver-assets confirm the
+      destination sets stay collision-free (existing test) and init.test's
+      install-everything check picks it up (existing glob -- confirm, add
+      nothing unless it fails). Do not touch src/state/driver-assets.ts."
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - protocol-orchestrator.md ships for all three drivers via the existing
+        resolver, resolving to common/.
+      - protocol-driver.md changes by exactly one additive paragraph; its pinned
+        hash is regenerated; every other pinned hash passes unmodified.
+      - New asset tests pass; init installs the new doc for each driver.
+    context_files:
+      - src/integrations/common/protocol-orchestrator.md
+      - src/integrations/common/protocol-driver.md
+      - src/integrations/common/protocol-worker.md
+      - src/integrations/common/dispatch.md
+      - src/integrations/common/report-format.md
+      - docs/architecture/orchestrator-role.md
+      - src/state/driver-assets.ts
+      - tests/unit/claude-assets.test.ts
+      - tests/unit/codex-assets.test.ts
+      - tests/unit/opencode-assets.test.ts
+      - tests/integration/multi-driver-assets.test.ts
+      - tests/integration/init.test.ts
+    write_scope:
+      - src/integrations/common/protocol-orchestrator.md
+      - src/integrations/common/protocol-driver.md
+      - tests/unit/claude-assets.test.ts
+      - tests/unit/codex-assets.test.ts
+      - tests/unit/opencode-assets.test.ts
+      - tests/integration/multi-driver-assets.test.ts
+      - tests/integration/init.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
+        tests/integration/multi-driver-assets.test.ts
+        tests/integration/init.test.ts
+    result: null
+    usage: null
+  - id: T004
+    name: Run the full verification gate
+    objective: "Milestone-level gate after T001-T003: npm run typecheck && npm run
+      build && npm test from a clean tree, and confirm
+      dist/integrations/common/protocol-orchestrator.md exists after the build.
+      No code changes expected; on any failure stop and report."
+    status: waiting
+    depends_on:
+      - T003
+    acceptance_criteria:
+      - npm run typecheck, npm run build, and npm test pass.
+      - dist/integrations/common/protocol-orchestrator.md exists after the build.
+    context_files:
+      - package.json
+    write_scope: []
+    verification:
+      strategy: command
+      detail: npm run typecheck && npm run build && npm test && test -f
+        dist/integrations/common/protocol-orchestrator.md
+    result: null
+    usage: null
