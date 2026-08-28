@@ -175,7 +175,7 @@ tasks:
     objective: "npm run typecheck && npm test from a clean tree (use task-verify
       --timeout 600000: the full suite exceeds the 120 s default, M041 finding
       vi). No code changes expected; on failure stop and report."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -189,5 +189,13 @@ tasks:
     verification:
       strategy: command
       detail: npm run typecheck && npm test
-    result: null
+    result:
+      summary: "Milestone gate: typecheck and full suite pass from a clean tree; no
+        code changes."
+      evidence: Tests  2265 passed (2265) | Start at  01:17:44 | Duration  173.29s
+        (transform 5.12s, setup 0ms, import 22.43s, tests 1172.91s, environment
+        14ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
