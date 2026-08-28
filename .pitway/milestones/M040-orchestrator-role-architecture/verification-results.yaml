@@ -1,2 +1,100 @@
 schema_version: 1
-results: []
+results:
+  - check: CT005
+    status: pass
+    at: 2026-08-28T10:21:47Z
+    evidence: Tests  336 passed (336) | Start at  17:21:47 | Duration  317ms
+      (transform 166ms, setup 0ms, import 261ms, tests 293ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 955
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-28T10:21:51Z
+    evidence: Tests  386 passed (386) | Start at  17:21:47 | Duration  3.48s
+      (transform 802ms, setup 0ms, import 1.22s, tests 3.33s, environment 1ms)
+    recorded_by: command
+    duration_ms: 3855
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-28T10:24:30Z
+    evidence: Tests  2227 passed (2227) | Start at  17:21:52 | Duration  157.78s
+      (transform 4.04s, setup 0ms, import 17.94s, tests 1071.03s, environment
+      11ms)
+    recorded_by: command
+    duration_ms: 158588
+    termination_reason: exited
+  - check: CT001
+    status: pass
+    at: 2026-08-28T10:30:32Z
+    evidence: "Developer review 2026-08-28:
+      drafts/pitway-orchestrated-worker-requirement.md describes the
+      Orchestrator only as a driver-protocol role (the sole 'Orchestrator Agent'
+      occurrence is the reframe note rejecting it); every state-access statement
+      routes through pitway commands;
+      drafts/pitway-usage-attribution-requirement.md cites
+      docs/evidence/M009/token-accounting-feasibility.md as binding, names the
+      Token Telemetry Spike as prerequisite, and contains no exact-total or
+      percentage promise."
+    recorded_by: developer
+  - check: CT003
+    status: pass
+    at: 2026-08-28T10:30:32Z
+    evidence: "Developer review 2026-08-28: gate classification table in
+      docs/architecture/orchestrator-role.md covers every gate in the Decision 1
+      partition; runtime-enforced rows spot-checked against source --
+      transitionTask throw (src/core/tasks/state-machine.ts:23),
+      milestone-complete all-checks/all-tasks refusal
+      (src/core/milestones/complete.ts:117), task-dispatch eligibility refusal
+      (src/core/tasks/dispatch.ts:92); the Main/Orchestrator boundary itself is
+      classified protocol-enforced."
+    recorded_by: developer
+  - check: CT004
+    status: pass
+    at: 2026-08-28T10:30:32Z
+    evidence: "Developer review 2026-08-28: preserved-architecture section points at
+      context-bundle.ts, report-format.md, journal.ts/views/resume.ts with M016
+      evidence, the task-dispatch/integrate/discard family +
+      parallel-eligibility.ts, and driver-assets.ts's two-tier layout, and
+      restates the bundle-only isolation limit from dispatch.md."
+    recorded_by: developer
+  - check: CT007
+    status: pass
+    at: 2026-08-28T10:30:33Z
+    evidence: "Developer review 2026-08-28: follow-up plan names the Token Telemetry
+      Spike (prerequisite), Usage-Schema Migration (gated on the spike),
+      Split-Role Dogfood, Lifecycle, Documentation Alignment, and optional
+      Runtime Role Checks, each with prerequisite and the M040 ->
+      (M041||M043||M045) -> M042 -> M044 sequence; the milestone diff implements
+      none of them (docs, one protocol asset, one cross-reference paragraph,
+      additive tests only)."
+    recorded_by: developer
+  - check: CT002
+    status: fail
+    at: 2026-08-28T10:30:33Z
+    evidence: "Developer review 2026-08-28: Decisions 1-4 are recorded with
+      rationale, rejected alternatives, and in-conversation approval, and
+      Decision 2 cites dispatch.md's context-isolation trade-off -- but the
+      Decision 1 command table's read-only row names milestone-current,
+      milestone-list, and milestone-status without their ms-current, ms-list,
+      and ms-status aliases, so AC002's 'every pitway command' is not met."
+    recorded_by: developer
+  - check: CT002
+    status: pass
+    at: 2026-08-28T10:31:00Z
+    evidence: "Developer review 2026-08-28 after verification-repair: Decision 1's
+      read-only row now lists ms-status, ms-current, and ms-list beside their
+      canonical names; scripted check confirms every command name from pitway
+      --help (aliases included) appears in the partition table. Decisions 1-4
+      recorded with rationale, rejected alternatives, in-conversation approval;
+      Decision 2 cites dispatch.md's context-isolation trade-off."
+    recorded_by: developer
+  - check: CT005
+    status: pass
+    at: 2026-08-28T10:31:25Z
+    evidence: Tests  336 passed (336) | Start at  17:31:25 | Duration  352ms
+      (transform 144ms, setup 0ms, import 237ms, tests 350ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 1010
+    termination_reason: exited

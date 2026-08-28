@@ -76,7 +76,7 @@ creates/abandons planned work** belongs to the Main Agent; a command that
 | `usage-add` | Orchestrator | execution |
 | `backlog add` / `promote` / `archive` | Orchestrator | execution (capture, never scope growth) |
 | `milestone-review start` / `brief` / `record` / `report` | Orchestrator | execution |
-| `resume`, `milestone-status`, `milestone-current`, `milestone-list`, `task-status`, `backlog list` / `show`, `quick-change status`, `auto-run status`, `verify --status`, `help` | either | read-only |
+| `resume`, `milestone-status` / `ms-status`, `milestone-current` / `ms-current`, `milestone-list` / `ms-list`, `task-status`, `backlog list` / `show`, `quick-change status`, `auto-run status`, `verify --status`, `help` | either | read-only |
 | *(everything)* | Worker | **never** |
 
 Rationale: this keeps every B021 human gate and every scope-changing
