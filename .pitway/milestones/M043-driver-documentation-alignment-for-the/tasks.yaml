@@ -12,7 +12,7 @@ tasks:
       --reconfigure` (M041 finding 5-iii). Add a one-line pointer from the
       'Which Workflow Should I Use?' guide; change nothing else in that guide.
       No claims beyond the decision record."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Both sections exist, are accurate against the decision record and
@@ -31,7 +31,19 @@ tasks:
       detail: Read both sections against the decision record and
         protocol-orchestrator.md; diff the workflow guide to confirm only the
         pointer changed.
-    result: null
+    result:
+      summary: "[truncated] ause pointer in Which Workflow Should I Use?; USAGE.md
+        gains a Driver roles subsection under Driver Integrations (role table,
+        split-session note citing M041, protocol-enforced limit,
+        drift/reconfigure note) and a one-sentence pointer after the workflow
+        table. No other guide text changed."
+      evidence: "git diff: README.md +12/-1 (pointer clause + new section), USAGE.md
+        +26 (pointer sentence + subsection); wording checked against
+        docs/architecture/orchestrator-role.md Decision 1 table and
+        protocol-orchestrator.md hard rules."
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T002
     name: Root-instruction blocks reference protocol-orchestrator.md

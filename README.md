@@ -53,7 +53,7 @@ The result: agents move fast, and the engineering process stays in control of wh
 - **A small, independent fix, no milestone active** → a **Quick Change** — bounded, single-commit.
 - **Running work in parallel** → an **execution mode** (`execution.strategy: parallel_worktrees`), not a separate lane — it applies within whichever of the above you're already using.
 
-See [USAGE.md](./USAGE.md) for the full walkthrough of each.
+See [USAGE.md](./USAGE.md) for the full walkthrough of each, and [Driver Roles](#driver-roles) for who runs which command when a milestone is executed.
 
 ---
 
@@ -111,6 +111,16 @@ For a hands-on walkthrough of the whole workflow — drafting a contract, confir
 - **Claude Code:** `pitway init` installs PitWay's commands as real Claude Code slash commands (`.claude/commands/*.md`, each carrying `description`/`argument-hint` metadata for the `/` picker), alongside the driver protocol documents that explain how and when to use them.
 - **OpenCode:** `pitway init --opencode` installs the same command surface in OpenCode's own convention (`.opencode/commands/*.md`) plus the shared skills and protocol documents. Command docs, skills, and protocol content all come from the common layer — defined once, never forked per driver.
 - **Codex:** `pitway init --codex` installs the same command surface in Codex's convention (`.codex/commands/*.md`) plus the shared skills and protocol documents. Command docs, skills, and protocol content all come from the common layer — defined once, never forked per driver.
+
+## Driver Roles
+
+PitWay's driver protocol is written for three roles. One AI session may play the first two together (the default), or two sessions may split them; workers are always separate.
+
+- **Main Agent** (`protocol-driver.md`) — talks to the developer, presents plans and results, and runs every gate and scope command: `milestone-add`, `milestone-confirm` (and `--amend`), `milestone-complete`, `milestone-merge`, `milestone-cancel`, `task-add`, `task-amend`, all `quick-change` subcommands, `milestone-review decide`, `verification-repair approve`, `auto-run enable|disable`.
+- **Orchestrator** (`protocol-orchestrator.md`) — plans and drives execution inside an already-confirmed milestone: `task-update`, `task-verify`, `task-dispatch|integrate|discard`, `verify`, `usage-add`, `backlog add|promote|archive`, `milestone-review start|brief|record|report`, `verification-repair propose|commit|cancel`. It surfaces every human decision to the Main Agent and never decides one itself.
+- **Worker** (`protocol-worker.md`) — executes one bounded task from its context bundle and reports back; it never calls `pitway` or touches `.pitway/`.
+
+Read-only commands (`resume`, `milestone-status`, `task-status`, …) belong to either role. The command-by-command partition and its rationale are recorded in [`docs/architecture/orchestrator-role.md`](./docs/architecture/orchestrator-role.md). The Main/Orchestrator boundary is **protocol-enforced** — installed and pinned as instruction text, detected in review, never prevented at runtime — exactly like every other approval gate; what PitWay enforces at runtime (state machines, `write_scope`, verification-hash approval, commit trailers, git safety) is unchanged. Repositories initialised before `protocol-orchestrator.md` shipped receive it on the next `pitway init --reconfigure`.
 
 ---
 
