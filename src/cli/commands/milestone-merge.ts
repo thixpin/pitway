@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { mergeMilestone, type MilestoneMergeView } from '../../core/milestones/merge.js';
 import { renderOutput } from '../output.js';
-import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
+import { writeActiveMilestoneFooter } from '../footer.js';
 
 function renderMilestoneMergeHuman(view: MilestoneMergeView): string {
   if (view.outcome === 'already-merged') {
@@ -29,9 +29,6 @@ export function registerMilestoneMergeCommand(program: Command, deps: CommandDep
       const root = deps.root ?? process.cwd();
       const view = mergeMilestone(root, id, { target: options.target });
       write(renderOutput(view, { json: options.json }, renderMilestoneMergeHuman));
-      if (!options.json) {
-        const footer = getFooterForActiveMilestone(root);
-        if (footer !== null) write(footer);
-      }
+      writeActiveMilestoneFooter(root, write, options);
     });
 }

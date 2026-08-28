@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { amendTask, type TaskAmendView } from '../../core/tasks/amend.js';
-import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
+import { writeActiveMilestoneFooter } from '../footer.js';
 import { renderOutput } from '../output.js';
 
 function renderTaskAmendHuman(view: TaskAmendView): string {
@@ -42,9 +42,6 @@ export function registerTaskAmendCommand(program: Command, deps: CommandDeps = {
         changeLogEvidence: options.changeLog,
       });
       write(renderOutput(view, { json: options.json }, renderTaskAmendHuman));
-      if (!options.json) {
-        const footer = getFooterForActiveMilestone(root);
-        if (footer !== null) write(footer);
-      }
+      writeActiveMilestoneFooter(root, write, options);
     });
 }

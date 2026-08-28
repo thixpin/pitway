@@ -7,25 +7,12 @@ import {
   type VerificationRepairCancelView,
   type VerificationRepairCommitView,
 } from '../../core/verification/repair.js';
-import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
-import { loadState } from '../../state/store.js';
+import { writeActiveMilestoneFooter } from '../footer.js';
 import { renderOutput } from '../output.js';
 
 // M036/T002: approve/commit/cancel each take an explicit milestone -- show
 // the footer only when it's the active milestone, never one for a
 // different milestone than the one just acted on.
-function writeFooterIfActive(root: string, milestone: string, write: (line: string) => void): void {
-  let isActive = false;
-  try {
-    isActive = loadState(root).active_milestone === milestone;
-  } catch {
-    isActive = false;
-  }
-  if (!isActive) return;
-  const footer = getFooterForActiveMilestone(root);
-  if (footer !== null) write(footer);
-}
-
 export interface CommandDeps {
   root?: string;
   write?: (line: string) => void;
@@ -86,7 +73,7 @@ export function registerVerificationRepairCommand(program: Command, deps: Comman
           changeLog: options.changeLog,
         });
         write(renderOutput(view, { json: options.json }, renderApproveHuman));
-        if (!options.json) writeFooterIfActive(root, view.milestone, write);
+        writeActiveMilestoneFooter(root, write, { json: options.json, milestone: view.milestone });
       },
     );
 
@@ -101,7 +88,7 @@ export function registerVerificationRepairCommand(program: Command, deps: Comman
       const root = deps.root ?? process.cwd();
       const view = commitVerificationRepair(root, milestone, vrId);
       write(renderOutput(view, { json: options.json }, renderCommitHuman));
-      if (!options.json) writeFooterIfActive(root, milestone, write);
+      writeActiveMilestoneFooter(root, write, { json: options.json, milestone: milestone });
     });
 
   verificationRepair
@@ -112,6 +99,6 @@ export function registerVerificationRepairCommand(program: Command, deps: Comman
       const root = deps.root ?? process.cwd();
       const view = cancelVerificationRepair(root, milestone, vrId);
       write(renderOutput(view, { json: options.json }, renderCancelHuman));
-      if (!options.json) writeFooterIfActive(root, milestone, write);
+      writeActiveMilestoneFooter(root, write, { json: options.json, milestone: milestone });
     });
 }

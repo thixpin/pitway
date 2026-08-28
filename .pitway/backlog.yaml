@@ -749,14 +749,14 @@ items:
       getFooterForActiveMilestone + human-mode write; emoji string-building
       lives in core/milestones/footer.ts though the racing metaphor is
       presentation-only"
-    status: pending
+    status: archived
     source:
       milestone: M038
       task: null
     created_at: 2026-08-27T15:41:45.021Z
-    resolved_at: null
+    resolved_at: 2026-08-28T00:22:53.222Z
     promoted_to: null
-    archived_reason: null
+    archived_reason: closed by quick-change qc-190ac40a
   - id: B039
     title: Split core/tasks/update.ts (706 lines) by responsibility
     reason: "Post-v1.1.1 architecture review finding 5: completeTask mixes evidence

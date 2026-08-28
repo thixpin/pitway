@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { integrateTask, type TaskIntegrateView } from '../../core/tasks/integrate.js';
 import { renderOutput } from '../output.js';
-import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
+import { writeActiveMilestoneFooter } from '../footer.js';
 
 function renderTaskIntegrateHuman(view: TaskIntegrateView): string {
   switch (view.outcome) {
@@ -43,9 +43,6 @@ export function registerTaskIntegrateCommand(program: Command, deps: CommandDeps
       const root = deps.root ?? process.cwd();
       const view = integrateTask(root, id);
       write(renderOutput(view, { json: options.json }, renderTaskIntegrateHuman));
-      if (!options.json) {
-        const footer = getFooterForActiveMilestone(root);
-        if (footer !== null) write(footer);
-      }
+      writeActiveMilestoneFooter(root, write, options);
     });
 }

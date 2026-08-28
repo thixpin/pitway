@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import { runTaskVerify } from '../../core/tasks/verify.js';
 import type { JournalTaskVerifyEvidence } from '../../state/journal.js';
 import { renderOutput } from '../output.js';
-import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
+import { writeActiveMilestoneFooter } from '../footer.js';
 
 function renderTaskVerifyHuman(view: JournalTaskVerifyEvidence): string {
   const passed = view.exitCode === 0 && view.terminationReason === 'exited';
@@ -48,9 +48,6 @@ export function registerTaskVerifyCommand(program: Command, deps: CommandDeps = 
       }
       const view = runTaskVerify(root, id, { typecheckCommand: options.typecheck, timeoutMs });
       write(renderOutput(view, { json: options.json }, renderTaskVerifyHuman));
-      if (!options.json) {
-        const footer = getFooterForActiveMilestone(root);
-        if (footer !== null) write(footer);
-      }
+      writeActiveMilestoneFooter(root, write, options);
     });
 }

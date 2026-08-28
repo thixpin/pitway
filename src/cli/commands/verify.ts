@@ -14,26 +14,14 @@ import {
   getVerificationStatus,
   type VerifyStatusView,
 } from '../../core/verification/status.js';
-import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
+import { writeActiveMilestoneFooter } from '../footer.js';
 import { computeMilestoneProgress } from '../../core/milestones/progress.js';
-import { loadContract, loadState, loadTasks } from '../../state/store.js';
+import { loadContract, loadTasks } from '../../state/store.js';
 import { renderOutput } from '../output.js';
 
 // M036/T002: verify's run/single-check-run/record paths mutate state and
 // take an explicit (optional) milestone id -- show the footer only when
 // the resolved milestone is the active one, never for --status (read-only).
-function writeFooterIfActive(root: string, resolvedId: string, write: (line: string) => void): void {
-  let isActive = false;
-  try {
-    isActive = loadState(root).active_milestone === resolvedId;
-  } catch {
-    isActive = false;
-  }
-  if (!isActive) return;
-  const footer = getFooterForActiveMilestone(root);
-  if (footer !== null) write(footer);
-}
-
 // M036/T003: reuses the exact same helpers footer.ts/complete.ts already
 // call for this exact question -- never VerifyRunView's own passed/pending
 // fields, which never clear pending for a manual/review check even once
@@ -134,7 +122,7 @@ export function registerVerifyCommand(program: Command, deps: CommandDeps = {}):
         if (!options.json) {
           const hint = completionHintLine(root, view.id);
           if (hint !== null) write(hint);
-          writeFooterIfActive(root, view.id, write);
+          writeActiveMilestoneFooter(root, write, { json: options.json, milestone: view.id });
         }
         return;
       }
@@ -145,7 +133,7 @@ export function registerVerifyCommand(program: Command, deps: CommandDeps = {}):
       if (!options.pass && !options.fail && options.evidence === undefined) {
         const view = runSingleCheck(root, id, options.check);
         write(renderOutput(view, { json: options.json }, renderCheckRunHuman));
-        if (!options.json) writeFooterIfActive(root, view.id, write);
+        writeActiveMilestoneFooter(root, write, { json: options.json, milestone: view.id });
         return;
       }
 
@@ -164,7 +152,7 @@ export function registerVerifyCommand(program: Command, deps: CommandDeps = {}):
       if (!options.json) {
         const hint = completionHintLine(root, view.id);
         if (hint !== null) write(hint);
-        writeFooterIfActive(root, view.id, write);
+        writeActiveMilestoneFooter(root, write, { json: options.json, milestone: view.id });
       }
     });
 }

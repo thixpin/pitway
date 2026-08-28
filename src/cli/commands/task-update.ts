@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import { updateTask, type TaskUpdateView } from '../../core/tasks/update.js';
 import { renderOutput } from '../output.js';
 import { taskStatusLabel } from '../format.js';
-import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
+import { writeActiveMilestoneFooter } from '../footer.js';
 
 function renderTaskUpdateHuman(view: TaskUpdateView): string {
   const head = `🛠 Task ${view.id} → ${taskStatusLabel(view.status)}`;
@@ -57,10 +57,7 @@ export function registerTaskUpdateCommand(program: Command, deps: CommandDeps = 
           model: options.model,
         });
         write(renderOutput(view, { json: options.json }, renderTaskUpdateHuman));
-        if (!options.json) {
-          const footer = getFooterForActiveMilestone(root);
-          if (footer !== null) write(footer);
-        }
+        writeActiveMilestoneFooter(root, write, options);
         if (!options.json && view.usageWarning !== null) {
           writeErr(view.usageWarning);
         }

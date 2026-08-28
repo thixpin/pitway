@@ -7,7 +7,7 @@ import { showBacklogItem } from '../../core/backlog/show.js';
 import type { BacklogItem, BacklogReference, BacklogStatus } from '../../state/schemas.js';
 import { renderOutput } from '../output.js';
 import { renderTable } from '../table.js';
-import { getFooterForActiveMilestone } from '../../core/milestones/footer.js';
+import { writeActiveMilestoneFooter } from '../footer.js';
 
 export interface CommandDeps {
   root?: string;
@@ -222,10 +222,7 @@ export function registerBacklogCommand(program: Command, deps: CommandDeps = {})
         sourceTask: options.task,
       });
       write(renderOutput(view, { json: options.json }, renderAddHuman));
-      if (!options.json) {
-        const footer = getFooterForActiveMilestone(root);
-        if (footer !== null) write(footer);
-      }
+      writeActiveMilestoneFooter(root, write, options);
     });
 
   backlog
@@ -281,10 +278,7 @@ export function registerBacklogCommand(program: Command, deps: CommandDeps = {})
       const root = deps.root ?? process.cwd();
       const view = promoteBacklogItem(root, id, { taskId: options.task, milestoneId: options.milestone });
       write(renderOutput(view, { json: options.json }, renderPromoteHuman));
-      if (!options.json) {
-        const footer = getFooterForActiveMilestone(root);
-        if (footer !== null) write(footer);
-      }
+      writeActiveMilestoneFooter(root, write, options);
     });
 
   backlog
@@ -296,9 +290,6 @@ export function registerBacklogCommand(program: Command, deps: CommandDeps = {})
       const root = deps.root ?? process.cwd();
       const view = archiveBacklogItem(root, id, options.reason);
       write(renderOutput(view, { json: options.json }, renderArchiveHuman));
-      if (!options.json) {
-        const footer = getFooterForActiveMilestone(root);
-        if (footer !== null) write(footer);
-      }
+      writeActiveMilestoneFooter(root, write, options);
     });
 }
