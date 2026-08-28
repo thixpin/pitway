@@ -176,7 +176,7 @@ tasks:
       (10) an honesty floor: every unexercised shape or driver listed as a gap,
       never spoken for. No estimation, summing, or derivation presented as
       measurement."
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -198,5 +198,17 @@ tasks:
       strategy: manual
       detail: Read the synthesis against AC002, AC003, and AC005; spot-check three
         cells against the cited driver-record samples.
-    result: null
+    result:
+      summary: "[truncated] determined figure, no total; derived values kept out of
+        measured rows; four rejected approaches re-confirmed; explicit may-add /
+        must-not-add field lists for the usage-schema migration; honesty-floor
+        gap list (E5 unexercised everywhere, Claude semantics unknown, single
+        model per driver)."
+      evidence: Every cell cites claude.md / opencode.md / codex.md sections; no
+        figure summed, split, estimated, or inferred. git status shows only
+        docs/evidence/M042/synthesis.md new; this repo's .pitway/ untouched by
+        any experiment.
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
