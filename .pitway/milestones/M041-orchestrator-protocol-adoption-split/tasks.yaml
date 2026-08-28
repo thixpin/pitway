@@ -172,7 +172,7 @@ tasks:
       doc's role annotation matches it, and that protocol-driver.md and
       protocol-orchestrator.md name no command on the wrong side. Never a second
       hardcoded list.
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -188,7 +188,17 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/unit/claude-assets.test.ts
-    result: null
+    result:
+      summary: "[truncated] orchestrator.md's 'You run' list holds only
+        Orchestrator/either commands and names every Orchestrator-owned one, its
+        'never run' list only Main Agent ones, and protocol-driver.md's
+        Role-split paragraph defers to the record and names no command on the
+        wrong side. No second hardcoded list."
+      evidence: Tests  205 passed (205) | Start at  20:16:49 | Duration  280ms
+        (transform 40ms, setup 0ms, import 56ms, tests 130ms, environment 0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-sonnet-5
     usage: null
   - id: T003
     name: Split-role dogfood run with evidence
@@ -205,7 +215,7 @@ tasks:
       pitway resume alone re-oriented it, protocol gaps, and a sufficiency
       verdict on protocol-only enforcement. No runtime orchestration or
       telemetry code of any kind.
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:

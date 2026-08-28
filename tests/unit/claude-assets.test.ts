@@ -738,3 +738,160 @@ describe('M040 protocol-orchestrator.md ships and states the role rules', () => 
     expect(text).toContain('docs/architecture/orchestrator-role.md');
   });
 });
+
+// M041/T002 (AC001, AC002): the Main Agent / Orchestrator command partition
+// has exactly one source of truth -- the Decision 1 table in
+// docs/architecture/orchestrator-role.md. Every shipped command doc's
+// `**Role:**` line (M041/T001) and both protocol docs' command lists are
+// checked against a parse of that table, never against a second list kept
+// here: adding or moving a command in the record is the only way to change
+// what this suite expects.
+describe('M041 command-doc role annotations and protocol docs agree with the Decision 1 table', () => {
+  type Role = 'Main Agent' | 'Orchestrator' | 'either';
+  interface Assignment {
+    role: Role;
+    qualifier: string;
+  }
+
+  const commonCommandsDir = fileURLToPath(new URL('../../src/integrations/common/commands/', import.meta.url));
+  const commandDocNames = listMarkdownFiles(commonCommandsDir).map((doc) => doc.replace(/\.md$/, ''));
+  const decisionRecord = readFileSync(
+    fileURLToPath(new URL('../../docs/architecture/orchestrator-role.md', import.meta.url)),
+    'utf8',
+  );
+
+  // Parse the Decision 1 table into command -> assignments. Within a row's
+  // command cell, a backticked span is a new command when its first word is
+  // a shipped command doc or the span is neither a flag nor a
+  // `/ `-continuation; otherwise it qualifies (subcommand/flag) the command
+  // before it. So "`quick-change create` / `approve`" yields two Main Agent
+  // assignments for quick-change, and "`verify` (runs, `--check …` records)"
+  // one Orchestrator assignment qualified by --check.
+  function parseDecisionTable(): Map<string, Assignment[]> {
+    const section = /## Decision 1[\s\S]*?(?=\n## Decision 2)/.exec(decisionRecord);
+    expect(section).not.toBeNull();
+    const table = new Map<string, Assignment[]>();
+    for (const line of section![0].split('\n')) {
+      const cells = line.split('|').map((c) => c.trim());
+      if (cells.length < 4 || !cells[1]!.startsWith('`')) continue;
+      const roleCell = cells[2]!;
+      const role: Role | undefined = (['Main Agent', 'Orchestrator', 'either'] as const).find((r) => roleCell === r);
+      if (role === undefined) continue; // the Worker "never" row
+      let current: string | undefined;
+      const spanRe = /`([^`]+)`/g;
+      let match: RegExpExecArray | null;
+      while ((match = spanRe.exec(cells[1]!)) !== null) {
+        const span = match[1]!;
+        const [head = '', ...rest] = span.split(/\s+/);
+        const preceded = cells[1]!.slice(0, match.index).trimEnd();
+        const continuation = head.startsWith('-') || preceded.endsWith('/');
+        if (commandDocNames.includes(head) || (!continuation && current === undefined) || !continuation) {
+          current = head;
+          table.set(current, [...(table.get(current) ?? []), { role, qualifier: rest.join(' ') }]);
+        } else {
+          expect(current).toBeDefined();
+          table.set(current!, [...(table.get(current!) ?? []), { role, qualifier: span }]);
+        }
+      }
+    }
+    return table;
+  }
+
+  function parseRoleLine(doc: string): Assignment[] {
+    const text = shippedContent(`commands/${doc}.md`).toString('utf8');
+    const lines = text.split('\n');
+    const h1 = lines.findIndex((l) => l.startsWith('# '));
+    const roleLines = lines.filter((l) => l.startsWith('**Role:**'));
+    expect(roleLines, `${doc}: exactly one Role line`).toHaveLength(1);
+    expect(lines[h1 + 2], `${doc}: Role line directly under the H1`).toBe(roleLines[0]);
+    const body = roleLines[0]!.replace(/^\*\*Role:\*\*\s*/, '');
+    return body.split(' · ').map((segment) => {
+      const m = /^(Main Agent|Orchestrator|either)(?: \((.*)\))?$/.exec(segment);
+      expect(m, `${doc}: unparseable Role segment "${segment}"`).not.toBeNull();
+      return { role: m![1] as Role, qualifier: m![2] ?? '' };
+    });
+  }
+
+  const table = parseDecisionTable();
+
+  it('parses every shipped command doc out of the table (no doc is missing from the record)', () => {
+    expect(table.size).toBeGreaterThan(0);
+    for (const doc of commandDocNames) expect([...table.keys()], `${doc} absent from Decision 1`).toContain(doc);
+  });
+
+  // An ms-* alias doc is byte-identical to its milestone-* canonical (M019),
+  // so its expected roles are the canonical's; the table's own alias entries
+  // (where a row spells out `ms-…`) must only ever agree with that.
+  function expectedFor(doc: string): Assignment[] {
+    const canonical = doc.replace(/^ms-/, 'milestone-');
+    const expected = table.get(canonical)!;
+    if (canonical !== doc) {
+      for (const own of table.get(doc) ?? []) {
+        expect(expected.map((a) => a.role), `${doc}: alias row contradicts ${canonical}`).toContain(own.role);
+      }
+    }
+    return expected;
+  }
+
+  it.each(commandDocNames.map((doc) => [doc]))('commands/%s.md Role line matches the Decision 1 table', (doc) => {
+    const expected = expectedFor(doc);
+    const actual = parseRoleLine(doc);
+    const expectedRoles = new Set(expected.map((a) => a.role));
+    expect(new Set(actual.map((a) => a.role))).toEqual(expectedRoles);
+    if (expectedRoles.size === 1) {
+      const [only] = expected;
+      expect(actual).toEqual([{ role: only!.role, qualifier: only!.role === 'either' ? 'read-only' : '' }]);
+      return;
+    }
+    const docTokens = actual.flatMap((a) => a.qualifier.split(', ').map((t) => [a.role, t.split(' ')[0]!] as const));
+    for (const [, token] of docTokens) {
+      expect(docTokens.filter(([, t]) => t === token), `${doc}: "${token}" listed under two roles`).toHaveLength(1);
+    }
+    for (const { role, qualifier } of expected) {
+      if (qualifier === '') continue;
+      const token = qualifier.split(/\s+/)[0]!;
+      expect(docTokens, `${doc}: "${token}" should be under ${role}`).toContainEqual([role, token]);
+    }
+  });
+
+  function commandsIn(text: string): string[] {
+    return [...text.matchAll(/`([a-z-]+)(?:\s[^`]*)?`/g)].map((m) => m[1]!).filter((c) => table.has(c));
+  }
+
+  it('protocol-orchestrator.md lists only Orchestrator/either commands as "You run" and only Main Agent ones as "never run"', () => {
+    const text = shippedContent('protocol-orchestrator.md').toString('utf8');
+    const runs = /\*\*Run only execution commands\.\*\* You run([\s\S]*?)plus any read-only/.exec(text);
+    const never = /\*\*You never run a gate or scope command\*\*:([\s\S]*?)belong to the Main Agent/.exec(text);
+    expect(runs).not.toBeNull();
+    expect(never).not.toBeNull();
+    const runCommands = commandsIn(runs![1]!);
+    const neverCommands = commandsIn(never![1]!);
+    expect(runCommands.length).toBeGreaterThan(0);
+    expect(neverCommands.length).toBeGreaterThan(0);
+    for (const cmd of runCommands) {
+      expect(table.get(cmd)!.some((a) => a.role !== 'Main Agent'), `${cmd} is Main Agent-only`).toBe(true);
+    }
+    for (const cmd of neverCommands) {
+      expect(table.get(cmd)!.some((a) => a.role === 'Main Agent'), `${cmd} has no Main Agent side`).toBe(true);
+    }
+    // Every Orchestrator-owned command in the table is named on the "You run" side.
+    for (const [cmd, assignments] of table) {
+      if (assignments.some((a) => a.role === 'Orchestrator')) expect(runCommands, `${cmd} missing`).toContain(cmd);
+    }
+  });
+
+  it('protocol-driver.md role-split paragraph defers to the record and names no command on the wrong side', () => {
+    const text = shippedContent('protocol-driver.md').toString('utf8');
+    const paragraph = /\*\*Role split \(M040\)\.\*\*([\s\S]*?)\n\n/.exec(text);
+    expect(paragraph).not.toBeNull();
+    expect(paragraph![1]).toMatch(/Orchestrator runs the execution\s+commands/);
+    expect(paragraph![1]).toMatch(/only\s+the Main Agent runs gate and scope commands/);
+    expect(paragraph![1]).toContain('docs/architecture/orchestrator-role.md');
+    // The paragraph assigns roles by class, not by name; any command it does
+    // name must still sit on the side the table gives it.
+    const main = /only\s+the Main Agent runs([^.]*)\./.exec(paragraph![1]!);
+    for (const cmd of commandsIn(main?.[1] ?? '')) {
+      expect(table.get(cmd)!.every((a) => a.role === 'Main Agent'), `${cmd} is not Main Agent's`).toBe(true);
+    }
+  });
+});
