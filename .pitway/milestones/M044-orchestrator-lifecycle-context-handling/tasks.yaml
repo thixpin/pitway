@@ -56,7 +56,7 @@ tasks:
       restarted persistent-identity Orchestrator (M040 Decision 2), modelled on
       M041's two real restarts (post-block; mid-task interruption). Read-only
       test; no Core change.
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - The test passes and names every recovery input it relies on as a resume
@@ -72,7 +72,18 @@ tasks:
       strategy: command
       detail: npx vitest run tests/integration/fresh-session-resume.test.ts
         tests/integration/resume.test.ts
-    result: null
+    result:
+      summary: "[truncated] ted -- the restart signal), openReview, and nextTask =
+        T001 (Continue). Also pins that the pending journal entry is tolerated
+        but not listed (audit gap G1) so a future additive field is a deliberate
+        change, and that re-orientation performs no git mutation. Read-only
+        test; no Core change."
+      evidence: Tests  46 passed (46) | Start at  01:41:47 | Duration  12.93s
+        (transform 741ms, setup 0ms, import 1.04s, tests 14.61s, environment
+        0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T003
     name: Decide the two M041 protocol-text gaps

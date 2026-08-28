@@ -12,7 +12,9 @@ import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js
 import { registerResumeCommand } from '../../src/cli/commands/resume.js';
 import { registerMilestoneStatusCommand } from '../../src/cli/commands/milestone-status.js';
 import { registerTaskStatusCommand } from '../../src/cli/commands/task-status.js';
-import { loadContract, loadState, loadTasks } from '../../src/state/store.js';
+import { loadConfig, loadContract, loadState, loadTasks, saveConfig, saveReviews } from '../../src/state/store.js';
+import { appendJournalEntry } from '../../src/state/journal.js';
+import { dispatchTask } from '../../src/core/tasks/dispatch.js';
 
 // M007/T001/AC001: fresh-session state reconstruction, formalized as a
 // regression test (the 2026-08-18 demonstration was historical/manual only).
@@ -273,5 +275,146 @@ describe('fresh-session resume (M007/T001/AC001)', () => {
       { id: 'T001', status: 'completed' },
       { id: 'T002', status: 'ready' },
     ]);
+  });
+});
+
+// M044/T002 (AC002): Orchestrator restart recovery in the persistent-per-
+// milestone identity mode (M040 Decision 2). A milestone mid-execution --
+// one task in_progress, one dispatched under parallel_worktrees, one
+// pending journal entry, one open review session -- must re-orient a
+// brand-new process from `pitway resume` output ALONE to the exact next
+// action protocol-orchestrator.md prescribes: continue the in_progress
+// task. Modelled on M041's two real restarts (docs/evidence/M041/
+// split-role-dogfood.md section 4). Every recovery input the assertion
+// relies on is a named resume field.
+const RECOVERY_CONTRACT = CONTRACT_FIXTURE.replace('Fresh session resume fixture', 'Orchestrator restart recovery fixture');
+const RECOVERY_TASKS = `schema_version: 1
+tasks:
+  - id: T001
+    name: Inline task
+    objective: Runs inline in the main tree.
+    status: planned
+    depends_on: []
+    acceptance_criteria:
+      - It works
+    context_files:
+      - src/a.ts
+    write_scope:
+      - src/a.ts
+    verification:
+      strategy: command
+      detail: npm test
+    result: null
+    usage: null
+  - id: T002
+    name: Dispatched task
+    objective: Runs in a worktree.
+    status: planned
+    depends_on: []
+    acceptance_criteria:
+      - It works
+    context_files:
+      - src/b.ts
+    write_scope:
+      - src/b.ts
+    verification:
+      strategy: command
+      detail: npm test
+    result: null
+    usage: null
+  - id: T003
+    name: Waiting task
+    objective: Waits on T001.
+    status: planned
+    depends_on: [T001]
+    acceptance_criteria:
+      - It works
+    context_files:
+      - src/c.ts
+    write_scope:
+      - src/c.ts
+    verification:
+      strategy: command
+      detail: npm test
+    result: null
+    usage: null
+`;
+
+describe('Orchestrator restart recovery from resume alone (M044/T002)', () => {
+  it('re-orients a fresh process to the in_progress task while a dispatch, a pending journal entry, and an open review are all live', async () => {
+    expect((await run(['init', '--no-claude'], root)).error).toBeUndefined();
+    saveConfig(root, { ...loadConfig(root), execution: { strategy: 'parallel_worktrees' } });
+    const contract = join(scratch, 'contract.md');
+    const tasks = join(scratch, 'tasks.yaml');
+    writeFileSync(contract, RECOVERY_CONTRACT);
+    writeFileSync(tasks, RECOVERY_TASKS);
+    expect((await run(['milestone-add', '--contract', contract, '--tasks', tasks], root)).error).toBeUndefined();
+    expect((await run(['milestone-confirm', 'M001'], root)).error).toBeUndefined();
+
+    // The Orchestrator's last actions before the "restart": start T001
+    // inline, dispatch T002 to a worktree, record a pending usage entry
+    // (immediate-write, no commit of its own), open a review session.
+    expect((await run(['task-update', 'T001', 'in_progress'], root)).error).toBeUndefined();
+    const dispatched = dispatchTask(root, 'T002');
+    appendJournalEntry(root, {
+      milestone: 'M001',
+      type: 'usage_recording',
+      operationId: 'op-usage-restart-1',
+      payload: { category: 'planning', total_tokens: 1 },
+    });
+    saveReviews(root, 'M001', {
+      schema_version: 1,
+      sessions: [
+        {
+          id: 'rev-a1b2c3d4',
+          status: 'open',
+          created_at: '2026-08-29T00:00:00Z',
+          roles: ['architect'],
+          content_hash: `sha256:${'c'.repeat(64)}`,
+          findings: [],
+          decision: null,
+        },
+      ],
+    });
+
+    // Restart: a brand-new program + deps, sharing only the root path.
+    const fresh = await run(['resume', '--json'], root);
+    expect(fresh.error).toBeUndefined();
+    const view = JSON.parse(fresh.lines.join('\n'));
+
+    // Recovery inputs, each a named resume field:
+    expect(view.activeMilestone).toBe('M001');                         // which milestone
+    expect(view.contractStatus).toBe('in_progress');                   // its state
+    expect(view.branch?.matches).toBe(true);                           // on the milestone branch
+    // Both are in_progress; only the dispatch record (below) tells the
+    // worktree task apart from the interrupted inline one.
+    expect(view.inProgress).toEqual(['T001', 'T002']);
+    expect(view.waiting).toEqual(['T003']);
+    expect(view.waitingDetails).toEqual([{ id: 'T003', detail: 'waiting on T001' }]);
+    expect(view.parallel.activeDispatches).toEqual([                   // the live worktree dispatch
+      { taskId: 'T002', branch: 'pitway/task/M001-T002', worktreePath: dispatched.worktreePath },
+    ]);
+    // The interrupted inline task is NAMED as a residue: in_progress with no
+    // dispatch record -- the exact signal a restarted Orchestrator reads.
+    expect(view.parallel.residues).toEqual([
+      expect.objectContaining({ class: 'inline-or-interrupted', taskId: 'T001' }),
+    ]);
+    expect(view.openReview).toMatchObject({ milestone: 'M001', sessionId: 'rev-a1b2c3d4', pendingCount: 1 });
+    // The exact next action: continue T001 (in_progress beats ready).
+    expect(view.nextTask).toBe('T001');
+
+    // The pending journal entry never blocks re-orientation; resume tolerates
+    // its dirt (M044/T001 audit gap G1: it is not LISTED -- asserted here so
+    // a future additive field is a deliberate change, not drift).
+    expect(view).not.toHaveProperty('pendingJournal');
+
+    const human = await run(['resume'], root);
+    const out = human.lines.join('\n');
+    expect(out).toContain('Continue: T001');
+    expect(out).toContain('🏎️ Dispatched worktrees');
+    expect(out).toContain('📜 Open review rev-a1b2c3d4 (M001)');
+    // No git mutation of any kind happened during re-orientation.
+    expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], root).trim()).toBe(view.branch.expected);
+    rmSync(dispatched.worktreePath, { recursive: true, force: true });
   });
 });
