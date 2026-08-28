@@ -248,7 +248,7 @@ tasks:
   - id: T004
     name: Run the full verification gate
     objective: npm run typecheck && npm test from a clean tree; no code changes expected.
-    status: ready
+    status: completed
     depends_on:
       - T003
     acceptance_criteria:
@@ -259,5 +259,13 @@ tasks:
     verification:
       strategy: command
       detail: npm run typecheck && npm test
-    result: null
+    result:
+      summary: Ran the M041 full verification gate (typecheck + full suite) via
+        task-verify T004; nothing else changed.
+      evidence: Tests  2262 passed (2262) | Start at  20:24:32 | Duration  164.86s
+        (transform 4.35s, setup 0ms, import 19.27s, tests 1118.08s, environment
+        12ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-sonnet-5
     usage: null
