@@ -560,7 +560,7 @@ const PRE_M023_ASSET_MANIFEST: ReadonlyArray<readonly [string, string]> = [
   ['lsp-guidance.md', 'e2fc2650c5f53b1ff569db8a340a96d9e6975bc4e2eea5c0a36a745a1fe18b78'],
   ['protocol-driver.md', '218e0afff56dcc6fa31988d4c019a6394c4fc8f649a5cfa52cca3e9d8e2431c6'],
   // M040/T003: the Orchestrator role's protocol doc, added as a common asset.
-  ['protocol-orchestrator.md', 'f9f04842295af54680c090574be3152b9c6870bac019942c9d4a3ff1ae702b5a'],
+  ['protocol-orchestrator.md', 'dcb2b3f14ab9eec00ee3a745c05dd69f1afb17d11e9a01334965f7b08fc48215'],
   ['protocol-worker.md', '8aa76eac4952afc447cd090356680aa372eed15edcbe16e6728a64ff330b3393'],
   ['report-format.md', '1480a8fe8dddd8045e24c67cb043786dba58c1194ff959a319e0bdc66a9408c4'],
   ['skills/NOTICE.md', '8d5dd0d6fb2753abf21aef4e98a3a2969dfac37dea91f059d117424da0dc5976'],

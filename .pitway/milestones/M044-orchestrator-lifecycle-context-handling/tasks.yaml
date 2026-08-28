@@ -135,7 +135,7 @@ tasks:
       tests/unit/claude-assets.test.ts; the M041 partition test must still pass
       (a newly named command on the 'You run' or 'never run' side must agree
       with the table).
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T003
@@ -155,7 +155,17 @@ tasks:
       strategy: command
       detail: npx vitest run tests/unit/claude-assets.test.ts
         tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
-    result: null
+    result:
+      summary: "[truncated] a six-step restart procedure keyed to resume's fields
+        (Continue / dispatched worktrees / residues / blocked / open review /
+        Next or gate), naming the two audit gaps resume does not list. The 'You
+        run' and 'never run' lists are unchanged; no other rule reworded. Pinned
+        sha256 regenerated."
+      evidence: Tests  371 passed (371) | Start at  01:43:37 | Duration  312ms
+        (transform 138ms, setup 0ms, import 212ms, tests 306ms, environment 0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T005
     name: Close an approved audit gap additively (conditional)
