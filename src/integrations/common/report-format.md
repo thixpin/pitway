@@ -10,6 +10,12 @@ with exactly two fields.
   and its pass count, the verification instruction's output, a concrete
   observation. Not a transcript.
 
+**Which role does this (M043).** The worker writes the report; the
+*Orchestrator* (`protocol-orchestrator.md`) persists it via `task-update`
+and passes the same capped, structured shape — never a transcript — upward
+to the *Main Agent* (`protocol-driver.md`), which is what the developer
+ultimately sees.
+
 ## Both fields are capped
 
 `task-update` truncates `summary` and `evidence` to a fixed character

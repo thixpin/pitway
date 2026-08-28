@@ -94,7 +94,7 @@ tasks:
       remove nothing. Regenerate the pinned sha256 tuples for the touched docs
       in tests/unit/claude-assets.test.ts; the M041 partition-consistency test
       must still pass (no command named on the wrong side).
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Additive cross-references only; pinned hashes regenerated for touched
@@ -115,7 +115,17 @@ tasks:
       strategy: command
       detail: npx vitest run tests/unit/claude-assets.test.ts
         tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
-    result: null
+    result:
+      summary: "[truncated] ker writes, Orchestrator persists via task-update and
+        passes the same capped shape to the Main Agent). No existing sentence
+        reworded or removed. Pinned sha256 tuples regenerated for exactly those
+        three docs; the M041 partition-consistency test passes (no command named
+        on the wrong side)."
+      evidence: Tests  371 passed (371) | Start at  01:15:58 | Duration  340ms
+        (transform 145ms, setup 0ms, import 213ms, tests 337ms, environment 0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T004
     name: Apply the M041/M042 evidence corrections
