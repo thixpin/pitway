@@ -71,7 +71,7 @@ tasks:
       own observations, fabricate a sample, or mark this task complete without
       real opencode evidence. No estimation, derivation, transcript parsing, or
       TUI scraping.
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Record comes from a real opencode-driver session and cites raw verbatim
@@ -88,7 +88,20 @@ tasks:
       strategy: manual
       detail: Read the record against AC001; confirm provenance is an opencode session
         and every shape has a verbatim sample or an explicit entry.
-    result: null
+    result:
+      summary: "[truncated] arately by session id, parent totals excluding worker
+        totals; auxiliary nothing reported; per-instance attribution stable
+        without beta traces. E0-E6 verdicts recorded per driver. M041 section 6
+        '+' not validated on this driver. No estimation, summing, transcript
+        parsing, or TUI scraping."
+      evidence: "Record provenance: sessionIDs ses_fb690f5deffe5dkamwZEpQX2cN (main),
+        ses_fb68f099affewgwx9iHa60K1ef (worker, resumed),
+        ses_fb68d152dffeQw2X68CHnmeI7k (reviewer); verbatim step_finish lines
+        quoted with timestamps and part ids. Recorded by the Main Agent without
+        alteration; this repo's .pitway/ untouched by the experiment."
+    attempts: 1
+    driver: opencode
+    model: muse-spark-1.2-contributor-free
     usage: null
   - id: T003
     name: Observe codex driver usage reporting
