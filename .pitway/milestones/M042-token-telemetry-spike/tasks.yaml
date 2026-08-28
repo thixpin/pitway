@@ -21,7 +21,7 @@ tasks:
       94,451): do not sum them; state what two consecutive readings of one
       dispatched session mean. No estimation, derivation, transcript parsing, or
       TUI scraping."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Record cites real claude-driver runs with raw verbatim samples, surface,
@@ -42,7 +42,20 @@ tasks:
       detail: Read the record against AC001 and AC005; confirm every shape has a
         verbatim sample or an explicit nothing-reported entry and that no figure
         is summed or estimated.
-    result: null
+    result:
+      summary: "[truncated] rved (not four); per-instance attribution is stable via
+        the notification task-id; Main-vs-Orchestrator split is one-sided
+        (Orchestrator reported as a subagent, Main Agent nothing). No
+        estimation, summing, transcript parsing, or TUI scraping; this repo's
+        .pitway/ untouched by experiments."
+      evidence: "Raw samples quoted verbatim in the record: worker 30201/2/12602;
+        resumed 30513/3/31778; resumed 29319/3/47434; reviewer 29762/1/7577;
+        background process notification with no usage element; main session no
+        figure. Throwaway repo scratchpad/m042-claude (git init + pitway init);
+        git status in this repo shows only docs/evidence/M042/claude.md new."
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T002
     name: Observe opencode driver usage reporting
