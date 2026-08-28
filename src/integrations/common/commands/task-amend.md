@@ -4,6 +4,8 @@ description: "PitWay: Amend a task's objective, scope, or verification definitio
 
 # task-amend
 
+**Role:** Main Agent
+
 ```sh
 pitway task-amend <task-id> --file <path> --change-log <text> [--json]
 ```

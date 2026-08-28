@@ -5,6 +5,8 @@ argument-hint: [id]
 
 # verify
 
+**Role:** Orchestrator (runs, --check records) · either (--status)
+
 ```sh
 pitway verify [id] [--status] [--json]
 pitway verify [id] --check <ctid> [--json]

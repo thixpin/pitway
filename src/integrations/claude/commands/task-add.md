@@ -5,6 +5,8 @@ argument-hint: <milestone-id>
 
 # task-add
 
+**Role:** Main Agent
+
 ```sh
 pitway task-add <milestone-id> --file <path> --change-log <text> [--json]
 ```

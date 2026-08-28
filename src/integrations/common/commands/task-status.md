@@ -4,6 +4,8 @@ description: "PitWay: Show a task's status, or its minimal execution context"
 
 # task-status
 
+**Role:** either (read-only)
+
 ```sh
 pitway task-status <id> [--context] [--json]
 ```

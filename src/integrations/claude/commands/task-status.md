@@ -5,6 +5,8 @@ argument-hint: <id>
 
 # task-status
 
+**Role:** either (read-only)
+
 ```sh
 pitway task-status <id> [--context] [--json]
 ```

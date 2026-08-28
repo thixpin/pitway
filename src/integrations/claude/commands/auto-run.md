@@ -5,6 +5,8 @@ argument-hint: <enable|disable|status> [milestone-id]
 
 # auto-run
 
+**Role:** Main Agent (enable, disable) · either (status)
+
 ```sh
 pitway auto-run enable [milestone-id] [--json]
 pitway auto-run disable [milestone-id] [--json]

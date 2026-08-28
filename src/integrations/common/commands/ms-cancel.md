@@ -4,6 +4,8 @@ description: "PitWay: Permanently abandon a draft milestone; the id is never reu
 
 # milestone-cancel
 
+**Role:** Main Agent
+
 ```sh
 pitway milestone-cancel <id> [--json]
 ```

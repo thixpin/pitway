@@ -4,6 +4,8 @@ description: "PitWay: Capture out-of-scope work discovered mid-task, without exp
 
 # backlog
 
+**Role:** Orchestrator (add, promote, archive) · either (list, show)
+
 ```sh
 pitway backlog add --title <text> --reason <text> [--milestone <id>] [--task <id>] [--json]
 pitway backlog list [--status pending|promoted|archived] [--milestone <id>] [--task <id>] [--json]

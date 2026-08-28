@@ -5,6 +5,8 @@ argument-hint: <id>
 
 # milestone-cancel
 
+**Role:** Main Agent
+
 ```sh
 pitway milestone-cancel <id> [--json]
 ```

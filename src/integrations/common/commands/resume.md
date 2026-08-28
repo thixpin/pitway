@@ -4,6 +4,8 @@ description: "PitWay: Reconstruct workflow state from .pitway/ and recommend the
 
 # resume
 
+**Role:** either (read-only)
+
 ```sh
 pitway resume [--json]
 ```

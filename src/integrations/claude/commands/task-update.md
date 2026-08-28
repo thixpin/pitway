@@ -5,6 +5,8 @@ argument-hint: <id> <status>
 
 # task-update
 
+**Role:** Orchestrator
+
 ```sh
 pitway task-update <id> <status> [--result <path>] [--message <path>] [--usage <json>] [--evidence <id>] [--json]
 ```

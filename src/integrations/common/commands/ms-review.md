@@ -4,6 +4,8 @@ description: "PitWay: Role-based milestone review workflow (start/brief/record/r
 
 # milestone-review
 
+**Role:** Orchestrator (start, brief, record, report) · Main Agent (decide)
+
 ```sh
 pitway milestone-review start <id> [--roles <csv>] [--json]
 pitway milestone-review brief <id> --role <role> [--json]

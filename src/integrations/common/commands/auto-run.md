@@ -4,6 +4,8 @@ description: "PitWay: Manage auto-run authorization for automatic task continuat
 
 # auto-run
 
+**Role:** Main Agent (enable, disable) · either (status)
+
 ```sh
 pitway auto-run enable [milestone-id] [--json]
 pitway auto-run disable [milestone-id] [--json]

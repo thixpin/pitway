@@ -5,6 +5,8 @@ argument-hint: <id>
 
 # task-integrate
 
+**Role:** Orchestrator
+
 ```sh
 pitway task-integrate <id> [--json]
 ```

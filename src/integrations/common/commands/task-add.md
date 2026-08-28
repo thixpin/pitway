@@ -4,6 +4,8 @@ description: "PitWay: Insert one new task into a confirmed or in_progress milest
 
 # task-add
 
+**Role:** Main Agent
+
 ```sh
 pitway task-add <milestone-id> --file <path> --change-log <text> [--json]
 ```

@@ -5,6 +5,8 @@ argument-hint: <id>
 
 # task-dispatch
 
+**Role:** Orchestrator
+
 ```sh
 pitway task-dispatch <id> [--json]
 ```

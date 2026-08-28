@@ -5,6 +5,8 @@ argument-hint: <start|brief|record|report|decide> <id>
 
 # milestone-review
 
+**Role:** Orchestrator (start, brief, record, report) · Main Agent (decide)
+
 ```sh
 pitway milestone-review start <id> [--roles <csv>] [--json]
 pitway milestone-review brief <id> --role <role> [--json]

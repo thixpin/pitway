@@ -5,6 +5,8 @@ argument-hint: <approve|commit|cancel> <milestone> [vr-id]
 
 # verification-repair
 
+**Role:** Main Agent (approve) · Orchestrator (propose, commit, cancel)
+
 ```sh
 pitway verification-repair approve <milestone> [--file <path> ...] [--check <id> ...] --change-log <text> [--json]
 pitway verification-repair commit <milestone> <vr-id> [--json]

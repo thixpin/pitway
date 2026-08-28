@@ -5,6 +5,8 @@ argument-hint: <id> [--target <branch>]
 
 # milestone-merge
 
+**Role:** Main Agent
+
 ```sh
 pitway milestone-merge <id> [--target <branch>] [--json]
 ```

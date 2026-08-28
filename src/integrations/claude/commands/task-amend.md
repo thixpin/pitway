@@ -5,6 +5,8 @@ argument-hint: <task-id>
 
 # task-amend
 
+**Role:** Main Agent
+
 ```sh
 pitway task-amend <task-id> --file <path> --change-log <text> [--json]
 ```
