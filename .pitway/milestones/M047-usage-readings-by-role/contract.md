@@ -2,7 +2,7 @@
 schema_version: 1
 id: M047
 title: Usage Readings by Role
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-29T16:51:47Z
 verification_approved_hash: sha256:9f87d3a6ec1473e85c78902b57f733708279523a23202fd61c9ee5decc796bc7
