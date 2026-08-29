@@ -16,6 +16,15 @@ export interface TaskStatusView {
   driver: string | null;
   model: string | null;
   result: Task['result'];
+  // M045/T005 (W5): the task's declared scope and verification definition
+  // -- what a task-amend needs to reconstruct honestly. Each scope field is
+  // present only when the task declares it (the same omission convention as
+  // --context's bundle); verification always. Additive: human output and
+  // every pre-existing key are unchanged.
+  relevantFiles?: string[];
+  contextFiles?: string[];
+  writeScope?: string[];
+  verification: { strategy: Task['verification']['strategy']; detail: string; timeoutMs?: number };
 }
 
 function findTask(tasks: Task[], id: string): Task {
@@ -47,6 +56,14 @@ export function buildTaskStatusView(root: string, taskId: string): TaskStatusVie
     driver: task.driver ?? null,
     model: task.model ?? null,
     result: task.result,
+    ...(task.relevant_files !== undefined ? { relevantFiles: [...task.relevant_files] } : {}),
+    ...(task.context_files !== undefined ? { contextFiles: [...task.context_files] } : {}),
+    ...(task.write_scope !== undefined ? { writeScope: [...task.write_scope] } : {}),
+    verification: {
+      strategy: task.verification.strategy,
+      detail: task.verification.detail,
+      ...(task.verification.timeout_ms !== undefined ? { timeoutMs: task.verification.timeout_ms } : {}),
+    },
   };
 }
 

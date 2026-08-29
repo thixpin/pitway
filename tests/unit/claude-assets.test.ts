@@ -546,7 +546,7 @@ const PRE_M023_ASSET_MANIFEST: ReadonlyArray<readonly [string, string]> = [
   ['commands/task-discard.md', '79da77dbeb8dd5cde8d7f3daf8831e683e5fb65dbfc03c7942701a82ff028c04'],
   ['commands/task-dispatch.md', '2cb938cabc90a35e214dcdf8a6b5ff08d2ca57a107adc70879db3a65c7140e45'],
   ['commands/task-integrate.md', 'b3bcbcc646797c86b4b33a71e932ba03406334257aaf516e944d0b6aa10ad80f'],
-  ['commands/task-status.md', 'fa9c320b0c0a3a1a26a78a64060914e265c4cdf17484c85615fc8187063bbf09'],
+  ['commands/task-status.md', '994d0c31d26b3c04e2833dcdfe7db5a5286b4e49482874b169587a9b92ece7b1'],
   ['commands/task-update.md', 'a1bb81a327a5d3cc85dc40a0c2d7f626d41e535b62705d5c4f36d4eb22fe4d14'],
   ['commands/task-verify.md', '6ed794181e4013d72485d27bec7e426cabb632277bd305c99458b968972da2e9'],
   ['commands/usage-add.md', '9a6b60b781dc30c32e34a3bc99d2c4257af172242923807cb802dc0499184bf6'],
