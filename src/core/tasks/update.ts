@@ -322,22 +322,23 @@ export function updateTask(
     // reach the completion checkpoint that would fold it in. Attempts
     // increments exactly once per (re)start, deterministically.
     //
-    // M030/T002 (AC002): a RETRY into in_progress -- from review (recovery),
-    // or from ready after failed/blocked -- carries genuinely dirty
-    // write_scope/relevant_files from the task's own prior, uncommitted
-    // attempt (none of review/failed/blocked ever commit). taskAttempts > 0
-    // is true exactly on a retry (attempts is immutable outside this one
-    // increment, per task-amend's AMENDABLE_FIELDS), so it uniformly grants
-    // the task's own declared paths expected-dirty status via
+    // M030/T002 (AC002) granted a RETRY into in_progress -- from review
+    // (recovery), or from ready after failed/blocked -- expected-dirty status
+    // for the task's own write_scope/relevant_files, since none of
+    // review/failed/blocked ever commit. M045/T003 (W3) extends the same
+    // grant to a genuine FIRST attempt: evidence or files a driver session
+    // prepared inside the task's own declared scope must not block the task
+    // from starting (M042/T002-T003 had to park and restore such files).
     // classifyDirtyPaths' purpose-built taskWriteScope/verifiedCleanStart
-    // option, without needing to know which prior status led here. A
-    // genuine first attempt (taskAttempts === 0) keeps verifiedCleanStart
-    // false, leaving this guarantee exactly as strict as before.
+    // option carries both cases uniformly; every path outside the declared
+    // scope (plus tasks.yaml, verification state, pending journal targets)
+    // still refuses exactly as before, and completion's write_scope
+    // enforcement is untouched.
     const taskAttempts = task.attempts ?? 0;
     const classified = classifyDirtyPaths(root, {
       journalTargetPaths: resolvePendingJournalTargets(root, milestoneId),
       taskWriteScope: task.write_scope ?? task.relevant_files ?? [],
-      verifiedCleanStart: taskAttempts > 0,
+      verifiedCleanStart: true,
       // B029: a `pitway verify` run between tasks leaves verification-
       // results.yaml (and, mid-repair, verification-repairs.yaml) dirty
       // with no journal entry of its own (deliberately -- see journal.ts) --

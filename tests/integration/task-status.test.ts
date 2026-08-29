@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { saveContract, saveState, saveTasks } from '../../src/state/store.js';
+import { loadTasks, saveContract, saveState, saveTasks } from '../../src/state/store.js';
 import { buildCli } from '../../src/cli/index.js';
 import { registerTaskStatusCommand } from '../../src/cli/commands/task-status.js';
 import { buildTaskContextBundle } from '../../src/core/tasks/context-bundle.js';
@@ -634,5 +634,53 @@ describe('pitway task-status', () => {
       const bundle = buildTaskContextBundle(frontmatter, tasks, 'T002');
       expect(bundle.dependencyResults).toEqual([{ id: 'T001', summary: null }]);
     });
+  });
+});
+
+// M045/T005 (W5): task-status --json additively exposes the task's declared
+// scope and verification definition -- the fields a task-amend needs --
+// following --context's omission convention; human output is unchanged.
+describe('pitway task-status --json scope and verification fields (M045/T005)', () => {
+  async function jsonView(id: string): Promise<Record<string, unknown>> {
+    const program = buildCli();
+    const lines: string[] = [];
+    registerTaskStatusCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'task-status', id, '--json']);
+    return JSON.parse(lines.join('\n')) as Record<string, unknown>;
+  }
+
+  it('carries relevantFiles and verification for a legacy relevant_files task, omitting contextFiles/writeScope', async () => {
+    const view = await jsonView('T002');
+    expect(view.relevantFiles).toEqual(['src/target.ts']);
+    expect('contextFiles' in view).toBe(false);
+    expect('writeScope' in view).toBe(false);
+    expect(view.verification).toEqual({ strategy: 'tdd', detail: 'npm test -- target.test.ts' });
+    // Existing keys untouched.
+    expect(view).toMatchObject({ id: 'T002', status: 'in_progress', dependsOn: ['T001'], driver: null, model: null });
+  });
+
+  it('carries contextFiles, writeScope, and verification.timeoutMs for a scoped task, omitting relevantFiles', async () => {
+    const file = loadTasks(root, 'M001');
+    file.tasks.push({
+      ...task({ id: 'T004', status: 'planned' }),
+      relevant_files: undefined,
+      context_files: ['src/a.ts', 'src/b.ts'],
+      write_scope: ['src/a.ts'],
+      verification: { strategy: 'command', detail: 'npm test', timeout_ms: 600000 },
+    });
+    saveTasks(root, 'M001', file);
+    const view = await jsonView('T004');
+    expect(view.contextFiles).toEqual(['src/a.ts', 'src/b.ts']);
+    expect(view.writeScope).toEqual(['src/a.ts']);
+    expect('relevantFiles' in view).toBe(false);
+    expect(view.verification).toEqual({ strategy: 'command', detail: 'npm test', timeoutMs: 600000 });
+  });
+
+  it('leaves human output byte-identical', async () => {
+    const program = buildCli();
+    const lines: string[] = [];
+    registerTaskStatusCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'task-status', 'T002']);
+    expect(lines.join('\n')).toBe('🛠 Task T002  ● In Progress\nDepends on: T001\nResult: (none yet)');
   });
 });

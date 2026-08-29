@@ -190,7 +190,7 @@ export function runTaskVerify(
   taskId: string,
   inputs: RunTaskVerifyInputs = {},
 ): JournalTaskVerifyEvidence {
-  let timeoutMs = DEFAULT_TIMEOUT_MS;
+  let explicitTimeoutMs: number | undefined;
   if (inputs.timeoutMs !== undefined) {
     const t = inputs.timeoutMs;
     if (!Number.isInteger(t) || t < 1000 || t > 3_600_000) {
@@ -198,7 +198,7 @@ export function runTaskVerify(
         `invalid --timeout ${inputs.timeoutMs}: must be an integer between 1000 and 3600000 ms`,
       );
     }
-    timeoutMs = t;
+    explicitTimeoutMs = t;
   }
 
   const milestoneId = resolveActiveMilestone(root);
@@ -230,6 +230,10 @@ export function runTaskVerify(
   assertDirtySubset(root, allowedPaths);
 
   const fingerprint = { entries: buildFingerprint(root, declaredPaths) };
+
+  // M045/T001 (W1): explicit --timeout wins; else the task's own declared
+  // verification.timeout_ms; else the documented default.
+  const timeoutMs = explicitTimeoutMs ?? task.verification.timeout_ms ?? DEFAULT_TIMEOUT_MS;
 
   const start = Date.now();
   const result = executeCommand(task.verification.detail, { cwd: root, timeoutMs });

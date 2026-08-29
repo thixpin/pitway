@@ -115,6 +115,46 @@ describe('runTaskVerify --timeout (M029/T001, AC001)', () => {
   });
 });
 
+// M045/T001 (W1): a task may declare its own verification.timeout_ms; the
+// flag still wins; undeclared tasks keep the 120000ms default.
+describe('runTaskVerify honors task-level verification.timeout_ms (M045/T001)', () => {
+  function setupTimedTask(detail: string, timeoutMs?: number): void {
+    mkdirSync(join(repo, 'src'), { recursive: true });
+    writeFileSync(join(repo, 'src', 'thing.ts'), 'export const x = 1;\n');
+    commitAll('baseline with src/thing.ts');
+    setTasks([
+      baseTask({
+        verification: { strategy: 'command', detail, ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}) },
+      }),
+    ]);
+  }
+
+  it('times out at the declared budget when no --timeout is given', () => {
+    setupTimedTask('node -e "setTimeout(() => process.exit(0), 3000)"', 1000);
+    const record = runTaskVerify(repo, 'T001');
+    expect(record.terminationReason).toBe('timeout');
+  });
+
+  it('passes within the declared budget when no --timeout is given', () => {
+    setupTimedTask('node -e "setTimeout(() => process.exit(0), 50)"', 5000);
+    const record = runTaskVerify(repo, 'T001');
+    expect(record.terminationReason).toBe('exited');
+    expect(record.exitCode).toBe(0);
+  });
+
+  it('an explicit --timeout overrides the declared budget', () => {
+    setupTimedTask('node -e "setTimeout(() => process.exit(0), 3000)"', 60_000);
+    const record = runTaskVerify(repo, 'T001', { timeoutMs: 1000 });
+    expect(record.terminationReason).toBe('timeout');
+  });
+
+  it('a task that declares nothing keeps the default budget (behavior unchanged)', () => {
+    setupTimedTask('exit 0');
+    const record = runTaskVerify(repo, 'T001');
+    expect(record.terminationReason).toBe('exited');
+  });
+});
+
 describe('runTaskVerify (AC001)', () => {
   it('refuses when the task is not in_progress', () => {
     setTasks([baseTask({ status: 'ready' })]);

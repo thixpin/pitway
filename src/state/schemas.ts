@@ -166,6 +166,10 @@ export const taskSchema = z
     verification: z.strictObject({
       strategy: z.enum(['tdd', 'command', 'manual', 'review']),
       detail: z.string().min(1),
+      // M045/T001 (W1): additive-optional per-task budget for task-verify,
+      // same bounds as a contract check's timeout_ms; an explicit
+      // task-verify --timeout still wins; absent keeps the 120000ms default.
+      timeout_ms: timeoutMsSchema.optional(),
     }),
     result: z
       .strictObject({ summary: z.string().min(1), evidence: z.string().min(1) })

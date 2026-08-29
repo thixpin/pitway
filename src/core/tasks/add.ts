@@ -3,6 +3,7 @@ import { parse } from 'yaml';
 import { formatIssues } from '../../state/contract-file.js';
 import { appendJournalEntry } from '../../state/journal.js';
 import { taskSchema, type Task } from '../../state/schemas.js';
+import { assertFileScopedTasks } from '../milestones/create.js';
 import { loadContract, loadTasks, readInputFile, saveTasks } from '../../state/store.js';
 import { resolveReadyTasks } from './dependencies.js';
 
@@ -123,6 +124,8 @@ export function addTask(
     throw new TaskAddError(`invalid new task ${nextId}: ${formatIssues(parsed.error)}`);
   }
   const newTask: Task = parsed.data;
+  // M045/T002 (W2): same file-only scope rule as milestone-add.
+  assertFileScopedTasks(root, [newTask], (m) => { throw new TaskAddError(m); });
 
   const byId = new Map(tasksFile.tasks.map((t) => [t.id, t]));
   for (const depId of newTask.depends_on) {

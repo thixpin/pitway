@@ -27,4 +27,9 @@ sibling task's completion commit) folds the pending entry.
 
 Task file format: `../draft-formats.md`.
 
-See `../protocol-driver.md`. Run `pitway task-add --help` for flags.
+See `../protocol-driver.md`. Scope entries (`write_scope`, `context_files`, `relevant_files`) must name
+files, never directories -- Core matches dirty paths exactly, so a directory
+entry can never be satisfied at execution; the command refuses it by name
+(M045). Files that do not exist yet are fine.
+
+Run `pitway task-add --help` for flags.

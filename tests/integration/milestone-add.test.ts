@@ -508,3 +508,42 @@ describe('pitway milestone-add default CommandDeps fallbacks', () => {
     expect(calls[0]?.[0]).toMatch(/🏁 Created milestone M001 "Example milestone" as draft\./);
   });
 });
+
+// M045/T002 (W2): directory-form scope entries are refused at draft time --
+// Core matches dirty paths exactly, so a directory can never be satisfied at
+// execution (M041/T001 blocked on exactly this). Refusal, not expansion.
+describe('pitway milestone-add refuses directory-form scope entries (M045/T002)', () => {
+  it('refuses a trailing-slash entry, naming the task, field, and path', async () => {
+    const { contract, tasks } = writeInputs(root);
+    writeFileSync(tasks, TASKS_FIXTURE.replace('- src/x.ts', '- src/'));
+    const { error } = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
+    expect(error?.message).toMatch(/T001: relevant_files entry "src\/" is a directory/);
+    expect(error?.message).toMatch(/scope entries must be files/);
+    expect(loadState(root).milestones).toEqual([]);
+  });
+
+  it('refuses an entry that resolves to an existing directory', async () => {
+    mkdirSync(join(root, 'docs'), { recursive: true });
+    const { contract, tasks } = writeInputs(root);
+    writeFileSync(tasks, TASKS_FIXTURE.replace('- src/x.ts', '- docs'));
+    const { error } = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
+    expect(error?.message).toMatch(/T001: relevant_files entry "docs" is a directory/);
+  });
+
+  it('--replace applies the same refusal', async () => {
+    const { contract, tasks } = writeInputs(root);
+    expect((await run(['milestone-add', '--contract', contract, '--tasks', tasks], root)).error).toBeUndefined();
+    const replacement = writeReplacementInputs(root);
+    writeFileSync(replacement.tasks, REPLACEMENT_TASKS_FIXTURE.replace('- src/y.ts', '- src/'));
+    const { error } = await run(['milestone-add', '--replace', 'M001', '--contract', replacement.contract, '--tasks', replacement.tasks], root);
+    expect(error?.message).toMatch(/is a directory/);
+    expect(loadTasks(root, 'M001').tasks[0]!.relevant_files).toEqual(['src/x.ts']);
+  });
+
+  it('still accepts a not-yet-existing file path', async () => {
+    const { contract, tasks } = writeInputs(root);
+    writeFileSync(tasks, TASKS_FIXTURE.replace('- src/x.ts', '- src/not-created-yet.ts'));
+    const { error } = await run(['milestone-add', '--contract', contract, '--tasks', tasks], root);
+    expect(error).toBeUndefined();
+  });
+});
