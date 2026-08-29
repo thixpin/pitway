@@ -580,3 +580,20 @@ describe('pitway task-add: resume and milestone-status render with the entry pen
     expect(status.lines.join('\n')).toContain('T004');
   });
 });
+
+// M045/T002 (W2): task-add refuses directory-form scope entries the same way.
+describe('pitway task-add refuses directory-form scope entries (M045/T002)', () => {
+  it('refuses a trailing-slash context_files entry and an existing-directory write_scope entry', async () => {
+    const slash = await addTaskCmd(newTaskFields({ context_files: ['src/', 'src/d.ts'], write_scope: ['src/d.ts'] }));
+    expect(slash.error?.message).toMatch(/T004: context_files entry "src\/" is a directory/);
+    mkdirSync(join(root, 'lib'), { recursive: true });
+    const dir = await addTaskCmd(newTaskFields({ context_files: ['lib'], write_scope: ['lib'] }));
+    expect(dir.error?.message).toMatch(/T004: (context_files|write_scope) entry "lib" is a directory/);
+    expect(pendingAddEntries()).toHaveLength(0);
+  });
+
+  it('still accepts a not-yet-existing file', async () => {
+    const { error } = await addTaskCmd(newTaskFields({ context_files: ['src/new.ts'], write_scope: ['src/new.ts'] }));
+    expect(error).toBeUndefined();
+  });
+});

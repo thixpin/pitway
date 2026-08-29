@@ -1,3 +1,5 @@
+import { existsSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { parse } from 'yaml';
 import {
   createMilestoneDir,
@@ -106,6 +108,31 @@ export function validateDraftInputs(contractPath: string, tasksPath: string): Va
   return { contract, tasksInput };
 }
 
+// M045/T002 (W2): scope entries must be files. Core matches dirty paths by
+// exact string membership (assertDirtySubset / checkWriteScope), so a
+// directory entry validates at draft time but can never be satisfied at
+// execution -- M041/T001 blocked on exactly this. Refusal rather than
+// expansion: expanding at draft time would silently widen an approved
+// scope to files the author never listed and drift as files are added;
+// the declared list stays the single source of truth. Not-yet-existing
+// paths (files a task will create) are allowed.
+export function assertFileScopedTasks(root: string, tasks: TasksFile['tasks'], fail: (message: string) => never): void {
+  for (const task of tasks) {
+    for (const field of ['write_scope', 'context_files', 'relevant_files'] as const) {
+      for (const entry of task[field] ?? []) {
+        const isDirectory =
+          entry.endsWith('/') || (existsSync(join(root, entry)) && statSync(join(root, entry)).isDirectory());
+        if (isDirectory) {
+          fail(
+            `${task.id}: ${field} entry "${entry}" is a directory; scope entries must be files ` +
+              `(Core matches dirty paths exactly)`,
+          );
+        }
+      }
+    }
+  }
+}
+
 export function createMilestone(root: string, inputs: MilestoneAddInputs): MilestoneAddView {
   const state = loadState(root);
   assertActiveMilestoneTerminal(root, state);
@@ -119,6 +146,7 @@ export function createMilestone(root: string, inputs: MilestoneAddInputs): Miles
   }
 
   const { contract, tasksInput } = validateDraftInputs(inputs.contractPath, inputs.tasksPath);
+  assertFileScopedTasks(root, tasksInput.tasks, (m) => { throw new MilestoneAddError(m); });
   const requirementText =
     inputs.requirementPath === undefined ? null : readInput(inputs.requirementPath, 'requirement');
 
@@ -174,6 +202,7 @@ export function replaceMilestoneDraft(
   }
 
   const { contract, tasksInput } = validateDraftInputs(inputs.contractPath, inputs.tasksPath);
+  assertFileScopedTasks(root, tasksInput.tasks, (m) => { throw new MilestoneAddError(m); });
 
   let requirementId: string | null = existing.frontmatter.requirement;
   if (inputs.requirementPath !== undefined) {

@@ -89,7 +89,7 @@ tasks:
       by --replace, and a task-add file with a directory context_files entry
       likewise; a draft naming only files (including a not-yet-existing file)
       still registers."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - milestone-add, milestone-add --replace, and task-add refuse directory
@@ -111,6 +111,8 @@ tasks:
       - tests/integration/task-add.test.ts
       - tests/unit/draft-formats.test.ts
       - tests/unit/claude-assets.test.ts
+      - src/integrations/common/commands/ms-add.md
+      - src/integrations/claude/commands/ms-add.md
     write_scope:
       - src/core/milestones/create.ts
       - src/core/tasks/add.ts
@@ -123,12 +125,25 @@ tasks:
       - tests/integration/task-add.test.ts
       - tests/unit/draft-formats.test.ts
       - tests/unit/claude-assets.test.ts
+      - src/integrations/common/commands/ms-add.md
+      - src/integrations/claude/commands/ms-add.md
     verification:
       strategy: tdd
       detail: npx vitest run tests/integration/milestone-add.test.ts
         tests/integration/task-add.test.ts tests/unit/draft-formats.test.ts
         tests/unit/claude-assets.test.ts
-    result: null
+    result:
+      summary: "[truncated] : expansion would silently widen an approved scope and
+        drift as files are added. Docs: milestone-add.md, task-add.md (common +
+        claude, ms-add aliases synced byte-identical), draft-formats.md; pinned
+        hashes regenerated. Scope amendment (developer-approved) added the two
+        ms-add.md aliases."
+      evidence: Tests  270 passed (270) | Start at  22:25:13 | Duration  21.39s
+        (transform 770ms, setup 0ms, import 1.12s, tests 24.72s, environment
+        0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T003
     name: First-attempt in_progress tolerates the task's own in-scope dirt (W3)

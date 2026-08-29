@@ -27,5 +27,10 @@ use `milestone-confirm --amend` instead. To abandon a draft permanently
 instead of correcting it, use `milestone-cancel`.
 
 
+Scope entries (`write_scope`, `context_files`, `relevant_files`) must name
+files, never directories -- Core matches dirty paths exactly, so a directory
+entry can never be satisfied at execution; the command refuses it by name
+(M045). Files that do not exist yet are fine.
+
 Draft contract/tasks file formats: `../draft-formats.md`.
 Run `pitway milestone-add --help` for flags.

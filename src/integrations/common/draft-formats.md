@@ -56,7 +56,8 @@ One paragraph: why this milestone exists.
 Input to `pitway milestone-add --tasks <path>`. Ids are sequential `Tnnn`;
 each task declares either `relevant_files` (legacy read+write scope) or the
 `context_files` + `write_scope` pair (reads + enforced write boundary) —
-never both styles mixed within one task.
+never both styles mixed within one task. Every scope entry must be a file
+path -- directories are refused at `milestone-add`/`task-add` (M045).
 
 ```yaml
 schema_version: 1
