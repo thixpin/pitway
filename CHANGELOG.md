@@ -1,5 +1,45 @@
 # Changelog
 
+## [1.4.0] — 2026-08-29
+
+### Highlights
+
+Five workflow frictions PitWay's own dogfooding ranked highest, each fixed
+at its smallest architecture-consistent point, plus two structural
+cleanups. No human gate changes.
+
+- **Per-task verification timeout.** A task may declare
+  `verification.timeout_ms` (same bounds as a contract check's timeout);
+  `task-verify` honors it when `--timeout` is omitted, so a full-suite gate
+  task no longer false-fails at the 120 s default. An explicit `--timeout`
+  still wins; undeclared tasks are unchanged
+- **Directory-form scope entries are refused at draft time.**
+  `milestone-add`, `--replace`, and `task-add` reject a `write_scope` /
+  `context_files` / `relevant_files` entry that is a directory (trailing
+  `/` or an existing directory), naming the task, field, and path — Core
+  matches dirty paths exactly, so such an entry could never be satisfied
+  at execution. Files that do not exist yet are still fine
+- **A first `in_progress` attempt tolerates the task's own in-scope dirt.**
+  Evidence or files prepared inside the task's declared scope no longer
+  block it from starting (the allowance retries already had). Every path
+  outside the declared scope still refuses, and completion's write-scope
+  enforcement is untouched
+- **`milestone-confirm` absorbs a pending `backlog.yaml`.** A backlog item
+  added while no milestone was active rides the baseline commit instead of
+  forcing a chore commit; all other unexpected dirt still refuses
+- **`task-status --json` exposes scope and verification.** `relevantFiles`
+  or `contextFiles` + `writeScope` (whichever the task declares) and
+  `verification` (`strategy`, `detail`, `timeoutMs` when declared) — the
+  fields a `task-amend` file must restate. Human output unchanged
+- **Cleanup:** the one-time M023 asset-manifest check is retired (doc edits
+  no longer need a hand-regenerated hash; every durable content invariant
+  still has its own suite), and the journal's schemas now live in
+  `src/state/journal-schemas.ts` behind a re-export — a pure move, no
+  importer changes
+
+Existing installs will report configuration drift for the six updated
+command docs until `pitway init --reconfigure` is run.
+
 ## [1.3.0] — 2026-08-29
 
 ### Highlights
