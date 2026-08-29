@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.3.0] — 2026-08-29
+
+### Highlights
+
+- `pitway resume` now lists two recovery inputs it used to tolerate
+  silently: **pending journal entries** for the active milestone (an
+  approved amendment or usage recording awaiting its checkpoint commit,
+  with the file it will land in) and a **pending verification repair**
+  (its VR id, files, and checks). Both appear only when present, so
+  existing `--json` output is unchanged when nothing is pending
+- **`verification-repair` accepts manual and review checks.** A repair
+  scoped to a review-type check no longer has to borrow an unrelated
+  command check. At `commit`, command checks rerun as before; a manual or
+  review check is satisfied only by a developer verdict recorded with
+  `verify <milestone> --check <id> --pass` *after* the approval — the
+  honest equivalent of a rerun — and the refusal names the exact command
+  to run
+- **`quick-change commit` writes a bounded subject line**: the objective's
+  first sentence, cut at a word boundary to fit 72 characters, with the
+  full objective carried in the commit body when the subject cannot hold
+  it verbatim. Short objectives commit exactly as before
+- The Orchestrator role's protocol (`protocol-orchestrator.md`) gains its
+  lifecycle rules: what must already be durable before a session's context
+  is disposable, a six-step restart procedure keyed to `pitway resume`,
+  and two decided rules from PitWay's own split-role dogfood — the
+  Orchestrator never runs `git` against the working tree (RED checks move
+  files aside with its own tools, like a worker), and it owns the
+  `blocked → ready` recovery transition after a developer-approved
+  amendment. Decisions: `docs/architecture/orchestrator-role.md`
+  (Addendum); audit: `docs/architecture/orchestrator-flush-audit.md`
+
+Existing installs will report configuration drift for
+`protocol-orchestrator.md` until `pitway init --reconfigure` is run.
+
 ## [1.2.0] — 2026-08-29
 
 ### Highlights
