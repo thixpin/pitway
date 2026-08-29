@@ -452,3 +452,55 @@ describe('resolveChangeCommitSha', () => {
     expect(resolveChangeCommitSha(repo, 'qc-nonexistent')).toBeUndefined();
   });
 });
+
+// B041 (qc-465f7e1e): the commit subject is bounded and derived from the
+// objective; the full objective lives in the body when the subject cannot
+// carry it verbatim. Short objectives commit exactly as before.
+describe('commitQuickChange commit subject (B041)', () => {
+  function commitWith(objective: string): string {
+    const created = createQuickChange(repo, {
+      objective,
+      scope: ['README.md'],
+      verifyCommand: 'echo ok',
+      tddExempt: true,
+      tddExemptReason: 'test-only: echo ok has no RED state',
+    });
+    const approved = approveQuickChange(repo, created.id);
+    writeFileSync(join(repo, 'README.md'), `${objective.length}\n`);
+    runQuickChange(repo, approved.id);
+    commitQuickChange(repo, approved.id);
+    return headMessage(repo);
+  }
+
+  it('keeps a short single-sentence objective as the whole subject, with no duplicated body', () => {
+    const message = commitWith('Fix the readme typo');
+    const [subject = '', blank, ...rest] = message.split('\n');
+    expect(subject).toBe('fix: Fix the readme typo');
+    expect(blank).toBe('');
+    expect(rest.join('\n')).toMatch(/^PitWay-Change: qc-/);
+  });
+
+  it('cuts a long multi-sentence objective to a <=72-char first-sentence subject with an ellipsis and carries the full objective in the body', () => {
+    const objective =
+      'B999: make the very long objective text fit the git subject line by cutting it sensibly at a word boundary. ' +
+      'The second sentence explains the rationale in more detail and must survive in the body, not the subject.';
+    const message = commitWith(objective);
+    const [subject = '', blank, ...rest] = message.split('\n');
+    expect(subject.startsWith('fix: ')).toBe(true);
+    expect(subject.length).toBeLessThanOrEqual(72);
+    expect(subject.endsWith('…')).toBe(true);
+    expect(subject).not.toMatch(/\s…$/); // cut at a word boundary, no dangling space
+    expect(blank).toBe('');
+    const body = rest.join('\n');
+    expect(body).toContain(objective);
+    expect(body).toMatch(/PitWay-Change: qc-/);
+  });
+
+  it('uses the whole first sentence when it fits, dropping the rest to the body without an ellipsis', () => {
+    const objective = 'Tighten the parser. It previously accepted trailing commas in the id list, which the schema forbids.';
+    const message = commitWith(objective);
+    const [subject = '', , ...rest] = message.split('\n');
+    expect(subject).toBe('fix: Tighten the parser.');
+    expect(rest.join('\n')).toContain(objective);
+  });
+});

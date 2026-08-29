@@ -797,11 +797,11 @@ items:
       of characters long). Should split at the first sentence/line or accept a
       --message file like task-update completed, keeping the objective in the
       body."
-    status: pending
+    status: archived
     source:
       milestone: null
       task: null
     created_at: 2026-08-28T10:36:00.345Z
-    resolved_at: null
+    resolved_at: 2026-08-29T02:47:51.055Z
     promoted_to: null
-    archived_reason: null
+    archived_reason: closed by quick-change qc-465f7e1e

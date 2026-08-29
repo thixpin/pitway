@@ -74,6 +74,32 @@ function assertDirtySubset(root: string, expectedPaths: string[]): void {
 // the full identity signal, which is sufficient since no other PitWay
 // commit kind ever carries a PitWay-Change trailer (see
 // resolveChangeCommitSha's comment in src/git/trailers.ts).
+// B041: a bounded commit subject derived from the objective. The subject is
+// the objective's first sentence (up to the first ". " / "! " / "? " or a
+// newline), cut at a word boundary so the whole line -- including the
+// "fix: " prefix -- stays within SUBJECT_MAX, with an ellipsis when cut.
+// Whenever the subject does not carry the objective verbatim, the full
+// objective follows as the body, so nothing the developer approved at
+// `create` is lost from the commit. A short single-sentence objective
+// commits exactly as before: `fix: <objective>` and no body.
+const SUBJECT_PREFIX = 'fix: ';
+const SUBJECT_MAX = 72;
+
+export function buildCommitText(objective: string): string {
+  const flat = objective.replace(/\s+/g, ' ').trim();
+  const sentenceEnd = flat.search(/[.!?](\s|$)/);
+  const firstSentence = sentenceEnd === -1 ? flat : flat.slice(0, sentenceEnd + 1);
+  const budget = SUBJECT_MAX - SUBJECT_PREFIX.length;
+  let subjectText = firstSentence;
+  if (subjectText.length > budget) {
+    const cut = subjectText.slice(0, budget - 1);
+    const lastSpace = cut.lastIndexOf(' ');
+    subjectText = `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+  }
+  const subject = `${SUBJECT_PREFIX}${subjectText}`;
+  return subjectText === flat ? subject : `${subject}\n\n${objective}`;
+}
+
 export function commitQuickChange(root: string, changeId: string): QuickChangeCommitView {
   const current = requireQuickChange(root, changeId);
 
@@ -166,7 +192,7 @@ export function commitQuickChange(root: string, changeId: string): QuickChangeCo
     }
   }
 
-  const message = composeMessage(`fix: ${current.objective}`, { 'PitWay-Change': current.id });
+  const message = composeMessage(buildCommitText(current.objective), { 'PitWay-Change': current.id });
 
   const result = commitOrResume(root, {
     expectedPaths,
