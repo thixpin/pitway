@@ -178,7 +178,7 @@ tasks:
       --reading` (never to a task's --usage, which stays per dispatched worker);
       reword nothing else. The M041 partition-consistency test must still pass
       (usage-add stays Orchestrator-owned; no command named on the wrong side)."
-    status: ready
+    status: completed
     depends_on:
       - T002
       - T003
@@ -207,14 +207,24 @@ tasks:
       detail: npx vitest run tests/unit/claude-assets.test.ts
         tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
       timeout_ms: 300000
-    result: null
+    result:
+      summary: "[truncated]  that readings are counted, never summed. dispatch.md's
+        usage-propagation MUST gains one sentence directing an Orchestrator
+        session's own runtime readings to usage-add --reading, never to a task's
+        --usage; nothing else reworded. First doc task since M046 with no
+        pinned-hash regeneration."
+      evidence: Tests  322 passed (322) | Start at  23:58:19 | Duration  325ms
+        (transform 143ms, setup 0ms, import 223ms, tests 313ms, environment 0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T005
     name: Run the full verification gate
     objective: npm run typecheck && npm test from a clean tree via task-verify with
       the declared timeout_ms. No code changes expected; on failure stop and
       report.
-    status: waiting
+    status: ready
     depends_on:
       - T004
     acceptance_criteria:

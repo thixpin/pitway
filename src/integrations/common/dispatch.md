@@ -63,7 +63,10 @@ decision to the developer. The worker never runs any of them.
    execution has no such figure
    to extract; leave `--usage` unset there — `usage` correctly stays
    `null`. Never estimate, derive, or fabricate a number when none was
-   reported.
+   reported. An Orchestrator session's OWN runtime readings (a
+   figure the harness reports about the Orchestrator session, not about a
+   dispatched worker) go to `pitway usage-add <milestone> --reading <json>`
+   as readings, never to a task's `--usage` (M047).
 
 **The same MUST rule applies to a dispatched reviewer's findings** (M021):
 when a dispatched reviewer subagent's own tool result reports runtime
