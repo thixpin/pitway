@@ -319,7 +319,7 @@ tasks:
       draft registered before T001 lands; declaring it via task-amend after T001
       is optional, not required). No code changes expected; on failure stop and
       report.
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -334,5 +334,13 @@ tasks:
     verification:
       strategy: command
       detail: npm run typecheck && npm test
-    result: null
+    result:
+      summary: "Milestone gate: typecheck and full suite pass from a clean tree; no
+        code changes."
+      evidence: Tests  2293 passed (2293) | Start at  22:33:31 | Duration  159.88s
+        (transform 4.91s, setup 0ms, import 21.17s, tests 1080.42s, environment
+        12ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
