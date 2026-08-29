@@ -690,3 +690,46 @@ describe('pitway milestone-status padded fixed-width table (B022)', () => {
     assertFixedWidth(tableLines(await runStatus()));
   });
 });
+
+// M047/T003 (AC003, AC005): per-bucket lines under the token breakdown, only
+// when something is recorded; --json byte-identical otherwise; never a
+// cross-bucket total or a percentage.
+describe('pitway milestone-status per-bucket usage lines (M047/T003)', () => {
+  async function status(args: string[]): Promise<string> {
+    const program = buildCli();
+    const lines: string[] = [];
+    registerMilestoneStatusCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'milestone-status', 'M001', ...args]);
+    return lines.join('\n');
+  }
+
+  it('omits the bucket lines and the --json key when nothing is recorded', async () => {
+    const human = await status([]);
+    expect(human).not.toContain('orchestrator:');
+    expect(human).not.toContain('readings:');
+    const view = JSON.parse(await status(['--json']));
+    expect('buckets' in view).toBe(false);
+  });
+
+  it('renders one line per bucket with measured-plus-missing and a readings count, and no total or percentage', async () => {
+    saveUsage(root, 'M001', {
+      schema_version: 1,
+      planning: { attempts: 1, total_tokens: 200 },
+      qa: null,
+      readings: [{ bucket: 'orchestrator', count: 72821, semantics: 'undetermined', recorded_at: '2026-08-29T00:00:00Z' }],
+    });
+    const human = await status([]);
+    // planning 200 -> main; T001-T003 inline with usage null + qa null -> 4 main misses.
+    expect(human).toContain('  main: 200 (4 missing)');
+    expect(human).toContain('  orchestrator: N/A (0 missing) · readings: 1 (measured readings, not summed)');
+    expect(human).toContain('  worker: N/A (0 missing)');
+    expect(human).toContain('  auxiliary: N/A (0 missing)');
+    // No percentage or cross-bucket total on any bucket line (the workload
+    // header and racing footer carry their own, unrelated, percentage).
+    const bucketLines = human.split('\n').filter((l) => /^  (main|orchestrator|worker|auxiliary):/.test(l));
+    expect(bucketLines).toHaveLength(4);
+    for (const l of bucketLines) expect(l).not.toMatch(/%|total/);
+    const view = JSON.parse(await status(['--json']));
+    expect(view.buckets.orchestrator).toEqual({ measured: null, missing: 0, readings: 1 });
+  });
+});

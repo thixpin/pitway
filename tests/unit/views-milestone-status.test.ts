@@ -7,6 +7,7 @@ import { buildMilestoneStatusView } from '../../src/core/views/milestone-status.
 import { taskStatusLabel } from '../../src/core/tasks/status-label.js';
 import { taskStatusLabel as cliTaskStatusLabel } from '../../src/cli/format.js';
 import { saveContract, saveReviews, saveState, saveTasks, saveUsage, saveVerificationResults } from '../../src/state/store.js';
+import { appendWorktreeIntegrateRecord } from '../../src/state/journal.js';
 import type { ContractFrontmatter, Task } from '../../src/state/schemas.js';
 
 // B037: buildMilestoneStatusView is Core view assembly, exercised directly.
@@ -127,5 +128,72 @@ describe('taskStatusLabel lives in Core; cli/format.ts re-exports the same funct
     expect(taskStatusLabel('blocked')).toBe('⚠ Blocked');
     expect(taskStatusLabel('completed')).toBe('✓ Completed');
     expect(taskStatusLabel('failed')).toBe('✗ Failed');
+  });
+});
+
+// M047/T003 (AC003, AC005): M040 Decision 4's bucket mapping is computed,
+// never stored; readings are counted, never summed; the field is absent
+// when the milestone has no usage and no readings.
+describe('buildMilestoneStatusView per-bucket usage (M047/T003)', () => {
+  it('maps existing usage onto buckets by execution mode and category, and counts readings without summing', () => {
+    // Fixture: T001 usage 1500 (inline -> main), planning 200 (-> main).
+    // Make T001 a worktree-integrated task -> its usage maps to worker.
+    appendWorktreeIntegrateRecord(root, {
+      id: 'wti-1',
+      dispatchId: 'wtd-1',
+      milestone: 'M001',
+      taskId: 'T001',
+      workerSha: 'a'.repeat(40),
+      at: '2026-08-29T00:00:00Z',
+    });
+    saveReviews(root, 'M001', {
+      schema_version: 1,
+      sessions: [
+        {
+          id: 'rev-a1b2c3',
+          status: 'open',
+          created_at: '2026-08-29T00:00:00Z',
+          roles: ['architect'],
+          content_hash: `sha256:${'b'.repeat(64)}`,
+          findings: [{ role: 'architect', recorded_at: '2026-08-29T01:00:00Z', findings: [], usage: { total_tokens: 40 } }],
+          decision: null,
+        },
+      ],
+    });
+    saveUsage(root, 'M001', {
+      schema_version: 1,
+      planning: { attempts: 1, total_tokens: 200 },
+      qa: null,
+      readings: [
+        { bucket: 'orchestrator', count: 72821, semantics: 'undetermined', recorded_at: '2026-08-29T00:00:00Z' },
+        { bucket: 'orchestrator', count: 94451, semantics: 'undetermined', recorded_at: '2026-08-29T00:01:00Z' },
+      ],
+    });
+    const view = buildMilestoneStatusView(root, 'M001');
+    expect(view.buckets).toEqual({
+      // planning 200 -> main; T002/T003 inline with usage null -> 2 main
+      // misses; qa null -> 1 more; T004 is cancelled and counts nowhere.
+      main: { measured: 200, missing: 3, readings: 0 },
+      orchestrator: { measured: null, missing: 0, readings: 2 },  // two readings, never summed
+      // T001 1500 (integrated -> worker) + review 40 -> worker; nothing missing.
+      worker: { measured: 1540, missing: 0, readings: 0 },
+      auxiliary: { measured: null, missing: 0, readings: 0 },
+    });
+    expect(JSON.stringify(view)).not.toContain('167272');
+  });
+
+  it('maps an inline (non-integrated) task\'s usage to main', () => {
+    const view = buildMilestoneStatusView(root, 'M001');
+    // Fixture: T001 usage 1500 with no worktree_integrate record -> main; planning 200 -> main.
+    // T001 1500 + planning 200 -> main; T002/T003 usage null + qa null -> 3 main misses.
+    expect(view.buckets?.main).toEqual({ measured: 1700, missing: 3, readings: 0 });
+    expect(view.buckets?.worker).toEqual({ measured: null, missing: 0, readings: 0 });
+  });
+
+  it('omits buckets entirely when the milestone has no usage figure and no reading', () => {
+    saveTasks(root, 'M001', { schema_version: 1, tasks: [task({ id: 'T001', status: 'ready' })] });
+    saveUsage(root, 'M001', { schema_version: 1, planning: null, qa: null });
+    const view = buildMilestoneStatusView(root, 'M001');
+    expect('buckets' in view).toBe(false);
   });
 });

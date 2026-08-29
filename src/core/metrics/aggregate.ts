@@ -2,7 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { formatIssues } from '../../state/contract-file.js';
 import { appendJournalEntry } from '../../state/journal.js';
-import { type ReviewsFile, type Task, type Usage, type UsageFile } from '../../state/schemas.js';
+import {
+  usageReadingSchema,
+  type ReviewsFile,
+  type Task,
+  type Usage,
+  type UsageFile,
+  type UsageReading,
+} from '../../state/schemas.js';
 import { loadUsage, saveUsage } from '../../state/store.js';
 import { computeReviewUsageTotal } from '../reviews/roles.js';
 
@@ -16,6 +23,17 @@ export interface UsageAddInputs {
   category?: string;
   // Measured token usage as a JSON string: {input_tokens?, output_tokens?, total_tokens}.
   usage?: string;
+  // M047/T002: one measured usage READING as JSON (usageReadingSchema shape,
+  // recorded_at optional -- stamped now when absent). Mutually exclusive
+  // with --category/--usage. Appended, never accumulated.
+  reading?: string;
+}
+
+// M047/T002: the view for a --reading call -- the stored reading, nothing
+// derived from it.
+export interface UsageReadingAddView {
+  id: string;
+  reading: UsageReading;
 }
 
 export interface UsageAddView {
@@ -80,7 +98,47 @@ function accumulate(prior: Usage, delta: UsageDelta): NonNullable<Usage> {
   };
 }
 
+// M047/T002 (AC002): append one reading. Validated against the strict
+// reading schema (so a total/percentage key is refused by construction),
+// journaled through the same usage_recording path as --category, and
+// stored as its own entry -- two calls are two entries, never a sum.
+function parseReading(text: string): UsageReading {
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch (error) {
+    throw new UsageAddError(`invalid --reading JSON: ${(error as Error).message}`);
+  }
+  const withStamp =
+    data !== null && typeof data === 'object' && !('recorded_at' in data)
+      ? { ...(data as Record<string, unknown>), recorded_at: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') }
+      : data;
+  const parsed = usageReadingSchema.safeParse(withStamp);
+  if (!parsed.success) {
+    throw new UsageAddError(`invalid --reading: ${formatIssues(parsed.error)}`);
+  }
+  return parsed.data;
+}
+
+export function recordUsageReading(root: string, milestoneId: string, readingJson: string): UsageReadingAddView {
+  const reading = parseReading(readingJson);
+  const persisted = loadUsage(root, milestoneId);
+  const updated: UsageFile = { ...persisted, readings: [...(persisted.readings ?? []), reading] };
+  appendJournalEntry(root, {
+    milestone: milestoneId,
+    type: 'usage_recording',
+    operationId: randomUUID(),
+    target: 'readings',
+    payload: { reading: { ...reading } },
+  });
+  saveUsage(root, milestoneId, updated);
+  return { id: milestoneId, reading };
+}
+
 export function recordUsage(root: string, milestoneId: string, inputs: UsageAddInputs): UsageAddView {
+  if (inputs.reading !== undefined && (inputs.category !== undefined || inputs.usage !== undefined)) {
+    throw new UsageAddError('usage-add: --reading cannot be combined with --category/--usage');
+  }
   const category = parseCategory(inputs.category);
   if (inputs.usage === undefined) {
     throw new UsageAddError('usage-add requires --usage');

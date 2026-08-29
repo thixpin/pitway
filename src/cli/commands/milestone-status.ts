@@ -75,6 +75,15 @@ export function renderMilestoneStatusHuman(view: MilestoneStatusView): string {
   lines.push(`  review: ${formatTokenValue(view.tokenBreakdown.review)}`);
   lines.push(`  total: ${formatTokenValue(view.tokenBreakdown.total)}`);
   lines.push(`  missing: ${view.tokenBreakdown.missing}`);
+  // M047/T003: per-bucket lines -- measured segments + missing count, and a
+  // COUNT of readings (never a sum); no cross-bucket total, no percentage.
+  if (view.buckets !== undefined) {
+    for (const name of ['main', 'orchestrator', 'worker', 'auxiliary'] as const) {
+      const b = view.buckets[name];
+      const readings = b.readings > 0 ? ` · readings: ${b.readings} (measured readings, not summed)` : '';
+      lines.push(`  ${name}: ${formatTokenValue(b.measured)} (${b.missing} missing)${readings}`);
+    }
+  }
   if (view.footer !== null) lines.push('', withProgressBar(view.footer, view.workloadPercent));
   return lines.join('\n');
 }

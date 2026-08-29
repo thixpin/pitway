@@ -903,3 +903,62 @@ describe('task verification.timeout_ms (M045/T001)', () => {
     expect(tasksFileSchema.safeParse(tooBig).success).toBe(false);
   });
 });
+
+// M047/T001 (AC001, AC005): additive-optional, append-only usage readings
+// keyed by M040 Decision 3's buckets -- exactly the fields the M042 synthesis
+// (section 9) allows, strict against everything it forbids.
+describe('usage.yaml readings (M047/T001)', () => {
+  const base = { schema_version: 1, planning: null, qa: null };
+  const reading = {
+    bucket: 'orchestrator',
+    count: 72821,
+    semantics: 'undetermined',
+    recorded_at: '2026-08-29T00:00:00Z',
+  };
+
+  it('parses an existing usage.yaml with no readings key unchanged', () => {
+    const parsed = usageFileSchema.safeParse(base);
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && 'readings' in parsed.data).toBe(false);
+  });
+
+  it('accepts a required-only reading and every optional field present or null-free absent', () => {
+    expect(usageFileSchema.safeParse({ ...base, readings: [reading] }).success).toBe(true);
+    const full = {
+      ...reading,
+      bucket: 'worker',
+      semantics: 'per-turn',
+      dimensions: { input: 308, output: 65, reasoning: 21, cache_read: 8561, cache_write: 0 },
+      model: 'muse-spark-1.2-contributor-free',
+      provider: 'opencode',
+      instance_id: 'ses_fb68f099affewgwx9iHa60K1ef',
+      raw: { total: 8955, input: 308, output: 65, reasoning: 21, cache: { write: 0, read: 8561 } },
+    };
+    expect(usageFileSchema.safeParse({ ...base, readings: [full] }).success).toBe(true);
+    expect(usageFileSchema.safeParse({ ...base, readings: [{ ...reading, raw: '<usage><subagent_tokens>30201</subagent_tokens></usage>' }] }).success).toBe(true);
+  });
+
+  it('rejects any total or percentage field on a reading (section 9 must-not)', () => {
+    for (const extra of [{ total_tokens: 1 }, { total: 1 }, { percent: 50 }, { percentage: 50 }]) {
+      expect(usageFileSchema.safeParse({ ...base, readings: [{ ...reading, ...extra }] }).success).toBe(false);
+    }
+  });
+
+  it('rejects an unknown bucket or semantics, a negative or non-integer count, and a missing required field', () => {
+    expect(usageFileSchema.safeParse({ ...base, readings: [{ ...reading, bucket: 'agent' }] }).success).toBe(false);
+    expect(usageFileSchema.safeParse({ ...base, readings: [{ ...reading, semantics: 'cumulative' }] }).success).toBe(false);
+    expect(usageFileSchema.safeParse({ ...base, readings: [{ ...reading, count: -1 }] }).success).toBe(false);
+    expect(usageFileSchema.safeParse({ ...base, readings: [{ ...reading, count: 1.5 }] }).success).toBe(false);
+    const { semantics: _s, ...noSemantics } = reading;
+    expect(usageFileSchema.safeParse({ ...base, readings: [noSemantics] }).success).toBe(false);
+  });
+
+  it('stores two readings as two entries -- never one summed value', () => {
+    const parsed = usageFileSchema.safeParse({ ...base, readings: [reading, { ...reading, count: 94451 }] });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.readings).toHaveLength(2);
+      expect(parsed.data.readings!.map((r) => r.count)).toEqual([72821, 94451]);
+    }
+  });
+});

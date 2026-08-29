@@ -1,0 +1,61 @@
+schema_version: 1
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-29T17:13:12Z
+    evidence: Tests  120 passed (120) | Start at  00:13:12 | Duration  525ms
+      (transform 184ms, setup 0ms, import 306ms, tests 272ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 1136
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-29T17:13:16Z
+    evidence: Tests  17 passed (17) | Start at  00:13:13 | Duration  3.27s
+      (transform 299ms, setup 0ms, import 409ms, tests 2.78s, environment 0ms)
+    recorded_by: command
+    duration_ms: 3640
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-29T17:13:23Z
+    evidence: Tests  41 passed (41) | Start at  00:13:16 | Duration  6.49s
+      (transform 373ms, setup 0ms, import 549ms, tests 7.51s, environment 0ms)
+    recorded_by: command
+    duration_ms: 6870
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-29T17:13:23Z
+    evidence: Tests  322 passed (322) | Start at  00:13:23 | Duration  266ms
+      (transform 115ms, setup 0ms, import 178ms, tests 283ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 641
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-29T17:13:30Z
+    evidence: Tests  160 passed (160) | Start at  00:13:24 | Duration  6.55s
+      (transform 643ms, setup 0ms, import 961ms, tests 8.91s, environment 0ms)
+    recorded_by: command
+    duration_ms: 6917
+    termination_reason: exited
+  - check: CT006
+    status: fail
+    at: 2026-08-29T17:17:45Z
+    evidence: >-
+      failures: × reruns exactly one command check through the hash-gated,
+      timeout-protected pat
+          await confirmed(); | 527|     const first = await run(['verify'], root); | ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+    recorded_by: command
+    duration_ms: 255143
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-29T17:22:23Z
+    evidence: Tests  2261 passed (2261) | Start at  00:19:29 | Duration  173.46s
+      (transform 4.90s, setup 0ms, import 21.33s, tests 1175.90s, environment
+      10ms)
+    recorded_by: command
+    duration_ms: 174443
+    termination_reason: exited

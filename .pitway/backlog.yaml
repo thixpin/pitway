@@ -805,3 +805,22 @@ items:
     resolved_at: 2026-08-29T02:47:51.055Z
     promoted_to: null
     archived_reason: closed by quick-change qc-465f7e1e
+  - id: B042
+    title: verify.test.ts command-rerun test is load-sensitive under the full suite
+    reason: "Observed 2026-08-30 during M047: one full-suite task-verify run
+      recorded 14 transient failures at 488s (clean on the immediate rerun,
+      172s), and verify M047's CT006 later failed on
+      tests/integration/verify.test.ts 'reruns exactly one command check through
+      the hash-gated, timeout-protected path' while that file passes 3/3 in
+      isolation. The fixture runs a real command under a per-check timeout, so
+      concurrent full-suite load can exceed the budget. Candidate fixes: a
+      generous per-check timeout_ms in that fixture, or serialising the
+      timeout-sensitive verify tests."
+    status: pending
+    source:
+      milestone: M047
+      task: null
+    created_at: 2026-08-29T17:22:33.833Z
+    resolved_at: null
+    promoted_to: null
+    archived_reason: null

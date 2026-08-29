@@ -331,3 +331,60 @@ describe('pitway usage-add racing footer (M036/T002)', () => {
     expect(lines).toHaveLength(1);
   });
 });
+
+// M047/T002 (AC002, AC005): usage-add --reading appends one measured reading
+// per call -- journal-backed exactly like --category -- and never sums.
+describe('pitway usage-add --reading (M047/T002)', () => {
+  const reading = (count: number, extra = '') =>
+    `{"bucket":"orchestrator","count":${count},"semantics":"undetermined"${extra}}`;
+
+  it('appends two readings as two entries, journaling each, with no sum anywhere in usage.yaml', async () => {
+    const first = await run(['usage-add', 'M001', '--reading', reading(72821), '--json']);
+    expect(first.error).toBeUndefined();
+    const view = JSON.parse(first.lines[0]!) as { id: string; reading: Record<string, unknown> };
+    expect(view.id).toBe('M001');
+    expect(view.reading).toMatchObject({ bucket: 'orchestrator', count: 72821, semantics: 'undetermined' });
+    expect(typeof view.reading.recorded_at).toBe('string');
+
+    const second = await run(['usage-add', 'M001', '--reading', reading(94451), '--json']);
+    expect(second.error).toBeUndefined();
+
+    const usage = loadUsage(root, 'M001');
+    expect(usage.readings?.map((r) => r.count)).toEqual([72821, 94451]);
+    expect(usage.planning).toBeNull();
+    expect(usage.qa).toBeNull();
+    expect(JSON.stringify(usage)).not.toContain('167272');
+    expect(pendingUsageEntries()).toHaveLength(2);
+    expect(commitCount(root)).toBe(1);
+  });
+
+  it('refuses a reading missing bucket, count, or semantics, naming the key, writing nothing', async () => {
+    for (const bad of ['{"count":1,"semantics":"per-turn"}', '{"bucket":"main","semantics":"per-turn"}', '{"bucket":"main","count":1}']) {
+      const { error } = await run(['usage-add', 'M001', '--reading', bad]);
+      expect(error?.message).toMatch(/invalid --reading/);
+      expect(error?.message).toMatch(/bucket|count|semantics/);
+    }
+    expect(loadUsage(root, 'M001').readings).toBeUndefined();
+    expect(pendingUsageEntries()).toHaveLength(0);
+  });
+
+  it('refuses a reading carrying a total or percentage key (section 9 must-not)', async () => {
+    const { error } = await run(['usage-add', 'M001', '--reading', reading(1, ',"total_tokens":1')]);
+    expect(error?.message).toMatch(/invalid --reading/);
+    expect(loadUsage(root, 'M001').readings).toBeUndefined();
+  });
+
+  it('refuses --reading together with --category, and neither flag at all', async () => {
+    const both = await run(['usage-add', 'M001', '--reading', reading(1), '--category', 'planning', '--usage', '{"total_tokens":1}']);
+    expect(both.error?.message).toMatch(/--reading.*--category|--category.*--reading/);
+    const neither = await run(['usage-add', 'M001']);
+    expect(neither.error?.message).toMatch(/--category|--reading/);
+    expect(pendingUsageEntries()).toHaveLength(0);
+  });
+
+  it('human output names the bucket, count, and semantics', async () => {
+    const { lines, error } = await run(['usage-add', 'M001', '--reading', reading(30201)]);
+    expect(error).toBeUndefined();
+    expect(lines[0]).toContain('📊 Recorded orchestrator usage reading (30201, undetermined) for M001');
+  });
+});
