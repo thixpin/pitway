@@ -20,6 +20,27 @@ describe('layering: State never imports Core', () => {
   );
 });
 
+describe('layering: src/state/journal-schemas.ts is pure schema (M046/T002)', () => {
+  it('imports nothing from node:fs, node:path, ../core/, or ../git/', () => {
+    const text = source('src/state/journal-schemas.ts');
+    expect(text).not.toMatch(/from\s+['"]node:fs['"]/);
+    expect(text).not.toMatch(/from\s+['"]node:path['"]/);
+    expect(text).not.toMatch(/from\s+['"]\.\.\/core\//);
+    expect(text).not.toMatch(/from\s+['"]\.\.\/git\//);
+  });
+
+  it('journal.ts re-exports every named export of journal-schemas.ts', async () => {
+    const schemas = await import('../../src/state/journal-schemas.js');
+    const journal = await import('../../src/state/journal.js');
+    const schemaExports = Object.keys(schemas);
+    expect(schemaExports.length).toBeGreaterThan(0);
+    for (const name of schemaExports) {
+      expect(journal, `journal.ts is missing re-export "${name}"`).toHaveProperty(name);
+      expect((journal as Record<string, unknown>)[name]).toBe((schemas as Record<string, unknown>)[name]);
+    }
+  });
+});
+
 describe('layering: src/git/safety.ts is pure Git classification', () => {
   it('imports nothing from ../state/ or ../core/', () => {
     const text = source('src/git/safety.ts');
