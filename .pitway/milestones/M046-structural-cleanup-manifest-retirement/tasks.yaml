@@ -112,7 +112,7 @@ tasks:
     objective: npm run typecheck && npm test from a clean tree; this task declares
       verification.timeout_ms (M045/W1) so no --timeout flag is needed. No code
       changes expected; on failure stop and report.
-    status: ready
+    status: completed
     depends_on:
       - T001
       - T002
@@ -125,5 +125,15 @@ tasks:
       strategy: command
       detail: npm run typecheck && npm test
       timeout_ms: 900000
-    result: null
+    result:
+      summary: "Milestone gate: typecheck and full suite pass from a clean tree; no
+        code changes. Ran via task-verify T003 with its declared
+        verification.timeout_ms (900000) -- no --timeout flag needed, the first
+        real exercise of M045/W1 on a full-suite gate task."
+      evidence: Tests  2246 passed (2246) | Start at  23:07:37 | Duration  151.74s
+        (transform 4.55s, setup 0ms, import 19.06s, tests 1026.29s, environment
+        10ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
