@@ -1,2 +1,43 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-29T16:10:23Z
+    evidence: Tests  330 passed (330) | Start at  23:10:22 | Duration  724ms
+      (transform 494ms, setup 0ms, import 752ms, tests 463ms, environment 0ms)
+    recorded_by: command
+    duration_ms: 1307
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-29T16:10:30Z
+    evidence: Tests  94 passed (94) | Start at  23:10:23 | Duration  6.42s
+      (transform 448ms, setup 0ms, import 603ms, tests 9.33s, environment 0ms)
+    recorded_by: command
+    duration_ms: 6796
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-29T16:10:41Z
+    evidence: Tests  144 passed (144) | Start at  23:10:30 | Duration  10.77s
+      (transform 371ms, setup 0ms, import 858ms, tests 23.30s, environment 0ms)
+    recorded_by: command
+    duration_ms: 11137
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-29T16:10:53Z
+    evidence: Tests  66 passed (66) | Start at  23:10:41 | Duration  11.36s
+      (transform 116ms, setup 0ms, import 179ms, tests 11.21s, environment 0ms)
+    recorded_by: command
+    duration_ms: 11810
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-29T16:14:00Z
+    evidence: Tests  2246 passed (2246) | Start at  23:10:54 | Duration  186.67s
+      (transform 5.22s, setup 0ms, import 24.16s, tests 1261.33s, environment
+      13ms)
+    recorded_by: command
+    duration_ms: 187552
+    termination_reason: exited

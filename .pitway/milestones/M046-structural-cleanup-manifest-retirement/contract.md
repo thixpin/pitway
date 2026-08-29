@@ -2,7 +2,7 @@
 schema_version: 1
 id: M046
 title: Structural Cleanup — Manifest Retirement & Journal Split
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-29T16:05:20Z
 verification_approved_hash: sha256:fae81f808c8cb83d6b0e919e301a2c979431c2bf78dceba49376377122760fd5
