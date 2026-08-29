@@ -4,7 +4,9 @@ import {
   type BlockedTaskDetail,
   type DriverDriftView,
   type PendingBacklogItem,
+  type PendingJournalEntryView,
   type PendingQuickChange,
+  type PendingRepairView,
   type ResumeView,
   type WaitingTaskDetail,
 } from '../../core/views/resume.js';
@@ -50,6 +52,27 @@ function renderBlockedDetailsHuman(details: BlockedTaskDetail[] | undefined): st
     lines.push(`  ${d.id}  ${d.detail}`);
   }
   return lines;
+}
+
+// M044/T005: the two recovery inputs resume never listed before -- same
+// block-with-indented-lines convention as the other detail sections.
+function renderPendingJournalHuman(entries: PendingJournalEntryView[] | undefined): string[] {
+  if (entries === undefined || entries.length === 0) return [];
+  const lines = [`📜 Pending journal entries (${entries.length}) — checkpointed by the next commit`];
+  for (const e of entries) {
+    lines.push(`  ${e.type}  ${e.target}  ${e.operationId}`);
+  }
+  return lines;
+}
+
+function renderPendingRepairHuman(repair: PendingRepairView | undefined): string[] {
+  if (repair === undefined) return [];
+  return [
+    `🔧 Pending verification repair ${repair.id}`,
+    `  files: ${repair.files.join(', ')}`,
+    `  checks: ${repair.checks.join(', ')}`,
+    `  Finish with verification-repair commit, or verification-repair cancel.`,
+  ];
 }
 
 function renderDriverDriftHuman(drift: DriverDriftView | undefined): string[] {
@@ -126,6 +149,10 @@ export function renderResumeHuman(view: ResumeView): string {
   const blockedDetailLines = renderBlockedDetailsHuman(view.blockedDetails);
   if (waitingDetailLines.length > 0) lines.push('', ...waitingDetailLines);
   if (blockedDetailLines.length > 0) lines.push('', ...blockedDetailLines);
+  const pendingJournalLines = renderPendingJournalHuman(view.pendingJournal);
+  const pendingRepairLines = renderPendingRepairHuman(view.pendingRepair);
+  if (pendingJournalLines.length > 0) lines.push('', ...pendingJournalLines);
+  if (pendingRepairLines.length > 0) lines.push('', ...pendingRepairLines);
   if (quickChangeLines.length > 0) lines.push('', ...quickChangeLines);
   if (backlogLines.length > 0) lines.push('', ...backlogLines);
   if (driftLines.length > 0) lines.push('', ...driftLines);
