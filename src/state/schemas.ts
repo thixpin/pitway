@@ -272,10 +272,42 @@ export const verificationResultsSchema = z.strictObject({
   ),
 });
 
+// M047/T001 (AC001): one measured usage READING, keyed by M040 Decision 3's
+// bucket -- exactly the fields docs/evidence/M042/synthesis.md section 9
+// allows and nothing it forbids. `count` is an opaque per-reading figure
+// (Claude's subagent_tokens, OpenCode's per-turn total) stored as a reading
+// and never accumulated; `semantics` records what the runtime's own surface
+// established about it. Strict: a total or percentage key is rejected by
+// construction. `instance_id` and `raw` are evidence-only -- never read by
+// resume or trailers.
+const usageTokenCount = z.number().int().nonnegative();
+export const usageReadingSchema = z.strictObject({
+  bucket: z.enum(['main', 'orchestrator', 'worker', 'auxiliary']),
+  count: usageTokenCount,
+  semantics: z.enum(['per-turn', 'undetermined']),
+  recorded_at: isoTimestamp,
+  dimensions: z
+    .strictObject({
+      input: usageTokenCount.optional(),
+      output: usageTokenCount.optional(),
+      reasoning: usageTokenCount.optional(),
+      cache_read: usageTokenCount.optional(),
+      cache_write: usageTokenCount.optional(),
+    })
+    .optional(),
+  model: z.string().min(1).max(80).optional(),
+  provider: z.string().min(1).max(80).optional(),
+  instance_id: z.string().min(1).max(120).optional(),
+  raw: z.union([z.string().min(1), z.record(z.string(), z.unknown())]).optional(),
+});
+
 export const usageFileSchema = z.strictObject({
   schema_version: schemaVersion,
   planning: usageSchema,
   qa: usageSchema,
+  // M047/T001: additive-optional, append-only; absent on every usage.yaml
+  // written before this milestone and on any milestone with no readings.
+  readings: z.array(usageReadingSchema).optional(),
 });
 
 const verificationRepairId = z.string().regex(/^VR\d{3}$/, 'verification repair id must match VR000');
@@ -324,6 +356,7 @@ export type TaskStatus = z.infer<typeof taskStatusSchema>;
 export type MilestoneStatus = z.infer<typeof milestoneStatusSchema>;
 export type VerificationResults = z.infer<typeof verificationResultsSchema>;
 export type UsageFile = z.infer<typeof usageFileSchema>;
+export type UsageReading = z.infer<typeof usageReadingSchema>;
 export type Usage = z.infer<typeof usageSchema>;
 export type TaskUsage = z.infer<typeof taskUsageSchema>;
 export type VerificationRepairStatus = z.infer<typeof verificationRepairStatusSchema>;

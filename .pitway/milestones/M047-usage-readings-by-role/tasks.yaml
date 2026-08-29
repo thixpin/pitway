@@ -17,7 +17,7 @@ tasks:
       bucket/semantics rejected; two readings parse as two entries. Extend
       tests/unit/task-usage.test.ts only if a shared helper is touched
       (expected: not)."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - usageFileSchema accepts an optional readings list per the shape above
@@ -38,7 +38,17 @@ tasks:
       strategy: tdd
       detail: npx vitest run tests/unit/schemas.test.ts tests/unit/task-usage.test.ts
       timeout_ms: 300000
-    result: null
+    result:
+      summary: "[truncated] -readings file unchanged; required-only and
+        fully-populated readings accepted (OpenCode-shaped and Claude-shaped
+        raw); total_tokens/total/percent/percentage rejected; unknown
+        bucket/semantics, negative and non-integer count, missing semantics
+        rejected; two readings stored as two entries."
+      evidence: Tests  120 passed (120) | Start at  23:52:32 | Duration  544ms
+        (transform 188ms, setup 0ms, import 322ms, tests 274ms, environment 0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T002
     name: usage-add --reading appends one reading
@@ -58,7 +68,7 @@ tasks:
       no sum anywhere in usage.yaml; refuse missing bucket/count/semantics;
       refuse total_tokens in a reading; refuse --reading together with
       --category; --category behavior unchanged (existing tests)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
@@ -105,7 +115,7 @@ tasks:
       not summed; buckets absent when nothing recorded) and
       tests/integration/milestone-status.test.ts (human lines; --json
       byte-identical when absent)."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
