@@ -15,7 +15,7 @@ tasks:
       classifyClaudeAssets) untouched. AFTER: re-run the snapshot and diff -- it
       must be empty (no asset changed); run the asset, multi-driver, init, and
       build-bin suites. No file under src/ changes."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - The manifest constant, comment, and describe are gone; no other describe
@@ -37,7 +37,18 @@ tasks:
         tests/integration/multi-driver-assets.test.ts
         tests/integration/init.test.ts tests/integration/build-bin.test.ts
       timeout_ms: 600000
-    result: null
+    result:
+      summary: "[truncated] uivalence suite below'). Dropped the now-unused createHash
+        import. Every other suite in the file (resolution equivalence, M038 body
+        parity, M041 partition consistency, M040 protocol-orchestrator checks,
+        listInstalledSkillNames, classifyClaudeAssets) untouched. No file under
+        src/ changed."
+      evidence: Tests  424 passed (424) | Start at  23:05:45 | Duration  7.14s
+        (transform 1.44s, setup 0ms, import 2.20s, tests 10.83s, environment
+        1ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T002
     name: Split journal schemas out of journal.ts behind a re-export (A1)

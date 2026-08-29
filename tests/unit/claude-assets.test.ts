@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import {
   existsSync,
   mkdirSync,
@@ -505,85 +504,6 @@ describe('Sequential subagent dispatch (AC001, AC005)', () => {
     const text = shippedContent('protocol-driver.md').toString('utf8');
     expect(text).toMatch(/[Ss]equential subagent dispatch/);
   });
-});
-
-// M023/T001/AC003(a): ONE-TIME MIGRATION CHECK. This inline sha256 manifest
-// pins every asset path + content hash exactly as shipped BEFORE this
-// milestone moved the driver-agnostic assets from src/integrations/claude/
-// to src/integrations/common/. It exists to prove THIS milestone's move was
-// lossless: the resolved claude-driver asset set (driver overrides union
-// common fallbacks) is byte-identical to the pre-refactor set.
-//
-// Declared lifecycle (per the M023 contract): this is M023's migration
-// proof, not a frozen-forever pin. A later milestone that legitimately
-// edits a common/ (or claude/) asset regenerates the affected entries -- or
-// retires this whole block -- as part of that same edit. The durable
-// invariant lives in the resolution-equivalence suite below, which never
-// pins historical content.
-const PRE_M023_ASSET_MANIFEST: ReadonlyArray<readonly [string, string]> = [
-  ['commands/auto-run.md', '611a07fb5027f1224d531651a6854f2cd2805d4119e51ff1548575c9f3103eb8'],
-  ['commands/backlog.md', '67456785cd58ae01a4c7fd9dc86b172bb2354db40b54ace26bc576927a969ebe'],
-  ['commands/milestone-add.md', '46129570ab6a653473129f0e0e9aececc209c4029bbe8b372af2a1ca0fe883cc'],
-  ['commands/milestone-cancel.md', 'c317f888574d93011cbc76e1806a20f73cb663421452b8980f444856aa9f5448'],
-  ['commands/milestone-complete.md', '2e983056267a8599c9ac5daefac430269136860709cf6a0d2d14054f936e3327'],
-  ['commands/milestone-confirm.md', '9175defbdc11aa128ce39dab01ea12ecca420895e205adc62c8cfc9cf895e7dc'],
-  ['commands/milestone-list.md', '5b54d1b6e66cdbcc3f95fb09f47a72d4bb3c5db685fe6e119a3de3f99eea0a67'],
-  ['commands/milestone-merge.md', 'c212e93eba0e39844d32d7fba930e451073ce800932f2af6f388e3f9efeeca8b'],
-  ['commands/milestone-review.md', '6e5bfaba0186a787d1fe21877000c2faa77887306a0716cf196ffc40de8c0a60'],
-  ['commands/milestone-status.md', '1b14f082221cf895e8e69d956713fa8f867fe6651a938f06ac5fc9c0351e49c9'],
-  ['commands/ms-add.md', '46129570ab6a653473129f0e0e9aececc209c4029bbe8b372af2a1ca0fe883cc'],
-  ['commands/ms-cancel.md', 'c317f888574d93011cbc76e1806a20f73cb663421452b8980f444856aa9f5448'],
-  ['commands/ms-complete.md', '2e983056267a8599c9ac5daefac430269136860709cf6a0d2d14054f936e3327'],
-  ['commands/ms-confirm.md', '9175defbdc11aa128ce39dab01ea12ecca420895e205adc62c8cfc9cf895e7dc'],
-  ['commands/ms-list.md', '5b54d1b6e66cdbcc3f95fb09f47a72d4bb3c5db685fe6e119a3de3f99eea0a67'],
-  ['commands/ms-merge.md', 'c212e93eba0e39844d32d7fba930e451073ce800932f2af6f388e3f9efeeca8b'],
-  ['commands/ms-review.md', '6e5bfaba0186a787d1fe21877000c2faa77887306a0716cf196ffc40de8c0a60'],
-  ['commands/ms-status.md', '1b14f082221cf895e8e69d956713fa8f867fe6651a938f06ac5fc9c0351e49c9'],
-  ['commands/quick-change.md', '6fa7a53cde427612a06943e2754f4e681f724063245384e32889c2dbf973dfdf'],
-  ['commands/resume.md', 'e7993819035889baf7b89bd21cb5cf9f8da12749beb53e8f956dc67559a0d1da'],
-  ['commands/task-add.md', '579e4389c37bb9c51387fb5de793290950f4c3b4c74e99a9793c517e4fb46eb3'],
-  ['commands/task-amend.md', 'c2cac5abc29246268b2c843cbf8cdeb7e0e4fda31fa0f2539fc5d23a3dd931da'],
-  ['commands/task-discard.md', '79da77dbeb8dd5cde8d7f3daf8831e683e5fb65dbfc03c7942701a82ff028c04'],
-  ['commands/task-dispatch.md', '2cb938cabc90a35e214dcdf8a6b5ff08d2ca57a107adc70879db3a65c7140e45'],
-  ['commands/task-integrate.md', 'b3bcbcc646797c86b4b33a71e932ba03406334257aaf516e944d0b6aa10ad80f'],
-  ['commands/task-status.md', '994d0c31d26b3c04e2833dcdfe7db5a5286b4e49482874b169587a9b92ece7b1'],
-  ['commands/task-update.md', 'a1bb81a327a5d3cc85dc40a0c2d7f626d41e535b62705d5c4f36d4eb22fe4d14'],
-  ['commands/task-verify.md', '6ed794181e4013d72485d27bec7e426cabb632277bd305c99458b968972da2e9'],
-  ['commands/usage-add.md', '9a6b60b781dc30c32e34a3bc99d2c4257af172242923807cb802dc0499184bf6'],
-  ['commands/verification-repair.md', 'fcbcc2378ea42262cf177bca1ca9fc259296da659c9cbc8c32798836c80334a4'],
-  ['commands/verify.md', 'f25a28e38b630ab7794fbc5c4bbc0c145e56e0f9e1512e6076c1c886514c653b'],
-  ['commands/write-ms-artifacts.md', 'b3d4ee5da3d8b34d5b5af65fff86279399f03bfaec98b61f488a136f46d6f36f'],
-  ['coordination.md', '4fb348cdad94477a87be450516f9fe195a04246a29e1aea7898ae0473a836575'],
-  ['dispatch.md', 'db95b2c561d9a55d1daa1bb575df792930e42ad5cac6dc54cb2e24843ff33857'],
-['draft-formats.md', '76834e73f5f30f9c46e027dd9f9fb852df5024b54fc4cbbd16b1394d3b384e6d'],
-  ['interactive-ux.md', 'e8cc6c74b807247ff2f9b35abb5d85622f904b462b5ac4c2a0b20be4f2587aa1'],
-  ['lsp-guidance.md', 'e2fc2650c5f53b1ff569db8a340a96d9e6975bc4e2eea5c0a36a745a1fe18b78'],
-  ['protocol-driver.md', '218e0afff56dcc6fa31988d4c019a6394c4fc8f649a5cfa52cca3e9d8e2431c6'],
-  // M040/T003: the Orchestrator role's protocol doc, added as a common asset.
-  ['protocol-orchestrator.md', 'dcb2b3f14ab9eec00ee3a745c05dd69f1afb17d11e9a01334965f7b08fc48215'],
-  ['protocol-worker.md', '8aa76eac4952afc447cd090356680aa372eed15edcbe16e6728a64ff330b3393'],
-  ['report-format.md', '1480a8fe8dddd8045e24c67cb043786dba58c1194ff959a319e0bdc66a9408c4'],
-  ['skills/NOTICE.md', '8d5dd0d6fb2753abf21aef4e98a3a2969dfac37dea91f059d117424da0dc5976'],
-  ['skills/architecture-review/SKILL.md', 'd3c79781c122f8c60ad00fc35ad050dc260fa9b4d57c28217386fda1fd39a7cc'],
-  ['skills/bug-fix/SKILL.md', 'd2c632a6353cbb686de9c6dfc8e4c4af6bfd39878c54514836910289cc3c3f96'],
-  ['skills/code-quality-review/SKILL.md', '5ae5a7a037904090a6601ccb9c4a047468b30049b66ee869c2b88bf58724f50b'],
-  ['skills/debugging/SKILL.md', '894b757d7bb718760f0b06131003f6d096d1c70723d7b0d9962fb09276f45d04'],
-  ['skills/security-audit/SKILL.md', '15d9b20baf207949db3fadff2f0c4e0823da71258f22634a3321115894352b33'],
-  ['skills/testing/SKILL.md', 'b71ae5e9bcf6f9075427e593a7064e08839f371cf79ba605eab1a4c7ee103239'],
-];
-
-describe('M023 one-time migration check: resolved claude asset set is byte-identical to pre-refactor', () => {
-  it('resolves exactly the pre-M023 asset paths, no more, no fewer', () => {
-    expect(listClaudeAssets()).toEqual(PRE_M023_ASSET_MANIFEST.map(([path]) => path));
-  });
-
-  it.each(PRE_M023_ASSET_MANIFEST.map(([path, hash]) => [path, hash] as const))(
-    '%s resolves to content with pre-refactor sha256 %s',
-    (path, hash) => {
-      const digest = createHash('sha256').update(shippedContent(path)).digest('hex');
-      expect(digest).toBe(hash);
-    },
-  );
 });
 
 // M023/T001/AC003(b): DURABLE INVARIANT -- resolution equivalence. The
