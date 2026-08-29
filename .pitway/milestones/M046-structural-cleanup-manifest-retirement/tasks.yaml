@@ -1,0 +1,139 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Retire the M023 asset-manifest migration check (A4)
+    objective: "BEFORE editing: snapshot resolveDriverAssets(driver) and the sha256
+      of resolveDriverAssetSource(driver, asset) for every asset of every driver
+      (the same script M038/T001 used) into a scratch file. Then delete, from
+      tests/unit/claude-assets.test.ts, the PRE_M023_ASSET_MANIFEST constant,
+      its lifecycle comment block, and the 'M023 one-time migration check'
+      describe (the resolved-set equality and the per-path sha256 it.each) --
+      nothing else; remove the now-unused createHash import if no other test in
+      the file uses it. Keep every other suite in the file (resolution
+      equivalence, M038 body parity, M041 partition consistency, M040
+      protocol-orchestrator checks, listInstalledSkillNames,
+      classifyClaudeAssets) untouched. AFTER: re-run the snapshot and diff -- it
+      must be empty (no asset changed); run the asset, multi-driver, init, and
+      build-bin suites. No file under src/ changes."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - The manifest constant, comment, and describe are gone; no other describe
+        in the file changed.
+      - Pre/post resolved-asset snapshots are identical for all three drivers.
+      - Asset, multi-driver, init, and build-bin suites pass.
+    context_files:
+      - tests/unit/claude-assets.test.ts
+      - src/state/driver-assets.ts
+      - tests/integration/multi-driver-assets.test.ts
+      - tests/integration/init.test.ts
+      - tests/integration/build-bin.test.ts
+    write_scope:
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
+        tests/integration/multi-driver-assets.test.ts
+        tests/integration/init.test.ts tests/integration/build-bin.test.ts
+      timeout_ms: 600000
+    result:
+      summary: "[truncated] uivalence suite below'). Dropped the now-unused createHash
+        import. Every other suite in the file (resolution equivalence, M038 body
+        parity, M041 partition consistency, M040 protocol-orchestrator checks,
+        listInstalledSkillNames, classifyClaudeAssets) untouched. No file under
+        src/ changed."
+      evidence: Tests  424 passed (424) | Start at  23:05:45 | Duration  7.14s
+        (transform 1.44s, setup 0ms, import 2.20s, tests 10.83s, environment
+        1ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
+    usage: null
+  - id: T002
+    name: Split journal schemas out of journal.ts behind a re-export (A1)
+    objective: "Create src/state/journal-schemas.ts containing, verbatim (bodies and
+      comments unchanged), every zod schema constant and inferred type currently
+      in src/state/journal.ts from journalMilestoneId /
+      journalOperationTypeSchema through JournalFile (the module-local helpers
+      journalMilestoneId, journalBacklogItemId, journalTerminationReasonSchema,
+      journalTaskId move too and stay unexported); it imports only zod.
+      journal.ts keeps JournalError, loadJournalFile, writeFileAtomic,
+      saveJournalFile, readJournal, every append* function,
+      headIsPitwayCheckpoint, and reconcilePending, imports what it needs from
+      ./journal-schemas.js, and adds `export * from './journal-schemas.js'` so
+      all existing importers (58 files) keep working with no edits. TDD: extend
+      tests/unit/layering.test.ts FIRST (RED) -- journal-schemas.ts has no
+      import from node:fs, node:path, ../core/, or ../git/; and journal.ts
+      re-exports every named export of journal-schemas.ts, derived by importing
+      both modules and comparing Object.keys, never a hardcoded list -- then
+      move (GREEN). Verify the existing journal, pending-journal-targets,
+      git-safety, backlog-state, and quick-change-lifecycle suites pass with
+      zero import edits."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - journal-schemas.ts holds the schemas/types verbatim and imports only
+        zod; journal.ts re-exports all of them.
+      - No importer edited; the named suites pass unchanged.
+      - layering.test.ts covers both new assertions and was RED before the move.
+    context_files:
+      - src/state/journal.ts
+      - src/state/journal-schemas.ts
+      - src/state/journal-operations.ts
+      - tests/unit/layering.test.ts
+      - tests/unit/journal.test.ts
+    write_scope:
+      - src/state/journal.ts
+      - src/state/journal-schemas.ts
+      - tests/unit/layering.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/unit/layering.test.ts tests/unit/journal.test.ts
+        tests/unit/pending-journal-targets.test.ts tests/unit/git-safety.test.ts
+        tests/unit/backlog-state.test.ts
+        tests/unit/quick-change-lifecycle.test.ts
+      timeout_ms: 600000
+    result:
+      summary: "[truncated]  extended tests/unit/layering.test.ts first with two new
+        checks (journal-schemas.ts free of node:fs/node:path/../core//../git/;
+        journal.ts re-exports every named export of journal-schemas.ts, derived
+        via Object.keys, never a hardcoded list) -- confirmed RED (2/2 failing)
+        before the move."
+      evidence: Tests  150 passed (150) | Start at  23:07:09 | Duration  10.69s
+        (transform 584ms, setup 0ms, import 1.19s, tests 22.81s, environment
+        0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
+    usage: null
+  - id: T003
+    name: Run the full verification gate
+    objective: npm run typecheck && npm test from a clean tree; this task declares
+      verification.timeout_ms (M045/W1) so no --timeout flag is needed. No code
+      changes expected; on failure stop and report.
+    status: completed
+    depends_on:
+      - T001
+      - T002
+    acceptance_criteria:
+      - Typecheck and full suite pass via task-verify with no --timeout flag.
+    context_files:
+      - package.json
+    write_scope: []
+    verification:
+      strategy: command
+      detail: npm run typecheck && npm test
+      timeout_ms: 900000
+    result:
+      summary: "Milestone gate: typecheck and full suite pass from a clean tree; no
+        code changes. Ran via task-verify T003 with its declared
+        verification.timeout_ms (900000) -- no --timeout flag needed, the first
+        real exercise of M045/W1 on a full-suite gate task."
+      evidence: Tests  2246 passed (2246) | Start at  23:07:37 | Duration  151.74s
+        (transform 4.55s, setup 0ms, import 19.06s, tests 1026.29s, environment
+        10ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
+    usage: null
