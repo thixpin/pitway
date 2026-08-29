@@ -2,7 +2,7 @@
 schema_version: 1
 id: M045
 title: Workflow Friction & Verification UX
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-29T03:54:04Z
 verification_approved_hash: sha256:b6bcc7eb86ae96c80a6c9b27d80bd93947145fd3f3ffb8e1f5c8b068b0de4fc8
