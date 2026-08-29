@@ -1,5 +1,5 @@
 schema_version: 1
-active_milestone: null
+active_milestone: M047
 milestones:
   - M001
   - M002
@@ -47,3 +47,4 @@ milestones:
   - M044
   - M045
   - M046
+  - M047

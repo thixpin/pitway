@@ -1,0 +1,200 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Additive readings list on usage.yaml
+    objective: "In src/state/schemas.ts add usageReadingSchema -- strictObject {
+      bucket: enum main|orchestrator|worker|auxiliary; count: int >= 0;
+      semantics: enum per-turn|undetermined; recorded_at: isoTimestamp;
+      dimensions?: strictObject { input?, output?, reasoning?, cache_read?,
+      cache_write? } of non-negative ints; model?: string(1..80); provider?:
+      string(1..80); instance_id?: string(1..120); raw?: string | record } --
+      and add `readings: z.array(usageReadingSchema).optional()` to
+      usageFileSchema. Export UsageReading. Nothing else in the file changes;
+      schema_version stays 1. TDD in tests/unit/schemas.test.ts: existing
+      usage.yaml (no readings) parses unchanged; a reading with only the
+      required fields parses; every optional field null/absent parses; a reading
+      carrying total_tokens, total, or percent is REJECTED (strict); unknown
+      bucket/semantics rejected; two readings parse as two entries. Extend
+      tests/unit/task-usage.test.ts only if a shared helper is touched
+      (expected: not)."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - usageFileSchema accepts an optional readings list per the shape above
+        and rejects any extra key; existing files parse unchanged.
+      - Tests cover required-only, optional-null, strict rejection of
+        total/percent, unknown enum values, and two-entry storage.
+    context_files:
+      - src/state/schemas.ts
+      - docs/evidence/M042/synthesis.md
+      - docs/architecture/orchestrator-role.md
+      - tests/unit/schemas.test.ts
+      - tests/unit/task-usage.test.ts
+    write_scope:
+      - src/state/schemas.ts
+      - tests/unit/schemas.test.ts
+      - tests/unit/task-usage.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/unit/schemas.test.ts tests/unit/task-usage.test.ts
+      timeout_ms: 300000
+    result: null
+    usage: null
+  - id: T002
+    name: usage-add --reading appends one reading
+    objective: "In src/core/metrics/aggregate.ts (recordUsage) and
+      src/cli/commands/usage-add.ts add `--reading <json>`: mutually exclusive
+      with --category/--usage (refuse if both or neither); parse JSON, validate
+      with usageReadingSchema (refuse with formatIssues on failure -- including
+      any total/percent key), stamp recorded_at if absent, append to
+      usage.readings (create the list when absent), persist through the SAME
+      journal-backed usage_recording path the category flag uses
+      (appendJournalEntry + saveUsage), and return an additive view field (the
+      stored reading). Never accumulate: two calls produce two entries. Human
+      output: one line `📊 Recorded <bucket> usage reading (<count>,
+      <semantics>) for <milestone>; will be included in the next checkpoint
+      commit.` Existing --category path byte-identical. TDD in
+      tests/integration/usage-add.test.ts: append two readings -> two entries,
+      no sum anywhere in usage.yaml; refuse missing bucket/count/semantics;
+      refuse total_tokens in a reading; refuse --reading together with
+      --category; --category behavior unchanged (existing tests)."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - usage-add --reading appends exactly one validated reading per call,
+        journal-backed like --category; mutually exclusive with --category.
+      - Refusals name the missing/forbidden key; existing --category tests pass
+        unchanged.
+    context_files:
+      - src/core/metrics/aggregate.ts
+      - src/cli/commands/usage-add.ts
+      - src/state/schemas.ts
+      - src/state/journal.ts
+      - tests/integration/usage-add.test.ts
+    write_scope:
+      - src/core/metrics/aggregate.ts
+      - src/cli/commands/usage-add.ts
+      - tests/integration/usage-add.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/integration/usage-add.test.ts
+        tests/unit/schemas.test.ts
+      timeout_ms: 300000
+    result: null
+    usage: null
+  - id: T003
+    name: Decision 4 bucket mapping and per-bucket lines in milestone-status
+    objective: "In src/core/views/milestone-status.ts compute (never store) M040
+      Decision 4's mapping: task.usage -> worker when readJournal has a
+      worktree_integrate record for that task, else main; usage.yaml planning/qa
+      -> main; review-role usage (computeReviewUsageTotal's inputs) -> worker.
+      Add an additive optional `buckets` field to MilestoneStatusView: per
+      bucket { measured: number|null (sum of the EXISTING accumulated usage
+      mapped to it -- these are already accumulated figures today, the same ones
+      tokenBreakdown shows), missing: number, readings: number } -- present only
+      when at least one usage figure or reading exists for the milestone, so
+      --json is byte-identical otherwise. In
+      src/cli/commands/milestone-status.ts render, under the existing 'Token
+      breakdown:' block and only when `buckets` is present, one line per bucket:
+      `  <bucket>: <measured or N/A> (<missing> missing)[ · readings: <n>
+      (measured readings, not summed)]`. Never a total across buckets, never a
+      percentage, never a derived figure. TDD:
+      tests/unit/views-milestone-status.test.ts (mapping for a task with a
+      worktree_integrate record vs without; planning -> main; readings counted
+      not summed; buckets absent when nothing recorded) and
+      tests/integration/milestone-status.test.ts (human lines; --json
+      byte-identical when absent)."
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - buckets field and lines appear only when usage or readings exist; --json
+        byte-identical otherwise.
+      - Mapping follows Decision 4 exactly; readings are counted, never summed;
+        no total or percentage anywhere.
+    context_files:
+      - src/core/views/milestone-status.ts
+      - src/cli/commands/milestone-status.ts
+      - src/core/metrics/aggregate.ts
+      - src/core/reviews/roles.ts
+      - src/state/journal.ts
+      - src/state/schemas.ts
+      - docs/architecture/orchestrator-role.md
+      - tests/unit/views-milestone-status.test.ts
+      - tests/integration/milestone-status.test.ts
+    write_scope:
+      - src/core/views/milestone-status.ts
+      - src/cli/commands/milestone-status.ts
+      - tests/unit/views-milestone-status.test.ts
+      - tests/integration/milestone-status.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/unit/views-milestone-status.test.ts
+        tests/integration/milestone-status.test.ts
+      timeout_ms: 300000
+    result: null
+    usage: null
+  - id: T004
+    name: Document readings in usage-add, milestone-status, and dispatch docs
+    objective: "usage-add.md (common + claude, lockstep): document --reading <json>,
+      its shape, mutual exclusivity with --category, and the section 9 must-not
+      list (no totals, no percentages, nothing from Codex's
+      original_token_count, no per-task splits). milestone-status.md and
+      ms-status.md (common + claude, all four byte-identical in body): document
+      the per-bucket lines and that readings are counted, never summed.
+      dispatch.md: one added sentence in the usage-propagation MUST directing an
+      Orchestrator session's OWN runtime readings to `usage-add <milestone>
+      --reading` (never to a task's --usage, which stays per dispatched worker);
+      reword nothing else. The M041 partition-consistency test must still pass
+      (usage-add stays Orchestrator-owned; no command named on the wrong side)."
+    status: waiting
+    depends_on:
+      - T002
+      - T003
+    acceptance_criteria:
+      - Docs match shipped behavior; aliases byte-identical; partition and asset
+        suites pass.
+    context_files:
+      - src/integrations/common/commands/usage-add.md
+      - src/integrations/claude/commands/usage-add.md
+      - src/integrations/common/commands/milestone-status.md
+      - src/integrations/claude/commands/milestone-status.md
+      - src/integrations/common/commands/ms-status.md
+      - src/integrations/claude/commands/ms-status.md
+      - src/integrations/common/dispatch.md
+      - tests/unit/claude-assets.test.ts
+    write_scope:
+      - src/integrations/common/commands/usage-add.md
+      - src/integrations/claude/commands/usage-add.md
+      - src/integrations/common/commands/milestone-status.md
+      - src/integrations/claude/commands/milestone-status.md
+      - src/integrations/common/commands/ms-status.md
+      - src/integrations/claude/commands/ms-status.md
+      - src/integrations/common/dispatch.md
+    verification:
+      strategy: command
+      detail: npx vitest run tests/unit/claude-assets.test.ts
+        tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
+      timeout_ms: 300000
+    result: null
+    usage: null
+  - id: T005
+    name: Run the full verification gate
+    objective: npm run typecheck && npm test from a clean tree via task-verify with
+      the declared timeout_ms. No code changes expected; on failure stop and
+      report.
+    status: waiting
+    depends_on:
+      - T004
+    acceptance_criteria:
+      - Typecheck and full suite pass.
+    context_files:
+      - package.json
+    write_scope: []
+    verification:
+      strategy: command
+      detail: npm run typecheck && npm test
+      timeout_ms: 900000
+    result: null
+    usage: null
