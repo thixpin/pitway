@@ -162,7 +162,7 @@ tasks:
       first-attempt in_progress with only an in-scope file dirty must succeed;
       with an out-of-scope file dirty it must still refuse naming that path; the
       retry case is unchanged."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - First-attempt in_progress succeeds when the only dirt is inside the
@@ -191,7 +191,18 @@ tasks:
       strategy: tdd
       detail: npx vitest run tests/integration/task-update.test.ts
         tests/unit/git-safety.test.ts tests/unit/claude-assets.test.ts
-    result: null
+    result:
+      summary: "[truncated] untouched. The M030/T002 'AC014 unweakened' pin was
+        deliberately reversed for in-scope paths only, with a new test proving
+        out-of-scope dirt alongside in-scope dirt still refuses; retry tests
+        unchanged. task-update.md (common + claude) reworded; hash regenerated;
+        comment block rewritten."
+      evidence: Tests  292 passed (292) | Start at  22:27:39 | Duration  65.65s
+        (transform 443ms, setup 0ms, import 670ms, tests 68.35s, environment
+        0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T004
     name: Baseline commit absorbs a dirty backlog.yaml (W4)

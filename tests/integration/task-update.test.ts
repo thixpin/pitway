@@ -307,14 +307,27 @@ describe('pitway task-update to in_progress (AC014)', () => {
     expect(task('T001').attempts).toBe(1);
   });
 
-  // M030/T002 (AC002): a genuine first attempt (attempts 0/undefined) keeps
-  // the dirty-tree check strict -- write_scope dirt is never expected before
-  // any work has actually started. This locks in AC014/M005-T004's original
-  // guarantee under the new attempts-based mechanism.
-  it('refuses a fresh first attempt with unexpected write_scope dirt (AC014 unweakened)', async () => {
+  // M045/T003 (W3): a genuine first attempt tolerates dirt INSIDE the task's
+  // own declared scope (evidence or files prepared before the start), via
+  // the same taskWriteScope/verifiedCleanStart classification retries use.
+  // This deliberately reverses M030/T002's "AC014 unweakened" pin for
+  // in-scope paths only; every path outside the declared scope still
+  // refuses exactly as before (the wip.txt case above), and completion's
+  // write_scope enforcement is untouched.
+  it('accepts a fresh first attempt whose only dirt is inside the task\'s own write_scope', async () => {
     touchRelevantFile();
     const { error } = await update(['T001', 'in_progress']);
-    expect(error?.message).toMatch(/src\/a\.ts/);
+    expect(error).toBeUndefined();
+    expect(task('T001').status).toBe('in_progress');
+    expect(task('T001').attempts).toBe(1);
+  });
+
+  it('still refuses a fresh first attempt when an out-of-scope path is dirty alongside in-scope dirt', async () => {
+    touchRelevantFile();
+    writeFileSync(join(root, 'wip.txt'), 'wip\n');
+    const { error } = await update(['T001', 'in_progress']);
+    expect(error?.message).toMatch(/wip\.txt/);
+    expect(error?.message).not.toMatch(/src\/a\.ts/);
     expect(task('T001').status).toBe('ready');
     expect(task('T001').attempts).toBeUndefined();
   });
