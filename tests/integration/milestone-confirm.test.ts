@@ -8,6 +8,7 @@ import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
 import { registerMilestoneConfirmCommand } from '../../src/cli/commands/milestone-confirm.js';
 import { registerMilestoneReviewCommand } from '../../src/cli/commands/milestone-review.js';
+import { registerBacklogCommand } from '../../src/cli/commands/backlog.js';
 import { registerTaskDispatchCommand } from '../../src/cli/commands/task-dispatch.js';
 import { computeVerificationHash } from '../../src/core/contracts/verification-hash.js';
 import { derivePending } from '../../src/state/journal-operations.js';
@@ -122,6 +123,7 @@ async function run(args: string[], cwd: string): Promise<{ lines: string[]; erro
   registerInitCommand(program, { root: cwd, write: (s) => lines.push(s) });
   registerMilestoneAddCommand(program, { root: cwd, write: (s) => lines.push(s) });
   registerMilestoneConfirmCommand(program, { root: cwd, write: (s) => lines.push(s) });
+  registerBacklogCommand(program, { root: cwd, write: (s) => lines.push(s) });
   try {
     await program.parseAsync(['node', 'pitway', ...args]);
     return { lines };
@@ -922,5 +924,32 @@ describe('pitway milestone-confirm default CommandDeps fallbacks', () => {
     expect(String(calls[0]?.[0])).toMatch(
       /🏁 Confirmed milestone M001: hash sha256:[0-9a-f]{64} recorded in baseline [0-9a-f]{40}\. Ready tasks: T001\./,
     );
+  });
+});
+
+// M045/T004 (W4): a backlog add recorded while no milestone was active
+// dirties .pitway/backlog.yaml; the baseline commit absorbs it under the
+// same subset semantics as the milestone's own state files (chore commits
+// 193f0cf and ab3e525 were needed solely for this before). Everything else
+// unexpected still refuses.
+describe('pitway milestone-confirm absorbs a dirty backlog.yaml into the baseline (M045/T004)', () => {
+  it('confirms with a milestone-less backlog add pending and commits backlog.yaml in the baseline', async () => {
+    const added = await run(['backlog', 'add', '--title', 'Pre-milestone finding', '--reason', 'seen while idle'], root);
+    expect(added.error).toBeUndefined();
+    expect(git(['status', '--porcelain', '--untracked-files=all'], root)).toMatch(/backlog\.yaml/);
+    await addMilestone();
+    const { error } = await run(['milestone-confirm', 'M001'], root);
+    expect(error).toBeUndefined();
+    expect(git(['show', '--name-only', '--format=', 'HEAD'], root)).toMatch(/\.pitway\/backlog\.yaml/);
+    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+  });
+
+  it('still refuses an unrelated dirty file alongside the pending backlog change', async () => {
+    expect((await run(['backlog', 'add', '--title', 'x', '--reason', 'y'], root)).error).toBeUndefined();
+    await addMilestone();
+    writeFileSync(join(root, 'wip.txt'), 'wip\n');
+    const { error } = await run(['milestone-confirm', 'M001'], root);
+    expect(error?.message).toMatch(/wip\.txt/);
+    expect(error?.message).not.toMatch(/backlog\.yaml/);
   });
 });

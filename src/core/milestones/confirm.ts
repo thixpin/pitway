@@ -108,10 +108,15 @@ function runConfirm(root: string, milestoneId: string, contract: ContractFile): 
   // recognized one; it correctly becomes unexpected dirt and refuses
   // confirmation instead. Replaces the previous path-only
   // listClaudeAssetDestinations() call entirely.
+  // M045/T004 (W4): a backlog add recorded while no milestone was active
+  // leaves .pitway/backlog.yaml dirty with no commit of its own; the
+  // baseline commit absorbs it under the same subset semantics as the
+  // milestone's own state files (harmless when clean). The confirmation
+  // gate itself is untouched -- every other unexpected path still refuses.
   const expectedPaths = computeExpectedBaselinePaths(
     milestoneDir,
     requirement,
-    listSafeManagedDirtyPaths(root),
+    [...listSafeManagedDirtyPaths(root), '.pitway/backlog.yaml'],
   );
 
   if (status === 'draft') {

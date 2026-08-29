@@ -522,7 +522,7 @@ describe('Sequential subagent dispatch (AC001, AC005)', () => {
 // pins historical content.
 const PRE_M023_ASSET_MANIFEST: ReadonlyArray<readonly [string, string]> = [
   ['commands/auto-run.md', '611a07fb5027f1224d531651a6854f2cd2805d4119e51ff1548575c9f3103eb8'],
-  ['commands/backlog.md', 'cbca88994edf5fe336e3a2aaf1ff032d6868936227bf5f644cdde4862aac4835'],
+  ['commands/backlog.md', '67456785cd58ae01a4c7fd9dc86b172bb2354db40b54ace26bc576927a969ebe'],
   ['commands/milestone-add.md', '46129570ab6a653473129f0e0e9aececc209c4029bbe8b372af2a1ca0fe883cc'],
   ['commands/milestone-cancel.md', 'c317f888574d93011cbc76e1806a20f73cb663421452b8980f444856aa9f5448'],
   ['commands/milestone-complete.md', '2e983056267a8599c9ac5daefac430269136860709cf6a0d2d14054f936e3327'],

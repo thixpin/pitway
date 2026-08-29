@@ -218,7 +218,7 @@ tasks:
       milestone-less `backlog add` pending, milestone-confirm must succeed and
       the baseline commit must contain backlog.yaml; an unrelated dirty file
       must still refuse."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - milestone-confirm absorbs a dirty .pitway/backlog.yaml into the baseline
@@ -251,7 +251,18 @@ tasks:
       strategy: tdd
       detail: npx vitest run tests/integration/milestone-confirm.test.ts
         tests/integration/backlog.test.ts tests/unit/claude-assets.test.ts
-    result: null
+    result:
+      summary: "[truncated] ing, so it is untouched (also keeps the ms-confirm aliases
+        out of scope). Tests: milestone-less backlog add -> confirm succeeds and
+        the baseline commit contains backlog.yaml with a clean tree after;
+        unrelated wip.txt alongside the pending backlog change still refuses
+        naming only wip.txt."
+      evidence: Tests  299 passed (299) | Start at  22:31:32 | Duration  33.13s
+        (transform 819ms, setup 0ms, import 1.09s, tests 56.52s, environment
+        0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T005
     name: task-status --json exposes scope and verification fields (W5)

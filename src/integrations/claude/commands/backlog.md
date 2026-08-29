@@ -51,7 +51,8 @@ either transition starts from.
 `.pitway/backlog.yaml` is the authoritative backlog state, committed
 alongside whatever commit the workflow next produces — never a dedicated
 commit of its own, and never left dirty in a way that breaks a task's own
-clean-tree check.
+clean-tree check. An item added while no milestone is active rides the next
+`milestone-confirm` baseline commit (M045); no chore commit is needed.
 
 See `../protocol-driver.md`'s "Choosing a correction mechanism" section for
 when to reach for `backlog` instead of `task-add` or a quick-change. Run
