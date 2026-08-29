@@ -1,0 +1,280 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Task-level verification timeout honored by task-verify (W1)
+    objective: "Add optional `timeout_ms` to the task verification sub-schema in
+      src/state/schemas.ts (reuse timeoutMsSchema, the contract check timeout's
+      1000..3600000 bounds; additive, existing tasks unchanged). In
+      src/core/tasks/verify.ts, resolve the budget as: explicit inputs.timeoutMs
+      wins; else task.verification.timeout_ms when declared; else
+      DEFAULT_TIMEOUT_MS -- applied to both the verification command and
+      --typecheck exactly as today. Pass the declared value through task-status
+      --context (verificationInstructions unchanged; add nothing there unless
+      trivial) and document in the task-verify and draft-formats command docs
+      (common/ + claude/ lockstep, pinned hashes). RED first: a task declaring
+      timeout_ms: 5000 with a 3 s sleep command must fail on the current code
+      (120 s default is not the issue -- assert the record's timeout equals the
+      declared value) -- concretely, assert that runTaskVerify records
+      durationMs under a declared budget and that a 1500 ms command with
+      timeout_ms: 1000 records terminationReason timeout while the same task
+      with timeout_ms: 5000 passes; and that --timeout overrides timeout_ms. No
+      change to the 120000 default for tasks that declare nothing."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Tasks may declare verification.timeout_ms within the contract-check
+        bounds; task-verify honors it when --timeout is absent; --timeout still
+        wins; undeclared tasks keep the 120000 ms default.
+      - Regression tests cover declared-budget pass, declared-budget timeout,
+        and --timeout precedence.
+      - task-verify.md and draft-formats.md document the field; pinned hashes
+        regenerated.
+    context_files:
+      - src/state/schemas.ts
+      - src/core/tasks/verify.ts
+      - src/core/verification/process-exec.ts
+      - src/cli/commands/task-verify.ts
+      - src/integrations/common/commands/task-verify.md
+      - src/integrations/claude/commands/task-verify.md
+      - src/integrations/common/draft-formats.md
+      - tests/unit/task-verify.test.ts
+      - tests/integration/task-verify.test.ts
+      - tests/unit/schemas.test.ts
+      - tests/unit/draft-formats.test.ts
+      - tests/unit/claude-assets.test.ts
+    write_scope:
+      - src/state/schemas.ts
+      - src/core/tasks/verify.ts
+      - src/integrations/common/commands/task-verify.md
+      - src/integrations/claude/commands/task-verify.md
+      - src/integrations/common/draft-formats.md
+      - tests/unit/task-verify.test.ts
+      - tests/integration/task-verify.test.ts
+      - tests/unit/schemas.test.ts
+      - tests/unit/draft-formats.test.ts
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/unit/task-verify.test.ts
+        tests/integration/task-verify.test.ts tests/unit/schemas.test.ts
+        tests/unit/draft-formats.test.ts tests/unit/claude-assets.test.ts
+    result: null
+    usage: null
+  - id: T002
+    name: Refuse directory-form scope paths at draft time (W2)
+    objective: "In src/core/milestones/create.ts (milestone-add and --replace) and
+      src/core/tasks/add.ts (task-add), after schema parsing, refuse any task
+      whose write_scope, context_files, or relevant_files entry is a directory
+      -- ends with '/' or resolves to an existing directory under the repository
+      root -- with the message `<task id>: <field> entry \"<path>\" is a
+      directory; scope entries must be files (Core matches dirty paths
+      exactly)`. Refusal, not expansion: expanding at draft time would silently
+      widen an approved scope to files the author never listed and would drift
+      as files are added; the declared list stays the single source of truth.
+      Non-existent paths (files to be created) are still allowed. Update
+      milestone-add.md, task-add.md, and draft-formats.md (common/ + claude/
+      lockstep, pinned hashes). RED first: a draft with `write_scope:
+      [src/integrations/common/commands]` must be refused by milestone-add and
+      by --replace, and a task-add file with a directory context_files entry
+      likewise; a draft naming only files (including a not-yet-existing file)
+      still registers."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - milestone-add, milestone-add --replace, and task-add refuse directory
+        entries in write_scope/context_files/relevant_files with the specified
+        message; file entries and not-yet-existing files still pass.
+      - Regression tests for each command and for the not-yet-existing-file
+        allowance.
+      - Command docs updated; pinned hashes regenerated.
+    context_files:
+      - src/core/milestones/create.ts
+      - src/core/tasks/add.ts
+      - src/state/schemas.ts
+      - src/integrations/common/commands/milestone-add.md
+      - src/integrations/claude/commands/milestone-add.md
+      - src/integrations/common/commands/task-add.md
+      - src/integrations/claude/commands/task-add.md
+      - src/integrations/common/draft-formats.md
+      - tests/integration/milestone-add.test.ts
+      - tests/integration/task-add.test.ts
+      - tests/unit/draft-formats.test.ts
+      - tests/unit/claude-assets.test.ts
+    write_scope:
+      - src/core/milestones/create.ts
+      - src/core/tasks/add.ts
+      - src/integrations/common/commands/milestone-add.md
+      - src/integrations/claude/commands/milestone-add.md
+      - src/integrations/common/commands/task-add.md
+      - src/integrations/claude/commands/task-add.md
+      - src/integrations/common/draft-formats.md
+      - tests/integration/milestone-add.test.ts
+      - tests/integration/task-add.test.ts
+      - tests/unit/draft-formats.test.ts
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/integration/milestone-add.test.ts
+        tests/integration/task-add.test.ts tests/unit/draft-formats.test.ts
+        tests/unit/claude-assets.test.ts
+    result: null
+    usage: null
+  - id: T003
+    name: First-attempt in_progress tolerates the task's own in-scope dirt (W3)
+    objective: "In src/core/tasks/update.ts's in_progress branch, pass
+      verifiedCleanStart: true on a first attempt as well (today it is
+      taskAttempts > 0), so classifyDirtyPaths' existing taskWriteScope path
+      classifies dirt inside the task's own write_scope/relevant_files as
+      expected on attempt 1 -- the same allowance retries already get.
+      Everything else stays: tasks.yaml, verification-results/repairs, and
+      pending-journal targets remain expected; ANY other dirty path still
+      refuses with the existing 'unrelated dirty changes' message; write_scope
+      enforcement at completion is untouched. Update the comment block (it
+      currently documents the attempts>0 distinction) and task-update.md /
+      coordination.md wording that says a first start requires a fully clean
+      tree (common/ + claude/ lockstep, pinned hashes). RED first: a
+      first-attempt in_progress with only an in-scope file dirty must succeed;
+      with an out-of-scope file dirty it must still refuse naming that path; the
+      retry case is unchanged."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - First-attempt in_progress succeeds when the only dirt is inside the
+        task's own write_scope/relevant_files (plus the already-expected state
+        paths); refuses on any other dirty path with the existing message.
+      - Regression tests for in-scope-only, out-of-scope, and the unchanged
+        retry case.
+      - Comment and docs updated; pinned hashes regenerated.
+    context_files:
+      - src/core/tasks/update.ts
+      - src/git/safety.ts
+      - src/integrations/common/commands/task-update.md
+      - src/integrations/claude/commands/task-update.md
+      - src/integrations/common/coordination.md
+      - tests/integration/task-update.test.ts
+      - tests/unit/git-safety.test.ts
+      - tests/unit/claude-assets.test.ts
+    write_scope:
+      - src/core/tasks/update.ts
+      - src/integrations/common/commands/task-update.md
+      - src/integrations/claude/commands/task-update.md
+      - src/integrations/common/coordination.md
+      - tests/integration/task-update.test.ts
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/integration/task-update.test.ts
+        tests/unit/git-safety.test.ts tests/unit/claude-assets.test.ts
+    result: null
+    usage: null
+  - id: T004
+    name: Baseline commit absorbs a dirty backlog.yaml (W4)
+    objective: "In src/core/milestones/confirm.ts, include '.pitway/backlog.yaml' in
+      the extraExpectedPaths passed to computeExpectedBaselinePaths
+      (src/git/baseline.ts) so a backlog add recorded while no milestone was
+      active rides the baseline commit under the same subset semantics as
+      reviews.yaml (harmless when clean). The gate is untouched: confirm still
+      requires explicit developer approval per protocol and still refuses every
+      other unexpected dirty path. Do not change backlog add. Update
+      milestone-confirm.md and backlog.md wording that implies a chore commit is
+      needed (common/ + claude/ lockstep, pinned hashes). RED first: with a
+      milestone-less `backlog add` pending, milestone-confirm must succeed and
+      the baseline commit must contain backlog.yaml; an unrelated dirty file
+      must still refuse."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - milestone-confirm absorbs a dirty .pitway/backlog.yaml into the baseline
+        commit; any other unexpected dirty path still refuses; approval gate
+        unchanged.
+      - Regression tests for absorption and for continued refusal of unrelated
+        dirt.
+      - Docs updated; pinned hashes regenerated.
+    context_files:
+      - src/core/milestones/confirm.ts
+      - src/git/baseline.ts
+      - src/core/backlog/add.ts
+      - src/integrations/common/commands/milestone-confirm.md
+      - src/integrations/claude/commands/milestone-confirm.md
+      - src/integrations/common/commands/backlog.md
+      - src/integrations/claude/commands/backlog.md
+      - tests/integration/milestone-confirm.test.ts
+      - tests/integration/backlog.test.ts
+      - tests/unit/claude-assets.test.ts
+    write_scope:
+      - src/core/milestones/confirm.ts
+      - src/integrations/common/commands/milestone-confirm.md
+      - src/integrations/claude/commands/milestone-confirm.md
+      - src/integrations/common/commands/backlog.md
+      - src/integrations/claude/commands/backlog.md
+      - tests/integration/milestone-confirm.test.ts
+      - tests/integration/backlog.test.ts
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/integration/milestone-confirm.test.ts
+        tests/integration/backlog.test.ts tests/unit/claude-assets.test.ts
+    result: null
+    usage: null
+  - id: T005
+    name: task-status --json exposes scope and verification fields (W5)
+    objective: "In src/cli/commands/task-status.ts, extend TaskStatusView additively
+      with contextFiles, writeScope, relevantFiles (each present only when the
+      task declares it, matching task-status --context's omission convention)
+      and verification { strategy, detail, timeoutMs? }. Human output unchanged.
+      Update task-status.md (common/ + claude/ lockstep, pinned hashes). RED
+      first: --json for a context_files/write_scope task must carry both arrays
+      verbatim and omit relevantFiles; a legacy relevant_files task the inverse;
+      existing keys unchanged; human output byte-identical."
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - task-status --json carries contextFiles/writeScope/relevantFiles per the
+        omission convention and verification {strategy, detail, timeoutMs?};
+        existing keys and human output unchanged.
+      - Regression tests for both scoping styles and human-output stability.
+      - task-status.md updated; pinned hash regenerated.
+    context_files:
+      - src/cli/commands/task-status.ts
+      - src/core/tasks/context-bundle.ts
+      - src/state/schemas.ts
+      - src/integrations/common/commands/task-status.md
+      - src/integrations/claude/commands/task-status.md
+      - tests/integration/task-status.test.ts
+      - tests/unit/claude-assets.test.ts
+    write_scope:
+      - src/cli/commands/task-status.ts
+      - src/integrations/common/commands/task-status.md
+      - src/integrations/claude/commands/task-status.md
+      - tests/integration/task-status.test.ts
+      - tests/unit/claude-assets.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/integration/task-status.test.ts
+        tests/unit/claude-assets.test.ts
+    result: null
+    usage: null
+  - id: T006
+    name: Run the full verification gate
+    objective: npm run typecheck && npm test from a clean tree. Run via task-verify
+      T006 --timeout 600000 (the schema field T001 adds cannot be declared in a
+      draft registered before T001 lands; declaring it via task-amend after T001
+      is optional, not required). No code changes expected; on failure stop and
+      report.
+    status: waiting
+    depends_on:
+      - T001
+      - T002
+      - T003
+      - T004
+      - T005
+    acceptance_criteria:
+      - Typecheck and full suite pass.
+    context_files:
+      - package.json
+    write_scope: []
+    verification:
+      strategy: command
+      detail: npm run typecheck && npm test
+    result: null
+    usage: null
