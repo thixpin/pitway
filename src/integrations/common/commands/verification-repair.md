@@ -24,12 +24,16 @@ Two phases, always in this order:
   --change-log <text>` — run this BEFORE any implementation edit. Running
   it against the exact file/check list is itself the approval; it allocates
   a durable `VR` id and rejects an empty/duplicate list, a file path
-  outside the repo, or a check that isn't a known command-type check. At
-  most one repair may be pending per milestone.
+  outside the repo, or an unknown check id. Command, manual, and review
+  checks are all valid scope (B040). At most one repair may be pending per
+  milestone.
 - `verification-repair commit <milestone> <vr-id>` — run only after the
-  edits are made. Reruns every approved check; refuses the whole commit
-  (repair stays pending) if any fails or if the dirty tree holds anything
-  outside the approved scope.
+  edits are made. Reruns every approved command check; a manual/review
+  check is satisfied only by a developer verdict recorded with `verify
+  <milestone> --check <id> --pass` *after* the approval (a re-record is the
+  honest equivalent of a rerun). Refuses the whole commit (repair stays
+  pending) if any check fails or lacks its re-record, or if the dirty tree
+  holds anything outside the approved scope.
 
 `verification-repair cancel <milestone> <vr-id>` abandons a still-pending
 repair.

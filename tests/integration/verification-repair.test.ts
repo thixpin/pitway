@@ -294,12 +294,15 @@ describe('pitway verification-repair approve validation', () => {
     expect(repairs().records).toHaveLength(0);
   });
 
-  it('rejects a --check id that is not a command-type check', async () => {
+  // B040 (qc-e1b433df): a review/manual check is a valid repair scope --
+  // it cannot be rerun, so commit requires a developer re-record after the
+  // approval instead (tests under 'commit', below).
+  it('accepts a --check id that is a manual/review check', async () => {
     await readyForRepair();
-    const { error } = await approve(['repair-target.txt'], ['CT002']);
-    expect(error?.message).toMatch(/CT002/);
-    expect(error?.message).toMatch(/command/i);
-    expect(repairs().records).toHaveLength(0);
+    const { error, lines } = await approve(['repair-target.txt'], ['CT002']);
+    expect(error).toBeUndefined();
+    expect(JSON.parse(lines[0]!)).toMatchObject({ id: 'VR001', status: 'pending', checks: ['CT002'] });
+    expect(repairs().records[0]!.checks).toEqual(['CT002']);
   });
 
   it.each([
@@ -382,6 +385,43 @@ describe('pitway verification-repair commit', () => {
     expect(error?.message).toMatch(/stray\.txt/);
     expect(commitCount(root)).toBe(before);
     expect(repairs().records[0]!.status).toBe('pending');
+  });
+
+  // B040 (qc-e1b433df): a manual/review check in the approved scope is
+  // satisfied only by a developer-recorded pass dated AFTER the approval.
+  it('refuses a manual/review check that has not been re-recorded since the approval, naming the command to run', async () => {
+    await readyForRepair();
+    await approve(['repair-target.txt'], ['CT002'], 'Docs fix.');
+    writeFileSync(join(root, 'repair-target.txt'), 'FIXED again\n');
+    const before = commitCount(root);
+    const { error } = await commitRepair('VR001');
+    expect(error?.message).toMatch(/CT002/);
+    expect(error?.message).toMatch(/verify M001 --check CT002 --pass/);
+    expect(commitCount(root)).toBe(before);
+    expect(repairs().records[0]!.status).toBe('pending');
+  });
+
+  it('commits once every manual/review check carries a developer pass recorded after the approval, alongside rerun command checks', async () => {
+    await readyForRepair();
+    await approve(['repair-target.txt'], ['CT001', 'CT002'], 'Docs and code fix.');
+    writeFileSync(join(root, 'repair-target.txt'), 'FIXED again\n');
+    // Timestamps are second-resolution: a real re-record always happens in a
+    // later second than the approval; cross the boundary explicitly here.
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    expect(
+      (await run(['verify', 'M001', '--check', 'CT002', '--pass', '--evidence', 'Docs re-reviewed after the repair edit.', '--json'], root)).error,
+    ).toBeUndefined();
+    const before = commitCount(root);
+    const { error, lines } = await commitRepair('VR001');
+    expect(error).toBeUndefined();
+    expect(JSON.parse(lines[0]!)).toMatchObject({ id: 'VR001', outcome: 'committed' });
+    expect(commitCount(root)).toBe(before + 1);
+    expect(repairs().records[0]!.status).toBe('committed');
+    const results = loadVerificationResults(root, 'M001').results;
+    // The command check was rerun (a fresh command-recorded pass) and the
+    // review check's developer pass is the one that satisfied it.
+    expect(results.some((r) => r.check === 'CT001' && r.recorded_by === 'command' && r.status === 'pass')).toBe(true);
+    expect(results.some((r) => r.check === 'CT002' && r.recorded_by === 'developer' && r.status === 'pass')).toBe(true);
   });
 
   it('refuses and leaves the VR pending when a rerun check fails', async () => {

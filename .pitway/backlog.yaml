@@ -782,14 +782,14 @@ items:
       allocate a VR id. Needs a way to approve/commit a repair against a
       review-type check (e.g. re-record required) without borrowing a command
       check."
-    status: pending
+    status: archived
     source:
       milestone: null
       task: null
     created_at: 2026-08-28T10:35:59.868Z
-    resolved_at: null
+    resolved_at: 2026-08-29T02:42:49.686Z
     promoted_to: null
-    archived_reason: null
+    archived_reason: closed by quick-change qc-e1b433df
   - id: B041
     title: quick-change commit allows an overly long commit subject line
     reason: "quick-change commit uses the entire --objective text as the commit

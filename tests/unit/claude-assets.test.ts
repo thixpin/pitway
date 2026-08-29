@@ -550,7 +550,7 @@ const PRE_M023_ASSET_MANIFEST: ReadonlyArray<readonly [string, string]> = [
   ['commands/task-update.md', 'f0726b87724c4a6e36f575c253b5b3a730b049a910df97a28c9c12bb5b40134e'],
   ['commands/task-verify.md', '8aa767b2937d37cc7557a5db8067824ff320ecc6288d1384fc5f54562163116d'],
   ['commands/usage-add.md', '9a6b60b781dc30c32e34a3bc99d2c4257af172242923807cb802dc0499184bf6'],
-  ['commands/verification-repair.md', '885eb483764050f6a09ff3cd14ec024fc902d2d1582ae0e12e938b631c65b3e6'],
+  ['commands/verification-repair.md', 'fcbcc2378ea42262cf177bca1ca9fc259296da659c9cbc8c32798836c80334a4'],
   ['commands/verify.md', 'f25a28e38b630ab7794fbc5c4bbc0c145e56e0f9e1512e6076c1c886514c653b'],
   ['commands/write-ms-artifacts.md', 'b3d4ee5da3d8b34d5b5af65fff86279399f03bfaec98b61f488a136f46d6f36f'],
   ['coordination.md', '4fb348cdad94477a87be450516f9fe195a04246a29e1aea7898ae0473a836575'],

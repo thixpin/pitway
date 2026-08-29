@@ -8,6 +8,7 @@ import type { ContractFile } from '../../state/contract-file.js';
 import type { VerificationRepairRecord, VerificationRepairsFile } from '../../state/schemas.js';
 import {
   loadContract,
+  loadVerificationResults,
   loadTasks,
   loadVerificationRepairs,
   resolveMilestoneDirName,
@@ -126,12 +127,9 @@ function assertValidCheckList(contract: ContractFile, rawChecks: string[]): stri
     if (check === undefined) {
       throw new VerificationRepairError(`unknown check ${id} in ${contract.frontmatter.id}`);
     }
-    if (check.type !== 'command') {
-      throw new VerificationRepairError(
-        `check ${id} is a ${check.type} check, not command-type; verification-repair only ` +
-          `reruns command-type checks`,
-      );
-    }
+    // B040: manual/review checks are valid repair scope too -- they cannot
+    // be rerun, so commit requires a developer re-record after approval
+    // (assertReRecordedSinceApproval below) instead of a rerun.
   }
   return rawChecks;
 }
@@ -293,6 +291,25 @@ function assertDirtySubset(root: string, expectedPaths: string[]): void {
 // the whole commit if any fails, VR staying pending), and only then
 // atomically commits the VR record, the corrected files, and the fresh
 // verification-results.yaml entries.
+// B040: true when the latest recorded result for `checkId` is a
+// developer-recorded pass whose timestamp is later than the repair's
+// approval -- i.e. the developer re-reviewed after the repair edit. A pass
+// recorded before approval proves nothing about the repaired content.
+// Timestamps are second-resolution (run.ts nowSeconds), so a verdict
+// recorded within the same second as the approval is indistinguishable
+// from one recorded just before it and is deliberately NOT accepted --
+// the refusal names the exact verify command; re-record and commit again.
+function reRecordedSinceApproval(root: string, milestoneId: string, checkId: string, approvedAt: string): boolean {
+  const results = loadVerificationResults(root, milestoneId).results.filter((r) => r.check === checkId);
+  const latest = results[results.length - 1];
+  return (
+    latest !== undefined &&
+    latest.status === 'pass' &&
+    latest.recorded_by === 'developer' &&
+    Date.parse(latest.at) > Date.parse(approvedAt)
+  );
+}
+
 export function commitVerificationRepair(
   root: string,
   milestoneId: string,
@@ -332,9 +349,30 @@ export function commitVerificationRepair(
   const expectedPaths = [...new Set([...record.files, ...ownStatePaths])];
   assertDirtySubset(root, expectedPaths);
 
-  // Every approved check runs to completion — a failure never stops or
-  // hides the rest, mirroring runVerification's own convention.
-  const outcomes = record.checks.map((checkId) => runSingleCheck(root, milestoneId, checkId));
+  // B040: split the approved checks by type. Command checks rerun exactly
+  // as before; manual/review checks cannot be rerun, so each must carry a
+  // developer-recorded pass dated after this repair's approval -- the
+  // re-record is the honest equivalent of a rerun. Checked FIRST so a
+  // missing re-record never triggers command reruns that would append
+  // results for nothing.
+  const contract = loadContract(root, milestoneId);
+  const typeOf = (checkId: string): string =>
+    contract.frontmatter.verification.find((c) => c.id === checkId)?.type ?? 'command';
+  const nonCommand = record.checks.filter((checkId) => typeOf(checkId) !== 'command');
+  const notReRecorded = nonCommand.filter((checkId) => !reRecordedSinceApproval(root, milestoneId, checkId, record.approved_at));
+  if (notReRecorded.length > 0) {
+    throw new VerificationRepairError(
+      `cannot commit ${vrId}: ${notReRecorded.map((c) => `${c} (${typeOf(c)})`).join(', ')} ` +
+        `not re-recorded since the repair was approved at ${record.approved_at}; record the developer's ` +
+        `verdict with \`verify ${milestoneId} --check ${notReRecorded[0]} --pass --evidence <text>\` ` +
+        `(one per check), then commit again; ${vrId} stays pending`,
+    );
+  }
+
+  // Every approved command check runs to completion — a failure never
+  // stops or hides the rest, mirroring runVerification's own convention.
+  const commandChecks = record.checks.filter((checkId) => typeOf(checkId) === 'command');
+  const outcomes = commandChecks.map((checkId) => runSingleCheck(root, milestoneId, checkId));
   const failed = outcomes.filter((o) => o.status === 'fail').map((o) => o.check);
   if (failed.length > 0) {
     throw new VerificationRepairError(
