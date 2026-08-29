@@ -2,7 +2,7 @@
 schema_version: 1
 id: M044
 title: Orchestrator Lifecycle & Context Handling
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-28T18:37:09Z
 verification_approved_hash: sha256:0895e474fe0070614cb958e7f29948ec6964eb0f38b83759e464017f92669a99
