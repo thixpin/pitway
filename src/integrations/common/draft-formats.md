@@ -74,6 +74,7 @@ tasks:
     verification:
       strategy: command
       detail: npx vitest run tests/thing.test.ts
+      timeout_ms: 600000   # optional (1..3600000): task-verify budget when --timeout is omitted
     result: null
     usage: null
   - id: T002

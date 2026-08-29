@@ -19,7 +19,7 @@ tasks:
       timeout_ms: 1000 records terminationReason timeout while the same task
       with timeout_ms: 5000 passes; and that --timeout overrides timeout_ms. No
       change to the 120000 default for tasks that declare nothing."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - Tasks may declare verification.timeout_ms within the contract-check
@@ -58,7 +58,18 @@ tasks:
       detail: npx vitest run tests/unit/task-verify.test.ts
         tests/integration/task-verify.test.ts tests/unit/schemas.test.ts
         tests/unit/draft-formats.test.ts tests/unit/claude-assets.test.ts
-    result: null
+    result:
+      summary: "[truncated] -verify.md (common + claude) and draft-formats.md's tasks
+        example document the field; pinned hashes regenerated. Tests: declared
+        budget times out / passes with no flag; --timeout overrides the declared
+        value; undeclared task keeps the default; schema accepts in-range and
+        rejects 3600001."
+      evidence: Tests  375 passed (375) | Start at  10:55:32 | Duration  23.36s
+        (transform 663ms, setup 0ms, import 1.10s, tests 36.96s, environment
+        1ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T002
     name: Refuse directory-form scope paths at draft time (W2)

@@ -877,3 +877,29 @@ describe('reviewFindingsSnapshotSchema usage field (M021/AC001)', () => {
     expect(result.success).toBe(true);
   });
 });
+
+// M045/T001 (W1): additive optional task-level verification timeout.
+describe('task verification.timeout_ms (M045/T001)', () => {
+  it('accepts a declared timeout within the contract-check bounds and rejects out-of-range values', () => {
+    const base = {
+      schema_version: 1,
+      tasks: [
+        {
+          id: 'T001',
+          objective: 'x',
+          status: 'planned',
+          depends_on: [],
+          acceptance_criteria: ['x'],
+          relevant_files: ['a.ts'],
+          verification: { strategy: 'command', detail: 'npm test', timeout_ms: 600000 },
+          result: null,
+          usage: null,
+        },
+      ],
+    };
+    expect(tasksFileSchema.safeParse(base).success).toBe(true);
+    const tooBig = structuredClone(base);
+    (tooBig.tasks[0] as { verification: { timeout_ms: number } }).verification.timeout_ms = 3_600_001;
+    expect(tasksFileSchema.safeParse(tooBig).success).toBe(false);
+  });
+});
