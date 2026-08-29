@@ -175,7 +175,7 @@ tasks:
       src/core/views/resume.ts and/or src/state/schemas.ts, keeping existing
       --json output byte-identical when the new data is absent, with tests.
       Otherwise cancel this task (task-update T005 cancelled)."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -183,26 +183,46 @@ tasks:
         absent; or the task is cancelled with the reason recorded.
     context_files:
       - src/core/views/resume.ts
+      - src/cli/commands/resume.ts
       - src/state/schemas.ts
+      - src/state/journal.ts
+      - src/state/journal-operations.ts
+      - src/core/journal/pending-targets.ts
+      - src/state/store.ts
+      - docs/architecture/orchestrator-flush-audit.md
       - tests/integration/resume.test.ts
       - tests/unit/views-resume.test.ts
+      - tests/integration/fresh-session-resume.test.ts
     write_scope:
       - src/core/views/resume.ts
+      - src/cli/commands/resume.ts
       - src/state/schemas.ts
       - tests/integration/resume.test.ts
       - tests/unit/views-resume.test.ts
+      - tests/integration/fresh-session-resume.test.ts
     verification:
       strategy: command
       detail: npx vitest run tests/integration/resume.test.ts
         tests/unit/views-resume.test.ts
         tests/integration/milestone-status.test.ts
-    result: null
+    result:
+      summary: "[truncated] bsent when none; active-milestone filter + checkpoint
+        exclusion + resolved targets; pending-vs-committed repair), integration
+        (human sections and --json keys; absence), and M044/T002's deliberate
+        'not listed' assertion flipped to assert the new field. No existing
+        field or output changed."
+      evidence: Tests  86 passed (86) | Start at  09:06:39 | Duration  15.75s
+        (transform 811ms, setup 0ms, import 1.19s, tests 23.30s, environment
+        0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T006
     name: Run the full verification gate
     objective: npm run typecheck && npm test from a clean tree (task-verify
       --timeout 600000). No code changes expected; on failure stop and report.
-    status: waiting
+    status: ready
     depends_on:
       - T002
       - T004

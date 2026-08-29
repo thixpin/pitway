@@ -141,3 +141,12 @@ depends on T001; T006 depends on all.
 - 2026-08-29: Registered as M044 -- next sequential id after M043 -- with
   M041's two protocol-text gaps folded in as AC003/T003 and the restart
   test anchored on M041's real restarts.
+- 2026-08-29: T005 activated (developer-approved, per AC005). The T001
+  audit found two gaps -- G1: pending journal entries are tolerated but not
+  listed on any read-only surface; G2: a pending verification repair is not
+  visible on resume. Closing both additively: resume gains read-only fields
+  `pendingJournal` (type, target, operationId per pending entry for the
+  active milestone) and `pendingRepair` (id, files, checks), each absent
+  when empty so existing --json output stays byte-identical, plus matching
+  human sections; tests added; M044/T002's deliberate 'not listed'
+  assertion is flipped to assert the new field. No existing field changes.

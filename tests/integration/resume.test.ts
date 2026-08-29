@@ -11,9 +11,10 @@ import {
   saveReviews,
   saveState,
   saveTasks,
+  saveVerificationRepairs,
   saveVerificationResults,
 } from '../../src/state/store.js';
-import { appendQuickChangeRecord, appendWorktreeIntegrateRecord } from '../../src/state/journal.js';
+import { appendJournalEntry, appendQuickChangeRecord, appendWorktreeIntegrateRecord } from '../../src/state/journal.js';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
@@ -1224,5 +1225,52 @@ describe('pitway resume default CommandDeps fallbacks', () => {
     expect(caught).toBeUndefined();
     expect(calls).toHaveLength(1);
     expect(String(calls[0]?.[0])).toContain('No active milestone. Run milestone-add to start one.');
+  });
+});
+
+// M044/T005: human sections for the two new recovery inputs, and byte-stable
+// --json when neither is pending.
+describe('pitway resume pending journal entries and pending repair (M044/T005)', () => {
+  it('renders both sections in human output and carries both keys in --json', async () => {
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    saveContract(root, 'M001', { frontmatter: frontmatter('in_progress'), body: '\n' });
+    saveTasks(root, 'M001', { schema_version: 1, tasks: [task({ id: 'T001', status: 'ready' })] });
+    appendJournalEntry(root, { milestone: 'M001', type: 'contract_amendment', operationId: 'op-amend-1', payload: {} });
+    saveVerificationRepairs(root, 'M001', {
+      schema_version: 1,
+      records: [{ id: 'VR001', files: ['README.md'], checks: ['CT001'], change_log: 'fix', approved_at: '2026-08-29T00:00:00Z', status: 'pending' }],
+    });
+
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume']);
+    const out = lines.join('\n');
+    expect(out).toContain('📜 Pending journal entries (1) — checkpointed by the next commit');
+    expect(out).toContain('  contract_amendment  .pitway/milestones/M001/contract.md  op-amend-1');
+    expect(out).toContain('🔧 Pending verification repair VR001');
+    expect(out).toContain('  files: README.md');
+    expect(out).toContain('  checks: CT001');
+
+    const jsonProgram = buildCli();
+    const jsonLines: string[] = [];
+    registerResumeCommand(jsonProgram, { root, write: (s) => jsonLines.push(s) });
+    await jsonProgram.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(jsonLines.join('\n'));
+    expect(view.pendingJournal).toEqual([{ type: 'contract_amendment', target: '.pitway/milestones/M001/contract.md', operationId: 'op-amend-1' }]);
+    expect(view.pendingRepair).toEqual({ id: 'VR001', files: ['README.md'], checks: ['CT001'] });
+  });
+
+  it('omits both keys and both sections when nothing is pending', async () => {
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    saveContract(root, 'M001', { frontmatter: frontmatter('in_progress'), body: '\n' });
+    saveTasks(root, 'M001', { schema_version: 1, tasks: [task({ id: 'T001', status: 'ready' })] });
+    const program = buildCli();
+    const lines: string[] = [];
+    registerResumeCommand(program, { root, write: (s) => lines.push(s) });
+    await program.parseAsync(['node', 'pitway', 'resume', '--json']);
+    const view = JSON.parse(lines.join('\n'));
+    expect('pendingJournal' in view).toBe(false);
+    expect('pendingRepair' in view).toBe(false);
   });
 });

@@ -3,7 +3,16 @@ import { deterministicBranchName } from '../milestones/confirm.js';
 import { computeMilestoneProgress } from '../milestones/progress.js';
 import { computeRacingFooter, resolveNextTask } from '../milestones/footer.js';
 import { allChecksPassed, computeLatestCheckResults } from '../verification/status.js';
-import { loadConfig, loadContract, loadReviews, loadState, loadTasks } from '../../state/store.js';
+import {
+  loadConfig,
+  loadContract,
+  loadReviews,
+  loadState,
+  loadTasks,
+  loadVerificationRepairs,
+  resolveMilestoneDirName,
+} from '../../state/store.js';
+import { derivePending, resolveTargetPath } from '../../state/journal-operations.js';
 import { deriveQuickChangeState, readAllQuickChanges } from '../quick-change/create.js';
 import { listBacklogItems } from '../backlog/list.js';
 import { deriveLiveDispatches } from '../tasks/dispatch.js';
@@ -120,6 +129,26 @@ export interface ResumeView {
   // finds 2+ ready tasks mutually eligible for parallel dispatch today.
   // Advisory only: resume never calls task-dispatch or mutates state.
   parallelEligible?: string[];
+  // M044/T005: pending journal entries for the active milestone (G1) and a
+  // pending verification repair (G2); absent when none.
+  pendingJournal?: PendingJournalEntryView[];
+  pendingRepair?: PendingRepairView;
+}
+
+// M044/T005 (audit gaps G1, G2): read-only recovery inputs that the state
+// guards already tolerate but resume never listed. Both additive and absent
+// (never null / never an empty array) when there is nothing pending, so
+// existing --json output is byte-identical.
+export interface PendingJournalEntryView {
+  type: string;
+  target: string;
+  operationId: string;
+}
+
+export interface PendingRepairView {
+  id: string;
+  files: string[];
+  checks: string[];
 }
 
 export interface OpenReviewView {
@@ -341,6 +370,35 @@ function buildParallelEligible(readyTasks: Task[], allTasks: Task[]): string[] |
   return eligibleIds.size >= 2 ? [...eligibleIds].sort() : undefined;
 }
 
+// M044/T005 (G1): the milestone's pending journal entries as repo-relative
+// targets -- the same derivation resolvePendingJournalTargets uses for the
+// dirty-path allowlist, surfaced here read-only. An unresolvable milestone
+// directory yields [] rather than throwing, matching that helper.
+function buildPendingJournal(root: string, milestoneId: string): PendingJournalEntryView[] {
+  const pending = derivePending(readJournal(root)).filter((e) => e.milestone === milestoneId);
+  if (pending.length === 0) return [];
+  let milestoneDir: string;
+  try {
+    milestoneDir = resolveMilestoneDirName(root, milestoneId);
+  } catch {
+    return [];
+  }
+  return pending.map((e) => ({ type: e.type, target: resolveTargetPath(e, milestoneDir), operationId: e.operationId }));
+}
+
+// M044/T005 (G2): the one pending verification repair, if any (at most one
+// may be pending per milestone). A missing repairs file means none.
+function buildPendingRepair(root: string, milestoneId: string): PendingRepairView | undefined {
+  let records;
+  try {
+    records = loadVerificationRepairs(root, milestoneId).records;
+  } catch {
+    return undefined;
+  }
+  const pending = records.find((r) => r.status === 'pending');
+  return pending === undefined ? undefined : { id: pending.id, files: [...pending.files], checks: [...pending.checks] };
+}
+
 // Reads only .pitway/ — no conversation or session input required. When
 // multiple tasks are ready, recommends the lowest task id (declared order),
 // deterministically, with no other prioritization in MVP.
@@ -422,6 +480,8 @@ export function buildResumeView(root: string): ResumeView {
 
   const waitingDetails = buildWaitingDetails(tasksFile.tasks);
   const blockedDetails = buildBlockedDetails(tasksFile.tasks);
+  const pendingJournal = buildPendingJournal(root, state.active_milestone);
+  const pendingRepair = buildPendingRepair(root, state.active_milestone);
 
   return {
     activeMilestone: state.active_milestone,
@@ -443,5 +503,7 @@ export function buildResumeView(root: string): ResumeView {
     ...(openReview ? { openReview } : {}),
     ...(driverDrift ? { driverDrift } : {}),
     ...(parallelEligible ? { parallelEligible } : {}),
+    ...(pendingJournal.length > 0 ? { pendingJournal } : {}),
+    ...(pendingRepair ? { pendingRepair } : {}),
   };
 }

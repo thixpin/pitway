@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildResumeView } from '../../src/core/views/resume.js';
-import { saveContract, saveState, saveTasks, saveVerificationResults } from '../../src/state/store.js';
+import { saveContract, saveState, saveTasks, saveVerificationRepairs, saveVerificationResults } from '../../src/state/store.js';
+import { appendCheckpointMarker, appendJournalEntry } from '../../src/state/journal.js';
 import type { ContractFrontmatter, Task } from '../../src/state/schemas.js';
 
 // B037: buildResumeView is Core view assembly -- pure state reconstruction
@@ -183,5 +184,45 @@ describe('buildResumeView (Core)', () => {
     const view = buildResumeView(root);
     expect(view.parallel).toEqual({ activeDispatches: [], residues: [] });
     expect(view.parallelEligible).toEqual(['T001', 'T002']);
+  });
+});
+
+// M044/T005 (audit gaps G1, G2): pendingJournal and pendingRepair are
+// additive -- absent, never empty, when there is nothing pending.
+describe('buildResumeView pending journal entries and pending repair (M044/T005)', () => {
+  function active(): void {
+    saveState(root, { schema_version: 1, active_milestone: 'M001', milestones: ['M001'] });
+    saveContract(root, 'M001', { frontmatter: frontmatter('in_progress'), body: '\n' });
+    saveTasks(root, 'M001', { schema_version: 1, tasks: [task({ id: 'T001', status: 'ready' })] });
+  }
+
+  it('omits both keys when nothing is pending', () => {
+    active();
+    const view = buildResumeView(root);
+    expect('pendingJournal' in view).toBe(false);
+    expect('pendingRepair' in view).toBe(false);
+  });
+
+  it('lists pending entries for the active milestone only, with their resolved targets, and drops checkpointed ones', () => {
+    active();
+    appendJournalEntry(root, { milestone: 'M001', type: 'usage_recording', operationId: 'op-1', payload: {} });
+    appendJournalEntry(root, { milestone: 'M001', type: 'task_amendment', operationId: 'op-2', payload: {} });
+    appendJournalEntry(root, { milestone: 'M002', type: 'usage_recording', operationId: 'op-other', payload: {} });
+    appendCheckpointMarker(root, 'M001', 'op-1', 'deadbeef');
+    expect(buildResumeView(root).pendingJournal).toEqual([
+      { type: 'task_amendment', target: '.pitway/milestones/M001/tasks.yaml', operationId: 'op-2' },
+    ]);
+  });
+
+  it('surfaces the one pending verification repair and ignores committed or cancelled ones', () => {
+    active();
+    saveVerificationRepairs(root, 'M001', {
+      schema_version: 1,
+      records: [
+        { id: 'VR001', files: ['docs/a.md'], checks: ['CT001'], change_log: 'done', approved_at: '2026-08-29T00:00:00Z', status: 'committed' },
+        { id: 'VR002', files: ['docs/b.md', 'docs/c.md'], checks: ['CT002'], change_log: 'open', approved_at: '2026-08-29T01:00:00Z', status: 'pending' },
+      ],
+    });
+    expect(buildResumeView(root).pendingRepair).toEqual({ id: 'VR002', files: ['docs/b.md', 'docs/c.md'], checks: ['CT002'] });
   });
 });

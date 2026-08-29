@@ -403,10 +403,16 @@ describe('Orchestrator restart recovery from resume alone (M044/T002)', () => {
     // The exact next action: continue T001 (in_progress beats ready).
     expect(view.nextTask).toBe('T001');
 
-    // The pending journal entry never blocks re-orientation; resume tolerates
-    // its dirt (M044/T001 audit gap G1: it is not LISTED -- asserted here so
-    // a future additive field is a deliberate change, not drift).
-    expect(view).not.toHaveProperty('pendingJournal');
+    // The pending journal entry never blocks re-orientation, and since
+    // M044/T005 (audit gap G1 closed) resume LISTS it as a recovery input.
+    expect(view.pendingJournal).toEqual([
+      {
+        type: 'usage_recording',
+        target: '.pitway/milestones/M001-orchestrator-restart-recovery-fixture/usage.yaml',
+        operationId: 'op-usage-restart-1',
+      },
+    ]);
+    expect(view).not.toHaveProperty('pendingRepair');
 
     const human = await run(['resume'], root);
     const out = human.lines.join('\n');
