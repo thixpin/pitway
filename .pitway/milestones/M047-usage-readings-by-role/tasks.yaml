@@ -125,7 +125,7 @@ tasks:
       not summed; buckets absent when nothing recorded) and
       tests/integration/milestone-status.test.ts (human lines; --json
       byte-identical when absent)."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -153,7 +153,17 @@ tasks:
       detail: npx vitest run tests/unit/views-milestone-status.test.ts
         tests/integration/milestone-status.test.ts
       timeout_ms: 300000
-    result: null
+    result:
+      summary: "[truncated]  has any usage figure or reading, so --json is
+        byte-identical otherwise. CLI renders one line per bucket under the
+        token breakdown: `<bucket>: <measured|N/A> (<missing> missing)[ ·
+        readings: <n> (measured readings, not summed)]` -- no cross-bucket
+        total, no percentage, no derived figure."
+      evidence: Tests  41 passed (41) | Start at  23:57:25 | Duration  6.67s
+        (transform 415ms, setup 0ms, import 601ms, tests 7.68s, environment 0ms)
+    attempts: 1
+    driver: claude-code
+    model: claude-fable-5
     usage: null
   - id: T004
     name: Document readings in usage-add, milestone-status, and dispatch docs
@@ -168,7 +178,7 @@ tasks:
       --reading` (never to a task's --usage, which stays per dispatched worker);
       reword nothing else. The M041 partition-consistency test must still pass
       (usage-add stays Orchestrator-owned; no command named on the wrong side)."
-    status: waiting
+    status: ready
     depends_on:
       - T002
       - T003

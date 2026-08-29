@@ -86,7 +86,25 @@ export interface MilestoneStatusView {
   tokenBreakdown: TokenBreakdown;
   // AC004 (M013): null before milestone-confirm has run.
   footer: string | null;
+  // M047/T003 (AC003): M040 Decision 4's mapping of existing usage onto the
+  // Decision 3 buckets, computed never stored, plus a COUNT of recorded
+  // readings per bucket (readings are never summed). Present only when the
+  // milestone has at least one usage figure or reading, so --json stays
+  // byte-identical otherwise.
+  buckets?: UsageBuckets;
 }
+
+export type UsageBucketName = 'main' | 'orchestrator' | 'worker' | 'auxiliary';
+
+export interface UsageBucket {
+  // Sum of the already-accumulated existing usage mapped to this bucket
+  // (the same figures tokenBreakdown shows), null when none measured.
+  measured: number | null;
+  missing: number;
+  readings: number;
+}
+
+export type UsageBuckets = Record<UsageBucketName, UsageBucket>;
 
 const LABEL_TRUNCATE_LENGTH = 60;
 
@@ -134,6 +152,46 @@ function computeTokenBreakdown(tasks: Task[], usage: UsageFile, reviews: Reviews
   return { task: taskMeasured ? taskTotal : null, planning, qa, review: reviewUsage.total, total, missing };
 }
 
+// M047/T003 (AC003): Decision 4 mapping. task.usage -> worker when the task
+// has a worktree_integrate journal record (it landed from a worktree),
+// otherwise main (inline work is the driver's own session); planning/qa ->
+// main; review-role usage -> worker. Readings are counted per bucket and
+// never summed. Returns undefined when nothing at all is recorded.
+function computeUsageBuckets(
+  root: string,
+  milestoneId: string,
+  tasks: Task[],
+  usage: UsageFile,
+  reviews: ReviewsFile,
+): UsageBuckets | undefined {
+  const empty = (): UsageBucket => ({ measured: null, missing: 0, readings: 0 });
+  const buckets: UsageBuckets = { main: empty(), orchestrator: empty(), worker: empty(), auxiliary: empty() };
+  const add = (name: UsageBucketName, tokens: number | null): void => {
+    const b = buckets[name];
+    if (tokens === null) b.missing += 1;
+    else b.measured = (b.measured ?? 0) + tokens;
+  };
+  const integrated = new Set(
+    readJournal(root)
+      .filter((r) => r.kind === 'worktree_integrate' && r.milestone === milestoneId)
+      .map((r) => (r as { taskId: string }).taskId),
+  );
+  for (const t of tasks) {
+    if (t.status === 'cancelled') continue;
+    add(integrated.has(t.id) ? 'worker' : 'main', t.usage === null ? null : t.usage.total_tokens);
+  }
+  add('main', usage.planning === null ? null : usage.planning.total_tokens);
+  add('main', usage.qa === null ? null : usage.qa.total_tokens);
+  const review = computeReviewUsageTotal(reviews);
+  if (review.total !== null) add('worker', review.total);
+  buckets.worker.missing += review.missing;
+  for (const r of usage.readings ?? []) buckets[r.bucket].readings += 1;
+  const anything =
+    Object.values(buckets).some((b) => b.measured !== null || b.readings > 0) ||
+    tasks.some((t) => t.status !== 'cancelled') && (usage.planning !== null || usage.qa !== null || tasks.some((t) => t.usage !== null));
+  return anything ? buckets : undefined;
+}
+
 export function buildMilestoneStatusView(root: string, milestoneId: string): MilestoneStatusView {
   const contract = loadContract(root, milestoneId);
   const tasksFile = loadTasks(root, milestoneId);
@@ -147,6 +205,7 @@ export function buildMilestoneStatusView(root: string, milestoneId: string): Mil
   const workloadPercent = computeWorkloadPercentage(contract.frontmatter.status, progress, verificationPassed);
   const aggregate = aggregateUsage(tasksFile.tasks, usage, reviews);
   const breakdown = computeTokenBreakdown(tasksFile.tasks, usage, reviews);
+  const buckets = computeUsageBuckets(root, milestoneId, tasksFile.tasks, usage, reviews);
   const activeTask = tasksFile.tasks.find((t) => t.status === 'in_progress')?.id ?? null;
 
   return {
@@ -171,5 +230,6 @@ export function buildMilestoneStatusView(root: string, milestoneId: string): Mil
     nextTask: resolveNextTask(tasksFile.tasks),
     tokenBreakdown: breakdown,
     footer: computeRacingFooter(contract.frontmatter.status, progress, verificationPassed, tasksFile.tasks),
+    ...(buckets !== undefined ? { buckets } : {}),
   };
 }
