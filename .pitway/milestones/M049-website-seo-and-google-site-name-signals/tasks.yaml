@@ -310,7 +310,7 @@ tasks:
       check:seo, check:a11y, build.test.mjs) from a clean tree via task-verify
       with the declared timeout_ms. No code changes expected; on failure stop
       and report.
-    status: ready
+    status: completed
     depends_on:
       - T005
     acceptance_criteria:
@@ -326,5 +326,14 @@ tasks:
         --prefix website run check:seo && npm --prefix website run check:a11y &&
         node website/scripts/build.test.mjs
       timeout_ms: 900000
-    result: null
+    result:
+      summary: "[truncated] nline -- verification-only, empty write_scope) via
+        task-verify with T006's declared 900000 ms timeout_ms. npm run typecheck
+        && npm test (root) then npm --prefix website run build, check:seo,
+        check:a11y and node website/scripts/build.test.mjs all passed from a
+        clean tree; no code changes."
+      evidence: ℹ skipped 0 | ℹ todo 0 | ℹ duration_ms 1856.147083
+    attempts: 1
+    driver: Claude Code
+    model: claude-fable-5
     usage: null
