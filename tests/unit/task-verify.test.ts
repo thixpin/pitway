@@ -233,6 +233,52 @@ describe('runTaskVerify (AC001)', () => {
     expect(record2.failCount).toBeUndefined();
   });
 
+  // M048/T003 (AC003): a failed attempt journals the structured failures
+  // beside the capped evidence string; a passing attempt never does, even
+  // when its output happens to contain an Error-matching line.
+  it('journals structured failures on a failed attempt only', () => {
+    mkdirSync(join(repo, 'src'), { recursive: true });
+    writeFileSync(join(repo, 'src', 'thing.ts'), 'export const x = 1;\n');
+    commitAll('baseline');
+
+    const failingOutput = [
+      'Tests  1 failed | 3 passed (4)',
+      'FAIL tests/x.test.ts > suite > breaks',
+      'AssertionError: expected 1 to be 2',
+    ].join('\\n');
+    setTasks([
+      baseTask({
+        verification: {
+          strategy: 'command',
+          detail: `node -e "console.log('${failingOutput}'); process.exit(1)"`,
+        },
+      }),
+    ]);
+    const failed = runTaskVerify(repo, 'T001');
+    expect(failed.exitCode).toBe(1);
+    expect(failed.failCount).toBe(1);
+    expect(failed.passCount).toBe(3);
+    expect(failed.failures).toEqual([
+      'FAIL tests/x.test.ts > suite > breaks',
+      'AssertionError: expected 1 to be 2',
+    ]);
+
+    setTasks([
+      baseTask({
+        attempts: 2,
+        verification: {
+          strategy: 'command',
+          detail: `node -e "console.log('Error: harmless warning'); console.log('Tests  4 passed (4)')"`,
+        },
+      }),
+    ]);
+    const passed = runTaskVerify(repo, 'T001');
+    expect(passed.exitCode).toBe(0);
+    expect(passed.passCount).toBe(4);
+    expect(passed.failures).toBeUndefined();
+    expect('failures' in passed).toBe(false);
+  });
+
   it('runs the optional typecheck command and persists its result', () => {
     mkdirSync(join(repo, 'src'), { recursive: true });
     writeFileSync(join(repo, 'src', 'thing.ts'), 'export const x = 1;\n');

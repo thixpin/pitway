@@ -18,10 +18,14 @@ function renderTaskVerifyHuman(view: JournalTaskVerifyEvidence): string {
   // M036/T001: on a pass, name the next command -- the failing case's
   // existing pass/fail/evidence report is already the actionable output.
   const next = passed ? ` Next: task-update ${view.taskId} review.` : '';
-  return (
+  const report =
     `🧪 Task ${view.taskId} verified ${icon}${counts} in ${view.durationMs}ms${typecheck} ` +
-    `— evidence ${view.id}.${next}`
-  );
+    `— evidence ${view.id}.${next}`;
+  // M048/T004 (AC004): a failed attempt's journaled failures entries render
+  // as additive indented lines under the report (counts are already inline
+  // above). Passing attempts and records without the field are unchanged.
+  const failures = passed ? [] : (view.failures ?? []).map((entry) => `    - ${entry}`);
+  return [report, ...failures].join('\n');
 }
 
 export interface CommandDeps {

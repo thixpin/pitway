@@ -21,6 +21,18 @@ ad hoc independent rerun-and-eyeball of the verification command — see
 `../protocol-driver.md`. It does not replace your own diff/write_scope
 review, which still happens first, every time.
 
+On a failed attempt the record may additionally carry `failures` beside the
+existing `passCount`/`failCount` — the failing test names (vitest's `FAIL `
+/ `×` lines, capped at 12) followed by the first error lines (any
+`<Word>Error:` line — `Error:`, `AssertionError:`, `TypeError:`,
+`ReferenceError:`, ... — capped at 3). That wider error matcher belongs to
+the structured extractor only; the capped `evidence` string and its own
+`failures:` summary are unchanged. The human output renders each entry as
+an indented `- <entry>` line under the one-line report (whose inline counts
+are unchanged). `failures` is absent — and no extra lines render — on a
+passing attempt, when a failing command's output matched none of the
+patterns, and on every record written before this feature existed.
+
 Must run while the task is `in_progress` — before `pitway task-update <id>
 review`, not after (`review`'s own `tasks.yaml` rewrite never invalidates a
 recorded evidence record). If completion later refuses because no recorded

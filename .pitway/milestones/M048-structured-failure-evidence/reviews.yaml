@@ -1,0 +1,131 @@
+schema_version: 1
+sessions:
+  - id: rev-00c6765ec678
+    status: decided
+    created_at: 2026-08-31T03:26:25Z
+    roles:
+      - developer
+    content_hash: sha256:40d1b140fe8326619cebac932ee8544382b4ace1c9b863933856bc478d0e8aab
+    findings:
+      - role: developer
+        recorded_at: 2026-08-31T03:35:18Z
+        findings:
+          - severity: major
+            finding: The "two byte-identical private buildEvidence copies" premise (AC001,
+              T001) is false. src/core/verification/run.ts:164 is
+              buildEvidence(combined, failed, emptyFallback) and threads
+              emptyFallback into both trimTail calls (for the '(no output; timed
+              out)' etc. fallbacks from emptyOutputFallback);
+              src/core/tasks/verify.ts:151 is buildEvidence(combined, failed)
+              and uses trimTail's default '(no output)'. Moving them "verbatim"
+              is not possible as written; the shared function needs an optional
+              emptyFallback parameter (undefined -> trimTail default), which
+              keeps every recorded string byte-identical at both call sites, so
+              the AC's byte-identity claim remains achievable. Also, the quoted
+              M017 "independent call sites / no shared evidence-building module"
+              comment exists only in src/core/tasks/verify.ts:141-144;
+              run.ts:154-163's M017 comments say something different ("matches
+              trimTail's own default cap"), so "comments in both files"
+              over-states what a worker will find.
+            targets:
+              - ac001
+              - t001
+            recommendation: "Reword AC001/T001: \"two behaviorally equivalent copies
+              differing only in an emptyFallback parameter; the shared
+              buildEvidence takes an optional emptyFallback\"; name the
+              tasks/verify.ts comment as the one to reverse and run.ts's as the
+              one to point at the shared module."
+          - severity: major
+            finding: "T003/T004 write_scope seam: the verify CLI
+              (src/cli/commands/verify.ts:46-70) renders VerifyRunView.results
+              and VerifyCheckRunView, whose entries carry only {check, status,
+              evidence} (src/core/verification/run.ts:18-22, 47-53). T003's
+              objective only says the structured fields are \"recorded on FAILED
+              command-check entries\" (the persisted ResultEntry via
+              toResultEntry), not that the returned views carry them. T004 must
+              render fail_count/pass_count/failures and emit them in --json, but
+              src/core/verification/run.ts is only in T004's context_files, not
+              its write_scope, so T004 cannot widen the view types. As drafted,
+              T004 would either fail or be forced out of scope. task-verify is
+              unaffected: its CLI renders the JournalTaskVerifyEvidence record
+              directly, which T003 extends."
+            targets:
+              - t003
+              - t004
+              - ac004
+            recommendation: In T003's objective, explicitly widen VerifyCheckOutcome and
+              VerifyCheckRunView (run.ts, already in T003 scope) with the
+              optional fields so verify --json carries them; T004 then renders
+              only. Alternatively add run.ts to T004's write_scope.
+          - severity: major
+            finding: "T002 bucket rules are under-specified against the real regexes and
+              vitest 4.1.11 output. (a) It says \"x lines\" but
+              VITEST_FAILURE_LINE (failure-summary.ts:13) is /^(FAIL\\s|[×✗])/
+              -- U+00D7/U+2717 only; a worker fixturing ASCII 'x' gets no
+              matches and may widen the shared regex, breaking AC006
+              byte-identity (no existing test pins that). (b) Dedupe key
+              undefined: a real run prints '× case 1 fails 3ms' (name +
+              duration) vs 'FAIL  shape.test.ts > outer suite > case 1 fails'
+              (full path); \"name the same test\" needs a rule. (c) Which form
+              survives and final order are unspecified; FAIL lines are richer,
+              but × lines are the only form when a run dies before the 'Failed
+              Tests' section (the M047 CT006/B042 evidence starts 'failures: ×
+              reruns...'). (d) The fixture as specified does not force dedupe: 7
+              × + 7 FAIL already keeps all 7 names within the 12 cap. (e) The
+              12/3 split covers only the primary chain; generic-fallback lines
+              are not name-vs-error classifiable, so their cap is unstated."
+            targets:
+              - t002
+              - ac002
+              - ac006
+            recommendation: "Pin in T002: fixture uses U+00D7 '×'; dedupe rule (strip
+              trailing duration, match FAIL tail segment), FAIL form wins, ×
+              kept only when no FAIL line matches it; fixture asserts 7 deduped
+              entries; generic fallback fills a single bucket capped at 12;
+              never edit summarizeFailure's regexes."
+          - severity: minor
+            finding: "ERROR_LINE (failure-summary.ts:14) is /^(AssertionError:|Error:)/, so
+              a thrown TypeError:/ReferenceError:/RangeError: line never enters
+              the error bucket, and because × / FAIL lines already fill the
+              primary chain the generic fallback (whose \\bError\\b also does
+              not match inside 'AssertionError') never runs. A vitest failure
+              caused by a non-assertion throw would record all names but no
+              error text -- the same class of loss B042 motivates. Any widening
+              must be extractor-only (a separate regex in failure-evidence.ts),
+              never a change to summarizeFailure's matchers, or AC006
+              byte-identity breaks."
+            targets:
+              - t002
+              - ac002
+            recommendation: Either extend T002 with an extractor-only error matcher
+              /^\w*Error:/ (documented as not affecting the evidence string), or
+              record it explicitly as an accepted gap in the contract's
+              Non-Goals.
+          - severity: minor
+            finding: T002's write_scope includes src/core/verification/failure-summary.ts
+              (presumably to export the matcher regexes) but its verification
+              detail runs only tests/unit/failure-evidence.test.ts;
+              tests/unit/failure-summary.test.ts is in context_files only.
+              Similarly T001 claims byte-identity "at both call sites" but its
+              verification runs only the two unit files, while the call-site
+              behavior is pinned by tests/integration/verify.test.ts:329,
+              tests/integration/task-verify.test.ts:425 and
+              tests/integration/verification-repair.test.ts:895 (the old private
+              copies are not exported, so T001's expected strings must be
+              hand-derived fixtures, not captured from the old code).
+            targets:
+              - t001
+              - t002
+            recommendation: Add tests/unit/failure-summary.test.ts to T002's verification
+              detail; consider adding the three integration files (or at least
+              verify.test.ts and task-verify.test.ts) to T001's verification
+              detail as the real call-site regression.
+        usage:
+          total_tokens: 110840
+    decision:
+      outcome: revision_requested
+      note: "Developer review: 3 major (AC001 byte-identical premise false; T003/T004
+        view-type write_scope seam; T002 bucket rules under-specified) + 2 minor
+        (extractor-only Error matcher adopted; verification-detail gaps).
+        Redrafting via milestone-add --replace."
+      decided_at: 2026-08-31T03:42:07Z

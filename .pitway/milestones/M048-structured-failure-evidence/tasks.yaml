@@ -1,0 +1,319 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Shared failure-evidence module
+    objective: "Create src/core/verification/failure-evidence.ts exporting
+      EVIDENCE_BUDGET (200), buildEvidence(combined, failed, emptyFallback?) and
+      parseTestCounts. The two private copies are behaviorally equivalent but
+      NOT identical: run.ts (line ~164) threads an emptyFallback string into
+      both trimTail calls; tasks/verify.ts (line ~151) omits it and gets
+      trimTail's default '(no output)'. The shared function takes emptyFallback
+      as an optional third parameter and passes `{ emptyFallback }` / `{ cap,
+      emptyFallback }` through -- trimTail already treats undefined as its
+      default, so both call sites stay byte-identical. run.ts calls
+      buildEvidence(combined, failed, emptyOutputFallback(...)); tasks/verify.ts
+      calls buildEvidence(combined, failed) and imports parseTestCounts. Delete
+      both private copies and both local EVIDENCE_BUDGET constants. Update the
+      two M017 comments: tasks/verify.ts's 'independent call sites with no
+      shared evidence-building module' rationale is reversed to name the shared
+      module; run.ts's 'matches trimTail's own default cap' note points at the
+      shared EVIDENCE_BUDGET. Regression tests in
+      tests/unit/failure-evidence.test.ts assert hand-derived exact strings (the
+      old copies are private, so derive expectations from trimTail +
+      summarizeFailure semantics) for: a passing run; a failing vitest-style
+      run; a failing run with no matching pattern; empty output with
+      emptyFallback undefined ('(no output)') and with each emptyOutputFallback
+      variant ('(no output; timed out)', '(no output; killed by signal)', '(no
+      output; failed to spawn)', '(no output; exit N)'); and the remainder-cap
+      path when the header nearly fills the budget. The existing integration
+      suites (verify.test.ts, task-verify.test.ts, verification-repair.test.ts)
+      are the call-site regression and must pass untouched. No behavior change
+      anywhere."
+    status: completed
+    depends_on: []
+    acceptance_criteria:
+      - buildEvidence(combined, failed, emptyFallback?) and parseTestCounts live
+        once in failure-evidence.ts; run.ts and tasks/verify.ts consume them; no
+        private copy or local EVIDENCE_BUDGET remains.
+      - Recorded evidence is byte-identical at both call sites, proven by the
+        new unit fixtures and by the untouched integration suites.
+      - Both M017 comments updated in the same commit.
+    context_files:
+      - src/core/verification/failure-evidence.ts
+      - src/core/verification/run.ts
+      - src/core/tasks/verify.ts
+      - src/core/verification/failure-summary.ts
+      - src/core/verification/text-trim.ts
+      - tests/unit/failure-summary.test.ts
+      - tests/unit/failure-evidence.test.ts
+      - tests/integration/verify.test.ts
+      - tests/integration/task-verify.test.ts
+      - tests/integration/verification-repair.test.ts
+    write_scope:
+      - src/core/verification/failure-evidence.ts
+      - src/core/verification/run.ts
+      - src/core/tasks/verify.ts
+      - tests/unit/failure-evidence.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/unit/failure-evidence.test.ts
+        tests/unit/failure-summary.test.ts tests/integration/verify.test.ts
+        tests/integration/task-verify.test.ts
+        tests/integration/verification-repair.test.ts
+      timeout_ms: 300000
+    result:
+      summary: "[truncated] e the shared module. tests/unit/failure-evidence.test.ts
+        pins hand-derived byte-identical evidence for passing, vitest-failing,
+        no-match, default and per-variant empty-output fallbacks, and the
+        remainder-cap path; the three call-site integration suites pass
+        untouched. No behavior change."
+      evidence: Tests  146 passed (146) | Start at  11:32:17 | Duration  59.57s
+        (transform 1.09s, setup 0ms, import 1.64s, tests 106.93s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-fable-5
+    usage: null
+  - id: T002
+    name: Structured failure extraction with the CT006-replay guarantee
+    objective: "In failure-evidence.ts add a pure extractFailureDetail(combined) ->
+      { failures?: string[]; passCount?: number; failCount?: number }. Export
+      VITEST_FAILURE_LINE and GENERIC_FAILURE_LINE from failure-summary.ts
+      (export-only edit; summarizeFailure, ERROR_LINE and every regex body stay
+      byte-identical -- add a test in failure-summary.test.ts pinning that a
+      TypeError: line alone still yields [] from summarizeFailure so the
+      matchers cannot silently widen). Algorithm over the trimmed non-empty
+      lines in original order: NAME bucket = lines matching VITEST_FAILURE_LINE
+      (`FAIL ` prefix, or the U+00D7 `×` / U+2717 `✗` markers; ASCII `x` never
+      matches), cap 12. ERROR bucket = lines matching the extractor-only
+      EXTRACTOR_ERROR_LINE = /^\\w*Error:/ (AssertionError:, Error:, TypeError:,
+      ReferenceError:, RangeError: ...), cap 3. Dedupe: normalize a marker line
+      by stripping the leading marker + whitespace and a trailing duration token
+      /\\s+\\d+(\\.\\d+)?ms$/; drop it when any `FAIL ` line's text ends with
+      the normalized name (FAIL form wins); keep it otherwise. Caps apply after
+      dedupe. If both buckets are empty, GENERIC_FAILURE_LINE lines fill a
+      single bucket capped at 12. Each entry trimmed and capped at 200 chars.
+      failures = surviving names then errors; omit the key entirely when no
+      entry survives (never []). Counts via parseTestCounts; each count key
+      omitted when absent. TDD in tests/unit/failure-evidence.test.ts: (1) a
+      fixture replaying the B042/CT006 shape -- 7 `× <name> <n>ms` lines, a
+      `Tests  7 failed | 40 passed (47)` line, 7 `FAIL  <file> > <suite> >
+      <name>` blocks each followed by an `AssertionError: ...` line -- asserts
+      exactly 7 name entries (all FAIL form, no × duplicates), the first
+      AssertionError line as errors[0], failCount 7, passCount 40; (2) a ×-only
+      fixture (run died before the Failed Tests section) keeps all × names; (3)
+      15 FAIL lines -> 12 names; 5 error lines -> 3; (4) a TypeError:-only
+      failure yields an error entry (and summarizeFailure still yields []); (5)
+      non-vitest output with `ERR`/`Error` words -> generic bucket, cap 12; (6)
+      a 300-char line is capped to 200; (7) clean output -> {} with no failures
+      key."
+    status: completed
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - The CT006-replay fixture retains all 7 failing test names exactly once
+        (FAIL form) and the first AssertionError line.
+      - Buckets capped 12/3 after dedupe, entries capped 200 chars, U+00D7
+        marker handling, extractor-only Error matcher, generic fallback single
+        bucket capped 12, absent-never-empty.
+      - failure-summary.ts changes are export-only; summarizeFailure output is
+        unchanged and pinned.
+    context_files:
+      - src/core/verification/failure-evidence.ts
+      - src/core/verification/failure-summary.ts
+      - src/core/verification/text-trim.ts
+      - tests/unit/failure-evidence.test.ts
+      - tests/unit/failure-summary.test.ts
+    write_scope:
+      - src/core/verification/failure-evidence.ts
+      - src/core/verification/failure-summary.ts
+      - tests/unit/failure-evidence.test.ts
+      - tests/unit/failure-summary.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/unit/failure-evidence.test.ts
+        tests/unit/failure-summary.test.ts
+      timeout_ms: 300000
+    result:
+      summary: "[truncated] s key omitted when nothing matches. failure-summary.ts
+        changes are export-only; a new failure-summary.test.ts case pins that a
+        TypeError: line still yields [] from summarizeFailure. The B042/CT006
+        replay fixture retains all 7 failing names exactly once plus the first
+        AssertionError line."
+      evidence: Tests  32 passed (32) | Start at  11:43:41 | Duration  140ms
+        (transform 52ms, setup 0ms, import 70ms, tests 9ms, environment 0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-fable-5
+    usage: null
+  - id: T003
+    name: Record structured failure fields in results, views, and journal
+    objective: "Additive recording. src/state/schemas.ts: verificationResultsSchema
+      entries gain optional fail_count (int >= 0), pass_count (int >= 0), and
+      failures (z.array(z.string().min(1)).min(1)) -- snake_case beside
+      duration_ms/termination_reason, same 'only command-executed entries carry
+      these' comment convention. src/state/journal-schemas.ts:
+      journalTaskVerifyEvidenceSchema gains optional failures (same array shape;
+      camelCase file convention; passCount/failCount already exist).
+      src/core/verification/run.ts: VerifyCheckOutcome and VerifyCheckRunView
+      gain optional fail_count, pass_count, failures (snake_case, mirroring the
+      persisted entry so `verify --json` is the same shape as the file);
+      executeCommandCheck calls extractFailureDetail ONLY when status is 'fail',
+      maps passCount/failCount -> pass_count/fail_count, and spreads only the
+      keys that are present; toResultEntry copies them onto the ResultEntry;
+      runSingleCheck's returned view includes them. Both the full-run and
+      --check rerun paths are covered because they share executeCommandCheck +
+      toResultEntry. src/core/tasks/verify.ts: counts recording unchanged --
+      parseTestCounts runs on every attempt exactly as today; on a failed
+      attempt ONLY, additionally spread extractFailureDetail(combined).failures
+      (when present) onto the task_verify_evidence record; a passing attempt's
+      record is byte-identical to today's. Passing outcomes and
+      developer-recorded entries never carry the new fields. TDD:
+      tests/unit/schemas.test.ts (existing entries parse unchanged; new fields
+      accepted on a command entry; failures: [] rejected; failures: ['']
+      rejected) and tests/unit/task-verify.test.ts (a failed attempt's journal
+      record carries failures; a passing attempt carries none)."
+    status: completed
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - Additive-optional fields per AC003 in both schemas; existing files parse
+        unchanged; schema_version stays 1.
+      - VerifyCheckOutcome / VerifyCheckRunView carry the fields on failed
+        command checks only, on both run paths; passing and developer entries
+        never do.
+      - Failed task-verify attempts journal failures; passing attempts do not.
+    context_files:
+      - src/state/schemas.ts
+      - src/state/journal-schemas.ts
+      - src/core/verification/run.ts
+      - src/core/tasks/verify.ts
+      - src/core/verification/failure-evidence.ts
+      - tests/unit/schemas.test.ts
+      - tests/unit/task-verify.test.ts
+    write_scope:
+      - src/state/schemas.ts
+      - src/state/journal-schemas.ts
+      - src/core/verification/run.ts
+      - src/core/tasks/verify.ts
+      - tests/unit/schemas.test.ts
+      - tests/unit/task-verify.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/unit/schemas.test.ts tests/unit/task-verify.test.ts
+      timeout_ms: 300000
+    result:
+      summary: "[truncated] n record and expose them. tasks/verify.ts: parseTestCounts
+        unchanged on every attempt; a failed attempt additionally journals
+        failures; passing attempts are byte-identical (verified with an
+        Error-like line in passing output). schema_version stays 1; all existing
+        fixtures parse unchanged."
+      evidence: Tests  146 passed (146) | Start at  11:46:36 | Duration  14.79s
+        (transform 178ms, setup 0ms, import 334ms, tests 14.55s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-fable-5
+    usage: null
+  - id: T004
+    name: Render structured failures and document them
+    objective: "Render only -- the views already carry the fields after T003.
+      src/cli/commands/verify.ts: in renderRunHuman and renderCheckRunHuman,
+      after a failed check's line, append one count line listing only the counts
+      present -- '    failed: <fail_count> (passed: <pass_count>)' when both
+      exist, '    failed: <fail_count>' or '    passed: <pass_count>' when only
+      one does (vitest prints `Tests  7 failed (7)` with no passed count when
+      every test fails; never render a fabricated 0) -- and one '    - <entry>'
+      line per failures entry; --json needs no change beyond what the widened
+      views already emit -- pin it by test. src/cli/commands/task-verify.ts: in
+      renderTaskVerifyHuman, on a failed attempt append one '    - <entry>' line
+      per failures entry (counts are already inline). Passing runs, entries
+      without the fields, and all historical data render byte-identical to today
+      (human and --json). Docs: verify.md and task-verify.md in BOTH tiers
+      (common + claude; bodies must stay byte-identical -- claude-assets.test.ts
+      enforces it) document the three fields, the extractor-only Error matcher,
+      and the absence rules (passing runs, developer-recorded entries, nothing
+      matched, historical entries). TDD in tests/integration/verify.test.ts and
+      tests/integration/task-verify.test.ts: a failing vitest-shaped check shows
+      the indented count line and name/error lines (full run and --check rerun);
+      --json carries fail_count/pass_count/failures; a passing run's human and
+      --json output are unchanged; a check whose failing output matches nothing
+      renders no extra lines."
+    status: completed
+    depends_on:
+      - T003
+    acceptance_criteria:
+      - Additive indented failure lines in verify (both paths) and task-verify;
+        byte-identity preserved everywhere else per AC004; --json pinned.
+      - Docs updated in both tiers with identical bodies; asset suites pass.
+    context_files:
+      - src/cli/commands/verify.ts
+      - src/cli/commands/task-verify.ts
+      - src/core/verification/run.ts
+      - src/core/tasks/verify.ts
+      - src/core/verification/failure-evidence.ts
+      - src/integrations/common/commands/verify.md
+      - src/integrations/claude/commands/verify.md
+      - src/integrations/common/commands/task-verify.md
+      - src/integrations/claude/commands/task-verify.md
+      - tests/integration/verify.test.ts
+      - tests/integration/task-verify.test.ts
+      - tests/unit/claude-assets.test.ts
+    write_scope:
+      - src/cli/commands/verify.ts
+      - src/cli/commands/task-verify.ts
+      - src/integrations/common/commands/verify.md
+      - src/integrations/claude/commands/verify.md
+      - src/integrations/common/commands/task-verify.md
+      - src/integrations/claude/commands/task-verify.md
+      - tests/integration/verify.test.ts
+      - tests/integration/task-verify.test.ts
+    verification:
+      strategy: tdd
+      detail: npx vitest run tests/integration/verify.test.ts
+        tests/integration/task-verify.test.ts tests/unit/claude-assets.test.ts
+        tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
+      timeout_ms: 300000
+    result:
+      summary: "[truncated] nting the fields, the extractor-only <Word>Error: matcher,
+        the rendering shape, and the absence rules. Integration tests pin
+        failing-check rendering on both paths, --json fields,
+        fail-only/pass-only counts, passing-run byte-identity, and the no-match
+        case (no extra lines, no extra keys)."
+      evidence: Tests  404 passed (404) | Start at  12:00:44 | Duration  28.64s
+        (transform 896ms, setup 0ms, import 1.41s, tests 54.80s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-fable-5
+    usage:
+      total_tokens: 108311
+  - id: T005
+    name: Run the full verification gate
+    objective: npm run typecheck && npm test from a clean tree via task-verify with
+      the declared timeout_ms. No code changes expected; on failure stop and
+      report.
+    status: completed
+    depends_on:
+      - T004
+    acceptance_criteria:
+      - Typecheck and full suite pass.
+    context_files:
+      - package.json
+    write_scope: []
+    verification:
+      strategy: command
+      detail: npm run typecheck && npm test
+      timeout_ms: 900000
+    result:
+      summary: "Full verification gate run inline (mode: inline -- verification-only,
+        no implementation write_scope) via task-verify with T005's declared
+        900000 ms timeout_ms and no ad-hoc --timeout. npm run typecheck && npm
+        test passed from a clean tree; no code changes."
+      evidence: Tests  2300 passed (2300) | Start at  12:01:53 | Duration  156.65s
+        (transform 4.46s, setup 0ms, import 18.00s, tests 1057.97s, environment
+        11ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-fable-5
+    usage: null

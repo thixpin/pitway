@@ -398,6 +398,19 @@ tasks:
       detail: "node -e \\"console.log('FAIL src/a.test.ts > it works'); process.exit(1)\\""
     result: null
     usage: null
+  - id: T002
+    objective: A task whose verification command fails with vitest-shaped output.
+    status: planned
+    depends_on: []
+    acceptance_criteria:
+      - It works
+    write_scope:
+      - src/b.ts
+    verification:
+      strategy: command
+      detail: "node -e \\"console.log('FAIL src/b.test.ts > it works'); console.log('AssertionError: expected 1 to be 2'); console.log('Tests  1 failed (1)'); process.exit(1)\\""
+    result: null
+    usage: null
 `;
 
   beforeEach(async () => {
@@ -432,6 +445,70 @@ tasks:
     expect(evidence.exitCode).toBe(1);
     expect(evidence.evidence.startsWith('failures: FAIL src/a.test.ts > it works\n')).toBe(true);
     expect(evidence.evidence).toContain('FAIL src/a.test.ts > it works');
+  });
+
+  // M048/T004 (AC004): on a failed attempt the human view appends one
+  // `    - <entry>` line per journaled failures entry, after the existing
+  // single-line report (counts stay inline there, unchanged).
+  it('appends one indented - line per failures entry under a failed attempt (M048/T004)', async () => {
+    expect((await update(['T002', 'in_progress'])).error).toBeUndefined();
+    touchFile('src/b.ts', 'export const b = 1;\n');
+
+    const { error, lines } = await taskVerifyHuman(['T002']);
+    expect(error).toBeUndefined();
+    const rows = lines[0]!.split('\n');
+    expect(rows[0]).toMatch(/^🧪 Task T002 verified ❌ fail \(0 passed, 1 failed\) in \d+ms — evidence tve-[0-9a-f]+\.$/);
+    expect(rows.slice(1)).toEqual([
+      '    - FAIL src/b.test.ts > it works',
+      '    - AssertionError: expected 1 to be 2',
+    ]);
+    // The racing footer is still its own separate write, after the report.
+    expect(lines).toHaveLength(2);
+    expect(lines[1]).toMatch(/🏎️|🏁|🔧/);
+  });
+
+  it('--json carries the failures array on a failed attempt (M048/T004)', async () => {
+    expect((await update(['T002', 'in_progress'])).error).toBeUndefined();
+    touchFile('src/b.ts', 'export const b = 1;\n');
+
+    const { error, lines } = await taskVerify(['T002']);
+    expect(error).toBeUndefined();
+    const evidence = JSON.parse(lines[0]!) as JournalTaskVerifyEvidence;
+    expect(evidence.failCount).toBe(1);
+    expect(evidence.failures).toEqual(['FAIL src/b.test.ts > it works', 'AssertionError: expected 1 to be 2']);
+  });
+});
+
+// M048/T004 (AC004): byte-identity on the other side -- a passing attempt and
+// a failed attempt whose output matches nothing render exactly one line, with
+// no failures key in --json.
+describe('pitway task-verify renders no structured failure lines when there is nothing to show (M048/T004)', () => {
+  it('a passing attempt renders one line, human and --json unchanged', async () => {
+    await update(['T001', 'in_progress']);
+    touchFile('src/a.ts', 'export const a = 1;\n');
+
+    const human = await taskVerifyHuman(['T001']);
+    expect(human.error).toBeUndefined();
+    expect(human.lines[0]).toMatch(/^🧪 Task T001 verified ✅ pass in \d+ms — evidence tve-[0-9a-f]+\. Next: task-update T001 review\.$/);
+    expect(human.lines[0]).not.toContain('\n');
+
+    const json = await taskVerify(['T001']);
+    expect(json.error).toBeUndefined();
+    expect('failures' in (JSON.parse(json.lines[0]!) as object)).toBe(false);
+  });
+
+  it('a failed attempt whose output matches nothing renders one line (counts inline, no - lines)', async () => {
+    await update(['T004', 'in_progress']);
+    touchFile('src/d.ts', 'export const d = 1;\n');
+
+    const human = await taskVerifyHuman(['T004']);
+    expect(human.error).toBeUndefined();
+    expect(human.lines[0]).toMatch(/^🧪 Task T004 verified ❌ fail \(0 passed, 2 failed\) in \d+ms — evidence tve-[0-9a-f]+\.$/);
+    expect(human.lines[0]).not.toContain('\n');
+
+    const json = await taskVerify(['T004']);
+    expect(json.error).toBeUndefined();
+    expect('failures' in (JSON.parse(json.lines[0]!) as object)).toBe(false);
   });
 });
 

@@ -4,6 +4,7 @@ import {
   runSingleCheck,
   runVerification,
   VerifyError,
+  type StructuredFailureFields,
   type VerifyCheckRunView,
   type VerifyRecordView,
   type VerifyRunView,
@@ -43,10 +44,33 @@ function completionHintLine(root: string, milestoneId: string): string | null {
   }
 }
 
+// M048/T004 (AC004): the structured failure fields, rendered as additive
+// indented lines under a failed check -- a count line listing only the
+// counts actually present (vitest prints `Tests  7 failed (7)` with no
+// passed count when every test fails; a 0 is never fabricated), then one
+// `- <entry>` line per failures entry. Nothing renders for a passing check
+// or for an entry recorded without the fields, so historical output is
+// byte-identical.
+function structuredFailureLines(fields: StructuredFailureFields): string[] {
+  const lines: string[] = [];
+  if (fields.fail_count !== undefined && fields.pass_count !== undefined) {
+    lines.push(`    failed: ${fields.fail_count} (passed: ${fields.pass_count})`);
+  } else if (fields.fail_count !== undefined) {
+    lines.push(`    failed: ${fields.fail_count}`);
+  } else if (fields.pass_count !== undefined) {
+    lines.push(`    passed: ${fields.pass_count}`);
+  }
+  for (const entry of fields.failures ?? []) {
+    lines.push(`    - ${entry}`);
+  }
+  return lines;
+}
+
 function renderRunHuman(view: VerifyRunView): string {
   const lines = [`🔍 Verification ${view.id}`];
   for (const r of view.results) {
     lines.push(`  ${r.check}  ${r.status === 'pass' ? '✅ pass' : '❌ fail'} — ${r.evidence}`);
+    if (r.status === 'fail') lines.push(...structuredFailureLines(r));
   }
   for (const id of view.pending) {
     lines.push(`  ${id}  ⏳ pending — record with --check ${id} --pass|--fail --evidence <text>`);
@@ -66,7 +90,9 @@ function renderRecordHuman(view: VerifyRecordView): string {
 
 function renderCheckRunHuman(view: VerifyCheckRunView): string {
   const icon = view.status === 'pass' ? '✅ pass' : '❌ fail';
-  return `🔍 ${view.check}  ${icon} — ${view.evidence} (${view.id})`;
+  const lines = [`🔍 ${view.check}  ${icon} — ${view.evidence} (${view.id})`];
+  if (view.status === 'fail') lines.push(...structuredFailureLines(view));
+  return lines.join('\n');
 }
 
 function renderStatusHuman(view: VerifyStatusView): string {
