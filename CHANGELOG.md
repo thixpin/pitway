@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.5.0] — 2026-08-31
+
+### Highlights
+
+- **Usage readings by role.** `usage.yaml` gains an append-only `readings`
+  list and `pitway usage-add <milestone> --reading <json>` records one
+  measured reading — `bucket` (main / orchestrator / worker / auxiliary),
+  an opaque `count`, and its `semantics` (`per-turn` or `undetermined`),
+  plus optional dimensions, model, provider, instance id, and the raw
+  provider envelope. Readings are stored as readings: two calls are two
+  entries, never a sum, and a total or percentage key is rejected by the
+  schema itself. This gives figures like an Orchestrator session's own
+  runtime readings a durable home for the first time, on exactly the terms
+  PitWay's token-telemetry spike (`docs/evidence/M042/`) showed are
+  measurable
+- **Per-bucket usage in `milestone-status`.** When any usage or reading is
+  recorded, the token breakdown lists one line per role bucket — measured
+  segments plus a missing count, with readings *counted*, never summed.
+  Existing usage keeps its meaning: the bucket mapping (dispatched task →
+  worker, inline → main, planning/qa → main, review → worker) is computed
+  on display, never stored. No milestone total, no percentages — the M009
+  measured-only discipline, unchanged
+- `dispatch.md` now directs an Orchestrator session's own runtime readings
+  to `usage-add --reading`; a dispatched worker's figure still goes to the
+  completing `task-update --usage`, exactly as before
+
+Existing installs will report configuration drift for the updated command
+docs until `pitway init --reconfigure` is run.
+
 ## [1.4.0] — 2026-08-29
 
 ### Highlights
