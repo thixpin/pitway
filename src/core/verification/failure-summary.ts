@@ -10,9 +10,13 @@ const LINE_CAP = 200;
 // tail-preserved output, so a summary can never crowd that out entirely.
 const SUMMARY_BUDGET_FRACTION = 0.4;
 
-const VITEST_FAILURE_LINE = /^(FAIL\s|[×✗])/;
+// M048/T002: VITEST_FAILURE_LINE and GENERIC_FAILURE_LINE are exported for
+// failure-evidence.ts's structured extractor; the bodies are unchanged and
+// tests/unit/failure-summary.test.ts pins summarizeFailure's output against
+// any widening, since it feeds the byte-identical evidence string.
+export const VITEST_FAILURE_LINE = /^(FAIL\s|[×✗])/;
 const ERROR_LINE = /^(AssertionError:|Error:)/;
-const GENERIC_FAILURE_LINE = /\b(FAIL|ERR|Error)\b/;
+export const GENERIC_FAILURE_LINE = /\b(FAIL|ERR|Error)\b/;
 
 function nonEmptyLines(output: string): string[] {
   return output

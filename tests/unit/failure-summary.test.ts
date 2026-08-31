@@ -44,6 +44,16 @@ describe('summarizeFailure', () => {
     expect(summarizeFailure(output, 200)).toEqual([]);
   });
 
+  // M048/T002 (AC002/AC006): pins the matcher chain against silent widening.
+  // A TypeError:/ReferenceError:/RangeError: line matches neither the
+  // primary ERROR_LINE nor the generic \bError\b scan (no word boundary
+  // inside "TypeError"), so the evidence string's summary stays empty --
+  // only failure-evidence.ts's extractor-only matcher picks these up.
+  it('ignores a TypeError:-style line so the evidence summary stays byte-identical', () => {
+    const output = ['TypeError: Cannot read properties of undefined', '    at run (x.ts:1:1)'].join('\n');
+    expect(summarizeFailure(output, 10_000)).toEqual([]);
+  });
+
   it('caps each line at 200 characters', () => {
     const longLine = `FAIL ${'x'.repeat(300)}`;
     // A large budget so the total-summary cap (40% of budget) never binds

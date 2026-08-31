@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   EVIDENCE_BUDGET,
   buildEvidence,
+  extractFailureDetail,
   parseTestCounts,
 } from '../../src/core/verification/failure-evidence.js';
+import { summarizeFailure } from '../../src/core/verification/failure-summary.js';
 
 // M048/T001 (AC001): buildEvidence and parseTestCounts moved here verbatim
 // from their two private call-site copies (run.ts passed an emptyFallback,
@@ -85,5 +87,123 @@ describe('parseTestCounts', () => {
   it('returns an empty object when no Tests line exists', () => {
     expect(parseTestCounts('nothing here\n')).toEqual({});
     expect(parseTestCounts('')).toEqual({});
+  });
+});
+
+// M048/T002 (AC002): extractFailureDetail is pure -- string in, structured
+// detail out. The first fixture replays the B042/CT006 shape whose evidence
+// string hid 6 of 7 failing tests behind the 200-char cap.
+
+const B042_NAMES = [
+  'reruns a timed-out check',
+  'records duration_ms on a pass',
+  'refuses a stale hash',
+  'appends results per check',
+  'keeps the guard token',
+  'restores the env on exit',
+  'records termination_reason',
+];
+
+function b042Fixture(): string {
+  const markerLines = B042_NAMES.map((name, i) => `   × ${name} ${i + 1}ms`);
+  const failBlocks = B042_NAMES.flatMap((name, i) => [
+    ` FAIL  tests/integration/verify.test.ts > verify > ${name}`,
+    `AssertionError: expected ${i} to be ${i + 1}`,
+    '    at tests/integration/verify.test.ts:10:5',
+  ]);
+  return [
+    ' RUN  v4.1.11 /repo',
+    ...markerLines,
+    ' Test Files  1 failed (1)',
+    '      Tests  7 failed | 40 passed (47)',
+    '⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯',
+    ...failBlocks,
+  ].join('\n');
+}
+
+describe('extractFailureDetail', () => {
+  it('retains all 7 failing names once (FAIL form) and the first assertion on the B042 replay', () => {
+    const detail = extractFailureDetail(b042Fixture());
+    expect(detail.failCount).toBe(7);
+    expect(detail.passCount).toBe(40);
+    const failures = detail.failures!;
+    // 7 deduped names (× duplicates dropped in favour of the FAIL form) plus
+    // the error bucket capped at 3.
+    expect(failures).toHaveLength(10);
+    const names = failures.slice(0, 7);
+    expect(names.every((line) => line.startsWith('FAIL  '))).toBe(true);
+    for (const name of B042_NAMES) {
+      expect(names.filter((line) => line.endsWith(name))).toHaveLength(1);
+    }
+    expect(failures.some((line) => line.startsWith('×'))).toBe(false);
+    expect(failures[7]).toBe('AssertionError: expected 0 to be 1');
+  });
+
+  it('keeps × marker lines when the run died before the Failed Tests section', () => {
+    const output = [
+      ' RUN  v4.1.11',
+      ...B042_NAMES.map((name, i) => `   × ${name} ${i + 1}ms`),
+      'Killed',
+    ].join('\n');
+    const detail = extractFailureDetail(output);
+    expect(detail.failures).toEqual(B042_NAMES.map((name, i) => `× ${name} ${i + 1}ms`));
+    expect(detail.failCount).toBeUndefined();
+    expect(detail.passCount).toBeUndefined();
+  });
+
+  it('drops a × line only when a FAIL line ends with its normalized name', () => {
+    const output = [
+      '× covered case 12.5ms',
+      '× orphan case 3ms',
+      'FAIL  tests/a.test.ts > suite > covered case',
+    ].join('\n');
+    expect(extractFailureDetail(output).failures).toEqual([
+      '× orphan case 3ms',
+      'FAIL  tests/a.test.ts > suite > covered case',
+    ]);
+  });
+
+  it('caps the name bucket at 12 and the error bucket at 3, independently', () => {
+    const fails = Array.from({ length: 15 }, (_, i) => `FAIL tests/f.test.ts > case ${i}`);
+    const errors = Array.from({ length: 5 }, (_, i) => `AssertionError: e${i}`);
+    const failures = extractFailureDetail([...fails, ...errors].join('\n')).failures!;
+    expect(failures).toHaveLength(15);
+    expect(failures.slice(0, 12)).toEqual(fails.slice(0, 12));
+    expect(failures.slice(12)).toEqual(errors.slice(0, 3));
+  });
+
+  it('captures TypeError/ReferenceError/RangeError lines that summarizeFailure ignores', () => {
+    const output = [
+      'TypeError: Cannot read properties of undefined',
+      'ReferenceError: foo is not defined',
+      'RangeError: Maximum call stack size exceeded',
+      '    at run (x.ts:1:1)',
+    ].join('\n');
+    expect(extractFailureDetail(output).failures).toEqual([
+      'TypeError: Cannot read properties of undefined',
+      'ReferenceError: foo is not defined',
+      'RangeError: Maximum call stack size exceeded',
+    ]);
+    // Extractor-only: the evidence string's own summary stays byte-identical.
+    expect(summarizeFailure(output, 10_000)).toEqual([]);
+  });
+
+  it('falls back to the generic matcher as a single bucket capped at 12', () => {
+    const generic = Array.from({ length: 15 }, (_, i) => `ERR: step ${i} failed to connect`);
+    const output = ['Running suite...', ...generic, 'done'].join('\n');
+    expect(extractFailureDetail(output).failures).toEqual(generic.slice(0, 12));
+  });
+
+  it('caps every entry at 200 characters', () => {
+    const [entry] = extractFailureDetail(`FAIL ${'x'.repeat(300)}`).failures!;
+    expect(entry).toHaveLength(200);
+  });
+
+  it('omits failures entirely when nothing matches, never an empty list', () => {
+    expect(extractFailureDetail('everything looks fine\nno issues here\n')).toEqual({});
+    expect(extractFailureDetail('')).toEqual({});
+    const clean = extractFailureDetail('all good\n Tests  5 passed (5)\n');
+    expect(clean).toEqual({ passCount: 5 });
+    expect('failures' in clean).toBe(false);
   });
 });

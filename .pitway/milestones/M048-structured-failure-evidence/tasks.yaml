@@ -107,7 +107,7 @@ tasks:
       non-vitest output with `ERR`/`Error` words -> generic bucket, cap 12; (6)
       a 300-char line is capped to 200; (7) clean output -> {} with no failures
       key."
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -134,7 +134,17 @@ tasks:
       detail: npx vitest run tests/unit/failure-evidence.test.ts
         tests/unit/failure-summary.test.ts
       timeout_ms: 300000
-    result: null
+    result:
+      summary: "[truncated] s key omitted when nothing matches. failure-summary.ts
+        changes are export-only; a new failure-summary.test.ts case pins that a
+        TypeError: line still yields [] from summarizeFailure. The B042/CT006
+        replay fixture retains all 7 failing names exactly once plus the first
+        AssertionError line."
+      evidence: Tests  32 passed (32) | Start at  11:43:41 | Duration  140ms
+        (transform 52ms, setup 0ms, import 70ms, tests 9ms, environment 0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-fable-5
     usage: null
   - id: T003
     name: Record structured failure fields in results, views, and journal
@@ -163,7 +173,7 @@ tasks:
       accepted on a command entry; failures: [] rejected; failures: ['']
       rejected) and tests/unit/task-verify.test.ts (a failed attempt's journal
       record carries failures; a passing attempt carries none)."
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:
