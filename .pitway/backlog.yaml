@@ -816,11 +816,11 @@ items:
       concurrent full-suite load can exceed the budget. Candidate fixes: a
       generous per-check timeout_ms in that fixture, or serialising the
       timeout-sensitive verify tests."
-    status: pending
+    status: archived
     source:
       milestone: M047
       task: null
     created_at: 2026-08-29T17:22:33.833Z
-    resolved_at: null
+    resolved_at: 2026-08-31T03:00:54.885Z
     promoted_to: null
-    archived_reason: null
+    archived_reason: closed by quick-change qc-e976789a

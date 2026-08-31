@@ -498,8 +498,11 @@ describe('pitway verify per-check timeout_ms (T002)', () => {
     const elapsed = Date.now() - start;
     expect(error).toBeUndefined();
     // Bounded well below both the 30s command and the 120s default -- proves
-    // timeout_ms, not the safe default, is what ended it.
-    expect(elapsed).toBeLessThan(5000);
+    // timeout_ms, not the safe default, is what ended it. 15s, not tighter:
+    // spawn + kill + bookkeeping needs headroom under a concurrently loaded
+    // machine (B042 / M016's real-subprocess contention class); a completed
+    // `sleep 30` would still blow this bound.
+    expect(elapsed).toBeLessThan(15000);
 
     const recorded = results();
     expect(recorded).toHaveLength(1);
@@ -643,7 +646,11 @@ describe('pitway verify recursion guard (T002)', () => {
     const { error } = await run(['verify'], root);
     const elapsed = Date.now() - start;
     expect(error).toBeUndefined();
-    expect(elapsed).toBeLessThan(5000);
+    // Anti-hang bound: discriminates the guard acting from the 120000ms
+    // default timeout. 20s, not tighter -- node startup for the nested
+    // check script needs headroom under a concurrently loaded machine
+    // (B042 / M016's real-subprocess contention class).
+    expect(elapsed).toBeLessThan(20000);
 
     const recorded = results();
     expect(recorded).toHaveLength(1);
@@ -676,7 +683,8 @@ describe('pitway verify recursion guard (T002)', () => {
     expect(error).toBeUndefined();
     // Bounded by the guard's immediate refusal, not by any configured
     // timeout (the default is 120000ms) -- a hang would blow this budget.
-    expect(elapsed).toBeLessThan(5000);
+    // 20s, not tighter: load headroom, see the sibling test above (B042).
+    expect(elapsed).toBeLessThan(20000);
 
     const recorded = results();
     expect(recorded).toHaveLength(2);
@@ -719,7 +727,8 @@ describe('pitway verify recursion guard (T002)', () => {
     const { error } = await run(['verify'], root);
     const elapsed = Date.now() - start;
     expect(error).toBeUndefined();
-    expect(elapsed).toBeLessThan(5000);
+    // 20s anti-hang bound, not tighter: load headroom, see above (B042).
+    expect(elapsed).toBeLessThan(20000);
 
     const recorded = results();
     expect(recorded).toHaveLength(1);

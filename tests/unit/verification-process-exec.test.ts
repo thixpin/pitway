@@ -21,7 +21,7 @@ function alive(pid: number): boolean {
   }
 }
 
-async function waitUntilDead(pid: number, maxMs = 3000): Promise<boolean> {
+async function waitUntilDead(pid: number, maxMs = 10000): Promise<boolean> {
   const start = Date.now();
   while (Date.now() - start < maxMs) {
     if (!alive(pid)) return true;
@@ -79,15 +79,24 @@ describe('executeCommand', () => {
     const pidFile = join(dir, 'pids.json');
 
     const start = Date.now();
+    // B042: 5000ms, not a tight budget -- the fixture must finish node
+    // startup + child spawn + the pids.json write BEFORE the timeout fires,
+    // or there is nothing on disk to inspect. Under a concurrently loaded
+    // machine (M016's real-subprocess contention class, reproduced with two
+    // concurrent full suites) startup alone once exceeded a 500ms budget and
+    // the tree-kill won the race. The test's point (timeout kill leaves zero
+    // survivors) is unchanged; only the startup headroom grew.
     const result = executeCommand(`node "${fixture}" "${pidFile}"`, {
       cwd: process.cwd(),
-      timeoutMs: 500,
+      timeoutMs: 5000,
     });
     const elapsed = Date.now() - start;
 
     expect(result.terminationReason).toBe('timeout');
     // Bounded: the call must not have hung waiting on descendant pipes.
-    expect(elapsed).toBeLessThan(5000);
+    // Well below the 120000ms default, so it proves timeoutMs ended it,
+    // while leaving load headroom over the 5000ms budget itself (B042).
+    expect(elapsed).toBeLessThan(30000);
 
     expect(existsSync(pidFile)).toBe(true);
     const pids = JSON.parse(readFileSync(pidFile, 'utf8')) as { parent: number; child: number };
