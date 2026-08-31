@@ -17,7 +17,7 @@ import fsp from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { execFileSync } from "node:child_process";
 import { marked } from "marked";
-import { generateSitemapAndRobots, DEFAULT_SITE_URL } from "./sitemap.mjs";
+import { generateSitemapAndRobots, DEFAULT_SITE_URL, SITE_NAME } from "./sitemap.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const WEBSITE_ROOT = path.resolve(__dirname, "..");
@@ -138,17 +138,24 @@ function escapeHtml(value) {
 
 // Front-matter key -> Open Graph `property` value. description/canonical
 // use their own tag shapes (<meta name>/<link rel>) and are handled
-// separately in buildMetaTags below.
+// separately in buildMetaTags below. og:site_name is deliberately NOT a
+// front-matter key (M049/T001, AC001): it is the site-wide SITE_NAME
+// constant, so no page can publish a divergent site name.
 const FRONT_MATTER_OG_TAGS = [
   ["ogType", "og:type"],
   ["ogTitle", "og:title"],
   ["ogDescription", "og:description"],
   ["ogUrl", "og:url"],
-  ["ogSiteName", "og:site_name"],
 ];
 
-/** Build the optional <head> metadata tags for whichever front-matter keys are present. Only emits tags for keys actually given. */
-function buildMetaTags({ description, canonical, ...og }) {
+/**
+ * Build the <head> metadata tags: the optional per-page ones for whichever
+ * front-matter keys are present (description, canonical, og:*, robots), plus
+ * the two site-wide constants every page carries -- og:site_name and
+ * twitter:card (Twitter/X falls back to og:title/og:description for the
+ * card's text, so no per-page twitter:* keys are needed).
+ */
+function buildMetaTags({ description, canonical, robots, ...og }) {
   const lines = [];
   if (description) {
     lines.push(`<meta name="description" content="${escapeHtml(description)}">`);
@@ -156,24 +163,30 @@ function buildMetaTags({ description, canonical, ...og }) {
   if (canonical) {
     lines.push(`<link rel="canonical" href="${escapeHtml(canonical)}">`);
   }
+  if (robots) {
+    lines.push(`<meta name="robots" content="${escapeHtml(robots)}">`);
+  }
   for (const [key, property] of FRONT_MATTER_OG_TAGS) {
     if (og[key]) {
       lines.push(`<meta property="${property}" content="${escapeHtml(og[key])}">`);
     }
   }
+  lines.push(`<meta property="og:site_name" content="${escapeHtml(SITE_NAME)}">`);
+  lines.push(`<meta name="twitter:card" content="summary">`);
   return lines;
 }
 
 /**
  * Render one Markdown document to a standalone HTML page. Markdown -> HTML
  * only, no client-side rendering. `meta.title` is required; `description`,
- * `canonical`, `ogType`, `ogTitle`, `ogDescription`, `ogUrl`, and
- * `ogSiteName` are optional and, when given, are injected as real <head>
- * tags (never left in <body>). Omitting all of them reproduces the
- * original bare charset/viewport/title-only <head>.
+ * `canonical`, `robots`, `ogType`, `ogTitle`, `ogDescription`, and `ogUrl`
+ * are optional and, when given, are injected as real <head> tags (never
+ * left in <body>). `meta.heading` (the page's h1 text) is accepted for
+ * downstream consumers and emits nothing itself. Every page additionally
+ * carries the site-wide og:site_name and twitter:card constants.
  */
 export function renderMarkdownToHtml(markdownSource, meta) {
-  const { title, ...rest } = meta;
+  const { title, heading: _heading, ogSiteName: _ignoredSiteName, ...rest } = meta;
   const body = marked.parse(markdownSource);
   const metaTags = buildMetaTags(rest);
   const headExtra = metaTags.length ? `\n${metaTags.join("\n")}` : "";
@@ -228,8 +241,11 @@ export async function buildContentPages(contentDir, outDir) {
 
     const source = await fsp.readFile(mdPath, "utf8");
     const { data, content } = parseFrontMatter(source);
-    const title = titleFromMarkdown(content, path.basename(htmlRelPath, ".html"));
-    const html = renderMarkdownToHtml(content, { title, ...data });
+    // M049/T001 (AC002): an explicit `title:` wins the <title>; the h1 text
+    // stays available as `heading` (breadcrumb name, fallback title).
+    const heading = titleFromMarkdown(content, path.basename(htmlRelPath, ".html"));
+    const title = data.title || heading;
+    const html = renderMarkdownToHtml(content, { ...data, title, heading });
 
     await fsp.mkdir(path.dirname(outPath), { recursive: true });
     await fsp.writeFile(outPath, html, "utf8");
