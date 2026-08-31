@@ -6,13 +6,13 @@
   fixed wrapper (charset, viewport, title derived from the first ATX h1) --
   it does not read this file or apply any template. This document is the
   target contract: what the homepage should be once a template-aware build
-  step exists that renders website/content/pages/index.md's content into
+  step exists that renders website/content/index.md's content into
   this shell. Until then, the actual built homepage ships through
   index.md's own raw-HTML-embedded <head> tags (a documented limitation --
   see the comment at the top of index.md).
 
   Every value below (title, meta description, canonical, Open Graph, and
-  section content) mirrors website/content/pages/index.md and
+  section content) mirrors website/content/index.md and
   website/data/homepage.yaml exactly -- all three files must stay in sync.
   All claims trace to README.md / USAGE.md / CLAUDE.md; see
   website/data/homepage.yaml's per-section comments for exact sourcing.
@@ -24,11 +24,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PitWay — The Pit Crew for Agentic Coding</title>
 <meta name="description" content="PitWay is an npm-distributed CLI that controls the engineering process around AI coding agents -- contracts, mechanically enforced task boundaries, verification, and durable Git traceability. It is not itself an agent.">
-<link rel="canonical" href="https://pitway.thixpin.me/pages/index.html">
+<link rel="canonical" href="https://pitway.thixpin.me/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="PitWay — The Pit Crew for Agentic Coding">
 <meta property="og:description" content="PitWay is an npm-distributed CLI that controls the engineering process around AI coding agents -- contracts, mechanically enforced task boundaries, verification, and durable Git traceability.">
-<meta property="og:url" content="https://pitway.thixpin.me/pages/index.html">
+<meta property="og:url" content="https://pitway.thixpin.me/">
+<meta property="og:site_name" content="PitWay">
+<meta name="twitter:card" content="summary">
+<!-- build.mjs additionally emits two JSON-LD blocks here at build time (M049):
+     a WebSite named PitWay and a SoftwareSourceCode whose repository,
+     license, and author come from the repo root package.json. -->
 </head>
 <body>
 

@@ -1,11 +1,11 @@
 ---
+title: "Worktrees · PitWay Docs"
 description: "Independent, dependency-free tasks with disjoint write_scope can dispatch concurrently into temporary Git worktrees under parallel_worktrees."
 canonical: "https://pitway.thixpin.me/concepts/worktrees.html"
 ogType: "article"
 ogTitle: "Worktrees · PitWay Docs"
 ogDescription: "Independent, dependency-free tasks with disjoint write_scope can dispatch concurrently into temporary Git worktrees under parallel_worktrees."
 ogUrl: "https://pitway.thixpin.me/concepts/worktrees.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>

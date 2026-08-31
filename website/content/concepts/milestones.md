@@ -1,11 +1,11 @@
 ---
+title: "Milestones · PitWay Docs"
 description: "A milestone is one unit of planned work -- a contract plus a task graph -- moving through PitWay's draft-to-completed state machine."
 canonical: "https://pitway.thixpin.me/concepts/milestones.html"
 ogType: "article"
 ogTitle: "Milestones · PitWay Docs"
 ogDescription: "A milestone is one unit of planned work -- a contract plus a task graph -- moving through PitWay's draft-to-completed state machine."
 ogUrl: "https://pitway.thixpin.me/concepts/milestones.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>

@@ -1,11 +1,11 @@
 ---
+title: "Resume · PitWay Docs"
 description: "pitway resume reconstructs workflow state from .pitway/ and recommends the next action -- the authoritative way to pick a session back up."
 canonical: "https://pitway.thixpin.me/agents/resume.html"
 ogType: "article"
 ogTitle: "Resume · PitWay Docs"
 ogDescription: "pitway resume reconstructs workflow state from .pitway/ and recommends the next action -- the authoritative way to pick a session back up."
 ogUrl: "https://pitway.thixpin.me/agents/resume.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>

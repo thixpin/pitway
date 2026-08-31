@@ -23,6 +23,8 @@ import {
   copyFavicon,
   parseFrontMatter,
   buildContentPages,
+  buildJsonLd,
+  loadProjectMetadata,
   copyStylesheets,
   WORKFLOW_MMD,
   WORKFLOW_SVG,
@@ -30,7 +32,7 @@ import {
   WEBSITE_ROOT,
   STYLESHEET_FILES,
 } from "./build.mjs";
-import { generateSitemapAndRobots, findHtmlFiles } from "./sitemap.mjs";
+import { generateSitemapAndRobots, findHtmlFiles, SITE_NAME } from "./sitemap.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE_MD = path.join(__dirname, "__fixtures__", "sample.md");
@@ -65,7 +67,7 @@ test("renders the Markdown fixture to HTML at build time", async () => {
   assert.match(html, /<a href="https:\/\/example\.com">a link<\/a>/);
 });
 
-test("renderMarkdownToHtml falls back to a bare <head> (title only) when no front-matter metadata is given", async () => {
+test("renderMarkdownToHtml falls back to a bare <head> (title plus the site-wide constants) when no front-matter metadata is given", async () => {
   const source = await fs.readFile(FIXTURE_MD, "utf8");
   const title = titleFromMarkdown(source, "fallback");
   const html = renderMarkdownToHtml(source, { title });
@@ -74,7 +76,108 @@ test("renderMarkdownToHtml falls back to a bare <head> (title only) when no fron
   assert.match(head, /<title>Sample Page<\/title>/);
   assert.doesNotMatch(head, /meta name="description"/);
   assert.doesNotMatch(head, /link rel="canonical"/);
-  assert.doesNotMatch(head, /property="og:/);
+  assert.doesNotMatch(head, /property="og:(type|title|description|url)"/);
+  assert.doesNotMatch(head, /name="robots"/);
+  // M049/T001 (AC001, AC003): site name and card type are build constants,
+  // present on every page regardless of front matter.
+  assert.match(head, /<meta property="og:site_name" content="PitWay">/);
+  assert.match(head, /<meta name="twitter:card" content="summary">/);
+});
+
+test("SITE_NAME is the single PitWay constant shared with sitemap generation", () => {
+  assert.equal(SITE_NAME, "PitWay");
+});
+
+test("a page-level ogSiteName front-matter value never overrides the site-wide og:site_name", () => {
+  const { data, content } = parseFrontMatter(FRONTMATTER_FIXTURE_MD);
+  const html = renderMarkdownToHtml(content, { title: "Fixture Page", ...data });
+  const head = html.match(/<head>([\s\S]*?)<\/head>/)[1];
+
+  const siteNames = [...head.matchAll(/<meta property="og:site_name" content="([^"]*)">/g)].map((m) => m[1]);
+  assert.deepEqual(siteNames, ["PitWay"]);
+  assert.doesNotMatch(head, /Fixture Docs/);
+});
+
+test("title: front matter overrides the h1-derived <title>; the h1 itself is unchanged", () => {
+  const source = `---\ntitle: "Tasks · PitWay Docs"\n---\n\n# Tasks\n\nBody.\n`;
+  const { data, content } = parseFrontMatter(source);
+  const heading = titleFromMarkdown(content, "fallback");
+  const html = renderMarkdownToHtml(content, { title: data.title ?? heading, heading, ...data });
+
+  assert.match(html, /<title>Tasks · PitWay Docs<\/title>/);
+  assert.match(html, /<h1>Tasks<\/h1>/);
+});
+
+test("robots: front matter emits a robots meta; absent otherwise", () => {
+  const withRobots = renderMarkdownToHtml("# Hidden", { title: "Hidden", robots: "noindex" });
+  assert.match(withRobots, /<meta name="robots" content="noindex">/);
+
+  const without = renderMarkdownToHtml("# Shown", { title: "Shown" });
+  assert.doesNotMatch(without, /name="robots"/);
+});
+
+test("buildContentPages honours title: and robots: end-to-end, falling back to the h1 title", async () => {
+  const tmpContentDir = await fs.mkdtemp(path.join(os.tmpdir(), "pitway-website-content-"));
+  const tmpOutDir = await fs.mkdtemp(path.join(os.tmpdir(), "pitway-website-out-"));
+  try {
+    await fs.writeFile(
+      path.join(tmpContentDir, "titled.md"),
+      `---\ntitle: "Titled · PitWay Docs"\nrobots: "noindex"\n---\n\n# Titled\n\nBody.\n`,
+      "utf8",
+    );
+    await fs.writeFile(path.join(tmpContentDir, "plain.md"), "# Plain\n\nBody.\n", "utf8");
+
+    await buildContentPages(tmpContentDir, tmpOutDir);
+
+    const titled = await fs.readFile(path.join(tmpOutDir, "titled.html"), "utf8");
+    assert.match(titled, /<title>Titled · PitWay Docs<\/title>/);
+    assert.match(titled, /<meta name="robots" content="noindex">/);
+    assert.match(titled, /<h1>Titled<\/h1>/);
+
+    const plain = await fs.readFile(path.join(tmpOutDir, "plain.html"), "utf8");
+    assert.match(plain, /<title>Plain<\/title>/);
+    assert.doesNotMatch(plain, /name="robots"/);
+    assert.match(plain, /<meta property="og:site_name" content="PitWay">/);
+  } finally {
+    await fs.rm(tmpContentDir, { recursive: true, force: true });
+    await fs.rm(tmpOutDir, { recursive: true, force: true });
+  }
+});
+
+test("sitemap generation excludes pages whose <head> carries a robots noindex meta", async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "pitway-website-"));
+  try {
+    await fs.writeFile(path.join(tmpDir, "index.html"), "<html><head></head></html>", "utf8");
+    await fs.writeFile(
+      path.join(tmpDir, "hidden.html"),
+      '<html><head><meta name="robots" content="noindex"></head><body></body></html>',
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(tmpDir, "hidden-nofollow-too.html"),
+      '<html><head><meta name="robots" content="noindex, nofollow"></head></html>',
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(tmpDir, "shown.html"),
+      // A robots meta that does NOT say noindex keeps the page in the sitemap.
+      '<html><head><meta name="robots" content="max-snippet:-1"></head></html>',
+      "utf8",
+    );
+
+    const { urlPaths } = await generateSitemapAndRobots({
+      outDir: tmpDir,
+      siteUrl: "https://example.com",
+    });
+    assert.deepEqual(urlPaths, ["/", "/shown.html"]);
+
+    const sitemap = await fs.readFile(path.join(tmpDir, "sitemap.xml"), "utf8");
+    assert.doesNotMatch(sitemap, /hidden/);
+    // The page itself is still built -- only the sitemap omits it.
+    assert.ok((await findHtmlFiles(tmpDir)).some((file) => file.endsWith("hidden.html")));
+  } finally {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  }
 });
 
 test("parseFrontMatter extracts a leading --- YAML block and strips it from the content", () => {
@@ -119,7 +222,9 @@ test("front-matter metadata is injected into a real <head>, not left in <body>",
   assert.match(head, /<meta property="og:title" content="Fixture OG Title">/);
   assert.match(head, /<meta property="og:description" content="Fixture OG description text\.">/);
   assert.match(head, /<meta property="og:url" content="https:\/\/example\.com\/fixture\.html">/);
-  assert.match(head, /<meta property="og:site_name" content="Fixture Docs">/);
+  // M049/T001 (AC001): the site name is a build constant; the fixture's
+  // ogSiteName is ignored.
+  assert.match(head, /<meta property="og:site_name" content="PitWay">/);
 
   // None of the injected tags leak into <body> -- this is the actual defect
   // fix: previously these landed in <body> as raw HTML, which crawlers
@@ -167,7 +272,7 @@ test("buildContentPages parses front matter end-to-end and writes it into the bu
     assert.match(head, /<title>Fixture Page<\/title>/);
     assert.match(head, /<meta name="description"/);
     assert.match(head, /<link rel="canonical"/);
-    assert.match(head, /<meta property="og:site_name" content="Fixture Docs">/);
+    assert.match(head, /<meta property="og:site_name" content="PitWay">/);
     assert.doesNotMatch(body, /meta name="description"/);
     assert.doesNotMatch(body, /property="og:/);
   } finally {
@@ -344,4 +449,165 @@ test("generates an empty-but-valid sitemap/robots when no pages exist yet", asyn
   } finally {
     await fs.rm(tmpDir, { recursive: true, force: true });
   }
+});
+
+// M049/T002 (AC001, AC005): JSON-LD is derived, never hand-typed -- WebSite +
+// SoftwareSourceCode on the homepage from package.json facts, a
+// BreadcrumbList mirroring the linked breadcrumb trail everywhere else that
+// is indexable.
+
+const PROJECT_FIXTURE = {
+  repositoryUrl: "git+https://github.com/acme/thing.git",
+  license: "MIT",
+  author: { name: "acme", url: "https://github.com/acme" },
+};
+
+function ldBlocks(html) {
+  return [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) =>
+    JSON.parse(m[1]),
+  );
+}
+
+test("buildJsonLd emits WebSite + SoftwareSourceCode on the homepage, sourced from the project facts", () => {
+  const blocks = buildJsonLd({
+    canonical: "https://example.com/",
+    heading: "Thing — tagline",
+    description: "Thing does things.",
+    siteUrl: "https://example.com",
+    project: PROJECT_FIXTURE,
+  });
+  assert.deepEqual(blocks, [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "PitWay",
+      url: "https://example.com/",
+      description: "Thing does things.",
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareSourceCode",
+      name: "PitWay",
+      description: "Thing does things.",
+      url: "https://example.com/",
+      codeRepository: "https://github.com/acme/thing",
+      programmingLanguage: "TypeScript",
+      runtimePlatform: "Node.js",
+      license: "https://github.com/acme/thing/blob/main/LICENSE",
+      author: { "@type": "Person", name: "acme", url: "https://github.com/acme" },
+    },
+  ]);
+});
+
+test("buildJsonLd emits a three-item BreadcrumbList for a docs page and a two-item one for the docs index", () => {
+  const [page] = buildJsonLd({
+    canonical: "https://example.com/concepts/tasks.html",
+    heading: "Tasks",
+    siteUrl: "https://example.com",
+    project: PROJECT_FIXTURE,
+  });
+  assert.deepEqual(page, {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "PitWay", item: "https://example.com/" },
+      { "@type": "ListItem", position: 2, name: "Docs", item: "https://example.com/docs/index.html" },
+      { "@type": "ListItem", position: 3, name: "Tasks", item: "https://example.com/concepts/tasks.html" },
+    ],
+  });
+
+  const [index] = buildJsonLd({
+    canonical: "https://example.com/docs/index.html",
+    heading: "PitWay Documentation",
+    siteUrl: "https://example.com",
+  });
+  assert.deepEqual(index.itemListElement, [
+    { "@type": "ListItem", position: 1, name: "PitWay", item: "https://example.com/" },
+    { "@type": "ListItem", position: 2, name: "Docs", item: "https://example.com/docs/index.html" },
+  ]);
+});
+
+test("buildJsonLd emits nothing for noindex pages or pages without a canonical", () => {
+  assert.deepEqual(
+    buildJsonLd({ canonical: "https://example.com/hidden.html", heading: "Hidden", robots: "noindex", siteUrl: "https://example.com" }),
+    [],
+  );
+  assert.deepEqual(buildJsonLd({ heading: "No canonical", siteUrl: "https://example.com" }), []);
+});
+
+test("JSON-LD lands in <head> as valid JSON with < escaped, so a </script> in a description can never break out", () => {
+  const description = 'Ends with </script><script>alert("x")</script>';
+  const blocks = buildJsonLd({
+    canonical: "https://example.com/",
+    heading: "Home",
+    description,
+    siteUrl: "https://example.com",
+    project: PROJECT_FIXTURE,
+  });
+  const html = renderMarkdownToHtml("# Home", { title: "Home", jsonLd: blocks });
+  const head = html.match(/<head>([\s\S]*?)<\/head>/)[1];
+
+  const scripts = head.match(/<script type="application\/ld\+json">/g) ?? [];
+  assert.equal(scripts.length, 2);
+  assert.doesNotMatch(head, /<\/script><script>alert/);
+  // Only `<` needs escaping to stop an early close; `>` stays literal.
+  assert.match(head, /\\u003c\/script>/);
+  const parsed = ldBlocks(html);
+  assert.equal(parsed[0].description, description);
+  assert.equal(parsed[1]["@type"], "SoftwareSourceCode");
+
+  const bare = renderMarkdownToHtml("# Bare", { title: "Bare" });
+  assert.doesNotMatch(bare, /ld\+json/);
+});
+
+test("buildContentPages emits the right JSON-LD per page end-to-end", async () => {
+  const tmpContentDir = await fs.mkdtemp(path.join(os.tmpdir(), "pitway-website-content-"));
+  const tmpOutDir = await fs.mkdtemp(path.join(os.tmpdir(), "pitway-website-out-"));
+  try {
+    await fs.writeFile(
+      path.join(tmpContentDir, "index.md"),
+      `---\ndescription: "Home description."\ncanonical: "https://example.com/"\n---\n\n# Home\n`,
+      "utf8",
+    );
+    await fs.mkdir(path.join(tmpContentDir, "concepts"));
+    await fs.writeFile(
+      path.join(tmpContentDir, "concepts", "tasks.md"),
+      `---\ntitle: "Tasks · PitWay Docs"\ncanonical: "https://example.com/concepts/tasks.html"\n---\n\n# Tasks\n`,
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(tmpContentDir, "404.md"),
+      `---\ntitle: "404 | PitWay"\nrobots: "noindex"\n---\n\n# 404\n`,
+      "utf8",
+    );
+
+    await buildContentPages(tmpContentDir, tmpOutDir, {
+      siteUrl: "https://example.com",
+      project: PROJECT_FIXTURE,
+    });
+
+    const home = ldBlocks(await fs.readFile(path.join(tmpOutDir, "index.html"), "utf8"));
+    assert.deepEqual(home.map((b) => b["@type"]), ["WebSite", "SoftwareSourceCode"]);
+    assert.equal(home[0].name, "PitWay");
+    assert.equal(home[1].codeRepository, "https://github.com/acme/thing");
+
+    const tasks = ldBlocks(await fs.readFile(path.join(tmpOutDir, "concepts", "tasks.html"), "utf8"));
+    assert.deepEqual(tasks.map((b) => b["@type"]), ["BreadcrumbList"]);
+    // Breadcrumb name is the h1, not the branded <title>.
+    assert.equal(tasks[0].itemListElement[2].name, "Tasks");
+
+    const notFound = await fs.readFile(path.join(tmpOutDir, "404.html"), "utf8");
+    assert.doesNotMatch(notFound, /ld\+json/);
+  } finally {
+    await fs.rm(tmpContentDir, { recursive: true, force: true });
+    await fs.rm(tmpOutDir, { recursive: true, force: true });
+  }
+});
+
+test("loadProjectMetadata reads the repo root package.json facts the homepage JSON-LD is built from", async () => {
+  const project = await loadProjectMetadata();
+  assert.match(project.repositoryUrl, /github\.com\/thixpin\/pitway/);
+  assert.equal(project.license, "MIT");
+  assert.equal(typeof project.author.name, "string");
+  assert.match(project.author.url, /^https:\/\//);
 });

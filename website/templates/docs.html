@@ -29,14 +29,19 @@
 -->
 
 <!-- Per-page <head> metadata, emitted as the first thing in <body> since
-     build.mjs's own <head> only provides charset/viewport/title. -->
+     build.mjs's own <head> only provides charset/viewport/title. The
+     `title:` front-matter key (M049) drives the branded <title>; og:site_name
+     and twitter:card are site-wide build constants, and build.mjs also emits
+     the page's BreadcrumbList JSON-LD (PitWay > Docs > page) at build time. -->
+<title>{{ page.title }} · PitWay Docs</title>
 <meta name="description" content="{{ page.description }}">
 <link rel="canonical" href="https://pitway.thixpin.me{{ page.path }}">
 <meta property="og:type" content="article">
 <meta property="og:title" content="{{ page.title }} · PitWay Docs">
 <meta property="og:description" content="{{ page.description }}">
 <meta property="og:url" content="https://pitway.thixpin.me{{ page.path }}">
-<meta property="og:site_name" content="PitWay Docs">
+<meta property="og:site_name" content="PitWay">
+<meta name="twitter:card" content="summary">
 
 <a class="skip-link" href="#main-content">Skip to content</a>
 

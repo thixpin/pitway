@@ -1,11 +1,11 @@
 ---
+title: "Verification · PitWay Docs"
 description: "Two-tier verification: each task is checked against its own approved command, and a mandatory full test suite gates milestone completion."
 canonical: "https://pitway.thixpin.me/workflow/verification.html"
 ogType: "article"
 ogTitle: "Verification · PitWay Docs"
 ogDescription: "Two-tier verification: each task is checked against its own approved command, and a mandatory full test suite gates milestone completion."
 ogUrl: "https://pitway.thixpin.me/workflow/verification.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>

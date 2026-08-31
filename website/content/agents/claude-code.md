@@ -1,11 +1,11 @@
 ---
+title: "Claude Code · PitWay Docs"
 description: "pitway init installs Claude Code slash commands and driver protocol documents by default -- the primary way Claude Code drives PitWay's workflow."
 canonical: "https://pitway.thixpin.me/agents/claude-code.html"
 ogType: "article"
 ogTitle: "Claude Code · PitWay Docs"
 ogDescription: "pitway init installs Claude Code slash commands and driver protocol documents by default -- the primary way Claude Code drives PitWay's workflow."
 ogUrl: "https://pitway.thixpin.me/agents/claude-code.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>

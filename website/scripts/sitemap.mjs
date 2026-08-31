@@ -7,6 +7,21 @@ import path from "node:path";
 import fs from "node:fs/promises";
 
 const DEFAULT_SITE_URL = "https://pitway.thixpin.me";
+// M049/T001 (AC001): the one site name every page publishes (og:site_name,
+// WebSite JSON-LD, breadcrumb root). Google resolves a displayed site name
+// from these signals; an inconsistent or missing name falls back to the
+// parent domain's identity.
+const SITE_NAME = "PitWay";
+
+// A page whose <head> opts out of indexing is still built and served, but
+// never advertised in the sitemap.
+const NOINDEX_META = /<meta\s+name="robots"\s+content="[^"]*\bnoindex\b[^"]*"/i;
+
+async function isNoindexPage(htmlFilePath) {
+  const html = await fs.readFile(htmlFilePath, "utf8");
+  const head = html.match(/<head>([\s\S]*?)<\/head>/);
+  return NOINDEX_META.test(head ? head[1] : html);
+}
 
 /** Recursively collect every *.html file under `dir`. Returns [] if `dir` doesn't exist. */
 export async function findHtmlFiles(dir) {
@@ -64,11 +79,15 @@ export async function generateSitemapAndRobots({
 }) {
   const htmlFiles = await findHtmlFiles(outDir);
   // 404.html is an error page, not a real destination -- standard practice
-  // is to keep it out of the sitemap entirely.
-  const urlPaths = htmlFiles
-    .filter((file) => path.basename(file) !== "404.html")
-    .map((file) => toUrlPath(outDir, file))
-    .sort();
+  // is to keep it out of the sitemap entirely. Likewise any page that
+  // declares itself noindex.
+  const urlPaths = [];
+  for (const file of htmlFiles) {
+    if (path.basename(file) === "404.html") continue;
+    if (await isNoindexPage(file)) continue;
+    urlPaths.push(toUrlPath(outDir, file));
+  }
+  urlPaths.sort();
 
   await fs.writeFile(
     path.join(outDir, "sitemap.xml"),
@@ -84,4 +103,4 @@ export async function generateSitemapAndRobots({
   return { urlPaths };
 }
 
-export { DEFAULT_SITE_URL };
+export { DEFAULT_SITE_URL, SITE_NAME };

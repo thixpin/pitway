@@ -1,11 +1,11 @@
 ---
+title: "Contracts · PitWay Docs"
 description: "A milestone's contract is a Markdown file with machine-authoritative YAML frontmatter -- the execution boundary a milestone never silently expands beyond."
 canonical: "https://pitway.thixpin.me/concepts/contracts.html"
 ogType: "article"
 ogTitle: "Contracts · PitWay Docs"
 ogDescription: "A milestone's contract is a Markdown file with machine-authoritative YAML frontmatter -- the execution boundary a milestone never silently expands beyond."
 ogUrl: "https://pitway.thixpin.me/concepts/contracts.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>

@@ -1,11 +1,11 @@
 ---
+title: "Getting Started · PitWay Docs"
 description: "Install the pitway CLI, run pitway init from your Git repo root, and take your verified first steps with PitWay."
 canonical: "https://pitway.thixpin.me/getting-started/index.html"
 ogType: "article"
 ogTitle: "Getting Started · PitWay Docs"
 ogDescription: "Install the pitway CLI, run pitway init from your Git repo root, and take your verified first steps with PitWay."
 ogUrl: "https://pitway.thixpin.me/getting-started/index.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>
