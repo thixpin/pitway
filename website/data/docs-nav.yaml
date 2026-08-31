@@ -14,7 +14,7 @@ schema_version: 1
 site:
   title: PitWay Docs
   base_url: https://pitway.thixpin.me
-  index_page: /docs-index.html
+  index_page: /docs/index.html
 
 # Each section's pages are listed in the exact order used for:
 #   - the persistent sidebar (grouped by section, in this order)
