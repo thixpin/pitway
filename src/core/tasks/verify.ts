@@ -13,7 +13,7 @@ import type { Task } from '../../state/schemas.js';
 import { loadState, loadTasks, resolveMilestoneDirName } from '../../state/store.js';
 import { DEFAULT_TIMEOUT_MS, executeCommand } from '../verification/process-exec.js';
 import { trimTail } from '../verification/text-trim.js';
-import { summarizeFailure } from '../verification/failure-summary.js';
+import { buildEvidence, parseTestCounts } from '../verification/failure-evidence.js';
 
 export class TaskVerifyError extends Error {}
 
@@ -138,39 +138,11 @@ function generateEvidenceId(): string {
   return `tve-${randomBytes(6).toString('hex')}`;
 }
 
-// M017/T004 (AC004): matches run.ts's own EVIDENCE_BUDGET (trimTail's
-// default cap) -- kept as its own local constant here rather than a shared
-// export, since verify.ts and run.ts are independent call sites with no
-// shared evidence-building module in this task's write_scope.
-const EVIDENCE_BUDGET = 200;
-
-// ONLY on failure, prepends a `failures: <lines>` summary ahead of the
-// tail-trimmed output, budgeted first inside the same evidence cap trimTail
-// already used. A passing run's evidence, and a failing run whose output
-// matches no failure pattern, are byte-identical to before this task.
-function buildEvidence(combined: string, failed: boolean): string {
-  const tail = trimTail(combined);
-  if (!failed) return tail;
-  const summaryLines = summarizeFailure(combined, EVIDENCE_BUDGET);
-  if (summaryLines.length === 0) return tail;
-  const header = `failures: ${summaryLines.join(' | ')}`;
-  const remainder = Math.max(0, EVIDENCE_BUDGET - header.length - 1);
-  return `${header}\n${trimTail(combined, { cap: remainder })}`;
-}
-
-// Best-effort: looks for vitest's own "Tests  N passed (N)" / "N failed"
-// summary line shape in the combined stdout+stderr. Absent rather than
-// fabricated when the line isn't found or doesn't cleanly match.
-function parseTestCounts(output: string): { passCount?: number; failCount?: number } {
-  const line = output.split('\n').find((l) => /^\s*Tests\s+/.test(l));
-  if (!line) return {};
-  const result: { passCount?: number; failCount?: number } = {};
-  const passMatch = /(\d+)\s+passed/.exec(line);
-  const failMatch = /(\d+)\s+failed/.exec(line);
-  if (passMatch) result.passCount = Number(passMatch[1]);
-  if (failMatch) result.failCount = Number(failMatch[1]);
-  return result;
-}
+// M017/T004 (AC004) kept buildEvidence and parseTestCounts as private copies
+// here because run.ts and this file were independent call sites with no
+// shared evidence-building module in that task's write_scope. M048/T001
+// reversed that: both call sites now consume failure-evidence.ts, and this
+// one relies on the shared buildEvidence's default '(no output)' fallback.
 
 // Task-verify evidence engine (no CLI yet): executes a task's own
 // verification command (and, optionally, a typecheck command) against an

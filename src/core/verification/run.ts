@@ -8,8 +8,7 @@ import {
 } from '../../state/store.js';
 import { computeVerificationHash } from '../contracts/verification-hash.js';
 import { resolveCanonicalGitDir } from '../../git/paths.js';
-import { trimTail } from './text-trim.js';
-import { summarizeFailure } from './failure-summary.js';
+import { buildEvidence } from './failure-evidence.js';
 import { evaluateRecursionGuard } from './recursion-guard.js';
 import { DEFAULT_TIMEOUT_MS, executeCommand, type TerminationReason } from './process-exec.js';
 
@@ -151,31 +150,16 @@ interface CommandCheckOutcome extends VerifyCheckOutcome {
   termination_reason: TerminationReason;
 }
 
-// M017/T004 (AC004): matches trimTail's own default cap -- the evidence
-// budget a failure summary and the tail-trimmed output now share, summary
-// first.
-const EVIDENCE_BUDGET = 200;
-
-// M017/T004 (AC004): ONLY on failure, prepends a `failures: <lines>`
-// summary ahead of the tail-trimmed output, the summary budgeted first
-// inside the SAME evidence budget trimTail already used -- one truncation
-// scheme, not two. A passing run's evidence, and a failing run whose output
-// matches no failure pattern, are byte-identical to before this task.
-function buildEvidence(combined: string, failed: boolean, emptyFallback: string): string {
-  const tail = trimTail(combined, { emptyFallback });
-  if (!failed) return tail;
-  const summaryLines = summarizeFailure(combined, EVIDENCE_BUDGET);
-  if (summaryLines.length === 0) return tail;
-  const header = `failures: ${summaryLines.join(' | ')}`;
-  const remainder = Math.max(0, EVIDENCE_BUDGET - header.length - 1);
-  return `${header}\n${trimTail(combined, { cap: remainder, emptyFallback })}`;
-}
+// M017/T004 (AC004) introduced the failure-summary-first evidence shape;
+// M048/T001 moved it to failure-evidence.ts's shared buildEvidence, whose
+// EVIDENCE_BUDGET is the one 200-char cap this call site and tasks/verify.ts
+// both use (matching trimTail's own default cap).
 
 // AC001/AC007/T002: runs one command check through T001's timeout-bounded
 // executeCommand (per-check timeout_ms, falling back to the shared safe
-// default), trims evidence with the shared text-trim helper, and times the
-// attempt for duration_ms. Never retried automatically -- one call, one
-// outcome.
+// default), builds evidence with the shared failure-evidence helper, and
+// times the attempt for duration_ms. Never retried automatically -- one
+// call, one outcome.
 function executeCommandCheck(root: string, check: CommandCheck): CommandCheckOutcome {
   const start = Date.now();
   const result = executeCommand(check.command, {

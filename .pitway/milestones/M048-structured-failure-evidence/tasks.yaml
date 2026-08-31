@@ -29,7 +29,7 @@ tasks:
       suites (verify.test.ts, task-verify.test.ts, verification-repair.test.ts)
       are the call-site regression and must pass untouched. No behavior change
       anywhere."
-    status: ready
+    status: completed
     depends_on: []
     acceptance_criteria:
       - buildEvidence(combined, failed, emptyFallback?) and parseTestCounts live
@@ -61,7 +61,18 @@ tasks:
         tests/integration/task-verify.test.ts
         tests/integration/verification-repair.test.ts
       timeout_ms: 300000
-    result: null
+    result:
+      summary: "[truncated] e the shared module. tests/unit/failure-evidence.test.ts
+        pins hand-derived byte-identical evidence for passing, vitest-failing,
+        no-match, default and per-variant empty-output fallbacks, and the
+        remainder-cap path; the three call-site integration suites pass
+        untouched. No behavior change."
+      evidence: Tests  146 passed (146) | Start at  11:32:17 | Duration  59.57s
+        (transform 1.09s, setup 0ms, import 1.64s, tests 106.93s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-fable-5
     usage: null
   - id: T002
     name: Structured failure extraction with the CT006-replay guarantee
@@ -96,7 +107,7 @@ tasks:
       non-vitest output with `ERR`/`Error` words -> generic bucket, cap 12; (6)
       a 300-char line is capped to 200; (7) clean output -> {} with no failures
       key."
-    status: waiting
+    status: ready
     depends_on:
       - T001
     acceptance_criteria:
