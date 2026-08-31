@@ -1,0 +1,283 @@
+schema_version: 1
+tasks:
+  - id: T001
+    name: Build pipeline site identity, title/robots keys, noindex-aware sitemap
+    objective: 'website/scripts/sitemap.mjs: export SITE_NAME = "PitWay" beside
+      DEFAULT_SITE_URL; generateSitemapAndRobots additionally excludes any
+      *.html whose <head> contains a <meta name="robots"> whose content includes
+      noindex (read each file; keep the existing 404.html exclusion).
+      website/scripts/build.mjs: (1) renderMarkdownToHtml always emits <meta
+      property="og:site_name" content="PitWay"> (from SITE_NAME) and <meta
+      name="twitter:card" content="summary">, placed with the other og/meta
+      tags; remove ogSiteName from FRONT_MATTER_OG_TAGS so a stale per-page
+      value can no longer override the constant; (2) honour meta.robots -> <meta
+      name="robots" content="...">; (3) buildContentPages computes heading =
+      titleFromMarkdown(content, basename) and uses data.title ?? heading as the
+      <title>, passing both title and heading through to renderMarkdownToHtml
+      (heading is consumed by T002). The bare-head fallback test changes
+      accordingly: a page with no front matter now still carries og:site_name
+      and twitter:card (both are constants, not front-matter driven). TDD in
+      website/scripts/build.test.mjs: og:site_name is PitWay even when the
+      fixture declares ogSiteName: "Fixture Docs"; twitter:card present; title:
+      overrides the h1-derived title and falls back when absent; robots: emits
+      the meta and is absent otherwise; a temp-dir build with one noindex page
+      proves it is built but excluded from sitemap.xml while indexable pages
+      remain.'
+    status: ready
+    depends_on: []
+    acceptance_criteria:
+      - Every rendered page carries og:site_name PitWay and twitter:card
+        summary; ogSiteName front matter no longer influences output.
+      - "The title: and robots: front-matter keys are honoured with the
+        documented fallbacks; noindex pages are excluded from sitemap.xml."
+    context_files:
+      - website/scripts/build.mjs
+      - website/scripts/sitemap.mjs
+      - website/scripts/build.test.mjs
+      - website/scripts/__fixtures__/sample.md
+      - website/content/index.md
+      - website/content/404.md
+    write_scope:
+      - website/scripts/build.mjs
+      - website/scripts/sitemap.mjs
+      - website/scripts/build.test.mjs
+    verification:
+      strategy: tdd
+      detail: node website/scripts/build.test.mjs
+      timeout_ms: 300000
+    result: null
+    usage: null
+  - id: T002
+    name: JSON-LD WebSite, SoftwareSourceCode, and BreadcrumbList emission
+    objective: 'website/scripts/build.mjs: add a pure buildJsonLd({ canonical,
+      heading, description, robots, siteUrl, project }) returning an array of
+      schema.org objects, and emit each as <script type="application/ld+json">
+      in <head> using JSON.stringify with every < replaced by \u003c (never
+      escapeHtml). Rules: robots containing noindex or no canonical -> [].
+      canonical === `${siteUrl}/` (homepage) -> [WebSite { @context
+      https://schema.org, @type WebSite, name SITE_NAME, url `${siteUrl}/`,
+      description }, SoftwareSourceCode { @context, @type SoftwareSourceCode,
+      name SITE_NAME, description, url `${siteUrl}/`, codeRepository,
+      programmingLanguage "TypeScript", runtimePlatform "Node.js", license,
+      author { @type Person, name, url } }] where codeRepository is package.json
+      repository.url with the leading git+ and trailing .git stripped, license
+      is `${codeRepository}/blob/main/LICENSE` when package.json license is MIT,
+      and author name/url come from package.json author -- `project` is loaded
+      once by main()/buildContentPages from REPO_ROOT/package.json and passed in
+      (tests pass a literal). Any other canonical -> [BreadcrumbList { @context,
+      @type BreadcrumbList, itemListElement: ListItem 1 { name SITE_NAME, item
+      `${siteUrl}/` }, ListItem 2 { name "Docs", item
+      `${siteUrl}/docs/index.html` } (omitted when canonical IS that URL), last
+      ListItem { name heading, item canonical } }] with positions 1..n. TDD in
+      build.test.mjs: homepage fixture yields exactly WebSite +
+      SoftwareSourceCode with the package.json-derived values (assert against a
+      literal project object); a docs fixture yields a 3-item BreadcrumbList;
+      the docs-index canonical yields 2 items; a noindex fixture and a fixture
+      without canonical yield no ld+json; every emitted block round-trips
+      through JSON.parse; a description containing </script> is emitted with
+      \u003c and never closes the script element.'
+    status: waiting
+    depends_on:
+      - T001
+    acceptance_criteria:
+      - Homepage emits accurate WebSite + SoftwareSourceCode JSON-LD sourced
+        from package.json; no Organization, offers, or ratings.
+      - Indexable non-home pages emit the linked-trail BreadcrumbList; noindex
+        pages and pages without canonical emit none; output is valid JSON with <
+        escaped.
+    context_files:
+      - website/scripts/build.mjs
+      - website/scripts/sitemap.mjs
+      - website/scripts/build.test.mjs
+      - package.json
+      - website/content/index.md
+      - website/content/docs/index.md
+      - website/content/concepts/tasks.md
+    write_scope:
+      - website/scripts/build.mjs
+      - website/scripts/build.test.mjs
+    verification:
+      strategy: tdd
+      detail: node website/scripts/build.test.mjs
+      timeout_ms: 300000
+    result: null
+    usage: null
+  - id: T003
+    name: Content front matter for titles, site name, and noindex pages
+    objective: "Mechanical front-matter edits only; no body copy changes. In each of
+      the 18 files that declare ogSiteName (website/content/agents/*.md x4,
+      concepts/*.md x6, workflow/*.md x5, docs/index.md,
+      getting-started/index.md, manual-checks.md): delete the ogSiteName line
+      and add a title: line whose value is exactly the file's existing ogTitle
+      value. manual-checks.md additionally adds robots: \"noindex\" (it is an
+      internal pre-deploy checklist linked from no page).
+      website/content/404.md: add title: \"404 — Page Not Found | PitWay\" and
+      robots: \"noindex\"; delete its canonical and ogUrl lines; keep
+      description/ogType/ogTitle/ogDescription. website/content/index.md is
+      unchanged (its h1-derived title already carries the brand and it never
+      declared ogSiteName). Verification builds the site and runs the pipeline
+      tests; check:seo is deliberately NOT run here because its noindex
+      exemption lands in T004 (the old audit would reject 404's missing
+      canonical)."
+    status: waiting
+    depends_on:
+      - T002
+    acceptance_criteria:
+      - "No content file declares ogSiteName; every docs page and manual-checks
+        declares a title: equal to its ogTitle; the built <title> of every page
+        contains PitWay."
+      - 404.md and manual-checks.md carry robots noindex; 404.md has no
+        canonical/ogUrl; the built sitemap omits both pages.
+    context_files:
+      - website/content/index.md
+      - website/content/404.md
+      - website/content/manual-checks.md
+      - website/content/docs/index.md
+      - website/content/getting-started/index.md
+      - website/content/agents/claude-code.md
+      - website/content/agents/codex.md
+      - website/content/agents/opencode.md
+      - website/content/agents/resume.md
+      - website/content/concepts/backlog.md
+      - website/content/concepts/contracts.md
+      - website/content/concepts/evidence.md
+      - website/content/concepts/milestones.md
+      - website/content/concepts/tasks.md
+      - website/content/concepts/worktrees.md
+      - website/content/workflow/auto-run.md
+      - website/content/workflow/completion.md
+      - website/content/workflow/merge.md
+      - website/content/workflow/review.md
+      - website/content/workflow/verification.md
+      - website/scripts/build.mjs
+    write_scope:
+      - website/content/404.md
+      - website/content/manual-checks.md
+      - website/content/docs/index.md
+      - website/content/getting-started/index.md
+      - website/content/agents/claude-code.md
+      - website/content/agents/codex.md
+      - website/content/agents/opencode.md
+      - website/content/agents/resume.md
+      - website/content/concepts/backlog.md
+      - website/content/concepts/contracts.md
+      - website/content/concepts/evidence.md
+      - website/content/concepts/milestones.md
+      - website/content/concepts/tasks.md
+      - website/content/concepts/worktrees.md
+      - website/content/workflow/auto-run.md
+      - website/content/workflow/completion.md
+      - website/content/workflow/merge.md
+      - website/content/workflow/review.md
+      - website/content/workflow/verification.md
+    verification:
+      strategy: command
+      detail: npm --prefix website run build && node website/scripts/build.test.mjs
+      timeout_ms: 300000
+    result: null
+    usage: null
+  - id: T004
+    name: Strengthen check-seo.mjs for site-name, cards, robots, sitemap, and JSON-LD
+    objective: "website/scripts/check-seo.mjs, read-only audit over website/dist as
+      today, extended per AC006: a page is noindex when its <head> has <meta
+      name=\"robots\"> whose content includes noindex. Every page: <title>
+      present, meta description present, og:site_name content exactly PitWay,
+      twitter:card present, heading hierarchy unchanged. Indexable pages
+      additionally: <title> contains PitWay, canonical present, og:title and
+      og:description present, and -- for non-home pages -- at least one ld+json
+      block with @type BreadcrumbList; the homepage (canonical
+      https://pitway.thixpin.me/) must carry a WebSite block whose name is
+      PitWay. Noindex pages: exempt from canonical/og:title/og:description/
+      BreadcrumbList requirements; must not appear in sitemap.xml. Every ld+json
+      block on every page must JSON.parse and carry @context https://schema.org
+      and an @type. Sitemap: the sorted set of <loc> values must equal the
+      sorted set of indexable pages' canonical hrefs (report both missing and
+      extra URLs by value). Success message updated to name the new checks.
+      Verification runs the real build then the audit; the audit must pass
+      against the T003 content."
+    status: waiting
+    depends_on:
+      - T003
+    acceptance_criteria:
+      - check:seo passes against the built site and would fail on each
+        regression class in AC006 (site name, card, brand-less title, noindex
+        page in sitemap, sitemap/canonical mismatch, malformed JSON-LD, missing
+        WebSite/BreadcrumbList).
+    context_files:
+      - website/scripts/check-seo.mjs
+      - website/scripts/sitemap.mjs
+      - website/scripts/build.mjs
+      - website/content/404.md
+      - website/content/manual-checks.md
+    write_scope:
+      - website/scripts/check-seo.mjs
+    verification:
+      strategy: command
+      detail: npm --prefix website run build && npm --prefix website run check:seo &&
+        npm --prefix website run check:a11y
+      timeout_ms: 300000
+    result: null
+    usage: null
+  - id: T005
+    name: Bring reference templates and nav data back in sync
+    objective: 'website/templates/homepage.html: canonical href and og:url ->
+      https://pitway.thixpin.me/; add <meta property="og:site_name"
+      content="PitWay"> and <meta name="twitter:card" content="summary"> after
+      og:url; add one HTML comment noting that build.mjs also emits the WebSite
+      + SoftwareSourceCode JSON-LD on this page; correct the two stale path
+      mentions (website/content/pages/index.md -> website/content/index.md) in
+      its leading comment. website/templates/docs.html: og:site_name -> PitWay;
+      add a <title> line showing the `{{ page.title }} · PitWay Docs` pattern
+      the title: front-matter key now drives, and a one-line comment that
+      build.mjs emits the BreadcrumbList JSON-LD. website/data/docs-nav.yaml:
+      site.index_page -> /docs/index.html. Nothing else in these files changes.'
+    status: waiting
+    depends_on:
+      - T004
+    acceptance_criteria:
+      - The three reference files carry the corrected URLs, site name, and
+        title/JSON-LD notes; CT007's greps pass.
+    context_files:
+      - website/templates/homepage.html
+      - website/templates/docs.html
+      - website/data/docs-nav.yaml
+      - website/content/index.md
+      - website/scripts/build.mjs
+    write_scope:
+      - website/templates/homepage.html
+      - website/templates/docs.html
+      - website/data/docs-nav.yaml
+    verification:
+      strategy: command
+      detail: "grep -q 'rel=\"canonical\" href=\"https://pitway.thixpin.me/\"'
+        website/templates/homepage.html && grep -q 'og:site_name\"
+        content=\"PitWay\"' website/templates/homepage.html && grep -q
+        'og:site_name\" content=\"PitWay\"' website/templates/docs.html && grep
+        -q 'index_page: /docs/index.html' website/data/docs-nav.yaml"
+      timeout_ms: 60000
+    result: null
+    usage: null
+  - id: T006
+    name: Run the full verification gate
+    objective: Root typecheck + full suite, then the website pipeline (build,
+      check:seo, check:a11y, build.test.mjs) from a clean tree via task-verify
+      with the declared timeout_ms. No code changes expected; on failure stop
+      and report.
+    status: waiting
+    depends_on:
+      - T005
+    acceptance_criteria:
+      - Root typecheck and suite pass; website build, both audits, and the
+        pipeline tests pass.
+    context_files:
+      - package.json
+      - website/package.json
+    write_scope: []
+    verification:
+      strategy: command
+      detail: npm run typecheck && npm test && npm --prefix website run build && npm
+        --prefix website run check:seo && npm --prefix website run check:a11y &&
+        node website/scripts/build.test.mjs
+      timeout_ms: 900000
+    result: null
+    usage: null
