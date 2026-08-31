@@ -239,7 +239,7 @@ tasks:
       --json carries fail_count/pass_count/failures; a passing run's human and
       --json output are unchanged; a check whose failing output matches nothing
       renders no extra lines."
-    status: ready
+    status: completed
     depends_on:
       - T003
     acceptance_criteria:
@@ -274,14 +274,26 @@ tasks:
         tests/integration/task-verify.test.ts tests/unit/claude-assets.test.ts
         tests/unit/codex-assets.test.ts tests/unit/opencode-assets.test.ts
       timeout_ms: 300000
-    result: null
-    usage: null
+    result:
+      summary: "[truncated] nting the fields, the extractor-only <Word>Error: matcher,
+        the rendering shape, and the absence rules. Integration tests pin
+        failing-check rendering on both paths, --json fields,
+        fail-only/pass-only counts, passing-run byte-identity, and the no-match
+        case (no extra lines, no extra keys)."
+      evidence: Tests  404 passed (404) | Start at  12:00:44 | Duration  28.64s
+        (transform 896ms, setup 0ms, import 1.41s, tests 54.80s, environment
+        0ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-fable-5
+    usage:
+      total_tokens: 108311
   - id: T005
     name: Run the full verification gate
     objective: npm run typecheck && npm test from a clean tree via task-verify with
       the declared timeout_ms. No code changes expected; on failure stop and
       report.
-    status: waiting
+    status: ready
     depends_on:
       - T004
     acceptance_criteria:

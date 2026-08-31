@@ -834,6 +834,191 @@ describe('pitway verify --check isolated rerun human rendering', () => {
   });
 });
 
+// M048/T004 (AC004): the structured failure fields T003 put on the views
+// render as additive indented lines under a failed command check -- a count
+// line listing only the counts present, then one `- <entry>` line per
+// failures entry -- on both the full-run and the --check rerun paths; --json
+// carries the same fields. Passing runs and no-match failures (FAILING_CHECKS's
+// plain "boom") stay byte-identical, human and --json alike.
+describe('pitway verify structured failure rendering (M048/T004)', () => {
+  interface StructuredResult {
+    check: string;
+    status: string;
+    evidence: string;
+    fail_count?: number;
+    pass_count?: number;
+    failures?: string[];
+  }
+  const STRUCTURED_KEYS = ['fail_count', 'pass_count', 'failures'];
+
+  // A vitest-shaped failing check: one FAIL block line, one assertion line,
+  // and vitest's own Tests summary. Emitted by a script file (written after
+  // confirm, like nested-check.mjs) because a plain YAML scalar can't carry
+  // the `AssertionError: ` colon-space.
+  const VITEST_SHAPED_CHECK = `  - id: CT001
+    criterion: AC001
+    type: command
+    command: node vitest-shaped.mjs
+`;
+  const VITEST_SHAPED_SCRIPT = `
+console.log('FAIL src/x.test.ts > suite > it fails');
+console.log('AssertionError: expected 1 to be 2');
+console.log('Tests  1 failed | 2 passed (3)');
+process.exit(1);
+`;
+  const FAIL_ONLY_COUNT_CHECK = `  - id: CT001
+    criterion: AC001
+    type: command
+    command: node -e "console.log('Tests  7 failed (7)'); process.exit(1)"
+`;
+  const PASS_ONLY_COUNT_CHECK = `  - id: CT001
+    criterion: AC001
+    type: command
+    command: node -e "console.log('Tests  3 passed (3)'); process.exit(1)"
+`;
+
+  const indented = (output: string): string[] => output.split('\n').filter((l) => l.startsWith('    '));
+
+  async function confirmedVitestShaped(): Promise<void> {
+    await confirmed(VITEST_SHAPED_CHECK);
+    writeFileSync(join(root, 'vitest-shaped.mjs'), VITEST_SHAPED_SCRIPT);
+  }
+
+  it('full run: renders the count line and one - line per entry under the failed check', async () => {
+    await confirmedVitestShaped();
+    const { lines, error } = await run(['verify'], root);
+    expect(error).toBeUndefined();
+    const output = lines[0]!;
+    expect(output.startsWith('🔍 Verification M001\n  CT001  ❌ fail — failures: FAIL src/x.test.ts > suite > it fails')).toBe(true);
+    expect(indented(output)).toEqual([
+      '    failed: 1 (passed: 2)',
+      '    - FAIL src/x.test.ts > suite > it fails',
+      '    - AssertionError: expected 1 to be 2',
+    ]);
+    // The indented block sits between the check line and the tally line.
+    const rows = output.split('\n');
+    expect(rows[rows.length - 1]).toBe('❌ 1 of 1 command checks failed.');
+    expect(rows.indexOf('    failed: 1 (passed: 2)')).toBeLessThan(rows.indexOf('    - FAIL src/x.test.ts > suite > it fails'));
+  });
+
+  it('--check rerun: renders the same indented lines under the single failed check', async () => {
+    await confirmedVitestShaped();
+    const { lines, error } = await run(['verify', '--check', 'CT001'], root);
+    expect(error).toBeUndefined();
+    const output = lines[0]!;
+    expect(output.startsWith('🔍 CT001  ❌ fail — failures: FAIL src/x.test.ts > suite > it fails')).toBe(true);
+    // The evidence is `failures: <summary>\n<tail>`; the ` (M001)` suffix
+    // closes the tail row, and the indented block follows it.
+    const rows = output.split('\n');
+    expect(rows[1]!.endsWith(' (M001)')).toBe(true);
+    expect(rows.slice(2)).toEqual(indented(output));
+    expect(indented(output)).toEqual([
+      '    failed: 1 (passed: 2)',
+      '    - FAIL src/x.test.ts > suite > it fails',
+      '    - AssertionError: expected 1 to be 2',
+    ]);
+  });
+
+  it('--json carries fail_count, pass_count, and failures on both paths', async () => {
+    await confirmedVitestShaped();
+    const full = await run(['verify', '--json'], root);
+    expect(full.error).toBeUndefined();
+    const view = JSON.parse(full.lines[0]!) as { results: StructuredResult[] };
+    expect(view.results[0]).toMatchObject({
+      check: 'CT001',
+      status: 'fail',
+      fail_count: 1,
+      pass_count: 2,
+      failures: ['FAIL src/x.test.ts > suite > it fails', 'AssertionError: expected 1 to be 2'],
+    });
+
+    const rerun = await run(['verify', '--check', 'CT001', '--json'], root);
+    expect(rerun.error).toBeUndefined();
+    const single = JSON.parse(rerun.lines[0]!) as StructuredResult & { mode: string };
+    expect(single).toMatchObject({
+      mode: 'check-run',
+      status: 'fail',
+      fail_count: 1,
+      pass_count: 2,
+      failures: ['FAIL src/x.test.ts > suite > it fails', 'AssertionError: expected 1 to be 2'],
+    });
+  });
+
+  it('renders only the count that exists -- never a fabricated 0', async () => {
+    await confirmed(FAIL_ONLY_COUNT_CHECK);
+    const failOnly = await run(['verify'], root);
+    expect(failOnly.error).toBeUndefined();
+    expect(indented(failOnly.lines[0]!)).toEqual(['    failed: 7']);
+    expect(failOnly.lines[0]).not.toContain('passed');
+  });
+
+  it('renders a passed-only count when that is all the output reports', async () => {
+    await confirmed(PASS_ONLY_COUNT_CHECK);
+    const passOnly = await run(['verify'], root);
+    expect(passOnly.error).toBeUndefined();
+    expect(indented(passOnly.lines[0]!)).toEqual(['    passed: 3']);
+    expect(passOnly.lines[0]).not.toContain('failed:');
+  });
+
+  it('a passing run renders byte-identical human and --json output', async () => {
+    await confirmed();
+    const human = await run(['verify'], root);
+    expect(human.error).toBeUndefined();
+    expect(human.lines[0]).toBe(
+      [
+        '🔍 Verification M001',
+        '  CT001  ✅ pass — hello',
+        '  CT002  ✅ pass — ok',
+        '  CT003  ⏳ pending — record with --check CT003 --pass|--fail --evidence <text>',
+        '✅ All 2 command checks passed.',
+      ].join('\n'),
+    );
+
+    const json = await run(['verify', '--json'], root);
+    expect(json.error).toBeUndefined();
+    const view = JSON.parse(json.lines[0]!) as { results: StructuredResult[] };
+    expect(view.results).toHaveLength(2);
+    for (const r of view.results) {
+      for (const key of STRUCTURED_KEYS) {
+        expect(key in r).toBe(false);
+      }
+    }
+
+    const rerun = await run(['verify', '--check', 'CT001', '--json'], root);
+    expect(rerun.error).toBeUndefined();
+    const single = JSON.parse(rerun.lines[0]!) as StructuredResult;
+    expect(single.status).toBe('pass');
+    for (const key of STRUCTURED_KEYS) {
+      expect(key in single).toBe(false);
+    }
+  });
+
+  it('a failed check whose output matches nothing renders no extra lines and no extra keys', async () => {
+    await confirmed(FAILING_CHECKS);
+    const human = await run(['verify'], root);
+    expect(human.error).toBeUndefined();
+    expect(human.lines[0]).toBe(
+      [
+        '🔍 Verification M001',
+        '  CT001  ✅ pass — hello',
+        '  CT002  ❌ fail — boom',
+        '  CT003  ⏳ pending — record with --check CT003 --pass|--fail --evidence <text>',
+        '❌ 1 of 2 command checks failed.',
+      ].join('\n'),
+    );
+
+    const json = await run(['verify', '--json'], root);
+    const view = JSON.parse(json.lines[0]!) as { results: StructuredResult[] };
+    for (const key of STRUCTURED_KEYS) {
+      expect(key in view.results[1]!).toBe(false);
+    }
+
+    const rerun = await run(['verify', '--check', 'CT002'], root);
+    expect(rerun.error).toBeUndefined();
+    expect(rerun.lines[0]).toBe('🔍 CT002  ❌ fail — boom (M001)');
+  });
+});
+
 // The default CommandDeps fallbacks (deps.write ?? console.log,
 // deps.root ?? process.cwd()) are only reached when a caller registers the
 // command with no overrides -- the real shape a bare `pitway verify`
