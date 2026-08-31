@@ -1,2 +1,60 @@
 schema_version: 1
-results: []
+results:
+  - check: CT001
+    status: pass
+    at: 2026-08-31T05:50:04Z
+    evidence: ℹ skipped 0 | ℹ todo 0 | ℹ duration_ms 1836.837875
+    recorded_by: command
+    duration_ms: 1886
+    termination_reason: exited
+  - check: CT002
+    status: pass
+    at: 2026-08-31T05:50:06Z
+    evidence: ℹ skipped 0 | ℹ todo 0 | ℹ duration_ms 1561.594458
+    recorded_by: command
+    duration_ms: 1609
+    termination_reason: exited
+  - check: CT003
+    status: pass
+    at: 2026-08-31T05:50:07Z
+    evidence: ℹ skipped 0 | ℹ todo 0 | ℹ duration_ms 1561.795875
+    recorded_by: command
+    duration_ms: 1607
+    termination_reason: exited
+  - check: CT004
+    status: pass
+    at: 2026-08-31T05:50:09Z
+    evidence: ℹ skipped 0 | ℹ todo 0 | ℹ duration_ms 1604.919292
+    recorded_by: command
+    duration_ms: 1654
+    termination_reason: exited
+  - check: CT005
+    status: pass
+    at: 2026-08-31T05:50:10Z
+    evidence: ℹ skipped 0 | ℹ todo 0 | ℹ duration_ms 1605.585167
+    recorded_by: command
+    duration_ms: 1652
+    termination_reason: exited
+  - check: CT006
+    status: pass
+    at: 2026-08-31T05:50:11Z
+    evidence: "> pitway-website@0.0.0 check:a11y | > node scripts/check-a11y.mjs |
+      check-a11y: 20 page(s) OK -- image alt text present, :focus-visible and
+      prefers-reduced-motion CSS shipped."
+    recorded_by: command
+    duration_ms: 467
+    termination_reason: exited
+  - check: CT007
+    status: pass
+    at: 2026-08-31T05:50:11Z
+    evidence: (no output; exit 0)
+    recorded_by: command
+    duration_ms: 12
+    termination_reason: exited
+  - check: CT008
+    status: pass
+    at: 2026-08-31T05:52:50Z
+    evidence: ℹ skipped 0 | ℹ todo 0 | ℹ duration_ms 1962.160208
+    recorded_by: command
+    duration_ms: 159081
+    termination_reason: exited

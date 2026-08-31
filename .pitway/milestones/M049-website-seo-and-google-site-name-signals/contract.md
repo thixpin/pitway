@@ -2,7 +2,7 @@
 schema_version: 1
 id: M049
 title: Website SEO and Google Site-Name Signals
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-31T05:36:47Z
 verification_approved_hash: sha256:fb4cbcfb67f4a5840bea73ec3cee3c5792cd4077fb69d236f57e82d1295ba176
