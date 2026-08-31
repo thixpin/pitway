@@ -14,3 +14,6 @@ drafts/
 
 # Machine-local OpenCode configuration (developer's own, never tracked)
 opencode.json
+
+# Codex harness artifact, recreated on every Codex session in this repo
+.agents/
