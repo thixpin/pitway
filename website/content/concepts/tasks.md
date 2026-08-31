@@ -1,11 +1,11 @@
 ---
+title: "Tasks · PitWay Docs"
 description: "Tasks are a milestone's concrete steps, each mechanically bounded by a write_scope and moved through its own state machine."
 canonical: "https://pitway.thixpin.me/concepts/tasks.html"
 ogType: "article"
 ogTitle: "Tasks · PitWay Docs"
 ogDescription: "Tasks are a milestone's concrete steps, each mechanically bounded by a write_scope and moved through its own state machine."
 ogUrl: "https://pitway.thixpin.me/concepts/tasks.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>

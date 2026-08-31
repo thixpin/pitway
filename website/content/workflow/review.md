@@ -1,11 +1,11 @@
 ---
+title: "Review · PitWay Docs"
 description: "milestone-review runs a role-based review workflow -- reviewers produce findings only; PitWay doesn't run reviews or verify reviewer independence."
 canonical: "https://pitway.thixpin.me/workflow/review.html"
 ogType: "article"
 ogTitle: "Review · PitWay Docs"
 ogDescription: "milestone-review runs a role-based review workflow -- reviewers produce findings only; PitWay doesn't run reviews or verify reviewer independence."
 ogUrl: "https://pitway.thixpin.me/workflow/review.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>

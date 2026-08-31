@@ -1,11 +1,11 @@
 ---
+title: "Auto Run · PitWay Docs"
 description: "auto-run manages the authorization that lets task execution continue automatically without stopping for confirmation at every step."
 canonical: "https://pitway.thixpin.me/workflow/auto-run.html"
 ogType: "article"
 ogTitle: "Auto Run · PitWay Docs"
 ogDescription: "auto-run manages the authorization that lets task execution continue automatically without stopping for confirmation at every step."
 ogUrl: "https://pitway.thixpin.me/workflow/auto-run.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>

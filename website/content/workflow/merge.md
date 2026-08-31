@@ -1,11 +1,11 @@
 ---
+title: "Merge · PitWay Docs"
 description: "milestone-merge lands a completed milestone's dedicated branch into its base branch, idempotently, with full git-safety checks."
 canonical: "https://pitway.thixpin.me/workflow/merge.html"
 ogType: "article"
 ogTitle: "Merge · PitWay Docs"
 ogDescription: "milestone-merge lands a completed milestone's dedicated branch into its base branch, idempotently, with full git-safety checks."
 ogUrl: "https://pitway.thixpin.me/workflow/merge.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>

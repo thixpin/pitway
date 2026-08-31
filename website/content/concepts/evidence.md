@@ -1,11 +1,11 @@
 ---
+title: "Evidence · PitWay Docs"
 description: "Every task and milestone check is verified against an approved command and its result recorded as formal evidence, never estimated."
 canonical: "https://pitway.thixpin.me/concepts/evidence.html"
 ogType: "article"
 ogTitle: "Evidence · PitWay Docs"
 ogDescription: "Every task and milestone check is verified against an approved command and its result recorded as formal evidence, never estimated."
 ogUrl: "https://pitway.thixpin.me/concepts/evidence.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>

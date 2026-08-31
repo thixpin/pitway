@@ -1,11 +1,11 @@
 ---
+title: "Codex · PitWay Docs"
 description: "pitway init --codex installs the same PitWay command surface for Codex, in its own file convention, from the shared common layer."
 canonical: "https://pitway.thixpin.me/agents/codex.html"
 ogType: "article"
 ogTitle: "Codex · PitWay Docs"
 ogDescription: "pitway init --codex installs the same PitWay command surface for Codex, in its own file convention, from the shared common layer."
 ogUrl: "https://pitway.thixpin.me/agents/codex.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>

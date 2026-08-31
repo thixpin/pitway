@@ -137,7 +137,7 @@ tasks:
       tests; check:seo is deliberately NOT run here because its noindex
       exemption lands in T004 (the old audit would reject 404's missing
       canonical)."
-    status: ready
+    status: completed
     depends_on:
       - T002
     acceptance_criteria:
@@ -192,7 +192,16 @@ tasks:
       strategy: command
       detail: npm --prefix website run build && node website/scripts/build.test.mjs
       timeout_ms: 300000
-    result: null
+    result:
+      summary: "[truncated] every built <title> contains PitWay; sitemap.xml lists 18
+        URLs (404 and manual-checks excluded); 404.html carries robots noindex
+        and no canonical/og:url/JSON-LD; no content file declares ogSiteName.
+        The pre-T004 check:seo rejects only 404's missing canonical, as the
+        contract anticipated."
+      evidence: ℹ skipped 0 | ℹ todo 0 | ℹ duration_ms 1969.163
+    attempts: 1
+    driver: Claude Code
+    model: claude-fable-5
     usage: null
   - id: T004
     name: Strengthen check-seo.mjs for site-name, cards, robots, sitemap, and JSON-LD
@@ -213,7 +222,7 @@ tasks:
       extra URLs by value). Success message updated to name the new checks.
       Verification runs the real build then the audit; the audit must pass
       against the T003 content."
-    status: waiting
+    status: ready
     depends_on:
       - T003
     acceptance_criteria:

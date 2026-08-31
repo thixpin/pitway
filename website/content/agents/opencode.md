@@ -1,11 +1,11 @@
 ---
+title: "OpenCode · PitWay Docs"
 description: "pitway init --opencode installs the same PitWay command surface for OpenCode, in its own file convention, from the shared common layer."
 canonical: "https://pitway.thixpin.me/agents/opencode.html"
 ogType: "article"
 ogTitle: "OpenCode · PitWay Docs"
 ogDescription: "pitway init --opencode installs the same PitWay command surface for OpenCode, in its own file convention, from the shared common layer."
 ogUrl: "https://pitway.thixpin.me/agents/opencode.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>

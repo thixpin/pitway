@@ -1,11 +1,12 @@
 ---
+title: "Manual Accessibility Checks · PitWay Docs"
 description: "Accessibility checks that automated tooling cannot verify, to be run by hand against the built site before each deploy."
 canonical: "https://pitway.thixpin.me/manual-checks.html"
 ogType: "article"
 ogTitle: "Manual Accessibility Checks · PitWay Docs"
 ogDescription: "Accessibility checks that automated tooling cannot verify, to be run by hand against the built site before each deploy."
 ogUrl: "https://pitway.thixpin.me/manual-checks.html"
-ogSiteName: "PitWay Docs"
+robots: "noindex"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>

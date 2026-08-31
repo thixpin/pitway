@@ -1,11 +1,11 @@
 ---
+title: "Backlog · PitWay Docs"
 description: "backlog captures work discovered mid-task without expanding the current milestone's scope, for promotion into a real task later."
 canonical: "https://pitway.thixpin.me/concepts/backlog.html"
 ogType: "article"
 ogTitle: "Backlog · PitWay Docs"
 ogDescription: "backlog captures work discovered mid-task without expanding the current milestone's scope, for promotion into a real task later."
 ogUrl: "https://pitway.thixpin.me/concepts/backlog.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>

@@ -1,11 +1,11 @@
 ---
+title: "Completion · PitWay Docs"
 description: "milestone-complete is the final mandatory approval gate -- it refuses until every task is done and every verification check is passing."
 canonical: "https://pitway.thixpin.me/workflow/completion.html"
 ogType: "article"
 ogTitle: "Completion · PitWay Docs"
 ogDescription: "milestone-complete is the final mandatory approval gate -- it refuses until every task is done and every verification check is passing."
 ogUrl: "https://pitway.thixpin.me/workflow/completion.html"
-ogSiteName: "PitWay Docs"
 ---
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header>
