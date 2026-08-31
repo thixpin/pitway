@@ -222,7 +222,7 @@ tasks:
       extra URLs by value). Success message updated to name the new checks.
       Verification runs the real build then the audit; the audit must pass
       against the T003 content."
-    status: ready
+    status: completed
     depends_on:
       - T003
     acceptance_criteria:
@@ -243,7 +243,18 @@ tasks:
       detail: npm --prefix website run build && npm --prefix website run check:seo &&
         npm --prefix website run check:a11y
       timeout_ms: 300000
-    result: null
+    result:
+      summary: "[truncated] unts. Negative checks by mutating the gitignored dist
+        (then rebuilding) confirmed each regression class fails: wrong site
+        name, missing card, brand-less title, noindex page in sitemap, canonical
+        missing from sitemap, malformed JSON-LD, missing BreadcrumbList, wrong
+        homepage WebSite name."
+      evidence: "> pitway-website@0.0.0 check:a11y | > node scripts/check-a11y.mjs |
+        check-a11y: 20 page(s) OK -- image alt text present, :focus-visible and
+        prefers-reduced-motion CSS shipped."
+    attempts: 1
+    driver: Claude Code
+    model: claude-fable-5
     usage: null
   - id: T005
     name: Bring reference templates and nav data back in sync
@@ -258,7 +269,7 @@ tasks:
       the title: front-matter key now drives, and a one-line comment that
       build.mjs emits the BreadcrumbList JSON-LD. website/data/docs-nav.yaml:
       site.index_page -> /docs/index.html. Nothing else in these files changes.'
-    status: waiting
+    status: ready
     depends_on:
       - T004
     acceptance_criteria:
