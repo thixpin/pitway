@@ -85,7 +85,7 @@ tasks:
       without canonical yield no ld+json; every emitted block round-trips
       through JSON.parse; a description containing </script> is emitted with
       \u003c and never closes the script element.'
-    status: ready
+    status: completed
     depends_on:
       - T001
     acceptance_criteria:
@@ -109,7 +109,16 @@ tasks:
       strategy: tdd
       detail: node website/scripts/build.test.mjs
       timeout_ms: 300000
-    result: null
+    result:
+      summary: '[truncated] tted in <head> as <script type="application/ld+json"> via
+        JSON.stringify with < escaped as \u003c (never escapeHtml).
+        buildContentPages accepts { project, siteUrl }; main() loads the project
+        metadata. 6 new tests incl. the </script>-in-description escape and an
+        end-to-end temp-dir build.'
+      evidence: ℹ skipped 0 | ℹ todo 0 | ℹ duration_ms 1723.07625
+    attempts: 1
+    driver: Claude Code
+    model: claude-fable-5
     usage: null
   - id: T003
     name: Content front matter for titles, site name, and noindex pages
@@ -128,7 +137,7 @@ tasks:
       tests; check:seo is deliberately NOT run here because its noindex
       exemption lands in T004 (the old audit would reject 404's missing
       canonical)."
-    status: waiting
+    status: ready
     depends_on:
       - T002
     acceptance_criteria:

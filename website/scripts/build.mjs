@@ -177,18 +177,105 @@ function buildMetaTags({ description, canonical, robots, ...og }) {
 }
 
 /**
+ * Read the facts the homepage's SoftwareSourceCode JSON-LD is built from --
+ * repository, license, author -- from the repo root package.json, so the
+ * structured data can never drift from the published package metadata.
+ */
+export async function loadProjectMetadata(pkgPath = path.join(REPO_ROOT, "package.json")) {
+  const pkg = JSON.parse(await fsp.readFile(pkgPath, "utf8"));
+  const repository = typeof pkg.repository === "string" ? pkg.repository : pkg.repository?.url;
+  const author = typeof pkg.author === "string" ? { name: pkg.author } : pkg.author;
+  return {
+    repositoryUrl: repository ?? "",
+    license: pkg.license ?? "",
+    author: { name: author?.name ?? "", url: author?.url ?? "" },
+  };
+}
+
+/** `git+https://github.com/x/y.git` -> `https://github.com/x/y`. */
+function repositoryWebUrl(repositoryUrl) {
+  return repositoryUrl.replace(/^git\+/, "").replace(/\.git$/, "");
+}
+
+/**
+ * M049/T002 (AC001, AC005): the schema.org objects a page carries, derived
+ * purely from what the page and the project already declare -- never a
+ * hand-typed fact, never an Organization/offer/rating the project doesn't
+ * have. The homepage (canonical === site root) describes the site and the
+ * open-source CLI it documents; every other indexable page mirrors the
+ * linked part of its visible breadcrumb trail (the un-linked section label
+ * has no URL, so it is not a ListItem). Noindex pages and pages without a
+ * canonical get nothing: structured data on a page that asks not to be
+ * indexed is noise.
+ */
+export function buildJsonLd({ canonical, heading, description, robots, siteUrl = DEFAULT_SITE_URL, project }) {
+  if (!canonical || /\bnoindex\b/i.test(robots ?? "")) return [];
+  const root = `${siteUrl}/`;
+  const docsIndex = `${siteUrl}/docs/index.html`;
+
+  if (canonical === root) {
+    const blocks = [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: SITE_NAME,
+        url: root,
+        ...(description ? { description } : {}),
+      },
+    ];
+    if (project) {
+      const codeRepository = repositoryWebUrl(project.repositoryUrl);
+      blocks.push({
+        "@context": "https://schema.org",
+        "@type": "SoftwareSourceCode",
+        name: SITE_NAME,
+        ...(description ? { description } : {}),
+        url: root,
+        codeRepository,
+        programmingLanguage: "TypeScript",
+        runtimePlatform: "Node.js",
+        ...(project.license === "MIT" ? { license: `${codeRepository}/blob/main/LICENSE` } : {}),
+        author: { "@type": "Person", name: project.author.name, url: project.author.url },
+      });
+    }
+    return blocks;
+  }
+
+  const trail = [{ name: SITE_NAME, item: root }, { name: "Docs", item: docsIndex }];
+  if (canonical !== docsIndex) trail.push({ name: heading, item: canonical });
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: trail.map((crumb, index) => ({ "@type": "ListItem", position: index + 1, ...crumb })),
+    },
+  ];
+}
+
+// Script content is not attribute text: it must stay valid JSON, so `<` is
+// escaped as \u003c (JSON-legal, and it stops a "</script>" inside a value
+// from ending the element) rather than run through escapeHtml.
+function jsonLdScriptTags(blocks) {
+  return blocks.map(
+    (block) => `<script type="application/ld+json">${JSON.stringify(block).replace(/</g, "\\u003c")}</script>`,
+  );
+}
+
+/**
  * Render one Markdown document to a standalone HTML page. Markdown -> HTML
  * only, no client-side rendering. `meta.title` is required; `description`,
  * `canonical`, `robots`, `ogType`, `ogTitle`, `ogDescription`, and `ogUrl`
  * are optional and, when given, are injected as real <head> tags (never
  * left in <body>). `meta.heading` (the page's h1 text) is accepted for
- * downstream consumers and emits nothing itself. Every page additionally
+ * downstream consumers and emits nothing itself; `meta.jsonLd` (an array of
+ * schema.org objects from buildJsonLd) is emitted as one
+ * <script type="application/ld+json"> per object. Every page additionally
  * carries the site-wide og:site_name and twitter:card constants.
  */
 export function renderMarkdownToHtml(markdownSource, meta) {
-  const { title, heading: _heading, ogSiteName: _ignoredSiteName, ...rest } = meta;
+  const { title, heading: _heading, ogSiteName: _ignoredSiteName, jsonLd = [], ...rest } = meta;
   const body = marked.parse(markdownSource);
-  const metaTags = buildMetaTags(rest);
+  const metaTags = [...buildMetaTags(rest), ...jsonLdScriptTags(jsonLd)];
   const headExtra = metaTags.length ? `\n${metaTags.join("\n")}` : "";
   // Root-relative hrefs: every page (root-level docs-index.html, one level
   // deep under pages/getting-started/concepts/workflow/agents) is served
@@ -229,8 +316,15 @@ export async function copyFavicon(outDir) {
   return outputPath;
 }
 
-/** Convert every *.md file under contentDir to an *.html file under outDir, mirroring its relative path. Parses each file's optional front matter into the built page's real <head>. */
-export async function buildContentPages(contentDir, outDir) {
+/**
+ * Convert every *.md file under contentDir to an *.html file under outDir,
+ * mirroring its relative path. Parses each file's optional front matter into
+ * the built page's real <head>, plus the JSON-LD buildJsonLd derives from it.
+ * `options.project` (loadProjectMetadata) enables the homepage's
+ * SoftwareSourceCode block; `options.siteUrl` defaults to DEFAULT_SITE_URL.
+ */
+export async function buildContentPages(contentDir, outDir, options = {}) {
+  const { project, siteUrl = DEFAULT_SITE_URL } = options;
   const markdownFiles = await findMarkdownFiles(contentDir);
   const written = [];
 
@@ -245,7 +339,15 @@ export async function buildContentPages(contentDir, outDir) {
     // stays available as `heading` (breadcrumb name, fallback title).
     const heading = titleFromMarkdown(content, path.basename(htmlRelPath, ".html"));
     const title = data.title || heading;
-    const html = renderMarkdownToHtml(content, { ...data, title, heading });
+    const jsonLd = buildJsonLd({
+      canonical: data.canonical,
+      heading,
+      description: data.description,
+      robots: data.robots,
+      siteUrl,
+      project,
+    });
+    const html = renderMarkdownToHtml(content, { ...data, title, heading, jsonLd });
 
     await fsp.mkdir(path.dirname(outPath), { recursive: true });
     await fsp.writeFile(outPath, html, "utf8");
@@ -426,7 +528,10 @@ async function main() {
 
   await copyStylesheets(OUT_DIR);
   await copyFavicon(OUT_DIR);
-  await buildContentPages(CONTENT_DIR, OUT_DIR);
+  await buildContentPages(CONTENT_DIR, OUT_DIR, {
+    project: await loadProjectMetadata(),
+    siteUrl: DEFAULT_SITE_URL,
+  });
 
   if (fs.existsSync(WORKFLOW_SVG)) {
     await copyWorkflowDiagram(WORKFLOW_SVG, path.join(OUT_DIR, "assets"));
