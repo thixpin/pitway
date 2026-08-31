@@ -2,7 +2,7 @@
 schema_version: 1
 id: M048
 title: Structured Failure Evidence
-status: in_progress
+status: completed
 requirement: null
 confirmed_at: 2026-08-31T04:30:14Z
 verification_approved_hash: sha256:1e5baa49b608a0c277bde5aa2174de10e491436be72dd7a42dfe9592907ea374
