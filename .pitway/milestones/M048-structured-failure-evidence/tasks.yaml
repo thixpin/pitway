@@ -293,7 +293,7 @@ tasks:
     objective: npm run typecheck && npm test from a clean tree via task-verify with
       the declared timeout_ms. No code changes expected; on failure stop and
       report.
-    status: ready
+    status: completed
     depends_on:
       - T004
     acceptance_criteria:
@@ -305,5 +305,15 @@ tasks:
       strategy: command
       detail: npm run typecheck && npm test
       timeout_ms: 900000
-    result: null
+    result:
+      summary: "Full verification gate run inline (mode: inline -- verification-only,
+        no implementation write_scope) via task-verify with T005's declared
+        900000 ms timeout_ms and no ad-hoc --timeout. npm run typecheck && npm
+        test passed from a clean tree; no code changes."
+      evidence: Tests  2300 passed (2300) | Start at  12:01:53 | Duration  156.65s
+        (transform 4.46s, setup 0ms, import 18.00s, tests 1057.97s, environment
+        11ms)
+    attempts: 1
+    driver: Claude Code
+    model: claude-fable-5
     usage: null
