@@ -351,6 +351,49 @@ describe('verification results duration_ms/termination_reason (T002)', () => {
 // M005 T003: relevant_files and the new context_files/write_scope fields are
 // both schema-optional, but every task must declare exactly one style — see
 // the five-case combination rule in the task contract.
+// M048/T003 (AC003): fail_count/pass_count/failures are additive-optional
+// on command-recorded entries, snake_case beside duration_ms; an empty or
+// blank failures list is refused so "absent" stays the only way to say
+// "nothing matched".
+describe('verification results fail_count/pass_count/failures (M048/T003)', () => {
+  const validEntry = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    check: 'CT001',
+    status: 'fail',
+    at: '2026-08-31T09:00:00Z',
+    evidence: 'failures: FAIL a > b\nFAIL a > b | AssertionError: x',
+    recorded_by: 'command',
+    duration_ms: 42,
+    termination_reason: 'exited',
+    ...overrides,
+  });
+  const parse = (entry: Record<string, unknown>) =>
+    verificationResultsSchema.safeParse({ schema_version: 1, results: [entry] });
+
+  it('accepts a failed command entry carrying counts and failures', () => {
+    const result = parse(
+      validEntry({ fail_count: 1, pass_count: 40, failures: ['FAIL a > b', 'AssertionError: x'] }),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a failed command entry carrying only fail_count (vitest omits passed when all fail)', () => {
+    expect(parse(validEntry({ fail_count: 7, failures: ['FAIL a > b'] })).success).toBe(true);
+  });
+
+  it('rejects an empty failures list', () => {
+    expect(parse(validEntry({ failures: [] })).success).toBe(false);
+  });
+
+  it('rejects a blank failures entry', () => {
+    expect(parse(validEntry({ failures: [''] })).success).toBe(false);
+  });
+
+  it('rejects negative or fractional counts', () => {
+    expect(parse(validEntry({ fail_count: -1 })).success).toBe(false);
+    expect(parse(validEntry({ pass_count: 1.5 })).success).toBe(false);
+  });
+});
+
 describe('task relevant_files / context_files / write_scope combinations', () => {
   const baseTask = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
     id: 'T001',

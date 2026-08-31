@@ -8,13 +8,22 @@ import {
 } from '../../state/store.js';
 import { computeVerificationHash } from '../contracts/verification-hash.js';
 import { resolveCanonicalGitDir } from '../../git/paths.js';
-import { buildEvidence } from './failure-evidence.js';
+import { buildEvidence, extractFailureDetail } from './failure-evidence.js';
 import { evaluateRecursionGuard } from './recursion-guard.js';
 import { DEFAULT_TIMEOUT_MS, executeCommand, type TerminationReason } from './process-exec.js';
 
 export class VerifyError extends Error {}
 
-export interface VerifyCheckOutcome {
+// M048/T003 (AC003): fail_count/pass_count/failures are present only on a
+// FAILED command check -- snake_case so `verify --json` mirrors the
+// persisted verification-results entry field for field.
+export interface StructuredFailureFields {
+  fail_count?: number;
+  pass_count?: number;
+  failures?: string[];
+}
+
+export interface VerifyCheckOutcome extends StructuredFailureFields {
   check: string;
   status: 'pass' | 'fail';
   evidence: string;
@@ -43,7 +52,7 @@ export interface VerifyRecordView {
 // recursion-guarded path as a full run, and appends its own result. Never
 // invoked automatically -- no retry policy lives here or anywhere else in
 // this task's code.
-export interface VerifyCheckRunView {
+export interface VerifyCheckRunView extends StructuredFailureFields {
   id: string;
   mode: 'check-run';
   check: string;
@@ -169,12 +178,39 @@ function executeCommandCheck(root: string, check: CommandCheck): CommandCheckOut
   const duration_ms = Date.now() - start;
   const exitCode = result.exitCode;
   const status = result.terminationReason === 'exited' && exitCode === 0 ? 'pass' : 'fail';
+  const combined = `${result.stdout}${result.stderr}`;
   const evidence = buildEvidence(
-    `${result.stdout}${result.stderr}`,
+    combined,
     status === 'fail',
     emptyOutputFallback(exitCode, result.terminationReason),
   );
-  return { check: check.id, status, evidence, duration_ms, termination_reason: result.terminationReason };
+  return {
+    check: check.id,
+    status,
+    evidence,
+    ...(status === 'fail' ? structuredFailureFields(combined) : {}),
+    duration_ms,
+    termination_reason: result.terminationReason,
+  };
+}
+
+// Only the keys the extractor actually produced -- an absent count or an
+// unmatched output never becomes a fabricated 0 or an empty list.
+function structuredFailureFields(combined: string): StructuredFailureFields {
+  const detail = extractFailureDetail(combined);
+  return {
+    ...(detail.failCount !== undefined ? { fail_count: detail.failCount } : {}),
+    ...(detail.passCount !== undefined ? { pass_count: detail.passCount } : {}),
+    ...(detail.failures !== undefined ? { failures: detail.failures } : {}),
+  };
+}
+
+function pickStructuredFailureFields(outcome: StructuredFailureFields): StructuredFailureFields {
+  return {
+    ...(outcome.fail_count !== undefined ? { fail_count: outcome.fail_count } : {}),
+    ...(outcome.pass_count !== undefined ? { pass_count: outcome.pass_count } : {}),
+    ...(outcome.failures !== undefined ? { failures: outcome.failures } : {}),
+  };
 }
 
 function toResultEntry(outcome: CommandCheckOutcome): ResultEntry {
@@ -186,6 +222,7 @@ function toResultEntry(outcome: CommandCheckOutcome): ResultEntry {
     recorded_by: 'command',
     duration_ms: outcome.duration_ms,
     termination_reason: outcome.termination_reason,
+    ...pickStructuredFailureFields(outcome),
   };
 }
 
@@ -241,7 +278,14 @@ export function runSingleCheck(
 
   const outcome = withRecursionGuard(root, id, () => executeCommandCheck(root, check));
   appendResults(root, id, [toResultEntry(outcome)]);
-  return { id, mode: 'check-run', check: outcome.check, status: outcome.status, evidence: outcome.evidence };
+  return {
+    id,
+    mode: 'check-run',
+    check: outcome.check,
+    status: outcome.status,
+    evidence: outcome.evidence,
+    ...pickStructuredFailureFields(outcome),
+  };
 }
 
 export interface RecordCheckInputs {

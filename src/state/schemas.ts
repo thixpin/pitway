@@ -268,6 +268,12 @@ export const verificationResultsSchema = z.strictObject({
       // pre-existing entry without them still validates unchanged.
       duration_ms: z.number().int().nonnegative().optional(),
       termination_reason: z.enum(['exited', 'timeout', 'signal', 'spawn_error']).optional(),
+      // M048/T003 (AC003): additive-optional, FAILED command-executed entries
+      // only -- the structured names/error lines and counts that the capped
+      // `evidence` string cannot hold. Absent (never []) when nothing matched.
+      fail_count: z.number().int().nonnegative().optional(),
+      pass_count: z.number().int().nonnegative().optional(),
+      failures: z.array(z.string().min(1)).min(1).optional(),
     }),
   ),
 });

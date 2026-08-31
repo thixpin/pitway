@@ -13,7 +13,7 @@ import type { Task } from '../../state/schemas.js';
 import { loadState, loadTasks, resolveMilestoneDirName } from '../../state/store.js';
 import { DEFAULT_TIMEOUT_MS, executeCommand } from '../verification/process-exec.js';
 import { trimTail } from '../verification/text-trim.js';
-import { buildEvidence, parseTestCounts } from '../verification/failure-evidence.js';
+import { buildEvidence, extractFailureDetail, parseTestCounts } from '../verification/failure-evidence.js';
 
 export class TaskVerifyError extends Error {}
 
@@ -214,6 +214,9 @@ export function runTaskVerify(
   const counts = parseTestCounts(combined);
   const failed = !(result.terminationReason === 'exited' && result.exitCode === 0);
   const evidence = buildEvidence(combined, failed);
+  // M048/T003 (AC003): failed attempts only -- a passing attempt's record
+  // stays byte-identical even when its output contains an Error-like line.
+  const failures = failed ? extractFailureDetail(combined).failures : undefined;
 
   let typecheck: JournalTaskVerifyEvidence['typecheck'];
   if (inputs.typecheckCommand !== undefined) {
@@ -234,6 +237,7 @@ export function runTaskVerify(
     exitCode: result.exitCode,
     ...(counts.passCount !== undefined ? { passCount: counts.passCount } : {}),
     ...(counts.failCount !== undefined ? { failCount: counts.failCount } : {}),
+    ...(failures !== undefined ? { failures } : {}),
     evidence,
     durationMs,
     terminationReason: result.terminationReason,

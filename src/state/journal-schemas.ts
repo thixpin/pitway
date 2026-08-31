@@ -199,6 +199,9 @@ export const journalTaskVerifyEvidenceSchema = z.strictObject({
   exitCode: z.number().int().nullable(),
   passCount: z.number().int().nonnegative().optional(),
   failCount: z.number().int().nonnegative().optional(),
+  // M048/T003 (AC003): failed attempts only; the structured failing names /
+  // error lines beside the capped evidence string. Absent when nothing matched.
+  failures: z.array(z.string().min(1)).min(1).optional(),
   evidence: z.string().min(1),
   durationMs: z.number().int().nonnegative(),
   terminationReason: journalTerminationReasonSchema,
