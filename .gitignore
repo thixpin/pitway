@@ -9,11 +9,11 @@ drafts/
 # src/integrations/claude/ (tracked) and is installed verbatim into a
 # managed repo's own .claude/ (never this one). /CLAUDE.md and /AGENTS.md
 # are hand-authored and already tracked -- deliberately not listed here.
+# /.agents/ is the Codex harness artifact, recreated on every Codex
+# session in this repo.
 /.claude/
 /.opencode/
+/.agents/
 
 # Machine-local OpenCode configuration (developer's own, never tracked)
 opencode.json
-
-# Codex harness artifact, recreated on every Codex session in this repo
-.agents/
