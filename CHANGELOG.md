@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.6.0] — 2026-08-31
+
+### Highlights
+
+- **Structured failure evidence.** A failed command check no longer leaves
+  only a 200-character, tail-capped evidence string behind. `verify` (full
+  run and `--check` rerun) records `fail_count`, `pass_count`, and a
+  `failures` list — the failing test names (up to 12, vitest `FAIL` / `×`
+  lines deduplicated) followed by the first error lines (up to 3, any
+  `<Word>Error:` line, so `TypeError:` / `ReferenceError:` survive too) —
+  as additive fields beside the unchanged `evidence` string in
+  `verification-results.yaml`; `task-verify` records the same `failures`
+  list in its `task_verify_evidence` journal record. Both commands render
+  the counts and entries as indented lines under a failed check, and
+  `--json` carries the new fields. Passing checks, developer-recorded
+  manual/review results, unmatched output, and every existing file are
+  byte-identical to before; `schema_version` stays 1. This is the
+  investigation-time loss B042 paid for (6 of 7 failing tests hidden
+  behind the cap), closed for good
+- `buildEvidence` and `parseTestCounts` now live once in
+  `src/core/verification/failure-evidence.ts`, shared by milestone
+  verification and task-verify; the recorded evidence strings are
+  byte-identical to 1.5.0
+
+### Internal
+
+- B042: the `hang-with-children` process-exec fixture no longer races node
+  startup under fork-contended load (fixture budget raised to 5000 ms; the
+  shipped `executeCommand` behaviour is unchanged)
+
+Existing installs will report configuration drift for the updated
+`verify.md` / `task-verify.md` command docs until `pitway init
+--reconfigure` is run.
+
 ## [1.5.0] — 2026-08-31
 
 ### Highlights
