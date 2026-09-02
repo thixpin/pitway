@@ -37,7 +37,7 @@
   "dependencies": {
     "commander": "15.0.0",
     "yaml": "2.9.0",
-    "zod": "4.4.3"
+    "zod": "4.5.4"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
