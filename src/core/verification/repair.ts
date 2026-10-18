@@ -2,9 +2,10 @@ import { relative, resolve, sep } from 'node:path';
 import { parse } from 'yaml';
 import { commitOrResume } from '../../git/commit-or-resume.js';
 import { git } from '../../git/exec.js';
-import { checkWorkingTreeClean } from '../../git/safety.js';
+import { checkWorkingTreeClean, classifyDirtyPaths } from '../../git/safety.js';
 import { composeMessage, resolveCommitSha } from '../../git/trailers.js';
 import type { ContractFile } from '../../state/contract-file.js';
+import { reconcilePending } from '../../state/journal.js';
 import type { VerificationRepairRecord, VerificationRepairsFile } from '../../state/schemas.js';
 import {
   loadContract,
@@ -14,6 +15,7 @@ import {
   resolveMilestoneDirName,
   saveVerificationRepairs,
 } from '../../state/store.js';
+import { resolvePendingJournalTargets } from '../journal/pending-targets.js';
 import { runSingleCheck } from './run.js';
 
 export class VerificationRepairError extends Error {}
@@ -332,6 +334,7 @@ export function commitVerificationRepair(
     if (record.status !== 'committed') {
       persistRepairRecord(root, milestoneId, repairs, asCommitted);
     }
+    reconcilePending(root, milestoneId);
     return { id: vrId, milestone: milestoneId, operation: 'commit', outcome: 'already-committed', commit: existing };
   }
 
@@ -346,7 +349,12 @@ export function commitVerificationRepair(
     verificationRepairsRepoPath(root, milestoneId),
     verificationResultsRepoPath(root, milestoneId),
   ];
-  const expectedPaths = [...new Set([...record.files, ...ownStatePaths])];
+  // A pending journal entry's already-materialized target (e.g. a qa
+  // usage-add recorded during the repair) rides along in this checkpoint
+  // commit, exactly as task-update completion and milestone-complete fold
+  // them in; reconcilePending then marks it checkpointed.
+  const journalExpected = classifyDirtyPaths(root, { journalTargetPaths: resolvePendingJournalTargets(root, milestoneId) }).expected;
+  const expectedPaths = [...new Set([...record.files, ...ownStatePaths, ...journalExpected])];
   assertDirtySubset(root, expectedPaths);
 
   // B040: split the approved checks by type. Command checks rerun exactly
@@ -393,6 +401,7 @@ export function commitVerificationRepair(
     localStateAdvanced: true,
     message,
   });
+  reconcilePending(root, milestoneId);
   return { id: vrId, milestone: milestoneId, operation: 'commit', outcome: result.outcome, commit: result.sha };
 }
 

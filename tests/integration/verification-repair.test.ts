@@ -1,8 +1,9 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { parse, stringify } from 'yaml';
 import { buildCli } from '../../src/cli/index.js';
 import { registerInitCommand } from '../../src/cli/commands/init.js';
 import { registerMilestoneAddCommand } from '../../src/cli/commands/milestone-add.js';
@@ -12,7 +13,11 @@ import { registerTaskUpdateCommand } from '../../src/cli/commands/task-update.js
 import { registerVerificationRepairCommand } from '../../src/cli/commands/verification-repair.js';
 import { registerVerifyCommand } from '../../src/cli/commands/verify.js';
 import { resolveCommitSha } from '../../src/git/trailers.js';
-import { resolveCanonicalGitDir } from '../../src/git/paths.js';
+import { resolveCanonicalGitDir, resolvePitwayJournalPath } from '../../src/git/paths.js';
+import { recordUsage } from '../../src/core/metrics/aggregate.js';
+import { buildResumeView } from '../../src/core/views/resume.js';
+import { appendJournalEntry, readJournal } from '../../src/state/journal.js';
+import { derivePending } from '../../src/state/journal-operations.js';
 import {
   recordCheckResult,
   runSingleCheck,
@@ -23,6 +28,7 @@ import {
   loadContract,
   loadState,
   loadTasks,
+  loadUsage,
   loadVerificationRepairs,
   loadVerificationResults,
   saveState,
@@ -561,6 +567,137 @@ describe('pitway verification-repair commit', () => {
 
     expect(resolveCommitSha(root, { milestone: 'M001', task: 'T001' })).toBe(t001Sha);
     expect(loadTasks(root, 'M001').tasks.find((t) => t.id === 'T001')).toEqual(t001Before);
+  });
+});
+
+// A qa usage-add recorded during an approved repair materializes usage.yaml
+// with no commit of its own; the repair commit is the next eligible
+// checkpoint and must fold it in exactly like task-update completion does.
+describe('pitway verification-repair commit checkpoints pending usage journal entries', () => {
+  const pendingUsage = (): number =>
+    derivePending(readJournal(root)).filter((e) => e.milestone === 'M001' && e.type === 'usage_recording').length;
+
+  it('folds a pending usage.yaml into the repair commit, clears it from resume, and leaves the tree clean', async () => {
+    await readyForRepair();
+    await approve(['repair-target.txt'], ['CT001']);
+    writeFileSync(join(root, 'repair-target.txt'), 'FIXED again\n');
+    recordUsage(root, 'M001', { category: 'qa', usage: '{"total_tokens":201825}' });
+    expect(buildResumeView(root).pendingJournal?.map((e) => e.target)).toEqual([milestoneRelFile('usage.yaml')]);
+
+    const before = commitCount(root);
+    const { error } = await commitRepair('VR001');
+    expect(error).toBeUndefined();
+    expect(commitCount(root)).toBe(before + 1);
+    expect(headFiles(root)).toEqual(
+      ['repair-target.txt', milestoneRelFile('usage.yaml'), verificationRepairsPath(), verificationResultsPath()].sort(),
+    );
+    expect(git(['status', '--porcelain'], root).trim()).toBe('');
+    expect(pendingUsage()).toBe(0);
+    expect(buildResumeView(root).pendingJournal ?? []).toEqual([]);
+    expect(loadUsage(root, 'M001').qa).toMatchObject({ total_tokens: 201825 });
+  });
+
+  it('checkpoints several pending usage entries exactly once, without duplicating the totals', async () => {
+    await readyForRepair();
+    await approve(['repair-target.txt'], ['CT001']);
+    writeFileSync(join(root, 'repair-target.txt'), 'FIXED again\n');
+    recordUsage(root, 'M001', { category: 'qa', usage: '{"total_tokens":100}' });
+    recordUsage(root, 'M001', { category: 'qa', usage: '{"total_tokens":20}' });
+    recordUsage(root, 'M001', { category: 'planning', usage: '{"total_tokens":3}' });
+    expect(pendingUsage()).toBe(3);
+
+    expect((await commitRepair('VR001')).error).toBeUndefined();
+    expect(pendingUsage()).toBe(0);
+    const checkpoints = readJournal(root).filter((r) => r.kind === 'checkpoint');
+    expect(checkpoints).toHaveLength(3);
+    expect(loadUsage(root, 'M001')).toMatchObject({ qa: { total_tokens: 120 }, planning: { total_tokens: 3 } });
+
+    // Re-entry never re-appends markers or re-accumulates usage.
+    expect((await commitRepair('VR001')).error).toBeUndefined();
+    expect(readJournal(root).filter((r) => r.kind === 'checkpoint')).toHaveLength(3);
+    expect(loadUsage(root, 'M001')).toMatchObject({ qa: { total_tokens: 120 }, planning: { total_tokens: 3 } });
+  });
+
+  it('a failed repair commit leaves usage pending and intact; the retry checkpoints it once', async () => {
+    await readyForRepair();
+    await approve(['repair-target.txt'], ['CT001']);
+    writeFileSync(join(root, 'repair-target.txt'), 'still broken\n');
+    recordUsage(root, 'M001', { category: 'qa', usage: '{"total_tokens":55}' });
+    const usageBefore = readFileSync(join(root, milestoneRelFile('usage.yaml')), 'utf8');
+
+    expect((await commitRepair('VR001')).error?.message).toMatch(/CT001/);
+    expect(readFileSync(join(root, milestoneRelFile('usage.yaml')), 'utf8')).toBe(usageBefore);
+    expect(pendingUsage()).toBe(1);
+
+    writeFileSync(join(root, 'repair-target.txt'), 'FIXED for real\n');
+    expect((await commitRepair('VR001')).error).toBeUndefined();
+    expect(pendingUsage()).toBe(0);
+    expect(loadUsage(root, 'M001').qa).toMatchObject({ total_tokens: 55 });
+  });
+
+  it('reconciles on re-entry when the commit landed but the checkpoint marker was never written', async () => {
+    await readyForRepair();
+    await approve(['repair-target.txt'], ['CT001']);
+    writeFileSync(join(root, 'repair-target.txt'), 'FIXED again\n');
+    recordUsage(root, 'M001', { category: 'qa', usage: '{"total_tokens":9}' });
+    expect((await commitRepair('VR001')).error).toBeUndefined();
+
+    // Simulate a crash between the commit and the marker append.
+    const journalPath = resolvePitwayJournalPath(root);
+    const journal = parse(readFileSync(journalPath, 'utf8')) as { entries: Array<{ kind: string }> };
+    journal.entries = journal.entries.filter((e) => e.kind !== 'checkpoint');
+    writeFileSync(journalPath, stringify(journal));
+    expect(pendingUsage()).toBe(1);
+
+    const before = commitCount(root);
+    const { lines, error } = await commitRepair('VR001');
+    expect(error).toBeUndefined();
+    expect(JSON.parse(lines[0]!)).toMatchObject({ outcome: 'already-committed' });
+    expect(commitCount(root)).toBe(before);
+    expect(pendingUsage()).toBe(0);
+  });
+
+  it('does not trust a hand-edited usage.yaml that no pending journal entry accounts for', async () => {
+    await readyForRepair();
+    await approve(['repair-target.txt'], ['CT001']);
+    writeFileSync(join(root, 'repair-target.txt'), 'FIXED again\n');
+    writeFileSync(join(root, milestoneRelFile('usage.yaml')), 'schema_version: 1\nplanning: null\nqa: null\n# edited\n');
+
+    const before = commitCount(root);
+    const { error } = await commitRepair('VR001');
+    expect(error?.message).toMatch(/unrelated dirty changes present: .*usage\.yaml/);
+    expect(commitCount(root)).toBe(before);
+    expect(repairs().records[0]!.status).toBe('pending');
+  });
+
+  it("refuses another milestone's pending journal target: ownership is per milestone", async () => {
+    await readyForRepair();
+    await approve(['repair-target.txt'], ['CT001']);
+    writeFileSync(join(root, 'repair-target.txt'), 'FIXED again\n');
+    mkdirSync(join(root, '.pitway', 'milestones', 'M002'));
+    writeFileSync(join(root, '.pitway', 'milestones', 'M002', 'usage.yaml'), 'schema_version: 1\nplanning: null\nqa: null\n');
+    appendJournalEntry(root, { milestone: 'M002', type: 'usage_recording', operationId: 'other-op', payload: {} });
+
+    const before = commitCount(root);
+    const { error } = await commitRepair('VR001');
+    expect(error?.message).toMatch(/unrelated dirty changes present: \.pitway\/milestones\/M002\/usage\.yaml/);
+    expect(commitCount(root)).toBe(before);
+  });
+
+  it('refuses an unrelated staged file alongside pending usage, committing nothing and leaving it staged', async () => {
+    await readyForRepair();
+    await approve(['repair-target.txt'], ['CT001']);
+    writeFileSync(join(root, 'repair-target.txt'), 'FIXED again\n');
+    recordUsage(root, 'M001', { category: 'qa', usage: '{"total_tokens":1}' });
+    writeFileSync(join(root, 'staged.txt'), 'user work\n');
+    git(['add', 'staged.txt'], root);
+
+    const before = commitCount(root);
+    const { error } = await commitRepair('VR001');
+    expect(error?.message).toMatch(/staged\.txt/);
+    expect(commitCount(root)).toBe(before);
+    expect(git(['diff', '--cached', '--name-only'], root).trim()).toBe('staged.txt');
+    expect(pendingUsage()).toBe(1);
   });
 });
 

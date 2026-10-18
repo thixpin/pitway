@@ -34,7 +34,9 @@ Two phases, always in this order:
   <milestone> --check <id> --pass` *after* the approval (a re-record is the
   honest equivalent of a rerun). Refuses the whole commit (repair stays
   pending) if any check fails or lacks its re-record, or if the dirty tree
-  holds anything outside the approved scope.
+  holds anything outside the approved scope. A pending `usage-add` (or other
+  pending journal entry) for this milestone rides along in the repair
+  commit and is checkpointed by it.
 
 `verification-repair cancel <milestone> <vr-id>` abandons a still-pending
 repair.
