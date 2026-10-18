@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.6.1] — 2026-10-18
+
+### Fixes
+
+- **`milestone-add --replace` no longer orphans requirement files.**
+  Replacing a draft with `--requirement` used to mint a fresh requirement
+  id every time, leaving the previous `R00N.md` untracked on disk — which
+  `milestone-confirm` then correctly refused as unrelated dirty state.
+  The draft's own requirement is now rewritten in place under its
+  existing id; a new id is minted only when the draft had none or another
+  milestone references the same requirement (which is never mutated).
+  Draft edits still make no commits and record no amendment history;
+  confirmation and post-confirmation rules are unchanged. Orphans left by
+  earlier versions are not removed automatically — confirm names them,
+  and an unreferenced one can be deleted by hand
+
+### Dependencies
+
+- `zod` 4.4.3 → 4.5.4; `@types/node` 26.2.0 → 26.4.0 (dev)
+
+Existing installs will report configuration drift for the updated
+`milestone-add.md` / `ms-add.md` command docs until `pitway init
+--reconfigure` is run.
+
 ## [1.6.0] — 2026-08-31
 
 ### Highlights
