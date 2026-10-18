@@ -181,13 +181,22 @@ export function createMilestone(root: string, inputs: MilestoneAddInputs): Miles
   return { id, title: contract.frontmatter.title, requirement: requirementId };
 }
 
+function isRequirementReferencedElsewhere(root: string, milestoneId: string, requirementId: string): boolean {
+  return loadState(root).milestones.some(
+    (other) => other !== milestoneId && loadContract(root, other).frontmatter.requirement === requirementId,
+  );
+}
+
 // AC001: draft-only, same-id, no-git-operation in-place correction. Reuses
 // the same validation as createMilestone; overwrites contract.md/tasks.yaml/
 // verification-results.yaml/usage.yaml under the SAME id -- no new id is
 // minted and state.milestones is unchanged. Requirement handling: an omitted
 // --requirement preserves the draft's currently materialized requirement id
-// (never cleared); a supplied one creates a fresh requirement file, leaving
-// the prior one on disk (requirements are append-only, never deleted).
+// (never cleared); a supplied one overwrites the draft's own requirement
+// file in place under the same id. A new id is minted only when the draft
+// has none yet or another milestone also references it -- otherwise every
+// draft edit would orphan an untracked requirement file that later blocks
+// milestone-confirm's dirty-tree check.
 export function replaceMilestoneDraft(
   root: string,
   id: string,
@@ -207,7 +216,9 @@ export function replaceMilestoneDraft(
   let requirementId: string | null = existing.frontmatter.requirement;
   if (inputs.requirementPath !== undefined) {
     const requirementText = readInput(inputs.requirementPath, 'requirement');
-    requirementId = nextRequirementId(root);
+    if (requirementId === null || isRequirementReferencedElsewhere(root, id, requirementId)) {
+      requirementId = nextRequirementId(root);
+    }
     saveRequirement(root, requirementId, requirementText);
   }
 

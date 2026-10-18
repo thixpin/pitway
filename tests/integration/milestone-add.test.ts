@@ -443,7 +443,7 @@ describe('pitway milestone-add --replace (AC001)', () => {
     expect(loadContract(root, 'M001').frontmatter.title).toBe('Replaced milestone');
   });
 
-  it('creates a fresh requirement when --requirement is supplied, leaving the prior one on disk', async () => {
+  it('updates the draft-owned requirement in place when --requirement is supplied, preserving its id', async () => {
     const { contract, tasks } = writeInputs(root);
     const requirement = join(root, 'req.md');
     writeFileSync(requirement, '# Requirement\n\nOriginal.\n');
@@ -471,9 +471,113 @@ describe('pitway milestone-add --replace (AC001)', () => {
       root,
     );
     expect(error).toBeUndefined();
+    expect(loadContract(root, 'M001').frontmatter.requirement).toBe('R001');
+    expect(readFileSync(join(root, '.pitway', 'requirements', 'R001.md'), 'utf8')).toContain('Updated.');
+    expect(readdirSync(join(root, '.pitway', 'requirements'))).toEqual(['R001.md']);
+  });
+
+  it('survives repeated replacement and confirms with no orphaned requirement and no draft-time commits', async () => {
+    const { contract, tasks } = writeInputs(root);
+    const requirement = join(root, 'req.md');
+    writeFileSync(requirement, '# Requirement\n\nOriginal.\n');
+    expect((await run(['milestone-add', '--contract', contract, '--tasks', tasks, '--requirement', requirement], root)).error).toBeUndefined();
+    const before = commitCount(root);
+
+    const repl = writeReplacementInputs(root);
+    for (const text of ['Second.', 'Third.']) {
+      writeFileSync(requirement, `# Requirement\n\n${text}\n`);
+      const replaced = await run(
+        ['milestone-add', '--replace', 'M001', '--contract', repl.contract, '--tasks', repl.tasks, '--requirement', requirement],
+        root,
+      );
+      expect(replaced.error).toBeUndefined();
+    }
+    expect(commitCount(root)).toBe(before);
+    expect(readdirSync(join(root, '.pitway', 'requirements'))).toEqual(['R001.md']);
+
+    for (const input of [requirement, contract, tasks, repl.contract, repl.tasks]) rmSync(input);
+    const confirmed = await run(['milestone-confirm', 'M001'], root);
+    expect(confirmed.error).toBeUndefined();
+    expect(commitCount(root)).toBe(before + 1);
+    expect(gitOutput(['status', '--porcelain'], root)).toBe('');
+    expect(gitOutput(['show', 'HEAD:.pitway/requirements/R001.md'], root)).toContain('Third.');
+  });
+
+  it('never mutates a requirement another milestone references: mints a new id instead', async () => {
+    const { contract, tasks } = writeInputs(root);
+    const requirement = join(root, 'req.md');
+    writeFileSync(requirement, '# Requirement\n\nShared.\n');
+    expect((await run(['milestone-add', '--contract', contract, '--tasks', tasks, '--requirement', requirement], root)).error).toBeUndefined();
+    // Simulate a second milestone that references the same requirement.
+    const other = loadContract(root, 'M001');
+    mkdirSync(join(root, '.pitway', 'milestones', 'M002'));
+    saveContract(root, 'M002', { ...other, frontmatter: { ...other.frontmatter, id: 'M002', status: 'cancelled' } });
+    const state = loadState(root);
+    saveState(root, { ...state, milestones: [...state.milestones, 'M002'] });
+
+    const repl = writeReplacementInputs(root);
+    writeFileSync(requirement, '# Requirement\n\nChanged.\n');
+    const { error } = await run(
+      ['milestone-add', '--replace', 'M001', '--contract', repl.contract, '--tasks', repl.tasks, '--requirement', requirement],
+      root,
+    );
+    expect(error).toBeUndefined();
     expect(loadContract(root, 'M001').frontmatter.requirement).toBe('R002');
+    expect(loadContract(root, 'M002').frontmatter.requirement).toBe('R001');
+    expect(readFileSync(join(root, '.pitway', 'requirements', 'R001.md'), 'utf8')).toContain('Shared.');
+    expect(readFileSync(join(root, '.pitway', 'requirements', 'R002.md'), 'utf8')).toContain('Changed.');
+  });
+
+  it('creates a requirement for a draft that had none, without touching other ids', async () => {
+    const { contract, tasks } = writeInputs(root);
+    expect((await run(['milestone-add', '--contract', contract, '--tasks', tasks], root)).error).toBeUndefined();
+    const requirement = join(root, 'req.md');
+    writeFileSync(requirement, '# Requirement\n\nLate.\n');
+    const repl = writeReplacementInputs(root);
+    const { error } = await run(
+      ['milestone-add', '--replace', 'M001', '--contract', repl.contract, '--tasks', repl.tasks, '--requirement', requirement],
+      root,
+    );
+    expect(error).toBeUndefined();
+    expect(loadContract(root, 'M001').frontmatter.requirement).toBe('R001');
+    expect(readdirSync(join(root, '.pitway', 'requirements'))).toEqual(['R001.md']);
+  });
+
+  it('a failed replacement leaves the draft and its requirement untouched', async () => {
+    const { contract, tasks } = writeInputs(root);
+    const requirement = join(root, 'req.md');
+    writeFileSync(requirement, '# Requirement\n\nOriginal.\n');
+    expect((await run(['milestone-add', '--contract', contract, '--tasks', tasks, '--requirement', requirement], root)).error).toBeUndefined();
+    const contractPath = join(root, '.pitway', 'milestones', milestoneDirName('M001'), 'contract.md');
+    const contractBefore = readFileSync(contractPath, 'utf8');
+
+    const repl = writeReplacementInputs(root);
+    writeFileSync(repl.tasks, REPLACEMENT_TASKS_FIXTURE.replace('depends_on: []', 'depends_on: [T999]'));
+    writeFileSync(requirement, '# Requirement\n\nChanged.\n');
+    const { error } = await run(
+      ['milestone-add', '--replace', 'M001', '--contract', repl.contract, '--tasks', repl.tasks, '--requirement', requirement],
+      root,
+    );
+    expect(error).toBeDefined();
+    expect(readFileSync(contractPath, 'utf8')).toBe(contractBefore);
     expect(readFileSync(join(root, '.pitway', 'requirements', 'R001.md'), 'utf8')).toContain('Original.');
-    expect(readFileSync(join(root, '.pitway', 'requirements', 'R002.md'), 'utf8')).toContain('Updated.');
+    expect(readdirSync(join(root, '.pitway', 'requirements'))).toEqual(['R001.md']);
+  });
+
+  it('confirm still refuses unrelated dirty files after a replacement', async () => {
+    const { contract, tasks } = writeInputs(root);
+    const requirement = join(root, 'req.md');
+    writeFileSync(requirement, '# Requirement\n\nOriginal.\n');
+    expect((await run(['milestone-add', '--contract', contract, '--tasks', tasks, '--requirement', requirement], root)).error).toBeUndefined();
+    const repl = writeReplacementInputs(root);
+    expect(
+      (await run(['milestone-add', '--replace', 'M001', '--contract', repl.contract, '--tasks', repl.tasks, '--requirement', requirement], root)).error,
+    ).toBeUndefined();
+    for (const input of [contract, tasks, repl.contract, repl.tasks]) rmSync(input);
+    // req.md stays behind as the unrelated dirty file.
+    const { error } = await run(['milestone-confirm', 'M001'], root);
+    expect(error?.message).toMatch(/unrelated dirty changes present: req\.md/);
+    expect(loadContract(root, 'M001').frontmatter.status).toBe('draft');
   });
 });
 

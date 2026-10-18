@@ -24,7 +24,8 @@ actually seen and approved the contract you just registered. See
 (mistakes in a not-yet-confirmed draft) — it never mints a new id and never
 touches git. It only works while `<id>` is still `draft`; once confirmed,
 use `milestone-confirm --amend` instead. To abandon a draft permanently
-instead of correcting it, use `milestone-cancel`.
+instead of correcting it, use `milestone-cancel`. Passing `--requirement` with
+`--replace` rewrites the draft's own requirement under its existing id.
 
 
 Scope entries (`write_scope`, `context_files`, `relevant_files`) must name
