@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.6.2] — 2026-10-18
+
+### Fixes
+
+- **`verification-repair commit` checkpoints pending usage.** A
+  `usage-add` recorded while a repair was pending left `usage.yaml`
+  dirty — `resume` correctly reported it as pending for the next
+  checkpoint, but the repair commit refused it as unrelated dirty state.
+  The repair commit now folds in this milestone's pending journal targets
+  (the same rule task completion and `milestone-complete` already use)
+  and marks them checkpointed, including on the already-committed
+  re-entry path after an interrupted run. Hand-edited `.pitway/` files
+  with no pending journal entry, another milestone's pending targets, and
+  unrelated staged or untracked files are still refused
+
+Existing installs will report configuration drift for the updated
+`verification-repair.md` command doc until `pitway init --reconfigure` is
+run.
+
 ## [1.6.1] — 2026-10-18
 
 ### Fixes
